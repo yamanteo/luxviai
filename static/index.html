@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Luxviai – Dijital Bilinç Alanı</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            font-family: 'Segoe UI', 'SF Pro Text', system-ui, -apple-system, Roboto, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .app {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: #000;
+            position: relative;
+        }
+
+        .header {
+            padding: 20px 24px 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1e1e1e;
+        }
+        .logo {
+            text-align: center;
+            flex: 1;
+        }
+        .logo h1 {
+            font-size: 1.8rem;
+            letter-spacing: 4px;
+            background: linear-gradient(135deg, #f5a623, #e6b422);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .logo p {
+            font-size: 0.7rem;
+            color: #888;
+            letter-spacing: 1.5px;
+        }
+
+        .menu-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+        }
+        .menu-line {
+            width: 18px;
+            height: 2px;
+            background-color: #f5a623;
+            border-radius: 2px;
+        }
+
+        .menu-panel {
+            display: none;
+            background: #0c0c0c;
+            padding: 16px 20px;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            align-items: center;
+            border-bottom: 1px solid #1e1e1e;
+        }
+        .menu-panel button {
+            background: #1a1a1a;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 40px;
+            color: #f5a623;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+        .menu-panel button:hover {
+            background: #f5a623;
+            color: #000;
+        }
+        .lang-selector {
+            background: #1a1a1a;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 40px;
+            color: #f5a623;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.75rem;
+            margin-left: auto;
+        }
+        .lang-selector:hover {
+            background: #f5a623;
+            color: #000;
+        }
+
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            background: #000;
+        }
+
+        .user-msg {
+            align-self: flex-end;
+            background: rgba(60, 60, 65, 0.4);
+            border-radius: 20px;
+            padding: 10px 16px;
+            color: #fff;
+            max-width: 70%;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .lux-msg {
+            align-self: flex-start;
+            color: #fff;
+            max-width: 70%;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        .lux-dash {
+            color: #f5a623;
+            margin-right: 6px;
+        }
+
+        /* TAM KARE TABLO STILI */
+        .lux-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #0c0c0c;
+            color: #ddd;
+            margin: 10px 0;
+        }
+        .lux-table th, .lux-table td {
+            border: 1px solid #444;
+            padding: 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .lux-table th {
+            background: #1a1a1a;
+            color: #f5a623;
+            font-weight: 600;
+        }
+        .lux-card {
+            background: #0c0c0c;
+            border-left: 4px solid #f5a623;
+            border-radius: 16px;
+            width: 100%;
+            margin: 8px 0;
+        }
+        .lux-card-header {
+            padding: 12px 18px;
+            font-weight: 700;
+            color: #f5a623;
+            border-bottom: 1px solid #1e1e1e;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+        .lux-card-content {
+            padding: 14px 18px;
+            color: #ccc;
+            line-height: 1.5;
+            font-size: 0.85rem;
+        }
+
+        .input-wrapper {
+            display: flex;
+            justify-content: center;
+            padding: 16px 20px;
+            background: #000;
+        }
+        .input-area {
+            width: 70%;
+            display: flex;
+            gap: 12px;
+            background: #0c0c0c;
+            padding: 8px 16px;
+            border-radius: 60px;
+            border: 1px solid #222;
+        }
+        #messageInput {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #f5f5f5;
+            font-size: 0.85rem;
+            outline: none;
+        }
+        #messageInput::placeholder {
+            color: #555;
+        }
+        .input-area button {
+            background: #f5a623;
+            border: none;
+            padding: 4px 16px;
+            border-radius: 40px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .input-area button:hover {
+            background: #e6b422;
+        }
+
+        .prompt-overlay {
+            width: 70%;
+            margin: 8px auto;
+            display: flex;
+            gap: 12px;
+            background: #0c0c0c;
+            padding: 8px 16px;
+            border-radius: 60px;
+        }
+        .small-input {
+            flex: 1;
+            background: transparent;
+            border: 1px solid #333;
+            padding: 6px 14px;
+            border-radius: 40px;
+            color: white;
+        }
+        .small-input:focus {
+            outline: none;
+            border-color: #f5a623;
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <div class="header">
+        <div class="logo">
+            <h1>L U X V I A I</h1>
+            <p>Light your way!</p>
+        </div>
+        <button class="menu-btn" id="menuToggle">
+            <div class="menu-line"></div>
+            <div class="menu-line"></div>
+            <div class="menu-line"></div>
+        </button>
+    </div>
+
+    <div class="menu-panel" id="menuPanel">
+        <button data-cmd="!bilge" data-key="wise">Bilge</button>
+        <button data-cmd="!not al" data-key="note">Not al</button>
+        <button data-cmd="!notlar" data-key="notes">Notlar</button>
+        <button data-cmd="!notları sil" data-key="delnotes">Notları sil</button>
+        <button data-cmd="!ara" data-key="search">Ara</button>
+        <button data-cmd="!sohbet_ozeti" data-key="summary">Özet</button>
+        <button data-cmd="!farkındalık_özeti" data-key="awareness">Farkındalık</button>
+        <button data-cmd="!luxching" data-key="luxching">Luxching</button>
+        <button class="lang-selector" id="langBtn">🌐 Dil</button>
+    </div>
+
+    <div class="chat-area" id="chatArea">
+        <div class="lux-msg" id="welcomeMsg"></div>
+    </div>
+
+    <div class="input-wrapper">
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Light your way!" autocomplete="off">
+            <button id="sendBtn">Gönder</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ÖNEMLİ: KENDİ DEEPSEEK API ANAHTARINIZI BURAYA YAZIN
+    const API_KEY = "sk-ce9b68382b7f4bbfbaa71d411430e8f8";
+    const API_URL = "https://api.deepseek.com/v1/chat/completions";
+
+    let conversationHistory = [];
+    let currentLang = "tr";
+    let currentGreeting = "";
+
+    const translations = {
+        en: { wise: "Wise", note: "Note", notes: "Notes", delnotes: "Delete notes", search: "Search", summary: "Summary", awareness: "Awareness", luxching: "Luxching", lang: "Language", placeholder: "Light your way!", greeting: { morning: "Good morning.", day: "Hello.", evening: "Good evening.", night: "Good night." } },
+        tr: { wise: "Bilge", note: "Not al", notes: "Notlar", delnotes: "Notları sil", search: "Ara", summary: "Özet", awareness: "Farkındalık", luxching: "Luxching", lang: "Dil", placeholder: "Light your way!", greeting: { morning: "Günaydın.", day: "Merhaba.", evening: "İyi akşamlar.", night: "İyi geceler." } },
+        de: { wise: "Weise", note: "Notiz", notes: "Notizen", delnotes: "Notizen löschen", search: "Suchen", summary: "Zusammenfassung", awareness: "Bewusstsein", luxching: "Luxching", lang: "Sprache", placeholder: "Light your way!", greeting: { morning: "Guten Morgen.", day: "Hallo.", evening: "Guten Abend.", night: "Gute Nacht." } },
+        fr: { wise: "Sage", note: "Note", notes: "Notes", delnotes: "Effacer les notes", search: "Chercher", summary: "Résumé", awareness: "Conscience", luxching: "Luxching", lang: "Langue", placeholder: "Light your way!", greeting: { morning: "Bonjour.", day: "Bonjour.", evening: "Bonsoir.", night: "Bonne nuit." } },
+        ru: { wise: "Мудрец", note: "Заметка", notes: "Заметки", delnotes: "Удалить заметки", search: "Поиск", summary: "Сводка", awareness: "Осознанность", luxching: "Luxching", lang: "Язык", placeholder: "Light your way!", greeting: { morning: "Доброе утро.", day: "Здравствуйте.", evening: "Добрый вечер.", night: "Спокойной ночи." } },
+        ar: { wise: "حكيم", note: "ملاحظة", notes: "ملاحظات", delnotes: "حذف الملاحظات", search: "بحث", summary: "ملخص", awareness: "وعي", luxching: "Luxching", lang: "لغة", placeholder: "Light your way!", greeting: { morning: "صباح الخير.", day: "مرحباً.", evening: "مساء الخير.", night: "تصبح على خير." } },
+        es: { wise: "Sabio", note: "Nota", notes: "Notas", delnotes: "Borrar notas", search: "Buscar", summary: "Resumen", awareness: "Conciencia", luxching: "Luxching", lang: "Idioma", placeholder: "Light your way!", greeting: { morning: "Buenos días.", day: "Hola.", evening: "Buenas tardes.", night: "Buenas noches." } },
+        pt: { wise: "Sábio", note: "Anotação", notes: "Anotações", delnotes: "Apagar anotações", search: "Procurar", summary: "Resumo", awareness: "Consciência", luxching: "Luxching", lang: "Idioma", placeholder: "Light your way!", greeting: { morning: "Bom dia.", day: "Olá.", evening: "Boa tarde.", night: "Boa noite." } },
+        zh: { wise: "智者", note: "笔记", notes: "笔记", delnotes: "删除笔记", search: "搜索", summary: "摘要", awareness: "意识", luxching: "Luxching", lang: "语言", placeholder: "Light your way!", greeting: { morning: "早上好。", day: "你好。", evening: "晚上好。", night: "晚安。" } },
+        ja: { wise: "賢者", note: "メモ", notes: "メモ", delnotes: "メモを削除", search: "検索", summary: "要約", awareness: "意識", luxching: "Luxching", lang: "言語", placeholder: "Light your way!", greeting: { morning: "おはようございます。", day: "こんにちは。", evening: "こんばんは。", night: "おやすみなさい。" } },
+        hi: { wise: "ज्ञानी", note: "नोट", notes: "नोट्स", delnotes: "नोट हटाएं", search: "खोज", summary: "सारांश", awareness: "जागरूकता", luxching: "Luxching", lang: "भाषा", placeholder: "Light your way!", greeting: { morning: "सुप्रभात।", day: "नमस्ते।", evening: "शुभ संध्या।", night: "शुभ रात्रि。" } },
+        it: { wise: "Saggio", note: "Nota", notes: "Note", delnotes: "Elimina note", search: "Cerca", summary: "Sommario", awareness: "Consapevolezza", luxching: "Luxching", lang: "Lingua", placeholder: "Light your way!", greeting: { morning: "Buongiorno.", day: "Ciao.", evening: "Buonasera.", night: "Buonanotte." } },
+        el: { wise: "Σοφός", note: "Σημείωση", notes: "Σημειώσεις", delnotes: "Διαγραφή σημειώσεων", search: "Αναζήτηση", summary: "Περίληψη", awareness: "Επίγνωση", luxching: "Luxching", lang: "Γλώσσα", placeholder: "Light your way!", greeting: { morning: "Καλημέρα.", day: "Γεια σας.", evening: "Καλησπέρα.", night: "Καληνύχτα." } },
+        uk: { wise: "Мудрець", note: "Нотатка", notes: "Нотатки", delnotes: "Видалити нотатки", search: "Пошук", summary: "Підсумок", awareness: "Усвідомленість", luxching: "Luxching", lang: "Мова", placeholder: "Light your way!", greeting: { morning: "Доброго ранку.", day: "Привіт.", evening: "Добрий вечір.", night: "На добраніч." } },
+        ko: { wise: "현자", note: "메모", notes: "메모", delnotes: "메모 삭제", search: "검색", summary: "요약", awareness: "인식", luxching: "Luxching", lang: "언어", placeholder: "Light your way!", greeting: { morning: "좋은 아침입니다.", day: "안녕하세요.", evening: "좋은 저녁입니다.", night: "안녕히 주무세요." } },
+        vi: { wise: "Nhà thông thái", note: "Ghi chú", notes: "Ghi chú", delnotes: "Xóa ghi chú", search: "Tìm kiếm", summary: "Tóm tắt", awareness: "Nhận thức", luxching: "Luxching", lang: "Ngôn ngữ", placeholder: "Light your way!", greeting: { morning: "Chào buổi sáng.", day: "Xin chào.", evening: "Chào buổi tối.", night: "Chúc ngủ ngon." } },
+        th: { wise: "ปราชญ์", note: "บันทึก", notes: "บันทึก", delnotes: "ลบบันทึก", search: "ค้นหา", summary: "สรุป", awareness: "การรับรู้", luxching: "Luxching", lang: "ภาษา", placeholder: "Light your way!", greeting: { morning: "สวัสดีตอนเช้า", day: "สวัสดี", evening: "สวัสดีตอนเย็น", night: "ราตรีสวัสดิ์" } }
+    };
+
+    function updateUILanguage() {
+        const t = translations[currentLang] || translations.en;
+        document.querySelectorAll("[data-key]").forEach(el => {
+            const key = el.getAttribute("data-key");
+            if (t[key] && el.tagName === "BUTTON") el.innerText = t[key];
+        });
+        const langBtn = document.getElementById("langBtn");
+        if (langBtn) langBtn.innerText = t.lang;
+        document.getElementById("messageInput").placeholder = t.placeholder;
+        updateGreeting();
+    }
+
+    function getTimeBasedGreeting() {
+        const hour = new Date().getHours();
+        const t = translations[currentLang] || translations.en;
+        if (!t.greeting) return "Hello.";
+        if (hour >= 5 && hour < 12) return t.greeting.morning;
+        if (hour >= 12 && hour < 18) return t.greeting.day;
+        if (hour >= 18 && hour < 22) return t.greeting.evening;
+        return t.greeting.night;
+    }
+
+    function updateGreeting() {
+        const greetingText = getTimeBasedGreeting();
+        currentGreeting = `— ${greetingText}`;
+        const welcomeDiv = document.getElementById("welcomeMsg");
+        if (welcomeDiv) {
+            welcomeDiv.innerHTML = `<span class="lux-dash">—</span> ${greetingText}`;
+        }
+    }
+
+    function markdownTableToHtml(md) {
+        let lines = md.trim().split("\n");
+        if (lines.length < 2 || !lines[0].includes("|")) return md;
+        let inTable = false;
+        let html = '<table class="lux-table">';
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (line.startsWith("|") && line.endsWith("|")) {
+                if (!inTable) inTable = true;
+                if (line.includes("---")) continue;
+                let cells = line.split("|").filter(c => c.trim() !== "");
+                if (i === 0 || (i === 1 && lines[1].includes("---"))) {
+                    html += "<tr>";
+                    for (let cell of cells) html += `<th>${cell.trim()}</th>`;
+                    html += "</tr>";
+                } else {
+                    html += "<tr>";
+                    for (let cell of cells) html += `<td>${cell.trim()}</td>`;
+                    html += "</tr>";
+                }
+            } else if (inTable) {
+                html += "</table>";
+                return html;
+            } else {
+                return md;
+            }
+        }
+        if (inTable) html += "</table>";
+        return html;
+    }
+
+    async function callDeepSeek(messages) {
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json", 
+                    "Authorization": `Bearer ${API_KEY}` 
+                },
+                body: JSON.stringify({ 
+                    model: "deepseek-chat", 
+                    messages: messages, 
+                    stream: false 
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API Hatası: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            return data.choices[0].message.content;
+        } catch (error) {
+            console.error("DeepSeek API Hatası:", error);
+            return "Bağlantı hatası oluştu. Lütfen API anahtarınızı kontrol edin.";
+        }
+    }
+
+    async function sendToLuxviai(userText) {
+        conversationHistory.push({ role: "user", content: userText });
+        const reply = await callDeepSeek([{ 
+            role: "system", 
+            content: "Sen Luxviai'sin. Kullanıcı hangi dilde yazarsa o dilde cevap ver. Samimi, sakin, derin, yargısız ol." 
+        }, ...conversationHistory]);
+        conversationHistory.push({ role: "assistant", content: reply });
+        return reply;
+    }
+
+    async function typeText(element, text, withDash = false) {
+        element.innerText = "";
+        if (withDash) {
+            const dashSpan = document.createElement("span");
+            dashSpan.className = "lux-dash";
+            dashSpan.innerText = "— ";
+            element.appendChild(dashSpan);
+        }
+        let textNode = document.createTextNode("");
+        element.appendChild(textNode);
+        for (let ch of text) {
+            textNode.textContent += ch;
+            await new Promise(r => setTimeout(r, 30));
+        }
+    }
+
+    function addUserMessage(text) {
+        const chat = document.getElementById("chatArea");
+        const div = document.createElement("div");
+        div.className = "user-msg";
+        div.innerText = text;
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function addLuxviaiMessage(rawText, isSpecial = false) {
+        const chat = document.getElementById("chatArea");
+        let displayHtml = rawText;
+        if (rawText.includes("|") && rawText.includes("---")) {
+            displayHtml = markdownTableToHtml(rawText);
+        }
+        if (isSpecial && (rawText.includes("FARKINDALIK") || rawText.includes("ÖZET") || rawText.includes("Işığın Değişimi"))) {
+            let title = "Luxviai";
+            if (rawText.includes("FARKINDALIK")) title = "🌿 FARKINDALIK";
+            else if (rawText.includes("Işığın Değişimi")) title = "🌿 LUXCHING";
+            else if (rawText.includes("ÖZET")) title = "📋 ÖZET";
+            const card = document.createElement("div");
+            card.className = "lux-card";
+            card.innerHTML = `<div class="lux-card-header">${title}</div><div class="lux-card-content">${displayHtml}</div>`;
+            chat.appendChild(card);
+        } else if (displayHtml !== rawText) {
+            const div = document.createElement("div");
+            div.className = "lux-msg";
+            div.innerHTML = displayHtml;
+            chat.appendChild(div);
+        } else {
+            const div = document.createElement("div");
+            div.className = "lux-msg";
+            div.innerText = "";
+            chat.appendChild(div);
+            await typeText(div, rawText, true);
+        }
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function showPrompt(cmd, promptText, callback) {
+        const container = document.createElement("div");
+        container.className = "prompt-overlay";
+        container.innerHTML = `
+            <input type="text" id="promptInput" class="small-input" placeholder="${promptText}" autocomplete="off">
+            <button id="promptOk">Tamam</button>
+            <button id="promptCancel">İptal</button>
+        `;
+        document.querySelector(".input-wrapper").after(container);
+        document.getElementById("promptInput").focus();
+
+        const handleOk = () => {
+            const val = document.getElementById("promptInput").value.trim();
+            container.remove();
+            if (val) callback(cmd + " " + val);
+            else callback(cmd);
+        };
+        document.getElementById("promptOk").onclick = handleOk;
+        document.getElementById("promptCancel").onclick = () => container.remove();
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById("messageInput");
+        let raw = input.value.trim();
+        if (!raw) return;
+        input.value = "";
+        addUserMessage(raw);
+        const reply = await sendToLuxviai(raw);
+        const isSpecial = raw.startsWith("!farkındalık_özeti") || raw.startsWith("!sohbet_ozeti") || raw.startsWith("!luxching");
+        await addLuxviaiMessage(reply, isSpecial);
+    }
+
+    function initMenu() {
+        const panel = document.getElementById("menuPanel");
+        const toggle = document.getElementById("menuToggle");
+        toggle.addEventListener("click", () => {
+            panel.style.display = panel.style.display === "none" ? "flex" : "none";
+        });
+        document.querySelectorAll(".menu-panel button[data-cmd]").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                const cmd = btn.getAttribute("data-cmd");
+                const needsPrompt = ["!not al", "!ara", "!luxching"].includes(cmd);
+                const promptText = { "!not al": "Not metnini gir:", "!ara": "Aranacak kelime:", "!luxching": "Sorunuz:" }[cmd] || "Değer girin:";
+                if (needsPrompt) {
+                    showPrompt(cmd, promptText, async (fullCmd) => {
+                        document.getElementById("messageInput").value = fullCmd;
+                        await sendMessage();
+                    });
+                } else {
+                    document.getElementById("messageInput").value = cmd;
+                    await sendMessage();
+                }
+                panel.style.display = "none";
+            });
+        });
+    }
+
+    function initLanguageSelector() {
+        const langBtn = document.getElementById("langBtn");
+        const panel = document.getElementById("menuPanel");
+        langBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const allLanguages = ["en","tr","de","fr","ru","ar","es","pt","zh","ja","hi","it","el","uk","ko","vi","th"];
+            const langNames = { en:"English", tr:"Türkçe", de:"Deutsch", fr:"Français", ru:"Русский", ar:"العربية", es:"Español", pt:"Português", zh:"中文", ja:"日本語", hi:"हिन्दी", it:"Italiano", el:"Ελληνικά", uk:"Українська", ko:"한국어", vi:"Tiếng Việt", th:"ภาษาไทย" };
+            let options = allLanguages.map(l => `<button data-lang="${l}" style="display:block; width:100%; background:#2c2c2c; margin:2px 0; text-align:left;">${langNames[l] || l}</button>`).join("");
+            const popup = document.createElement("div");
+            popup.style.position = "absolute";
+            popup.style.right = "20px";
+            popup.style.top = "70px";
+            popup.style.backgroundColor = "#1a1a1a";
+            popup.style.padding = "10px";
+            popup.style.borderRadius = "12px";
+            popup.style.zIndex = "1000";
+            popup.style.maxHeight = "300px";
+            popup.style.overflowY = "auto";
+            popup.style.minWidth = "150px";
+            popup.innerHTML = options;
+            document.body.appendChild(popup);
+            popup.querySelectorAll("[data-lang]").forEach(btn => {
+                btn.onclick = () => {
+                    currentLang = btn.getAttribute("data-lang");
+                    updateUILanguage();
+                    popup.remove();
+                    panel.style.display = "none";
+                };
+            });
+            setTimeout(() => { if (popup) popup.remove(); }, 15000);
+        });
+    }
+
+    updateUILanguage();
+    initMenu();
+    initLanguageSelector();
+    document.getElementById("sendBtn").addEventListener("click", sendMessage);
+    document.getElementById("messageInput").addEventListener("keypress", e => { if (e.key === "Enter") sendMessage(); });
+</script>
+</body>
+</html>
