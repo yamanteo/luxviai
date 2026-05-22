@@ -9,6 +9,8 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
         }
 
         html, body {
@@ -24,12 +26,28 @@
             align-items: center;
         }
 
+        body.mode-normal {
+            background: #000;
+        }
+
+        body.mode-luxta {
+            background: #000;
+        }
+
+        body.mode-luxdream {
+            background:
+                radial-gradient(circle at 20% 20%, rgba(245,166,35,0.05), transparent 30%),
+                radial-gradient(circle at 80% 30%, rgba(255,215,140,0.04), transparent 32%),
+                radial-gradient(circle at 40% 80%, rgba(255,255,255,0.02), transparent 28%),
+                #000;
+        }
+
         .app {
             width: 100%;
             height: 100dvh;
             display: flex;
             flex-direction: column;
-            background: #000;
+            background: transparent;
             position: relative;
         }
 
@@ -42,8 +60,16 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #1e1e1e;
-            background: #000;
+            background: rgba(0,0,0,0.86);
+            backdrop-filter: blur(8px);
             flex-shrink: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        body.mode-luxta .header.hidden-luxta {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-8px);
         }
 
         .logo {
@@ -132,6 +158,51 @@
             background: #191919;
         }
 
+        .mode-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border-radius: 999px;
+            background: #111;
+            border: 1px solid #222;
+            color: #f5a623;
+            font-size: 0.76rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .mode-chip:hover {
+            background: #1a1a1a;
+        }
+
+        .info-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid #555;
+            color: #ddd;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .info-pop {
+            position: absolute;
+            background: rgba(18,18,18,0.95);
+            color: #ddd;
+            border: 1px solid #2a2a2a;
+            border-radius: 12px;
+            padding: 8px 10px;
+            font-size: 0.75rem;
+            max-width: 180px;
+            z-index: 1002;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+        }
+
         .chat-area {
             flex: 1;
             overflow-y: auto;
@@ -139,9 +210,10 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
-            background: #000;
+            background: transparent;
             min-height: 0;
             scroll-behavior: smooth;
+            align-items: center;
         }
 
         .chat-area::-webkit-scrollbar {
@@ -159,23 +231,47 @@
             border-radius: 18px;
             padding: 11px 15px;
             color: #fff;
-            max-width: 82%;
+            max-width: 62%;
             font-size: 0.94rem;
             line-height: 1.65;
             white-space: pre-wrap;
             word-break: break-word;
+            margin-right: 2%;
         }
 
         .lux-msg {
-            align-self: flex-start;
+            align-self: center;
             color: #fff;
-            max-width: 96%;
-            width: auto;
+            max-width: 58%;
+            width: 58%;
             font-size: 0.96rem;
             line-height: 1.9;
             white-space: pre-wrap;
             word-break: break-word;
-            padding-right: 4px;
+            position: relative;
+        }
+
+        .lux-msg.border-run {
+            border-radius: 16px;
+            padding: 12px 14px;
+            border: 1px solid rgba(245,166,35,0.08);
+            overflow: hidden;
+        }
+
+        .lux-msg.border-run::after {
+            content: "";
+            position: absolute;
+            inset: -2px;
+            border-radius: 18px;
+            border: 2px solid transparent;
+            border-top-color: rgba(245,166,35,0.9);
+            animation: runBorder 0.9s linear 1;
+            pointer-events: none;
+        }
+
+        @keyframes runBorder {
+            from { transform: rotate(0deg); opacity: 1; }
+            to { transform: rotate(360deg); opacity: 0; }
         }
 
         .lux-dash {
@@ -214,8 +310,8 @@
             background: #0b0b0b;
             border-left: 4px solid #f5a623;
             border-radius: 16px;
-            width: 100%;
-            margin: 8px 0;
+            width: 58%;
+            margin: 8px auto;
         }
 
         .lux-card-header {
@@ -239,6 +335,56 @@
         .highlight-red {
             color: #ff4d4d;
             font-weight: 700;
+        }
+
+        .notes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .note-item {
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: #0d0d0d;
+            border: 1px solid #1c1c1c;
+        }
+
+        .note-text {
+            color: #f2f2f2;
+            font-size: 0.92rem;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .note-date {
+            margin-top: 6px;
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.42);
+        }
+
+        .toast {
+            position: fixed;
+            top: 78px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(17,17,17,0.95);
+            color: #f5f5f5;
+            border: 1px solid #242424;
+            border-radius: 999px;
+            padding: 9px 14px;
+            font-size: 0.78rem;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
         }
 
         .message-actions {
@@ -270,20 +416,27 @@
             display: flex;
             justify-content: center;
             padding: 12px 14px max(12px, env(safe-area-inset-bottom));
-            background: #000;
+            background: rgba(0,0,0,0.85);
             border-top: 1px solid #151515;
             flex-shrink: 0;
+            backdrop-filter: blur(8px);
         }
 
         .input-area {
-            width: 100%;
+            width: 58%;
             display: flex;
             gap: 10px;
-            align-items: center;
+            align-items: flex-end;
             background: #0c0c0c;
             padding: 8px 10px 8px 14px;
             border-radius: 999px;
             border: 1px solid #202020;
+            position: relative;
+        }
+
+        body.mode-luxta .input-area {
+            background: rgba(245,166,35,0.06);
+            border: 1px solid rgba(245,166,35,0.18);
         }
 
         #messageInput {
@@ -294,10 +447,27 @@
             font-size: 0.92rem;
             outline: none;
             min-width: 0;
+            resize: none;
+            overflow-y: auto;
+            max-height: 120px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: inherit;
+            padding-top: 2px;
         }
 
         #messageInput::placeholder {
             color: #666;
+        }
+
+        #messageInput::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #messageInput::-webkit-scrollbar-thumb {
+            background: #2a2a2a;
+            border-radius: 10px;
         }
 
         .action-btn {
@@ -312,8 +482,16 @@
             white-space: nowrap;
         }
 
-        .action-btn:hover {
-            background: #e6b422;
+        body.mode-normal .action-btn,
+        body.mode-luxdream .action-btn {
+            background: #f5a623;
+            color: #000;
+        }
+
+        body.mode-luxta .action-btn {
+            background: rgba(245,166,35,0.18);
+            color: rgba(245,166,35,0.95);
+            border: 1px solid rgba(245,166,35,0.28);
         }
 
         .mic-btn {
@@ -325,6 +503,16 @@
             cursor: pointer;
             font-size: 0.82rem;
             white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 42px;
+        }
+
+        body.mode-luxta .mic-btn {
+            background: rgba(245,166,35,0.18);
+            color: rgba(245,166,35,0.95);
+            border: 1px solid rgba(245,166,35,0.28);
         }
 
         .mic-btn:hover {
@@ -336,8 +524,26 @@
             color: #f5a623;
         }
 
+        .voice-lines {
+            display: inline-flex;
+            gap: 2px;
+            align-items: flex-end;
+            height: 14px;
+        }
+
+        .voice-lines span {
+            display: inline-block;
+            width: 2px;
+            background: currentColor;
+            border-radius: 999px;
+        }
+
+        .voice-lines span:nth-child(1) { height: 5px; }
+        .voice-lines span:nth-child(2) { height: 9px; }
+        .voice-lines span:nth-child(3) { height: 13px; }
+
         .prompt-overlay {
-            width: calc(100% - 28px);
+            width: 58%;
             margin: 8px auto;
             display: flex;
             gap: 10px;
@@ -369,9 +575,9 @@
             border: 1px solid #1d1d1d;
             border-radius: 14px;
             z-index: 1000;
-            max-height: 300px;
+            max-height: 320px;
             overflow-y: auto;
-            min-width: 170px;
+            min-width: 180px;
             padding: 8px;
             box-shadow: 0 12px 30px rgba(0,0,0,0.45);
         }
@@ -394,6 +600,45 @@
             background: #191919;
         }
 
+        .selection-menu {
+            position: fixed;
+            background: rgba(20,20,20,0.94);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 10px 12px;
+            z-index: 3000;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            font-size: 0.78rem;
+            color: #fff;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.34);
+        }
+
+        .selection-menu .menu-item {
+            cursor: pointer;
+            color: #f0f0f0;
+            white-space: nowrap;
+        }
+
+        .selection-menu .menu-item:hover {
+            color: #f5a623;
+        }
+
+        .hidden-submenu {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            background: rgba(18,18,18,0.96);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 8px 10px;
+            display: flex;
+            gap: 10px;
+            z-index: 3001;
+        }
+
         @media (max-width: 768px) {
             .header {
                 padding: 14px 14px 10px 14px;
@@ -412,19 +657,22 @@
             .chat-area {
                 padding: 14px 12px 12px 12px;
                 gap: 14px;
+                align-items: stretch;
             }
 
             .lux-msg,
             .lux-card,
             .lux-table {
-                max-width: 100%;
-                width: 100%;
+                max-width: 92%;
+                width: 92%;
+                align-self: flex-start;
             }
 
             .user-msg {
                 max-width: 88%;
                 font-size: 0.92rem;
                 line-height: 1.7;
+                margin-right: 0;
             }
 
             .lux-msg {
@@ -442,6 +690,10 @@
                 padding: 8px 8px 8px 12px;
             }
 
+            .prompt-overlay {
+                width: calc(100% - 20px);
+            }
+
             .action-btn,
             .mic-btn {
                 font-size: 0.78rem;
@@ -450,12 +702,12 @@
         }
     </style>
 </head>
-<body>
+<body class="mode-normal">
 <div class="app">
-    <div class="header">
+    <div class="header" id="header">
         <div class="logo">
             <h1>L U X V I A I</h1>
-            <p>Yolunu aydınlat</p>
+            <p id="headerTagline">Light your way!</p>
         </div>
         <button class="menu-btn" id="menuToggle">
             <div class="menu-line"></div>
@@ -465,14 +717,21 @@
     </div>
 
     <div class="menu-panel" id="menuPanel">
-        <button data-cmd="!bilge" data-key="wise">Bilge</button>
-        <button data-cmd="!not al" data-key="note">Not al</button>
-        <button data-cmd="!notlar" data-key="notes">Notlar</button>
-        <button data-cmd="!notları sil" data-key="delnotes">Notları sil</button>
-        <button data-cmd="!ara" data-key="search">Ara</button>
-        <button data-cmd="!sohbet_ozeti" data-key="summary">Özet</button>
-        <button data-cmd="!farkındalık_özeti" data-key="awareness">Farkındalık</button>
-        <button data-cmd="!luxching" data-key="luxching">Luxching</button>
+        <button data-action="new-chat">Yeni Sohbet</button>
+
+        <button data-action="bilge" data-key="wise">Bilge</button>
+        <button data-action="notlar" data-key="notes">Notlar</button>
+        <button data-action="notlari-sil" data-key="delnotes">Notları sil</button>
+        <button data-action="sohbet-ozeti" data-key="summary">Özet</button>
+        <button data-action="farkindalik" data-key="awareness">Farkındalık</button>
+        <button data-action="luxching" data-key="luxching">Luxching</button>
+        <button data-action="luxdream">Luxdream</button>
+
+        <div class="mode-chip" id="luxtaChip">
+            <span>Luxta</span>
+            <span class="info-dot" id="luxtaInfoBtn">i</span>
+        </div>
+
         <button class="lang-selector" id="langBtn">Dil</button>
     </div>
 
@@ -482,12 +741,16 @@
 
     <div class="input-wrapper">
         <div class="input-area">
-            <input type="text" id="messageInput" placeholder="Yolunu aydınlat" autocomplete="off">
-            <button class="mic-btn" id="micBtn">Mikrofon</button>
-            <button class="action-btn" id="sendBtn">Gönder</button>
+            <textarea id="messageInput" placeholder="Light your way!" rows="1"></textarea>
+            <button class="action-btn" id="sendBtn">Luxviai</button>
+            <button class="mic-btn" id="micBtn" title="Mikrofon">
+                <span class="voice-lines"><span></span><span></span><span></span></span>
+            </button>
         </div>
     </div>
 </div>
+
+<div class="toast" id="toast"></div>
 
 <script>
     let currentLang = "tr";
@@ -496,18 +759,21 @@
     let remainingText = "";
     let currentTypingElement = null;
 
+    let currentMode = "normal"; // normal | luxta | luxdream
+    let selectionMenu = null;
+    let selectedText = "";
+    let holdTimer = null;
+
     const translations = {
         en: {
             wise: "Wise",
-            note: "Note",
             notes: "Notes",
             delnotes: "Delete notes",
-            search: "Search",
             summary: "Summary",
             awareness: "Awareness",
             luxching: "Luxching",
             lang: "Language",
-            placeholder: "Light your way",
+            tagline: "Light your way!",
             greeting: {
                 morning: "Good morning.",
                 day: "Hello.",
@@ -517,23 +783,69 @@
         },
         tr: {
             wise: "Bilge",
-            note: "Not al",
             notes: "Notlar",
             delnotes: "Notları sil",
-            search: "Ara",
             summary: "Özet",
             awareness: "Farkındalık",
             luxching: "Luxching",
             lang: "Dil",
-            placeholder: "Yolunu aydınlat",
+            tagline: "Yolunu aydınlat!",
             greeting: {
                 morning: "Günaydın.",
                 day: "Merhaba.",
                 evening: "İyi akşamlar.",
                 night: "İyi geceler."
             }
+        },
+        uk: {
+            wise: "Мудрість",
+            notes: "Нотатки",
+            delnotes: "Очистити нотатки",
+            summary: "Підсумок",
+            awareness: "Усвідомлення",
+            luxching: "Luxching",
+            lang: "Мова",
+            tagline: "Освітли свій шлях!",
+            greeting: {
+                morning: "Доброго ранку.",
+                day: "Привіт.",
+                evening: "Добрий вечір.",
+                night: "На добраніч."
+            }
         }
     };
+
+    const primaryLanguages = [
+        { code: "tr", label: "Türkçe" },
+        { code: "en", label: "English" },
+        { code: "uk", label: "Українська" },
+        { code: "de", label: "Deutsch" },
+        { code: "fr", label: "Français" },
+        { code: "es", label: "Español" },
+        { code: "pt", label: "Português" },
+        { code: "it", label: "Italiano" },
+        { code: "ar", label: "العربية" },
+        { code: "ru", label: "Русский" },
+        { code: "ja", label: "日本語" },
+        { code: "zh", label: "中文" },
+        { code: "ko", label: "한국어" },
+        { code: "hi", label: "हिन्दी" }
+    ];
+
+    const moreLanguages = [
+        { code: "el", label: "Ελληνικά" },
+        { code: "vi", label: "Tiếng Việt" },
+        { code: "th", label: "ภาษาไทย" }
+    ];
+
+    function showToast(text) {
+        const toast = document.getElementById("toast");
+        toast.textContent = text;
+        toast.classList.add("show");
+        setTimeout(() => {
+            toast.classList.remove("show");
+        }, 1000);
+    }
 
     function scrollChatToBottom(force = false) {
         const chat = document.getElementById("chatArea");
@@ -546,6 +858,50 @@
         });
     }
 
+    function autoResizeTextarea() {
+        const input = document.getElementById("messageInput");
+        input.style.height = "auto";
+        input.style.height = Math.min(input.scrollHeight, 120) + "px";
+    }
+
+    function setMode(mode) {
+        currentMode = mode;
+        document.body.classList.remove("mode-normal", "mode-luxta", "mode-luxdream");
+        document.body.classList.add(`mode-${mode}`);
+
+        const sendBtn = document.getElementById("sendBtn");
+        const input = document.getElementById("messageInput");
+        const header = document.getElementById("header");
+
+        if (mode === "normal") {
+            sendBtn.textContent = "Luxviai";
+            input.placeholder = "Light your way!";
+            header.classList.remove("hidden-luxta");
+        } else if (mode === "luxta") {
+            sendBtn.textContent = "Luxta";
+            input.placeholder = "Luxta";
+            header.classList.add("hidden-luxta");
+        } else if (mode === "luxdream") {
+            sendBtn.textContent = "Luxdream";
+            input.placeholder = "Luxdream";
+            header.classList.remove("hidden-luxta");
+        }
+    }
+
+    document.addEventListener("click", () => {
+        if (currentMode === "luxta") {
+            const header = document.getElementById("header");
+            if (header.classList.contains("hidden-luxta")) {
+                header.classList.remove("hidden-luxta");
+                setTimeout(() => {
+                    if (currentMode === "luxta") {
+                        header.classList.add("hidden-luxta");
+                    }
+                }, 1800);
+            }
+        }
+    });
+
     function updateUILanguage() {
         const t = translations[currentLang] || translations.en;
 
@@ -557,7 +913,16 @@
         const langBtn = document.getElementById("langBtn");
         if (langBtn) langBtn.innerText = t.lang;
 
-        document.getElementById("messageInput").placeholder = t.placeholder;
+        document.getElementById("headerTagline").textContent = t.tagline || "Light your way!";
+
+        if (currentMode === "normal") {
+            document.getElementById("messageInput").placeholder = "Light your way!";
+        } else if (currentMode === "luxta") {
+            document.getElementById("messageInput").placeholder = "Luxta";
+        } else if (currentMode === "luxdream") {
+            document.getElementById("messageInput").placeholder = "Luxdream";
+        }
+
         updateGreeting();
     }
 
@@ -639,10 +1004,12 @@
         const btn = document.getElementById("sendBtn");
 
         if (mode === "send") {
-            btn.innerText = "Gönder";
+            if (currentMode === "normal") btn.textContent = "Luxviai";
+            if (currentMode === "luxta") btn.textContent = "Luxta";
+            if (currentMode === "luxdream") btn.textContent = "Luxdream";
             btn.dataset.mode = "send";
         } else if (mode === "stop") {
-            btn.innerText = "Dur";
+            btn.textContent = "Dur";
             btn.dataset.mode = "stop";
         }
     }
@@ -653,7 +1020,32 @@
         setSendButtonMode("send");
     }
 
-    async function typeText(element, text, withDash = false) {
+    function addContinueButton(messageElement) {
+        if (!remainingText) return;
+
+        const old = messageElement.querySelector(".message-actions");
+        if (old) old.remove();
+
+        const actions = document.createElement("div");
+        actions.className = "message-actions";
+
+        const continueBtn = document.createElement("button");
+        continueBtn.className = "continue-btn";
+        continueBtn.innerText = "Devam et";
+
+        continueBtn.onclick = async () => {
+            actions.remove();
+            const remaining = remainingText;
+            remainingText = "";
+            await continueTyping(messageElement, remaining);
+        };
+
+        actions.appendChild(continueBtn);
+        messageElement.appendChild(actions);
+        scrollChatToBottom(true);
+    }
+
+    async function typeText(element, text, withDash = false, useBorderRun = false) {
         isTyping = true;
         typingStopped = false;
         remainingText = text;
@@ -661,6 +1053,10 @@
         setSendButtonMode("stop");
 
         element.innerHTML = "";
+        if (useBorderRun) {
+            element.classList.add("border-run");
+            setTimeout(() => element.classList.remove("border-run"), 1200);
+        }
 
         if (withDash) {
             const dashSpan = document.createElement("span");
@@ -701,28 +1097,6 @@
 
         isTyping = false;
         setSendButtonMode("send");
-        scrollChatToBottom(true);
-    }
-
-    function addContinueButton(messageElement) {
-        if (!remainingText) return;
-
-        const actions = document.createElement("div");
-        actions.className = "message-actions";
-
-        const continueBtn = document.createElement("button");
-        continueBtn.className = "continue-btn";
-        continueBtn.innerText = "Devam et";
-
-        continueBtn.onclick = async () => {
-            actions.remove();
-            const remaining = remainingText;
-            remainingText = "";
-            await continueTyping(messageElement, remaining);
-        };
-
-        actions.appendChild(continueBtn);
-        messageElement.appendChild(actions);
         scrollChatToBottom(true);
     }
 
@@ -793,18 +1167,63 @@
         scrollChatToBottom(true);
     }
 
+    function renderNotesList(items) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "notes-list";
+
+        items.forEach(item => {
+            const note = document.createElement("div");
+            note.className = "note-item";
+            note.innerHTML = `
+                <div class="note-text">${item.text}</div>
+                <div class="note-date">${item.date || ""}</div>
+            `;
+            wrapper.appendChild(note);
+        });
+
+        return wrapper;
+    }
+
     async function addLuxviaiMessage(rawText, isSpecial = false) {
         const chat = document.getElementById("chatArea");
         let displayHtml = processSpecialMarkup(rawText);
+
+        try {
+            const parsed = JSON.parse(rawText);
+            if (parsed.type === "notes_list") {
+                const card = document.createElement("div");
+                card.className = "lux-card";
+                card.innerHTML = `<div class="lux-card-header">NOTLAR</div>`;
+                const content = document.createElement("div");
+                content.className = "lux-card-content";
+                content.appendChild(renderNotesList(parsed.items || []));
+                card.appendChild(content);
+                chat.appendChild(card);
+                scrollChatToBottom(true);
+                return;
+            }
+        } catch {}
 
         if (rawText.includes("|") && rawText.includes("---")) {
             displayHtml = markdownTableToHtml(rawText);
         }
 
-        if (isSpecial && (rawText.includes("FARKINDALIK") || rawText.includes("ÖZET") || rawText.includes("Luxching") || rawText.includes("LUXCHING") || rawText.includes("ARAMA SONUÇLARI"))) {
+        const isCard =
+            isSpecial &&
+            (
+                rawText.includes("FARKINDALIK") ||
+                rawText.includes("ÖZET") ||
+                rawText.includes("Luxching") ||
+                rawText.includes("LUXCHING") ||
+                rawText.includes("LUXDREAM") ||
+                rawText.includes("ARAMA SONUÇLARI")
+            );
+
+        if (isCard) {
             let title = "Luxviai";
             if (rawText.includes("FARKINDALIK")) title = "FARKINDALIK";
             else if (rawText.toUpperCase().includes("LUXCHING")) title = "LUXCHING";
+            else if (rawText.toUpperCase().includes("LUXDREAM")) title = "LUXDREAM";
             else if (rawText.includes("ÖZET")) title = "ÖZET";
             else if (rawText.includes("ARAMA SONUÇLARI")) title = "ARAMA SONUÇLARI";
 
@@ -813,7 +1232,7 @@
             card.innerHTML = `<div class="lux-card-header">${title}</div><div class="lux-card-content">${displayHtml}</div>`;
             chat.appendChild(card);
             scrollChatToBottom(true);
-        } else if (displayHtml !== rawText || rawText.includes("<table")) {
+        } else if (displayHtml !== rawText) {
             const div = document.createElement("div");
             div.className = "lux-msg";
             div.innerHTML = displayHtml;
@@ -824,11 +1243,13 @@
             div.className = "lux-msg";
             chat.appendChild(div);
             scrollChatToBottom(true);
-            await typeText(div, rawText, true);
+
+            const useBorderRun = currentMode === "luxdream";
+            await typeText(div, rawText, true, useBorderRun);
         }
     }
 
-    function showPrompt(cmd, promptText, callback) {
+    function showPrompt(promptText, callback) {
         const oldPrompt = document.querySelector(".prompt-overlay");
         if (oldPrompt) oldPrompt.remove();
 
@@ -845,15 +1266,14 @@
         const handleOk = () => {
             const val = document.getElementById("promptInput").value.trim();
             container.remove();
-            if (val) callback(cmd + " " + val);
-            else callback(cmd);
+            callback(val);
         };
 
         document.getElementById("promptOk").onclick = handleOk;
         document.getElementById("promptCancel").onclick = () => container.remove();
     }
 
-    async function sendMessage(forceText = null) {
+    async function sendMessage(forceText = null, commandMode = false) {
         const input = document.getElementById("messageInput");
         let raw = forceText !== null ? forceText : input.value.trim();
 
@@ -864,18 +1284,34 @@
 
         if (!raw) return;
 
-        input.value = "";
-        addUserMessage(raw);
+        if (!commandMode) {
+            input.value = "";
+            input.style.height = "auto";
+            addUserMessage(raw);
+        }
 
         try {
             const reply = await sendToLuxviai(raw);
+
+            if (reply === "__NOTE_SAVED__") {
+                showToast("Not alındı");
+                return;
+            }
+
+            if (reply === "__NOTES_CLEARED__") {
+                showToast("Notlar silindi");
+                return;
+            }
+
             const isSpecial =
-                raw.startsWith("!farkındalık_özeti") ||
-                raw.startsWith("!sohbet_ozeti") ||
-                raw.startsWith("!luxching") ||
-                raw.startsWith("!ara") ||
-                raw.startsWith("!bilge") ||
-                raw.startsWith("!not");
+                commandMode ||
+                raw.startsWith("!cmd:luxching:") ||
+                raw.startsWith("!cmd:luxdream:") ||
+                raw.startsWith("!cmd:ara:") ||
+                raw.startsWith("!cmd:farkindalik") ||
+                raw.startsWith("!cmd:sohbet_ozeti") ||
+                raw.startsWith("!cmd:bilge") ||
+                raw.startsWith("!cmd:notlar");
 
             await addLuxviaiMessage(reply, isSpecial);
         } catch (error) {
@@ -892,23 +1328,51 @@
             panel.style.display = panel.style.display === "none" || panel.style.display === "" ? "flex" : "none";
         });
 
-        document.querySelectorAll(".menu-panel button[data-cmd]").forEach(btn => {
+        document.querySelectorAll(".menu-panel [data-action]").forEach(btn => {
             btn.addEventListener("click", async () => {
-                const cmd = btn.getAttribute("data-cmd");
-                const needsPrompt = ["!not al", "!ara", "!luxching"].includes(cmd);
+                const action = btn.getAttribute("data-action");
 
-                const promptText = {
-                    "!not al": "Not metnini gir:",
-                    "!ara": "Aranacak kelime:",
-                    "!luxching": "Sorunuz:"
-                }[cmd] || "Değer girin:";
+                if (action === "new-chat") {
+                    document.getElementById("chatArea").innerHTML = `<div class="lux-msg" id="welcomeMsg"></div>`;
+                    updateGreeting();
+                    panel.style.display = "none";
+                    return;
+                }
 
-                if (needsPrompt) {
-                    showPrompt(cmd, promptText, async (fullCmd) => {
-                        await sendMessage(fullCmd);
+                if (action === "bilge") {
+                    await sendMessage("!cmd:bilge", true);
+                }
+
+                if (action === "notlar") {
+                    await sendMessage("!cmd:notlar", true);
+                }
+
+                if (action === "notlari-sil") {
+                    await sendMessage("!cmd:notlari_sil", true);
+                }
+
+                if (action === "sohbet-ozeti") {
+                    await sendMessage("!cmd:sohbet_ozeti", true);
+                }
+
+                if (action === "farkindalik") {
+                    await sendMessage("!cmd:farkindalik", true);
+                }
+
+                if (action === "luxching") {
+                    showPrompt("Sorunuz:", async (value) => {
+                        await sendMessage(`!cmd:luxching:${value}`, true);
                     });
-                } else {
-                    await sendMessage(cmd);
+                }
+
+                if (action === "luxdream") {
+                    setMode("luxdream");
+                    showPrompt("Rüyanı anlat:", async (value) => {
+                        if (value) {
+                            addUserMessage(value);
+                            await sendMessage(`!cmd:luxdream:${value}`, true);
+                        }
+                    });
                 }
 
                 panel.style.display = "none";
@@ -923,22 +1387,19 @@
         langBtn.addEventListener("click", (e) => {
             e.stopPropagation();
 
-            const allLanguages = ["en", "tr"];
-            const langNames = {
-                en: "English",
-                tr: "Türkçe"
-            };
-
             const oldPopup = document.querySelector(".lang-popup");
             if (oldPopup) oldPopup.remove();
 
             const popup = document.createElement("div");
             popup.className = "lang-popup";
 
-            popup.innerHTML = allLanguages.map(l =>
-                `<button data-lang="${l}">${langNames[l] || l}</button>`
-            ).join("");
+            let html = "";
+            primaryLanguages.forEach(l => {
+                html += `<button data-lang="${l.code}">${l.label}</button>`;
+            });
+            html += `<button id="moreLangsBtn">Diğer Diller</button>`;
 
+            popup.innerHTML = html;
             document.body.appendChild(popup);
 
             popup.querySelectorAll("[data-lang]").forEach(btn => {
@@ -950,10 +1411,177 @@
                 };
             });
 
+            const moreBtn = popup.querySelector("#moreLangsBtn");
+            if (moreBtn) {
+                moreBtn.onclick = () => {
+                    popup.innerHTML = moreLanguages.map(l => `<button data-lang="${l.code}">${l.label}</button>`).join("");
+                    popup.querySelectorAll("[data-lang]").forEach(btn => {
+                        btn.onclick = () => {
+                            currentLang = btn.getAttribute("data-lang");
+                            updateUILanguage();
+                            popup.remove();
+                            panel.style.display = "none";
+                        };
+                    });
+                };
+            }
+
             setTimeout(() => {
                 const stillThere = document.querySelector(".lang-popup");
                 if (stillThere) stillThere.remove();
             }, 15000);
+        });
+    }
+
+    function initLuxtaInfo() {
+        const btn = document.getElementById("luxtaInfoBtn");
+        const chip = document.getElementById("luxtaChip");
+
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+
+            const old = document.querySelector(".info-pop");
+            if (old) old.remove();
+
+            const rect = chip.getBoundingClientRect();
+            const pop = document.createElement("div");
+            pop.className = "info-pop";
+            pop.textContent = "Çok dinler, az konuşur.";
+            pop.style.left = `${rect.left + window.scrollX}px`;
+            pop.style.top = `${rect.bottom + 8 + window.scrollY}px`;
+            document.body.appendChild(pop);
+
+            setTimeout(() => {
+                if (pop) pop.remove();
+            }, 2500);
+        });
+
+        chip.addEventListener("click", async (e) => {
+            if (e.target === btn) return;
+            setMode("luxta");
+            document.getElementById("menuPanel").style.display = "none";
+            await sendToLuxviai("!cmd:luxta_info");
+        });
+    }
+
+    function removeSelectionMenu() {
+        if (selectionMenu) {
+            selectionMenu.remove();
+            selectionMenu = null;
+        }
+    }
+
+    function showSelectionMenu(x, y, text) {
+        removeSelectionMenu();
+        selectedText = text.trim();
+        if (!selectedText) return;
+
+        const menu = document.createElement("div");
+        menu.className = "selection-menu";
+        menu.style.left = `${x}px`;
+        menu.style.top = `${y}px`;
+
+        menu.innerHTML = `
+            <div class="menu-item" data-sel="note">Not al</div>
+            <div class="menu-item" data-sel="copy">Kopyala</div>
+            <div class="menu-item" data-sel="share">Paylaş</div>
+            <div class="menu-item" data-sel="explain">Açıkla</div>
+            <div class="menu-item" data-sel="more">...</div>
+        `;
+
+        document.body.appendChild(menu);
+        selectionMenu = menu;
+
+        menu.querySelectorAll(".menu-item").forEach(item => {
+            item.onclick = async () => {
+                const action = item.getAttribute("data-sel");
+
+                if (action === "note") {
+                    await sendMessage(`!cmd:not_al:${selectedText}`, true);
+                    removeSelectionMenu();
+                } else if (action === "copy") {
+                    navigator.clipboard.writeText(selectedText).catch(() => {});
+                    removeSelectionMenu();
+                } else if (action === "share") {
+                    const shareText = `${selectedText}\n\n@LUXVIAI — Light your way!`;
+                    if (navigator.share) {
+                        navigator.share({ text: shareText }).catch(() => {});
+                    } else {
+                        navigator.clipboard.writeText(shareText).catch(() => {});
+                    }
+                    removeSelectionMenu();
+                } else if (action === "explain") {
+                    addUserMessage(selectedText);
+                    await sendMessage(`Bunu biraz daha açıklar mısın:\n\n${selectedText}`, false);
+                    removeSelectionMenu();
+                } else if (action === "more") {
+                    const sub = document.createElement("div");
+                    sub.className = "hidden-submenu";
+                    sub.innerHTML = `
+                        <div class="menu-item" data-sub="mention">Bahset</div>
+                        <div class="menu-item" data-sub="remember">Hatırla</div>
+                        <div class="menu-item" data-sub="read">Sesli oku</div>
+                    `;
+                    menu.appendChild(sub);
+
+                    sub.querySelectorAll(".menu-item").forEach(subItem => {
+                        subItem.onclick = async () => {
+                            const subAction = subItem.getAttribute("data-sub");
+
+                            if (subAction === "mention") {
+                                addUserMessage(selectedText);
+                                await sendMessage(`Bundan biraz daha bahsetmek istiyorum:\n\n${selectedText}`, false);
+                            } else if (subAction === "remember") {
+                                await sendMessage(`!cmd:ara:${selectedText}`, true);
+                            } else if (subAction === "read") {
+                                const utterance = new SpeechSynthesisUtterance(selectedText);
+                                speechSynthesis.speak(utterance);
+                            }
+                            removeSelectionMenu();
+                        };
+                    });
+                }
+            };
+        });
+    }
+
+    function initLongPressSelection() {
+        let pressTimer = null;
+        const chatArea = document.getElementById("chatArea");
+
+        const tryShow = (target, clientX, clientY) => {
+            const msg = target.closest(".lux-msg, .lux-card-content");
+            if (!msg) return;
+
+            const text = window.getSelection().toString().trim() || msg.innerText.trim();
+            if (!text) return;
+
+            showSelectionMenu(clientX, clientY, text);
+        };
+
+        chatArea.addEventListener("mousedown", (e) => {
+            pressTimer = setTimeout(() => {
+                tryShow(e.target, e.clientX, e.clientY);
+            }, 550);
+        });
+
+        chatArea.addEventListener("mouseup", () => clearTimeout(pressTimer));
+        chatArea.addEventListener("mouseleave", () => clearTimeout(pressTimer));
+
+        chatArea.addEventListener("touchstart", (e) => {
+            const touch = e.touches[0];
+            pressTimer = setTimeout(() => {
+                tryShow(e.target, touch.clientX, touch.clientY);
+            }, 650);
+        }, { passive: true });
+
+        chatArea.addEventListener("touchend", () => clearTimeout(pressTimer));
+        chatArea.addEventListener("touchcancel", () => clearTimeout(pressTimer));
+
+        document.addEventListener("click", (e) => {
+            if (selectionMenu && !selectionMenu.contains(e.target)) {
+                removeSelectionMenu();
+            }
         });
     }
 
@@ -962,7 +1590,6 @@
         const input = document.getElementById("messageInput");
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
         if (!SpeechRecognition) {
             micBtn.onclick = () => {
                 alert("Bu tarayıcı sesli komutu desteklemiyor.");
@@ -975,26 +1602,45 @@
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
 
-        micBtn.addEventListener("click", () => {
-            recognition.lang = currentLang === "en" ? "en-US" : "tr-TR";
-            recognition.start();
-            micBtn.classList.add("recording");
-            micBtn.innerText = "Dinliyor";
+        const startRecognition = () => {
+            recognition.lang = currentLang === "en" ? "en-US" : currentLang === "uk" ? "uk-UA" : "tr-TR";
+            try {
+                recognition.start();
+                micBtn.classList.add("recording");
+            } catch {}
+        };
+
+        const cancelHold = () => {
+            if (holdTimer) {
+                clearTimeout(holdTimer);
+                holdTimer = null;
+            }
+        };
+
+        micBtn.addEventListener("mousedown", () => {
+            holdTimer = setTimeout(startRecognition, 1000);
         });
+        micBtn.addEventListener("mouseup", cancelHold);
+        micBtn.addEventListener("mouseleave", cancelHold);
+
+        micBtn.addEventListener("touchstart", () => {
+            holdTimer = setTimeout(startRecognition, 1000);
+        }, { passive: true });
+        micBtn.addEventListener("touchend", cancelHold);
+        micBtn.addEventListener("touchcancel", cancelHold);
 
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
             input.value = transcript;
+            autoResizeTextarea();
         };
 
         recognition.onend = () => {
             micBtn.classList.remove("recording");
-            micBtn.innerText = "Mikrofon";
         };
 
         recognition.onerror = () => {
             micBtn.classList.remove("recording");
-            micBtn.innerText = "Mikrofon";
         };
     }
 
@@ -1002,11 +1648,18 @@
     initMenu();
     initLanguageSelector();
     initSpeechInput();
+    initLuxtaInfo();
+    initLongPressSelection();
+    setMode("normal");
     setSendButtonMode("send");
 
     document.getElementById("sendBtn").addEventListener("click", () => sendMessage());
-    document.getElementById("messageInput").addEventListener("keypress", e => {
-        if (e.key === "Enter") sendMessage();
+    document.getElementById("messageInput").addEventListener("input", autoResizeTextarea);
+    document.getElementById("messageInput").addEventListener("keydown", e => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
     });
 
     scrollChatToBottom(true);
