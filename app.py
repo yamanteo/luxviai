@@ -149,7 +149,7 @@ heksagramlar = {
 # ==============================================
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def serve_frontend():
     return FileResponse("static/index.html")
 
