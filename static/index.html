@@ -11,10 +11,14 @@
             box-sizing: border-box;
         }
 
-        body {
+        html, body {
             background: #000;
             font-family: 'Segoe UI', 'SF Pro Text', system-ui, -apple-system, Roboto, sans-serif;
-            height: 100vh;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
             display: flex;
             justify-content: center;
             align-items: center;
@@ -22,7 +26,7 @@
 
         .app {
             width: 100%;
-            height: 100%;
+            height: 100dvh;
             display: flex;
             flex-direction: column;
             background: #000;
@@ -30,18 +34,25 @@
         }
 
         .header {
-            padding: 20px 24px 12px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            padding: 18px 20px 12px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #1e1e1e;
+            background: #000;
+            flex-shrink: 0;
         }
+
         .logo {
             text-align: center;
             flex: 1;
         }
+
         .logo h1 {
-            font-size: 1.8rem;
+            font-size: 1.65rem;
             letter-spacing: 4px;
             background: linear-gradient(135deg, #f5a623, #e6b422);
             -webkit-background-clip: text;
@@ -50,24 +61,27 @@
             font-weight: 600;
             margin-bottom: 4px;
         }
+
         .logo p {
-            font-size: 0.7rem;
-            color: #888;
-            letter-spacing: 1.5px;
+            font-size: 0.72rem;
+            color: #8d8d8d;
+            letter-spacing: 1.2px;
         }
 
         .menu-btn {
             background: transparent;
             border: none;
             cursor: pointer;
-            width: 28px;
+            width: 30px;
             height: 28px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             gap: 4px;
+            flex-shrink: 0;
         }
+
         .menu-line {
             width: 18px;
             height: 2px;
@@ -77,103 +91,133 @@
 
         .menu-panel {
             display: none;
-            background: #0c0c0c;
-            padding: 16px 20px;
-            gap: 12px;
+            background: #090909;
+            padding: 14px 16px;
+            gap: 10px;
             flex-wrap: wrap;
             justify-content: flex-start;
             align-items: center;
-            border-bottom: 1px solid #1e1e1e;
+            border-bottom: 1px solid #161616;
+            z-index: 30;
         }
+
         .menu-panel button {
-            background: #1a1a1a;
-            border: none;
-            padding: 6px 14px;
-            border-radius: 40px;
+            background: #111;
+            border: 1px solid #222;
+            padding: 7px 14px;
+            border-radius: 999px;
             color: #f5a623;
             font-weight: 500;
             cursor: pointer;
-            font-size: 0.75rem;
+            font-size: 0.76rem;
         }
+
         .menu-panel button:hover {
-            background: #f5a623;
-            color: #000;
-        }
-        .lang-selector {
             background: #1a1a1a;
-            border: none;
-            padding: 6px 14px;
-            border-radius: 40px;
-            color: #f5a623;
+        }
+
+        .lang-selector {
+            background: #111;
+            border: 1px solid #222;
+            padding: 7px 14px;
+            border-radius: 999px;
+            color: #fff;
             font-weight: 500;
             cursor: pointer;
-            font-size: 0.75rem;
+            font-size: 0.76rem;
             margin-left: auto;
         }
+
         .lang-selector:hover {
-            background: #f5a623;
-            color: #000;
+            background: #191919;
         }
 
         .chat-area {
             flex: 1;
             overflow-y: auto;
-            padding: 24px;
+            padding: 18px 16px 14px 16px;
             display: flex;
             flex-direction: column;
             gap: 16px;
             background: #000;
+            min-height: 0;
+            scroll-behavior: smooth;
+        }
+
+        .chat-area::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-area::-webkit-scrollbar-thumb {
+            background: #222;
+            border-radius: 10px;
         }
 
         .user-msg {
             align-self: flex-end;
-            background: rgba(60, 60, 65, 0.4);
-            border-radius: 20px;
-            padding: 10px 16px;
+            background: rgba(60, 60, 65, 0.45);
+            border-radius: 18px;
+            padding: 11px 15px;
             color: #fff;
-            max-width: 70%;
-            font-size: 0.9rem;
-            line-height: 1.4;
+            max-width: 82%;
+            font-size: 0.94rem;
+            line-height: 1.65;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
 
         .lux-msg {
             align-self: flex-start;
             color: #fff;
-            max-width: 70%;
-            font-size: 0.9rem;
-            line-height: 1.4;
+            max-width: 96%;
+            width: auto;
+            font-size: 0.96rem;
+            line-height: 1.9;
+            white-space: pre-wrap;
+            word-break: break-word;
+            padding-right: 4px;
         }
+
         .lux-dash {
             color: #f5a623;
             margin-right: 6px;
         }
 
-        /* TAM KARE TABLO STILI */
         .lux-table {
             width: 100%;
             border-collapse: collapse;
-            background: #0c0c0c;
+            table-layout: fixed;
+            background: #0b0b0b;
             color: #ddd;
-            margin: 10px 0;
+            margin: 12px 0;
+            border-radius: 10px;
+            overflow: hidden;
         }
-        .lux-table th, .lux-table td {
-            border: 1px solid #444;
+
+        .lux-table th,
+        .lux-table td {
+            border: 1px solid #2a2a2a;
             padding: 10px;
             text-align: left;
             vertical-align: top;
+            word-wrap: break-word;
+            line-height: 1.6;
         }
+
         .lux-table th {
-            background: #1a1a1a;
+            background: #111;
             color: #f5a623;
             font-weight: 600;
         }
+
         .lux-card {
-            background: #0c0c0c;
+            background: #0b0b0b;
             border-left: 4px solid #f5a623;
             border-radius: 16px;
             width: 100%;
             margin: 8px 0;
         }
+
         .lux-card-header {
             padding: 12px 18px;
             font-weight: 700;
@@ -182,73 +226,227 @@
             font-size: 0.75rem;
             letter-spacing: 1px;
         }
+
         .lux-card-content {
-            padding: 14px 18px;
-            color: #ccc;
-            line-height: 1.5;
-            font-size: 0.85rem;
+            padding: 15px 18px;
+            color: #d0d0d0;
+            line-height: 1.85;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .highlight-red {
+            color: #ff4d4d;
+            font-weight: 700;
+        }
+
+        .message-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .continue-btn {
+            background: #f5a623;
+            color: #000;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .continue-btn:hover {
+            background: #e6b422;
         }
 
         .input-wrapper {
+            position: sticky;
+            bottom: 0;
+            z-index: 20;
             display: flex;
             justify-content: center;
-            padding: 16px 20px;
+            padding: 12px 14px max(12px, env(safe-area-inset-bottom));
             background: #000;
+            border-top: 1px solid #151515;
+            flex-shrink: 0;
         }
+
         .input-area {
-            width: 70%;
+            width: 100%;
             display: flex;
-            gap: 12px;
+            gap: 10px;
+            align-items: center;
             background: #0c0c0c;
-            padding: 8px 16px;
-            border-radius: 60px;
-            border: 1px solid #222;
+            padding: 8px 10px 8px 14px;
+            border-radius: 999px;
+            border: 1px solid #202020;
         }
+
         #messageInput {
             flex: 1;
             background: transparent;
             border: none;
             color: #f5f5f5;
-            font-size: 0.85rem;
+            font-size: 0.92rem;
             outline: none;
+            min-width: 0;
         }
+
         #messageInput::placeholder {
-            color: #555;
+            color: #666;
         }
-        .input-area button {
+
+        .action-btn {
             background: #f5a623;
             border: none;
-            padding: 4px 16px;
-            border-radius: 40px;
+            padding: 8px 14px;
+            border-radius: 999px;
             color: #000;
-            font-weight: bold;
+            font-weight: 700;
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.82rem;
+            white-space: nowrap;
         }
-        .input-area button:hover {
+
+        .action-btn:hover {
             background: #e6b422;
         }
 
+        .mic-btn {
+            background: #111;
+            border: 1px solid #262626;
+            color: #fff;
+            border-radius: 999px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            white-space: nowrap;
+        }
+
+        .mic-btn:hover {
+            background: #1a1a1a;
+        }
+
+        .mic-btn.recording {
+            border-color: #f5a623;
+            color: #f5a623;
+        }
+
         .prompt-overlay {
-            width: 70%;
+            width: calc(100% - 28px);
             margin: 8px auto;
             display: flex;
-            gap: 12px;
-            background: #0c0c0c;
-            padding: 8px 16px;
-            border-radius: 60px;
+            gap: 10px;
+            background: #0b0b0b;
+            padding: 10px 14px;
+            border-radius: 18px;
+            border: 1px solid #1b1b1b;
         }
+
         .small-input {
             flex: 1;
-            background: transparent;
-            border: 1px solid #333;
-            padding: 6px 14px;
-            border-radius: 40px;
+            background: #050505;
+            border: 1px solid #2a2a2a;
+            padding: 8px 12px;
+            border-radius: 999px;
             color: white;
         }
+
         .small-input:focus {
             outline: none;
             border-color: #f5a623;
+        }
+
+        .lang-popup {
+            position: absolute;
+            right: 16px;
+            top: 72px;
+            background: #0c0c0c;
+            border: 1px solid #1d1d1d;
+            border-radius: 14px;
+            z-index: 1000;
+            max-height: 300px;
+            overflow-y: auto;
+            min-width: 170px;
+            padding: 8px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+        }
+
+        .lang-popup button {
+            display: block;
+            width: 100%;
+            background: #0f0f0f;
+            color: #fff;
+            border: 1px solid #222;
+            margin: 4px 0;
+            padding: 10px 12px;
+            text-align: left;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.82rem;
+        }
+
+        .lang-popup button:hover {
+            background: #191919;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 14px 14px 10px 14px;
+            }
+
+            .logo h1 {
+                font-size: 1.22rem;
+                letter-spacing: 2px;
+            }
+
+            .logo p {
+                font-size: 0.66rem;
+                letter-spacing: 0.8px;
+            }
+
+            .chat-area {
+                padding: 14px 12px 12px 12px;
+                gap: 14px;
+            }
+
+            .lux-msg,
+            .lux-card,
+            .lux-table {
+                max-width: 100%;
+                width: 100%;
+            }
+
+            .user-msg {
+                max-width: 88%;
+                font-size: 0.92rem;
+                line-height: 1.7;
+            }
+
+            .lux-msg {
+                font-size: 0.95rem;
+                line-height: 1.9;
+            }
+
+            .input-wrapper {
+                padding: 10px 10px max(10px, env(safe-area-inset-bottom));
+            }
+
+            .input-area {
+                width: 100%;
+                gap: 8px;
+                padding: 8px 8px 8px 12px;
+            }
+
+            .action-btn,
+            .mic-btn {
+                font-size: 0.78rem;
+                padding: 8px 10px;
+            }
         }
     </style>
 </head>
@@ -257,7 +455,7 @@
     <div class="header">
         <div class="logo">
             <h1>L U X V I A I</h1>
-            <p>Light your way!</p>
+            <p>Yolunu aydınlat</p>
         </div>
         <button class="menu-btn" id="menuToggle">
             <div class="menu-line"></div>
@@ -275,7 +473,7 @@
         <button data-cmd="!sohbet_ozeti" data-key="summary">Özet</button>
         <button data-cmd="!farkındalık_özeti" data-key="awareness">Farkındalık</button>
         <button data-cmd="!luxching" data-key="luxching">Luxching</button>
-        <button class="lang-selector" id="langBtn">🌐 Dil</button>
+        <button class="lang-selector" id="langBtn">Dil</button>
     </div>
 
     <div class="chat-area" id="chatArea">
@@ -284,57 +482,92 @@
 
     <div class="input-wrapper">
         <div class="input-area">
-            <input type="text" id="messageInput" placeholder="Light your way!" autocomplete="off">
-            <button id="sendBtn">Gönder</button>
+            <input type="text" id="messageInput" placeholder="Yolunu aydınlat" autocomplete="off">
+            <button class="mic-btn" id="micBtn">Mikrofon</button>
+            <button class="action-btn" id="sendBtn">Gönder</button>
         </div>
     </div>
 </div>
 
 <script>
-    // ÖNEMLİ: KENDİ DEEPSEEK API ANAHTARINIZI BURAYA YAZIN
-    const API_KEY = "sk-ce9b68382b7f4bbfbaa71d411430e8f8";
-    const API_URL = "https://api.deepseek.com/v1/chat/completions";
-
-    let conversationHistory = [];
     let currentLang = "tr";
-    let currentGreeting = "";
+    let isTyping = false;
+    let typingStopped = false;
+    let remainingText = "";
+    let currentTypingElement = null;
 
     const translations = {
-        en: { wise: "Wise", note: "Note", notes: "Notes", delnotes: "Delete notes", search: "Search", summary: "Summary", awareness: "Awareness", luxching: "Luxching", lang: "Language", placeholder: "Light your way!", greeting: { morning: "Good morning.", day: "Hello.", evening: "Good evening.", night: "Good night." } },
-        tr: { wise: "Bilge", note: "Not al", notes: "Notlar", delnotes: "Notları sil", search: "Ara", summary: "Özet", awareness: "Farkındalık", luxching: "Luxching", lang: "Dil", placeholder: "Light your way!", greeting: { morning: "Günaydın.", day: "Merhaba.", evening: "İyi akşamlar.", night: "İyi geceler." } },
-        de: { wise: "Weise", note: "Notiz", notes: "Notizen", delnotes: "Notizen löschen", search: "Suchen", summary: "Zusammenfassung", awareness: "Bewusstsein", luxching: "Luxching", lang: "Sprache", placeholder: "Light your way!", greeting: { morning: "Guten Morgen.", day: "Hallo.", evening: "Guten Abend.", night: "Gute Nacht." } },
-        fr: { wise: "Sage", note: "Note", notes: "Notes", delnotes: "Effacer les notes", search: "Chercher", summary: "Résumé", awareness: "Conscience", luxching: "Luxching", lang: "Langue", placeholder: "Light your way!", greeting: { morning: "Bonjour.", day: "Bonjour.", evening: "Bonsoir.", night: "Bonne nuit." } },
-        ru: { wise: "Мудрец", note: "Заметка", notes: "Заметки", delnotes: "Удалить заметки", search: "Поиск", summary: "Сводка", awareness: "Осознанность", luxching: "Luxching", lang: "Язык", placeholder: "Light your way!", greeting: { morning: "Доброе утро.", day: "Здравствуйте.", evening: "Добрый вечер.", night: "Спокойной ночи." } },
-        ar: { wise: "حكيم", note: "ملاحظة", notes: "ملاحظات", delnotes: "حذف الملاحظات", search: "بحث", summary: "ملخص", awareness: "وعي", luxching: "Luxching", lang: "لغة", placeholder: "Light your way!", greeting: { morning: "صباح الخير.", day: "مرحباً.", evening: "مساء الخير.", night: "تصبح على خير." } },
-        es: { wise: "Sabio", note: "Nota", notes: "Notas", delnotes: "Borrar notas", search: "Buscar", summary: "Resumen", awareness: "Conciencia", luxching: "Luxching", lang: "Idioma", placeholder: "Light your way!", greeting: { morning: "Buenos días.", day: "Hola.", evening: "Buenas tardes.", night: "Buenas noches." } },
-        pt: { wise: "Sábio", note: "Anotação", notes: "Anotações", delnotes: "Apagar anotações", search: "Procurar", summary: "Resumo", awareness: "Consciência", luxching: "Luxching", lang: "Idioma", placeholder: "Light your way!", greeting: { morning: "Bom dia.", day: "Olá.", evening: "Boa tarde.", night: "Boa noite." } },
-        zh: { wise: "智者", note: "笔记", notes: "笔记", delnotes: "删除笔记", search: "搜索", summary: "摘要", awareness: "意识", luxching: "Luxching", lang: "语言", placeholder: "Light your way!", greeting: { morning: "早上好。", day: "你好。", evening: "晚上好。", night: "晚安。" } },
-        ja: { wise: "賢者", note: "メモ", notes: "メモ", delnotes: "メモを削除", search: "検索", summary: "要約", awareness: "意識", luxching: "Luxching", lang: "言語", placeholder: "Light your way!", greeting: { morning: "おはようございます。", day: "こんにちは。", evening: "こんばんは。", night: "おやすみなさい。" } },
-        hi: { wise: "ज्ञानी", note: "नोट", notes: "नोट्स", delnotes: "नोट हटाएं", search: "खोज", summary: "सारांश", awareness: "जागरूकता", luxching: "Luxching", lang: "भाषा", placeholder: "Light your way!", greeting: { morning: "सुप्रभात।", day: "नमस्ते।", evening: "शुभ संध्या।", night: "शुभ रात्रि。" } },
-        it: { wise: "Saggio", note: "Nota", notes: "Note", delnotes: "Elimina note", search: "Cerca", summary: "Sommario", awareness: "Consapevolezza", luxching: "Luxching", lang: "Lingua", placeholder: "Light your way!", greeting: { morning: "Buongiorno.", day: "Ciao.", evening: "Buonasera.", night: "Buonanotte." } },
-        el: { wise: "Σοφός", note: "Σημείωση", notes: "Σημειώσεις", delnotes: "Διαγραφή σημειώσεων", search: "Αναζήτηση", summary: "Περίληψη", awareness: "Επίγνωση", luxching: "Luxching", lang: "Γλώσσα", placeholder: "Light your way!", greeting: { morning: "Καλημέρα.", day: "Γεια σας.", evening: "Καλησπέρα.", night: "Καληνύχτα." } },
-        uk: { wise: "Мудрець", note: "Нотатка", notes: "Нотатки", delnotes: "Видалити нотатки", search: "Пошук", summary: "Підсумок", awareness: "Усвідомленість", luxching: "Luxching", lang: "Мова", placeholder: "Light your way!", greeting: { morning: "Доброго ранку.", day: "Привіт.", evening: "Добрий вечір.", night: "На добраніч." } },
-        ko: { wise: "현자", note: "메모", notes: "메모", delnotes: "메모 삭제", search: "검색", summary: "요약", awareness: "인식", luxching: "Luxching", lang: "언어", placeholder: "Light your way!", greeting: { morning: "좋은 아침입니다.", day: "안녕하세요.", evening: "좋은 저녁입니다.", night: "안녕히 주무세요." } },
-        vi: { wise: "Nhà thông thái", note: "Ghi chú", notes: "Ghi chú", delnotes: "Xóa ghi chú", search: "Tìm kiếm", summary: "Tóm tắt", awareness: "Nhận thức", luxching: "Luxching", lang: "Ngôn ngữ", placeholder: "Light your way!", greeting: { morning: "Chào buổi sáng.", day: "Xin chào.", evening: "Chào buổi tối.", night: "Chúc ngủ ngon." } },
-        th: { wise: "ปราชญ์", note: "บันทึก", notes: "บันทึก", delnotes: "ลบบันทึก", search: "ค้นหา", summary: "สรุป", awareness: "การรับรู้", luxching: "Luxching", lang: "ภาษา", placeholder: "Light your way!", greeting: { morning: "สวัสดีตอนเช้า", day: "สวัสดี", evening: "สวัสดีตอนเย็น", night: "ราตรีสวัสดิ์" } }
+        en: {
+            wise: "Wise",
+            note: "Note",
+            notes: "Notes",
+            delnotes: "Delete notes",
+            search: "Search",
+            summary: "Summary",
+            awareness: "Awareness",
+            luxching: "Luxching",
+            lang: "Language",
+            placeholder: "Light your way",
+            greeting: {
+                morning: "Good morning.",
+                day: "Hello.",
+                evening: "Good evening.",
+                night: "Good night."
+            }
+        },
+        tr: {
+            wise: "Bilge",
+            note: "Not al",
+            notes: "Notlar",
+            delnotes: "Notları sil",
+            search: "Ara",
+            summary: "Özet",
+            awareness: "Farkındalık",
+            luxching: "Luxching",
+            lang: "Dil",
+            placeholder: "Yolunu aydınlat",
+            greeting: {
+                morning: "Günaydın.",
+                day: "Merhaba.",
+                evening: "İyi akşamlar.",
+                night: "İyi geceler."
+            }
+        }
     };
+
+    function scrollChatToBottom(force = false) {
+        const chat = document.getElementById("chatArea");
+        if (force) {
+            chat.scrollTop = chat.scrollHeight;
+            return;
+        }
+        requestAnimationFrame(() => {
+            chat.scrollTop = chat.scrollHeight;
+        });
+    }
 
     function updateUILanguage() {
         const t = translations[currentLang] || translations.en;
+
         document.querySelectorAll("[data-key]").forEach(el => {
             const key = el.getAttribute("data-key");
             if (t[key] && el.tagName === "BUTTON") el.innerText = t[key];
         });
+
         const langBtn = document.getElementById("langBtn");
         if (langBtn) langBtn.innerText = t.lang;
+
         document.getElementById("messageInput").placeholder = t.placeholder;
         updateGreeting();
     }
 
     function getTimeBasedGreeting() {
-        const hour = new Date().getHours();
+        const now = new Date();
+        const hour = now.getHours();
         const t = translations[currentLang] || translations.en;
+
         if (!t.greeting) return "Hello.";
+
         if (hour >= 5 && hour < 12) return t.greeting.morning;
         if (hour >= 12 && hour < 18) return t.greeting.day;
         if (hour >= 18 && hour < 22) return t.greeting.evening;
@@ -343,7 +576,6 @@
 
     function updateGreeting() {
         const greetingText = getTimeBasedGreeting();
-        currentGreeting = `— ${greetingText}`;
         const welcomeDiv = document.getElementById("welcomeMsg");
         if (welcomeDiv) {
             welcomeDiv.innerHTML = `<span class="lux-dash">—</span> ${greetingText}`;
@@ -353,15 +585,19 @@
     function markdownTableToHtml(md) {
         let lines = md.trim().split("\n");
         if (lines.length < 2 || !lines[0].includes("|")) return md;
+
         let inTable = false;
         let html = '<table class="lux-table">';
+
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
+
             if (line.startsWith("|") && line.endsWith("|")) {
                 if (!inTable) inTable = true;
                 if (line.includes("---")) continue;
+
                 let cells = line.split("|").filter(c => c.trim() !== "");
-                if (i === 0 || (i === 1 && lines[1].includes("---"))) {
+                if (i === 0 || (i === 1 && lines[1] && lines[1].includes("---"))) {
                     html += "<tr>";
                     for (let cell of cells) html += `<th>${cell.trim()}</th>`;
                     html += "</tr>";
@@ -377,61 +613,175 @@
                 return md;
             }
         }
+
         if (inTable) html += "</table>";
         return html;
     }
 
-    async function callDeepSeek(messages) {
-        try {
-            const response = await fetch(API_URL, {
-                method: "POST",
-                headers: { 
-                    "Content-Type": "application/json", 
-                    "Authorization": `Bearer ${API_KEY}` 
-                },
-                body: JSON.stringify({ 
-                    model: "deepseek-chat", 
-                    messages: messages, 
-                    stream: false 
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error(`API Hatası: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            return data.choices[0].message.content;
-        } catch (error) {
-            console.error("DeepSeek API Hatası:", error);
-            return "Bağlantı hatası oluştu. Lütfen API anahtarınızı kontrol edin.";
-        }
+    function processSpecialMarkup(text) {
+        return text.replace(/\[\[RED\]\](.*?)\[\[\/RED\]\]/g, '<span class="highlight-red">$1</span>');
     }
 
     async function sendToLuxviai(userText) {
-        conversationHistory.push({ role: "user", content: userText });
-        const reply = await callDeepSeek([{ 
-            role: "system", 
-            content: "Sen Luxviai'sin. Kullanıcı hangi dilde yazarsa o dilde cevap ver. Samimi, sakin, derin, yargısız ol." 
-        }, ...conversationHistory]);
-        conversationHistory.push({ role: "assistant", content: reply });
-        return reply;
+        const response = await fetch("/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ message: userText })
+        });
+
+        const data = await response.json();
+        return data.response;
+    }
+
+    function setSendButtonMode(mode) {
+        const btn = document.getElementById("sendBtn");
+
+        if (mode === "send") {
+            btn.innerText = "Gönder";
+            btn.dataset.mode = "send";
+        } else if (mode === "stop") {
+            btn.innerText = "Dur";
+            btn.dataset.mode = "stop";
+        }
+    }
+
+    function stopTyping() {
+        typingStopped = true;
+        isTyping = false;
+        setSendButtonMode("send");
     }
 
     async function typeText(element, text, withDash = false) {
-        element.innerText = "";
+        isTyping = true;
+        typingStopped = false;
+        remainingText = text;
+        currentTypingElement = element;
+        setSendButtonMode("stop");
+
+        element.innerHTML = "";
+
         if (withDash) {
             const dashSpan = document.createElement("span");
             dashSpan.className = "lux-dash";
             dashSpan.innerText = "— ";
             element.appendChild(dashSpan);
         }
+
         let textNode = document.createTextNode("");
         element.appendChild(textNode);
-        for (let ch of text) {
+
+        let cutIndex = 0;
+
+        for (let i = 0; i < text.length; i++) {
+            if (typingStopped) {
+                cutIndex = i;
+                break;
+            }
+
+            const ch = text[i];
             textNode.textContent += ch;
-            await new Promise(r => setTimeout(r, 30));
+
+            let delay = 26;
+            if (ch === "," || ch === ";") delay = 110;
+            if (ch === "." || ch === "!" || ch === "?") delay = 220;
+            if (ch === "\n") delay = 180;
+
+            scrollChatToBottom();
+            await new Promise(r => setTimeout(r, delay));
         }
+
+        if (typingStopped) {
+            remainingText = text.slice(cutIndex);
+            addContinueButton(element);
+        } else {
+            remainingText = "";
+        }
+
+        isTyping = false;
+        setSendButtonMode("send");
+        scrollChatToBottom(true);
+    }
+
+    function addContinueButton(messageElement) {
+        if (!remainingText) return;
+
+        const actions = document.createElement("div");
+        actions.className = "message-actions";
+
+        const continueBtn = document.createElement("button");
+        continueBtn.className = "continue-btn";
+        continueBtn.innerText = "Devam et";
+
+        continueBtn.onclick = async () => {
+            actions.remove();
+            const remaining = remainingText;
+            remainingText = "";
+            await continueTyping(messageElement, remaining);
+        };
+
+        actions.appendChild(continueBtn);
+        messageElement.appendChild(actions);
+        scrollChatToBottom(true);
+    }
+
+    async function continueTyping(messageElement, text) {
+        isTyping = true;
+        typingStopped = false;
+        remainingText = text;
+        setSendButtonMode("stop");
+
+        let textNode = null;
+
+        const walker = document.createTreeWalker(
+            messageElement,
+            NodeFilter.SHOW_TEXT,
+            null
+        );
+
+        while (walker.nextNode()) {
+            const node = walker.currentNode;
+            if (node.textContent !== "— ") {
+                textNode = node;
+            }
+        }
+
+        if (!textNode) {
+            textNode = document.createTextNode("");
+            messageElement.appendChild(textNode);
+        }
+
+        let cutIndex = 0;
+
+        for (let i = 0; i < text.length; i++) {
+            if (typingStopped) {
+                cutIndex = i;
+                break;
+            }
+
+            const ch = text[i];
+            textNode.textContent += ch;
+
+            let delay = 26;
+            if (ch === "," || ch === ";") delay = 110;
+            if (ch === "." || ch === "!" || ch === "?") delay = 220;
+            if (ch === "\n") delay = 180;
+
+            scrollChatToBottom();
+            await new Promise(r => setTimeout(r, delay));
+        }
+
+        if (typingStopped) {
+            remainingText = text.slice(cutIndex);
+            addContinueButton(messageElement);
+        } else {
+            remainingText = "";
+        }
+
+        isTyping = false;
+        setSendButtonMode("send");
+        scrollChatToBottom(true);
     }
 
     function addUserMessage(text) {
@@ -440,46 +790,54 @@
         div.className = "user-msg";
         div.innerText = text;
         chat.appendChild(div);
-        chat.scrollTop = chat.scrollHeight;
+        scrollChatToBottom(true);
     }
 
     async function addLuxviaiMessage(rawText, isSpecial = false) {
         const chat = document.getElementById("chatArea");
-        let displayHtml = rawText;
+        let displayHtml = processSpecialMarkup(rawText);
+
         if (rawText.includes("|") && rawText.includes("---")) {
             displayHtml = markdownTableToHtml(rawText);
         }
-        if (isSpecial && (rawText.includes("FARKINDALIK") || rawText.includes("ÖZET") || rawText.includes("Işığın Değişimi"))) {
+
+        if (isSpecial && (rawText.includes("FARKINDALIK") || rawText.includes("ÖZET") || rawText.includes("Luxching") || rawText.includes("LUXCHING") || rawText.includes("ARAMA SONUÇLARI"))) {
             let title = "Luxviai";
-            if (rawText.includes("FARKINDALIK")) title = "🌿 FARKINDALIK";
-            else if (rawText.includes("Işığın Değişimi")) title = "🌿 LUXCHING";
-            else if (rawText.includes("ÖZET")) title = "📋 ÖZET";
+            if (rawText.includes("FARKINDALIK")) title = "FARKINDALIK";
+            else if (rawText.toUpperCase().includes("LUXCHING")) title = "LUXCHING";
+            else if (rawText.includes("ÖZET")) title = "ÖZET";
+            else if (rawText.includes("ARAMA SONUÇLARI")) title = "ARAMA SONUÇLARI";
+
             const card = document.createElement("div");
             card.className = "lux-card";
             card.innerHTML = `<div class="lux-card-header">${title}</div><div class="lux-card-content">${displayHtml}</div>`;
             chat.appendChild(card);
-        } else if (displayHtml !== rawText) {
+            scrollChatToBottom(true);
+        } else if (displayHtml !== rawText || rawText.includes("<table")) {
             const div = document.createElement("div");
             div.className = "lux-msg";
             div.innerHTML = displayHtml;
             chat.appendChild(div);
+            scrollChatToBottom(true);
         } else {
             const div = document.createElement("div");
             div.className = "lux-msg";
-            div.innerText = "";
             chat.appendChild(div);
+            scrollChatToBottom(true);
             await typeText(div, rawText, true);
         }
-        chat.scrollTop = chat.scrollHeight;
     }
 
     function showPrompt(cmd, promptText, callback) {
+        const oldPrompt = document.querySelector(".prompt-overlay");
+        if (oldPrompt) oldPrompt.remove();
+
         const container = document.createElement("div");
         container.className = "prompt-overlay";
         container.innerHTML = `
             <input type="text" id="promptInput" class="small-input" placeholder="${promptText}" autocomplete="off">
-            <button id="promptOk">Tamam</button>
-            <button id="promptCancel">İptal</button>
+            <button id="promptOk" class="continue-btn">Tamam</button>
+            <button id="promptCancel" class="continue-btn">İptal</button>
         `;
         document.querySelector(".input-wrapper").after(container);
         document.getElementById("promptInput").focus();
@@ -490,41 +848,69 @@
             if (val) callback(cmd + " " + val);
             else callback(cmd);
         };
+
         document.getElementById("promptOk").onclick = handleOk;
         document.getElementById("promptCancel").onclick = () => container.remove();
     }
 
-    async function sendMessage() {
+    async function sendMessage(forceText = null) {
         const input = document.getElementById("messageInput");
-        let raw = input.value.trim();
+        let raw = forceText !== null ? forceText : input.value.trim();
+
+        if (document.getElementById("sendBtn").dataset.mode === "stop") {
+            stopTyping();
+            return;
+        }
+
         if (!raw) return;
+
         input.value = "";
         addUserMessage(raw);
-        const reply = await sendToLuxviai(raw);
-        const isSpecial = raw.startsWith("!farkındalık_özeti") || raw.startsWith("!sohbet_ozeti") || raw.startsWith("!luxching");
-        await addLuxviaiMessage(reply, isSpecial);
+
+        try {
+            const reply = await sendToLuxviai(raw);
+            const isSpecial =
+                raw.startsWith("!farkındalık_özeti") ||
+                raw.startsWith("!sohbet_ozeti") ||
+                raw.startsWith("!luxching") ||
+                raw.startsWith("!ara") ||
+                raw.startsWith("!bilge") ||
+                raw.startsWith("!not");
+
+            await addLuxviaiMessage(reply, isSpecial);
+        } catch (error) {
+            await addLuxviaiMessage("Bağlantı kurulamadı.");
+            console.error(error);
+        }
     }
 
     function initMenu() {
         const panel = document.getElementById("menuPanel");
         const toggle = document.getElementById("menuToggle");
+
         toggle.addEventListener("click", () => {
-            panel.style.display = panel.style.display === "none" ? "flex" : "none";
+            panel.style.display = panel.style.display === "none" || panel.style.display === "" ? "flex" : "none";
         });
+
         document.querySelectorAll(".menu-panel button[data-cmd]").forEach(btn => {
             btn.addEventListener("click", async () => {
                 const cmd = btn.getAttribute("data-cmd");
                 const needsPrompt = ["!not al", "!ara", "!luxching"].includes(cmd);
-                const promptText = { "!not al": "Not metnini gir:", "!ara": "Aranacak kelime:", "!luxching": "Sorunuz:" }[cmd] || "Değer girin:";
+
+                const promptText = {
+                    "!not al": "Not metnini gir:",
+                    "!ara": "Aranacak kelime:",
+                    "!luxching": "Sorunuz:"
+                }[cmd] || "Değer girin:";
+
                 if (needsPrompt) {
                     showPrompt(cmd, promptText, async (fullCmd) => {
-                        document.getElementById("messageInput").value = fullCmd;
-                        await sendMessage();
+                        await sendMessage(fullCmd);
                     });
                 } else {
-                    document.getElementById("messageInput").value = cmd;
-                    await sendMessage();
+                    await sendMessage(cmd);
                 }
+
                 panel.style.display = "none";
             });
         });
@@ -533,24 +919,28 @@
     function initLanguageSelector() {
         const langBtn = document.getElementById("langBtn");
         const panel = document.getElementById("menuPanel");
+
         langBtn.addEventListener("click", (e) => {
             e.stopPropagation();
-            const allLanguages = ["en","tr","de","fr","ru","ar","es","pt","zh","ja","hi","it","el","uk","ko","vi","th"];
-            const langNames = { en:"English", tr:"Türkçe", de:"Deutsch", fr:"Français", ru:"Русский", ar:"العربية", es:"Español", pt:"Português", zh:"中文", ja:"日本語", hi:"हिन्दी", it:"Italiano", el:"Ελληνικά", uk:"Українська", ko:"한국어", vi:"Tiếng Việt", th:"ภาษาไทย" };
-            let options = allLanguages.map(l => `<button data-lang="${l}" style="display:block; width:100%; background:#2c2c2c; margin:2px 0; text-align:left;">${langNames[l] || l}</button>`).join("");
+
+            const allLanguages = ["en", "tr"];
+            const langNames = {
+                en: "English",
+                tr: "Türkçe"
+            };
+
+            const oldPopup = document.querySelector(".lang-popup");
+            if (oldPopup) oldPopup.remove();
+
             const popup = document.createElement("div");
-            popup.style.position = "absolute";
-            popup.style.right = "20px";
-            popup.style.top = "70px";
-            popup.style.backgroundColor = "#1a1a1a";
-            popup.style.padding = "10px";
-            popup.style.borderRadius = "12px";
-            popup.style.zIndex = "1000";
-            popup.style.maxHeight = "300px";
-            popup.style.overflowY = "auto";
-            popup.style.minWidth = "150px";
-            popup.innerHTML = options;
+            popup.className = "lang-popup";
+
+            popup.innerHTML = allLanguages.map(l =>
+                `<button data-lang="${l}">${langNames[l] || l}</button>`
+            ).join("");
+
             document.body.appendChild(popup);
+
             popup.querySelectorAll("[data-lang]").forEach(btn => {
                 btn.onclick = () => {
                     currentLang = btn.getAttribute("data-lang");
@@ -559,15 +949,67 @@
                     panel.style.display = "none";
                 };
             });
-            setTimeout(() => { if (popup) popup.remove(); }, 15000);
+
+            setTimeout(() => {
+                const stillThere = document.querySelector(".lang-popup");
+                if (stillThere) stillThere.remove();
+            }, 15000);
         });
+    }
+
+    function initSpeechInput() {
+        const micBtn = document.getElementById("micBtn");
+        const input = document.getElementById("messageInput");
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+            micBtn.onclick = () => {
+                alert("Bu tarayıcı sesli komutu desteklemiyor.");
+            };
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = "tr-TR";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        micBtn.addEventListener("click", () => {
+            recognition.lang = currentLang === "en" ? "en-US" : "tr-TR";
+            recognition.start();
+            micBtn.classList.add("recording");
+            micBtn.innerText = "Dinliyor";
+        });
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            input.value = transcript;
+        };
+
+        recognition.onend = () => {
+            micBtn.classList.remove("recording");
+            micBtn.innerText = "Mikrofon";
+        };
+
+        recognition.onerror = () => {
+            micBtn.classList.remove("recording");
+            micBtn.innerText = "Mikrofon";
+        };
     }
 
     updateUILanguage();
     initMenu();
     initLanguageSelector();
-    document.getElementById("sendBtn").addEventListener("click", sendMessage);
-    document.getElementById("messageInput").addEventListener("keypress", e => { if (e.key === "Enter") sendMessage(); });
+    initSpeechInput();
+    setSendButtonMode("send");
+
+    document.getElementById("sendBtn").addEventListener("click", () => sendMessage());
+    document.getElementById("messageInput").addEventListener("keypress", e => {
+        if (e.key === "Enter") sendMessage();
+    });
+
+    scrollChatToBottom(true);
 </script>
 </body>
 </html>
