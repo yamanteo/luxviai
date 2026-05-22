@@ -15,11 +15,9 @@ from pydantic import BaseModel
 # ==============================================
 # API ANAHTARI VE İSTEMCİ
 # ==============================================
-API_KEY = "sk-ce9b68382b7f4bbfbaa71d411430e8f8"  # Kendi DeepSeek API anahtarını buraya yaz
+API_KEY = os.getenv("DEEPSEEK_API_KEY")
 turkiye_tz = pytz.timezone('Europe/Istanbul')
-client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com")
-
-# ==============================================
+client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com")# ==============================================
 # FASTAPI APP
 # ==============================================
 app = FastAPI()
