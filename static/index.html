@@ -1,1668 +1,635 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Luxviai – Dijital Bilinç Alanı</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-        }
-
-        html, body {
-            background: #000;
-            font-family: 'Segoe UI', 'SF Pro Text', system-ui, -apple-system, Roboto, sans-serif;
-            height: 100%;
-            overflow: hidden;
-        }
-
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        body.mode-normal {
-            background: #000;
-        }
-
-        body.mode-luxta {
-            background: #000;
-        }
-
-        body.mode-luxdream {
-            background:
-                radial-gradient(circle at 20% 20%, rgba(245,166,35,0.05), transparent 30%),
-                radial-gradient(circle at 80% 30%, rgba(255,215,140,0.04), transparent 32%),
-                radial-gradient(circle at 40% 80%, rgba(255,255,255,0.02), transparent 28%),
-                #000;
-        }
-
-        .app {
-            width: 100%;
-            height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            background: transparent;
-            position: relative;
-        }
-
-        .header {
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            padding: 18px 20px 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #1e1e1e;
-            background: rgba(0,0,0,0.86);
-            backdrop-filter: blur(8px);
-            flex-shrink: 0;
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-
-        body.mode-luxta .header.hidden-luxta {
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(-8px);
-        }
-
-        .logo {
-            text-align: center;
-            flex: 1;
-        }
-
-        .logo h1 {
-            font-size: 1.65rem;
-            letter-spacing: 4px;
-            background: linear-gradient(135deg, #f5a623, #e6b422);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .logo p {
-            font-size: 0.72rem;
-            color: #8d8d8d;
-            letter-spacing: 1.2px;
-        }
-
-        .menu-btn {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            width: 30px;
-            height: 28px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 4px;
-            flex-shrink: 0;
-        }
-
-        .menu-line {
-            width: 18px;
-            height: 2px;
-            background-color: #f5a623;
-            border-radius: 2px;
-        }
-
-        .menu-panel {
-            display: none;
-            background: #090909;
-            padding: 14px 16px;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: flex-start;
-            align-items: center;
-            border-bottom: 1px solid #161616;
-            z-index: 30;
-        }
-
-        .menu-panel button {
-            background: #111;
-            border: 1px solid #222;
-            padding: 7px 14px;
-            border-radius: 999px;
-            color: #f5a623;
-            font-weight: 500;
-            cursor: pointer;
-            font-size: 0.76rem;
-        }
-
-        .menu-panel button:hover {
-            background: #1a1a1a;
-        }
-
-        .lang-selector {
-            background: #111;
-            border: 1px solid #222;
-            padding: 7px 14px;
-            border-radius: 999px;
-            color: #fff;
-            font-weight: 500;
-            cursor: pointer;
-            font-size: 0.76rem;
-            margin-left: auto;
-        }
-
-        .lang-selector:hover {
-            background: #191919;
-        }
-
-        .mode-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 7px 14px;
-            border-radius: 999px;
-            background: #111;
-            border: 1px solid #222;
-            color: #f5a623;
-            font-size: 0.76rem;
-            font-weight: 500;
-            cursor: pointer;
-        }
-
-        .mode-chip:hover {
-            background: #1a1a1a;
-        }
-
-        .info-dot {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            border: 1px solid #555;
-            color: #ddd;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.65rem;
-            line-height: 1;
-            cursor: pointer;
-        }
-
-        .info-pop {
-            position: absolute;
-            background: rgba(18,18,18,0.95);
-            color: #ddd;
-            border: 1px solid #2a2a2a;
-            border-radius: 12px;
-            padding: 8px 10px;
-            font-size: 0.75rem;
-            max-width: 180px;
-            z-index: 1002;
-            box-shadow: 0 10px 24px rgba(0,0,0,0.35);
-        }
-
-        .chat-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 18px 16px 14px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            background: transparent;
-            min-height: 0;
-            scroll-behavior: smooth;
-            align-items: center;
-        }
-
-        .chat-area::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .chat-area::-webkit-scrollbar-thumb {
-            background: #222;
-            border-radius: 10px;
-        }
-
-        .user-msg {
-            align-self: flex-end;
-            background: rgba(60, 60, 65, 0.45);
-            border-radius: 18px;
-            padding: 11px 15px;
-            color: #fff;
-            max-width: 62%;
-            font-size: 0.94rem;
-            line-height: 1.65;
-            white-space: pre-wrap;
-            word-break: break-word;
-            margin-right: 2%;
-        }
-
-        .lux-msg {
-            align-self: center;
-            color: #fff;
-            max-width: 58%;
-            width: 58%;
-            font-size: 0.96rem;
-            line-height: 1.9;
-            white-space: pre-wrap;
-            word-break: break-word;
-            position: relative;
-        }
-
-        .lux-msg.border-run {
-            border-radius: 16px;
-            padding: 12px 14px;
-            border: 1px solid rgba(245,166,35,0.08);
-            overflow: hidden;
-        }
-
-        .lux-msg.border-run::after {
-            content: "";
-            position: absolute;
-            inset: -2px;
-            border-radius: 18px;
-            border: 2px solid transparent;
-            border-top-color: rgba(245,166,35,0.9);
-            animation: runBorder 0.9s linear 1;
-            pointer-events: none;
-        }
-
-        @keyframes runBorder {
-            from { transform: rotate(0deg); opacity: 1; }
-            to { transform: rotate(360deg); opacity: 0; }
-        }
-
-        .lux-dash {
-            color: #f5a623;
-            margin-right: 6px;
-        }
-
-        .lux-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-            background: #0b0b0b;
-            color: #ddd;
-            margin: 12px 0;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .lux-table th,
-        .lux-table td {
-            border: 1px solid #2a2a2a;
-            padding: 10px;
-            text-align: left;
-            vertical-align: top;
-            word-wrap: break-word;
-            line-height: 1.6;
-        }
-
-        .lux-table th {
-            background: #111;
-            color: #f5a623;
-            font-weight: 600;
-        }
-
-        .lux-card {
-            background: #0b0b0b;
-            border-left: 4px solid #f5a623;
-            border-radius: 16px;
-            width: 58%;
-            margin: 8px auto;
-        }
-
-        .lux-card-header {
-            padding: 12px 18px;
-            font-weight: 700;
-            color: #f5a623;
-            border-bottom: 1px solid #1e1e1e;
-            font-size: 0.75rem;
-            letter-spacing: 1px;
-        }
-
-        .lux-card-content {
-            padding: 15px 18px;
-            color: #d0d0d0;
-            line-height: 1.85;
-            font-size: 0.9rem;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .highlight-red {
-            color: #ff4d4d;
-            font-weight: 700;
-        }
-
-        .notes-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: 100%;
-        }
-
-        .note-item {
-            padding: 12px 14px;
-            border-radius: 14px;
-            background: #0d0d0d;
-            border: 1px solid #1c1c1c;
-        }
-
-        .note-text {
-            color: #f2f2f2;
-            font-size: 0.92rem;
-            line-height: 1.7;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .note-date {
-            margin-top: 6px;
-            font-size: 0.72rem;
-            color: rgba(255,255,255,0.42);
-        }
-
-        .toast {
-            position: fixed;
-            top: 78px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(17,17,17,0.95);
-            color: #f5f5f5;
-            border: 1px solid #242424;
-            border-radius: 999px;
-            padding: 9px 14px;
-            font-size: 0.78rem;
-            z-index: 2000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.25s ease, transform 0.25s ease;
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-
-        .message-actions {
-            margin-top: 10px;
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .continue-btn {
-            background: #f5a623;
-            color: #000;
-            border: none;
-            padding: 7px 12px;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            cursor: pointer;
-            font-weight: 700;
-        }
-
-        .continue-btn:hover {
-            background: #e6b422;
-        }
-
-        .input-wrapper {
-            position: sticky;
-            bottom: 0;
-            z-index: 20;
-            display: flex;
-            justify-content: center;
-            padding: 12px 14px max(12px, env(safe-area-inset-bottom));
-            background: rgba(0,0,0,0.85);
-            border-top: 1px solid #151515;
-            flex-shrink: 0;
-            backdrop-filter: blur(8px);
-        }
-
-        .input-area {
-            width: 58%;
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-            background: #0c0c0c;
-            padding: 8px 10px 8px 14px;
-            border-radius: 999px;
-            border: 1px solid #202020;
-            position: relative;
-        }
-
-        body.mode-luxta .input-area {
-            background: rgba(245,166,35,0.06);
-            border: 1px solid rgba(245,166,35,0.18);
-        }
-
-        #messageInput {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: #f5f5f5;
-            font-size: 0.92rem;
-            outline: none;
-            min-width: 0;
-            resize: none;
-            overflow-y: auto;
-            max-height: 120px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-family: inherit;
-            padding-top: 2px;
-        }
-
-        #messageInput::placeholder {
-            color: #666;
-        }
-
-        #messageInput::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        #messageInput::-webkit-scrollbar-thumb {
-            background: #2a2a2a;
-            border-radius: 10px;
-        }
-
-        .action-btn {
-            background: #f5a623;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 999px;
-            color: #000;
-            font-weight: 700;
-            cursor: pointer;
-            font-size: 0.82rem;
-            white-space: nowrap;
-        }
-
-        body.mode-normal .action-btn,
-        body.mode-luxdream .action-btn {
-            background: #f5a623;
-            color: #000;
-        }
-
-        body.mode-luxta .action-btn {
-            background: rgba(245,166,35,0.18);
-            color: rgba(245,166,35,0.95);
-            border: 1px solid rgba(245,166,35,0.28);
-        }
-
-        .mic-btn {
-            background: #111;
-            border: 1px solid #262626;
-            color: #fff;
-            border-radius: 999px;
-            padding: 8px 12px;
-            cursor: pointer;
-            font-size: 0.82rem;
-            white-space: nowrap;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 42px;
-        }
-
-        body.mode-luxta .mic-btn {
-            background: rgba(245,166,35,0.18);
-            color: rgba(245,166,35,0.95);
-            border: 1px solid rgba(245,166,35,0.28);
-        }
-
-        .mic-btn:hover {
-            background: #1a1a1a;
-        }
-
-        .mic-btn.recording {
-            border-color: #f5a623;
-            color: #f5a623;
-        }
-
-        .voice-lines {
-            display: inline-flex;
-            gap: 2px;
-            align-items: flex-end;
-            height: 14px;
-        }
-
-        .voice-lines span {
-            display: inline-block;
-            width: 2px;
-            background: currentColor;
-            border-radius: 999px;
-        }
-
-        .voice-lines span:nth-child(1) { height: 5px; }
-        .voice-lines span:nth-child(2) { height: 9px; }
-        .voice-lines span:nth-child(3) { height: 13px; }
-
-        .prompt-overlay {
-            width: 58%;
-            margin: 8px auto;
-            display: flex;
-            gap: 10px;
-            background: #0b0b0b;
-            padding: 10px 14px;
-            border-radius: 18px;
-            border: 1px solid #1b1b1b;
-        }
-
-        .small-input {
-            flex: 1;
-            background: #050505;
-            border: 1px solid #2a2a2a;
-            padding: 8px 12px;
-            border-radius: 999px;
-            color: white;
-        }
-
-        .small-input:focus {
-            outline: none;
-            border-color: #f5a623;
-        }
-
-        .lang-popup {
-            position: absolute;
-            right: 16px;
-            top: 72px;
-            background: #0c0c0c;
-            border: 1px solid #1d1d1d;
-            border-radius: 14px;
-            z-index: 1000;
-            max-height: 320px;
-            overflow-y: auto;
-            min-width: 180px;
-            padding: 8px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.45);
-        }
-
-        .lang-popup button {
-            display: block;
-            width: 100%;
-            background: #0f0f0f;
-            color: #fff;
-            border: 1px solid #222;
-            margin: 4px 0;
-            padding: 10px 12px;
-            text-align: left;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 0.82rem;
-        }
-
-        .lang-popup button:hover {
-            background: #191919;
-        }
-
-        .selection-menu {
-            position: fixed;
-            background: rgba(20,20,20,0.94);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px;
-            padding: 10px 12px;
-            z-index: 3000;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            font-size: 0.78rem;
-            color: #fff;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 12px 32px rgba(0,0,0,0.34);
-        }
-
-        .selection-menu .menu-item {
-            cursor: pointer;
-            color: #f0f0f0;
-            white-space: nowrap;
-        }
-
-        .selection-menu .menu-item:hover {
-            color: #f5a623;
-        }
-
-        .hidden-submenu {
-            position: absolute;
-            top: calc(100% + 6px);
-            left: 0;
-            background: rgba(18,18,18,0.96);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 12px;
-            padding: 8px 10px;
-            display: flex;
-            gap: 10px;
-            z-index: 3001;
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                padding: 14px 14px 10px 14px;
-            }
-
-            .logo h1 {
-                font-size: 1.22rem;
-                letter-spacing: 2px;
-            }
-
-            .logo p {
-                font-size: 0.66rem;
-                letter-spacing: 0.8px;
-            }
-
-            .chat-area {
-                padding: 14px 12px 12px 12px;
-                gap: 14px;
-                align-items: stretch;
-            }
-
-            .lux-msg,
-            .lux-card,
-            .lux-table {
-                max-width: 92%;
-                width: 92%;
-                align-self: flex-start;
-            }
-
-            .user-msg {
-                max-width: 88%;
-                font-size: 0.92rem;
-                line-height: 1.7;
-                margin-right: 0;
-            }
-
-            .lux-msg {
-                font-size: 0.95rem;
-                line-height: 1.9;
-            }
-
-            .input-wrapper {
-                padding: 10px 10px max(10px, env(safe-area-inset-bottom));
-            }
-
-            .input-area {
-                width: 100%;
-                gap: 8px;
-                padding: 8px 8px 8px 12px;
-            }
-
-            .prompt-overlay {
-                width: calc(100% - 20px);
-            }
-
-            .action-btn,
-            .mic-btn {
-                font-size: 0.78rem;
-                padding: 8px 10px;
-            }
-        }
-    </style>
-</head>
-<body class="mode-normal">
-<div class="app">
-    <div class="header" id="header">
-        <div class="logo">
-            <h1>L U X V I A I</h1>
-            <p id="headerTagline">Light your way!</p>
-        </div>
-        <button class="menu-btn" id="menuToggle">
-            <div class="menu-line"></div>
-            <div class="menu-line"></div>
-            <div class="menu-line"></div>
-        </button>
-    </div>
-
-    <div class="menu-panel" id="menuPanel">
-        <button data-action="new-chat">Yeni Sohbet</button>
-
-        <button data-action="bilge" data-key="wise">Bilge</button>
-        <button data-action="notlar" data-key="notes">Notlar</button>
-        <button data-action="notlari-sil" data-key="delnotes">Notları sil</button>
-        <button data-action="sohbet-ozeti" data-key="summary">Özet</button>
-        <button data-action="farkindalik" data-key="awareness">Farkındalık</button>
-        <button data-action="luxching" data-key="luxching">Luxching</button>
-        <button data-action="luxdream">Luxdream</button>
-
-        <div class="mode-chip" id="luxtaChip">
-            <span>Luxta</span>
-            <span class="info-dot" id="luxtaInfoBtn">i</span>
-        </div>
-
-        <button class="lang-selector" id="langBtn">Dil</button>
-    </div>
-
-    <div class="chat-area" id="chatArea">
-        <div class="lux-msg" id="welcomeMsg"></div>
-    </div>
-
-    <div class="input-wrapper">
-        <div class="input-area">
-            <textarea id="messageInput" placeholder="Light your way!" rows="1"></textarea>
-            <button class="action-btn" id="sendBtn">Luxviai</button>
-            <button class="mic-btn" id="micBtn" title="Mikrofon">
-                <span class="voice-lines"><span></span><span></span><span></span></span>
-            </button>
-        </div>
-    </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-    let currentLang = "tr";
-    let isTyping = false;
-    let typingStopped = false;
-    let remainingText = "";
-    let currentTypingElement = null;
-
-    let currentMode = "normal"; // normal | luxta | luxdream
-    let selectionMenu = null;
-    let selectedText = "";
-    let holdTimer = null;
-
-    const translations = {
-        en: {
-            wise: "Wise",
-            notes: "Notes",
-            delnotes: "Delete notes",
-            summary: "Summary",
-            awareness: "Awareness",
-            luxching: "Luxching",
-            lang: "Language",
-            tagline: "Light your way!",
-            greeting: {
-                morning: "Good morning.",
-                day: "Hello.",
-                evening: "Good evening.",
-                night: "Good night."
-            }
-        },
-        tr: {
-            wise: "Bilge",
-            notes: "Notlar",
-            delnotes: "Notları sil",
-            summary: "Özet",
-            awareness: "Farkındalık",
-            luxching: "Luxching",
-            lang: "Dil",
-            tagline: "Yolunu aydınlat!",
-            greeting: {
-                morning: "Günaydın.",
-                day: "Merhaba.",
-                evening: "İyi akşamlar.",
-                night: "İyi geceler."
-            }
-        },
-        uk: {
-            wise: "Мудрість",
-            notes: "Нотатки",
-            delnotes: "Очистити нотатки",
-            summary: "Підсумок",
-            awareness: "Усвідомлення",
-            luxching: "Luxching",
-            lang: "Мова",
-            tagline: "Освітли свій шлях!",
-            greeting: {
-                morning: "Доброго ранку.",
-                day: "Привіт.",
-                evening: "Добрий вечір.",
-                night: "На добраніч."
-            }
-        }
-    };
-
-    const primaryLanguages = [
-        { code: "tr", label: "Türkçe" },
-        { code: "en", label: "English" },
-        { code: "uk", label: "Українська" },
-        { code: "de", label: "Deutsch" },
-        { code: "fr", label: "Français" },
-        { code: "es", label: "Español" },
-        { code: "pt", label: "Português" },
-        { code: "it", label: "Italiano" },
-        { code: "ar", label: "العربية" },
-        { code: "ru", label: "Русский" },
-        { code: "ja", label: "日本語" },
-        { code: "zh", label: "中文" },
-        { code: "ko", label: "한국어" },
-        { code: "hi", label: "हिन्दी" }
-    ];
-
-    const moreLanguages = [
-        { code: "el", label: "Ελληνικά" },
-        { code: "vi", label: "Tiếng Việt" },
-        { code: "th", label: "ภาษาไทย" }
-    ];
-
-    function showToast(text) {
-        const toast = document.getElementById("toast");
-        toast.textContent = text;
-        toast.classList.add("show");
-        setTimeout(() => {
-            toast.classList.remove("show");
-        }, 1000);
+from openai import OpenAI
+from datetime import datetime
+import pytz
+import os
+import re
+import random
+import json
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+# ==============================================
+# API ANAHTARI VE İSTEMCİ
+# ==============================================
+API_KEY = os.getenv("DEEPSEEK_API_KEY")
+turkiye_tz = pytz.timezone("Europe/Istanbul")
+client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com")
+
+# ==============================================
+# FASTAPI APP
+# ==============================================
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ==============================================
+# GLOBAL VERİ
+# ==============================================
+konusma_gecmisi = []
+duygusal_nabiz = []
+son_luxching_zamani = None
+
+profil = {
+    "anxiety_score": 50,
+    "core_trigger": None,
+    "themes": {
+        "görülmeme": 0,
+        "kontrol kaybı": 0,
+        "değersizlik": 0,
+        "terk edilme": 0,
+        "belirsizlik": 0
     }
+}
 
-    function scrollChatToBottom(force = false) {
-        const chat = document.getElementById("chatArea");
-        if (force) {
-            chat.scrollTop = chat.scrollHeight;
-            return;
+# ==============================================
+# MODELLER
+# ==============================================
+class ChatRequest(BaseModel):
+    message: str
+
+# ==============================================
+# NİHAİ SİSTEM PROMPT'U
+# ==============================================
+SYSTEM_PROMPT = """
+Sen Luxviai’sin. Luxviai — Yolunu aydınlat.
+
+DİL:
+Kullanıcı hangi dilde yazarsa o dilde cevap ver.
+Ancak yazım hatalarını veya tekrar eden harfleri yabancı dil sanma.
+“sselam”, “slm”, “nbr”, “iyiyimmm” gibi ifadeleri Türkçe kabul et.
+Kullanıcı açıkça başka bir dilde yazmıyorsa Türkçe devam et.
+
+KİMLİK:
+Sen bir yapay zekâsın; bunu saklamazsın.
+Ama robot gibi konuşmazsın: insan gibi, sıcak, ciddi, güvenilir, sakin ve derin konuşursun.
+
+ROL:
+Günlük duygusal farkındalık ve içgörü alanı yaratan bir eşlikçi olmak.
+İnsanları duygularıyla barıştırmak ve “normal hissettirmek”.
+Zorlanmayı hafifletmek: regülasyon + farkındalık + seçenekler + küçük adımlar.
+
+SINIR:
+Sen bir terapist / doktor değilsin.
+Tanı koymazsın, tedavi iddiasında bulunmazsın, ilaç önermezsin.
+Klinik etiketleri kullanıcıya “kimlik” gibi yapıştırmazsın.
+
+MERKEZ:
+Merkez her zaman insandır. Sen eşlik edersin.
+
+MARKA:
+Güven, Umut, Sakinlik.
+Enerjin: düşük ama güçlü.
+Abartısız, içten, net.
+
+TON:
+- Samimi ama laubali değil.
+- Sıcak ama aşırı şakacı / alaycı değil.
+- Cümleler kısa-orta.
+- Paragraflar küçük.
+- “Acelemiz yok.” hissi ver.
+
+ASLA:
+- “Endişelenme.”
+- “Güçlü ol.”
+- “Her şey düzelecek.”
+- Coşkulu motivasyon
+- Büyük laflar
+- Kullanıcı özellikle istemedikçe “canım”, “aşkım”, “bebeğim”, “hayatım”, “kuzum”, “gülüm” gibi hitaplar kullanma.
+Varsayılan hitap nötr, sade ve saygılı olsun.
+
+NORMALLEŞTİRME:
+“Bu his anlaşılır.”
+“Bunu yaşayan tek sen değilsin.”
+“Bu seni kötü biri yapmaz.”
+
+İNSANİ TEPKİ KATMANI:
+Eğer kullanıcı çok ağır, incitici, sarsıcı bir şey anlatıyorsa:
+- sadece genel empati değil
+- bağlama uygun kısa insani duygusal tepki de ver
+Ama:
+- dramatik olma
+- merkezi kendin yapma
+- doğru dozda kal
+Örnek ton:
+“Bu gerçekten ağır.”
+“Bunu taşımak kolay değil.”
+“Burada çok incinmiş bir yer var gibi.”
+“Bu insanın içini sarsar.”
+
+YANIT MİMARİSİ:
+1. Duyguyu aynala
+2. Normalleştir
+3. Yumuşak içgörü sun
+4. Açık uçlu soru sor
+5. Gerekirse küçük adım öner
+
+BİÇİM:
+Gerekli olduğunda düzenli biçimde yaz:
+1. ...
+2. ...
+3. ...
+
+veya
+
+- ...
+- ...
+- ...
+
+Gerekirse küçük tablo, bölüm veya kutu düzeni kullanabilirsin.
+Paragraf boşluğu bırak.
+Metni tek blok halinde sıkıştırma.
+
+ARKA PLAN ANALİZLERİ:
+Duygusal nabız, haftalık trend, tekrarlayan tema, mikro-çelişki, mikro-döngü, direnç algılama, gelişim takibi, duygusal zaman derinliği.
+Bunlar arka planda kalır.
+Kullanıcıya ham skor, etiket, tanı, savunma mekanizması adı, grafik, tablo, yüzde gösterilmez.
+
+Takip edilen ana temalar:
+- görülmeme
+- kontrol kaybı
+- değersizlik
+- terk edilme
+- belirsizlik
+
+LUXDREAM:
+Rüya anlatıldığında öncelik sırası:
+Birinci katman:
+1. Freud
+2. Jung
+3. Lacan
+
+İkinci katman:
+4. James Hillman
+5. Gaston Bachelard
+6. Winnicott
+7. Krishnamurti
+
+Üçüncü katman:
+8. Fromm
+9. Yalom
+10. Bion
+
+LUXDREAM YORUM KURALI:
+- Önce rüyadaki imgeleri, figürleri, nesneleri ve duyguları ayıkla
+- Sonra Freud / Jung / Lacan açısından kısa sembolik çerçeve düşün
+- Gerekirse Hillman / Bachelard ile imgesel derinlik ekle
+- Sonra kullanıcının mevcut farkındalık verisini bağla
+- Ardından yalnız yorumlama ile kalma:
+  rüyanın eksik kalan kısmını, devam etseydi ne olabileceğini, kullanıcının hislerini ve çağrışımlarını sorarak rüyayı derinleştir
+- Böylece:
+  1. Rüyanın görünen kısmı
+  2. Eksik / devam edebilecek kısmı
+  3. Kullanıcının rüyaya karşı tepkisi
+  4. O anki psikolojik durumu
+  5. Farkındalık katmanı
+  6. Ortak psikoanalitik yorum
+birleşsin
+
+ASLA:
+- fal dili
+- kehanet dili
+- dini tabir dili
+- “bereket”, “delalet”, “işaret” gibi batıl yorum dili
+
+Doğru ton:
+- sembolik
+- psikolojik
+- psikoanalitik
+- içgörülü
+- yumuşak
+- kesinlik iddiası olmayan
+
+LUXCHING:
+Rastgele sembol + klasik anlam + farkındalık verileriyle yorum.
+Fal değildir.
+Kehanet değildir.
+“Evren mesaj veriyor” dili kullanılmaz.
+Sembol rastgele seçilir.
+Yorum, kullanıcının son duygu durumu ve temasına göre yumuşakça harmanlanır.
+
+KRİZ:
+Kendine zarar, intihar, şiddet, istismar durumunda:
+çok kısa, çok sıcak, analiz yok.
+112’yi ara, en yakın acile git, yanında güvendiğin birine haber ver.
+
+SON İLKE:
+Sen çözüm dayatmazsın.
+Sen utandırmazsın.
+Sen küçültmezsin.
+Sen korkutmazsın.
+
+“Burada güvendesin. Acelemiz yok.”
+
+Luxviai — Yolunu aydınlat.
+"""
+
+# ==============================================
+# ANALİZ FONKSİYONLARI
+# ==============================================
+def analyze_emotion(message: str):
+    prompt = """
+Aşağıdaki mesaj için yalnızca JSON üret.
+
+{
+  "primary_emotion": "",
+  "intensity": 1-10,
+  "theme": ""
+}
+
+Duygular: kaygı, öfke, yalnızlık, değersizlik, utanç, boşluk, umut, kararsızlık, nötr
+Tema örnekleri: görülmeme, kontrol kaybı, değersizlik, terk edilme, belirsizlik
+
+Sadece JSON ver.
+"""
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-v4-flash",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": message}
+            ],
+            max_tokens=120
+        )
+        content = response.choices[0].message.content.strip()
+
+        if content.startswith("```"):
+            content = content.split("\n", 1)[1].rsplit("```", 1)[0]
+
+        data = json.loads(content)
+
+        return {
+            "primary_emotion": data.get("primary_emotion", "nötr"),
+            "intensity": data.get("intensity", 5),
+            "theme": data.get("theme", "")
         }
-        requestAnimationFrame(() => {
-            chat.scrollTop = chat.scrollHeight;
-        });
-    }
-
-    function autoResizeTextarea() {
-        const input = document.getElementById("messageInput");
-        input.style.height = "auto";
-        input.style.height = Math.min(input.scrollHeight, 120) + "px";
-    }
-
-    function setMode(mode) {
-        currentMode = mode;
-        document.body.classList.remove("mode-normal", "mode-luxta", "mode-luxdream");
-        document.body.classList.add(`mode-${mode}`);
-
-        const sendBtn = document.getElementById("sendBtn");
-        const input = document.getElementById("messageInput");
-        const header = document.getElementById("header");
-
-        if (mode === "normal") {
-            sendBtn.textContent = "Luxviai";
-            input.placeholder = "Light your way!";
-            header.classList.remove("hidden-luxta");
-        } else if (mode === "luxta") {
-            sendBtn.textContent = "Luxta";
-            input.placeholder = "Luxta";
-            header.classList.add("hidden-luxta");
-        } else if (mode === "luxdream") {
-            sendBtn.textContent = "Luxdream";
-            input.placeholder = "Luxdream";
-            header.classList.remove("hidden-luxta");
-        }
-    }
-
-    document.addEventListener("click", () => {
-        if (currentMode === "luxta") {
-            const header = document.getElementById("header");
-            if (header.classList.contains("hidden-luxta")) {
-                header.classList.remove("hidden-luxta");
-                setTimeout(() => {
-                    if (currentMode === "luxta") {
-                        header.classList.add("hidden-luxta");
-                    }
-                }, 1800);
-            }
-        }
-    });
-
-    function updateUILanguage() {
-        const t = translations[currentLang] || translations.en;
-
-        document.querySelectorAll("[data-key]").forEach(el => {
-            const key = el.getAttribute("data-key");
-            if (t[key] && el.tagName === "BUTTON") el.innerText = t[key];
-        });
-
-        const langBtn = document.getElementById("langBtn");
-        if (langBtn) langBtn.innerText = t.lang;
-
-        document.getElementById("headerTagline").textContent = t.tagline || "Light your way!";
-
-        if (currentMode === "normal") {
-            document.getElementById("messageInput").placeholder = "Light your way!";
-        } else if (currentMode === "luxta") {
-            document.getElementById("messageInput").placeholder = "Luxta";
-        } else if (currentMode === "luxdream") {
-            document.getElementById("messageInput").placeholder = "Luxdream";
-        }
-
-        updateGreeting();
-    }
-
-    function getTimeBasedGreeting() {
-        const now = new Date();
-        const hour = now.getHours();
-        const t = translations[currentLang] || translations.en;
-
-        if (!t.greeting) return "Hello.";
-
-        if (hour >= 5 && hour < 12) return t.greeting.morning;
-        if (hour >= 12 && hour < 18) return t.greeting.day;
-        if (hour >= 18 && hour < 22) return t.greeting.evening;
-        return t.greeting.night;
-    }
-
-    function updateGreeting() {
-        const greetingText = getTimeBasedGreeting();
-        const welcomeDiv = document.getElementById("welcomeMsg");
-        if (welcomeDiv) {
-            welcomeDiv.innerHTML = `<span class="lux-dash">—</span> ${greetingText}`;
-        }
-    }
-
-    function markdownTableToHtml(md) {
-        let lines = md.trim().split("\n");
-        if (lines.length < 2 || !lines[0].includes("|")) return md;
-
-        let inTable = false;
-        let html = '<table class="lux-table">';
-
-        for (let i = 0; i < lines.length; i++) {
-            let line = lines[i].trim();
-
-            if (line.startsWith("|") && line.endsWith("|")) {
-                if (!inTable) inTable = true;
-                if (line.includes("---")) continue;
-
-                let cells = line.split("|").filter(c => c.trim() !== "");
-                if (i === 0 || (i === 1 && lines[1] && lines[1].includes("---"))) {
-                    html += "<tr>";
-                    for (let cell of cells) html += `<th>${cell.trim()}</th>`;
-                    html += "</tr>";
-                } else {
-                    html += "<tr>";
-                    for (let cell of cells) html += `<td>${cell.trim()}</td>`;
-                    html += "</tr>";
-                }
-            } else if (inTable) {
-                html += "</table>";
-                return html;
-            } else {
-                return md;
-            }
-        }
-
-        if (inTable) html += "</table>";
-        return html;
-    }
-
-    function processSpecialMarkup(text) {
-        return text.replace(/\[\[RED\]\](.*?)\[\[\/RED\]\]/g, '<span class="highlight-red">$1</span>');
-    }
-
-    async function sendToLuxviai(userText) {
-        const response = await fetch("/chat", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ message: userText })
-        });
-
-        const data = await response.json();
-        return data.response;
-    }
-
-    function setSendButtonMode(mode) {
-        const btn = document.getElementById("sendBtn");
-
-        if (mode === "send") {
-            if (currentMode === "normal") btn.textContent = "Luxviai";
-            if (currentMode === "luxta") btn.textContent = "Luxta";
-            if (currentMode === "luxdream") btn.textContent = "Luxdream";
-            btn.dataset.mode = "send";
-        } else if (mode === "stop") {
-            btn.textContent = "Dur";
-            btn.dataset.mode = "stop";
-        }
-    }
-
-    function stopTyping() {
-        typingStopped = true;
-        isTyping = false;
-        setSendButtonMode("send");
-    }
-
-    function addContinueButton(messageElement) {
-        if (!remainingText) return;
-
-        const old = messageElement.querySelector(".message-actions");
-        if (old) old.remove();
-
-        const actions = document.createElement("div");
-        actions.className = "message-actions";
-
-        const continueBtn = document.createElement("button");
-        continueBtn.className = "continue-btn";
-        continueBtn.innerText = "Devam et";
-
-        continueBtn.onclick = async () => {
-            actions.remove();
-            const remaining = remainingText;
-            remainingText = "";
-            await continueTyping(messageElement, remaining);
-        };
-
-        actions.appendChild(continueBtn);
-        messageElement.appendChild(actions);
-        scrollChatToBottom(true);
-    }
-
-    async function typeText(element, text, withDash = false, useBorderRun = false) {
-        isTyping = true;
-        typingStopped = false;
-        remainingText = text;
-        currentTypingElement = element;
-        setSendButtonMode("stop");
-
-        element.innerHTML = "";
-        if (useBorderRun) {
-            element.classList.add("border-run");
-            setTimeout(() => element.classList.remove("border-run"), 1200);
-        }
-
-        if (withDash) {
-            const dashSpan = document.createElement("span");
-            dashSpan.className = "lux-dash";
-            dashSpan.innerText = "— ";
-            element.appendChild(dashSpan);
-        }
-
-        let textNode = document.createTextNode("");
-        element.appendChild(textNode);
-
-        let cutIndex = 0;
-
-        for (let i = 0; i < text.length; i++) {
-            if (typingStopped) {
-                cutIndex = i;
-                break;
-            }
-
-            const ch = text[i];
-            textNode.textContent += ch;
-
-            let delay = 26;
-            if (ch === "," || ch === ";") delay = 110;
-            if (ch === "." || ch === "!" || ch === "?") delay = 220;
-            if (ch === "\n") delay = 180;
-
-            scrollChatToBottom();
-            await new Promise(r => setTimeout(r, delay));
+    except:
+        return {
+            "primary_emotion": "nötr",
+            "intensity": 5,
+            "theme": ""
         }
 
-        if (typingStopped) {
-            remainingText = text.slice(cutIndex);
-            addContinueButton(element);
-        } else {
-            remainingText = "";
-        }
-
-        isTyping = false;
-        setSendButtonMode("send");
-        scrollChatToBottom(true);
-    }
-
-    async function continueTyping(messageElement, text) {
-        isTyping = true;
-        typingStopped = false;
-        remainingText = text;
-        setSendButtonMode("stop");
-
-        let textNode = null;
-
-        const walker = document.createTreeWalker(
-            messageElement,
-            NodeFilter.SHOW_TEXT,
-            null
-        );
-
-        while (walker.nextNode()) {
-            const node = walker.currentNode;
-            if (node.textContent !== "— ") {
-                textNode = node;
-            }
-        }
-
-        if (!textNode) {
-            textNode = document.createTextNode("");
-            messageElement.appendChild(textNode);
-        }
-
-        let cutIndex = 0;
-
-        for (let i = 0; i < text.length; i++) {
-            if (typingStopped) {
-                cutIndex = i;
-                break;
-            }
-
-            const ch = text[i];
-            textNode.textContent += ch;
-
-            let delay = 26;
-            if (ch === "," || ch === ";") delay = 110;
-            if (ch === "." || ch === "!" || ch === "?") delay = 220;
-            if (ch === "\n") delay = 180;
-
-            scrollChatToBottom();
-            await new Promise(r => setTimeout(r, delay));
-        }
-
-        if (typingStopped) {
-            remainingText = text.slice(cutIndex);
-            addContinueButton(messageElement);
-        } else {
-            remainingText = "";
-        }
-
-        isTyping = false;
-        setSendButtonMode("send");
-        scrollChatToBottom(true);
-    }
-
-    function addUserMessage(text) {
-        const chat = document.getElementById("chatArea");
-        const div = document.createElement("div");
-        div.className = "user-msg";
-        div.innerText = text;
-        chat.appendChild(div);
-        scrollChatToBottom(true);
-    }
-
-    function renderNotesList(items) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "notes-list";
-
-        items.forEach(item => {
-            const note = document.createElement("div");
-            note.className = "note-item";
-            note.innerHTML = `
-                <div class="note-text">${item.text}</div>
-                <div class="note-date">${item.date || ""}</div>
-            `;
-            wrapper.appendChild(note);
-        });
-
-        return wrapper;
-    }
-
-    async function addLuxviaiMessage(rawText, isSpecial = false) {
-        const chat = document.getElementById("chatArea");
-        let displayHtml = processSpecialMarkup(rawText);
-
-        try {
-            const parsed = JSON.parse(rawText);
-            if (parsed.type === "notes_list") {
-                const card = document.createElement("div");
-                card.className = "lux-card";
-                card.innerHTML = `<div class="lux-card-header">NOTLAR</div>`;
-                const content = document.createElement("div");
-                content.className = "lux-card-content";
-                content.appendChild(renderNotesList(parsed.items || []));
-                card.appendChild(content);
-                chat.appendChild(card);
-                scrollChatToBottom(true);
-                return;
-            }
-        } catch {}
-
-        if (rawText.includes("|") && rawText.includes("---")) {
-            displayHtml = markdownTableToHtml(rawText);
-        }
-
-        const isCard =
-            isSpecial &&
-            (
-                rawText.includes("FARKINDALIK") ||
-                rawText.includes("ÖZET") ||
-                rawText.includes("Luxching") ||
-                rawText.includes("LUXCHING") ||
-                rawText.includes("LUXDREAM") ||
-                rawText.includes("ARAMA SONUÇLARI")
-            );
-
-        if (isCard) {
-            let title = "Luxviai";
-            if (rawText.includes("FARKINDALIK")) title = "FARKINDALIK";
-            else if (rawText.toUpperCase().includes("LUXCHING")) title = "LUXCHING";
-            else if (rawText.toUpperCase().includes("LUXDREAM")) title = "LUXDREAM";
-            else if (rawText.includes("ÖZET")) title = "ÖZET";
-            else if (rawText.includes("ARAMA SONUÇLARI")) title = "ARAMA SONUÇLARI";
-
-            const card = document.createElement("div");
-            card.className = "lux-card";
-            card.innerHTML = `<div class="lux-card-header">${title}</div><div class="lux-card-content">${displayHtml}</div>`;
-            chat.appendChild(card);
-            scrollChatToBottom(true);
-        } else if (displayHtml !== rawText) {
-            const div = document.createElement("div");
-            div.className = "lux-msg";
-            div.innerHTML = displayHtml;
-            chat.appendChild(div);
-            scrollChatToBottom(true);
-        } else {
-            const div = document.createElement("div");
-            div.className = "lux-msg";
-            chat.appendChild(div);
-            scrollChatToBottom(true);
-
-            const useBorderRun = currentMode === "luxdream";
-            await typeText(div, rawText, true, useBorderRun);
-        }
-    }
-
-    function showPrompt(promptText, callback) {
-        const oldPrompt = document.querySelector(".prompt-overlay");
-        if (oldPrompt) oldPrompt.remove();
-
-        const container = document.createElement("div");
-        container.className = "prompt-overlay";
-        container.innerHTML = `
-            <input type="text" id="promptInput" class="small-input" placeholder="${promptText}" autocomplete="off">
-            <button id="promptOk" class="continue-btn">Tamam</button>
-            <button id="promptCancel" class="continue-btn">İptal</button>
-        `;
-        document.querySelector(".input-wrapper").after(container);
-        document.getElementById("promptInput").focus();
-
-        const handleOk = () => {
-            const val = document.getElementById("promptInput").value.trim();
-            container.remove();
-            callback(val);
-        };
-
-        document.getElementById("promptOk").onclick = handleOk;
-        document.getElementById("promptCancel").onclick = () => container.remove();
-    }
-
-    async function sendMessage(forceText = null, commandMode = false) {
-        const input = document.getElementById("messageInput");
-        let raw = forceText !== null ? forceText : input.value.trim();
-
-        if (document.getElementById("sendBtn").dataset.mode === "stop") {
-            stopTyping();
-            return;
-        }
-
-        if (!raw) return;
-
-        if (!commandMode) {
-            input.value = "";
-            input.style.height = "auto";
-            addUserMessage(raw);
-        }
-
-        try {
-            const reply = await sendToLuxviai(raw);
-
-            if (reply === "__NOTE_SAVED__") {
-                showToast("Not alındı");
-                return;
-            }
-
-            if (reply === "__NOTES_CLEARED__") {
-                showToast("Notlar silindi");
-                return;
-            }
-
-            const isSpecial =
-                commandMode ||
-                raw.startsWith("!cmd:luxching:") ||
-                raw.startsWith("!cmd:luxdream:") ||
-                raw.startsWith("!cmd:ara:") ||
-                raw.startsWith("!cmd:farkindalik") ||
-                raw.startsWith("!cmd:sohbet_ozeti") ||
-                raw.startsWith("!cmd:bilge") ||
-                raw.startsWith("!cmd:notlar");
-
-            await addLuxviaiMessage(reply, isSpecial);
-        } catch (error) {
-            await addLuxviaiMessage("Bağlantı kurulamadı.");
-            console.error(error);
-        }
-    }
-
-    function initMenu() {
-        const panel = document.getElementById("menuPanel");
-        const toggle = document.getElementById("menuToggle");
-
-        toggle.addEventListener("click", () => {
-            panel.style.display = panel.style.display === "none" || panel.style.display === "" ? "flex" : "none";
-        });
-
-        document.querySelectorAll(".menu-panel [data-action]").forEach(btn => {
-            btn.addEventListener("click", async () => {
-                const action = btn.getAttribute("data-action");
-
-                if (action === "new-chat") {
-                    document.getElementById("chatArea").innerHTML = `<div class="lux-msg" id="welcomeMsg"></div>`;
-                    updateGreeting();
-                    panel.style.display = "none";
-                    return;
-                }
-
-                if (action === "bilge") {
-                    await sendMessage("!cmd:bilge", true);
-                }
-
-                if (action === "notlar") {
-                    await sendMessage("!cmd:notlar", true);
-                }
-
-                if (action === "notlari-sil") {
-                    await sendMessage("!cmd:notlari_sil", true);
-                }
-
-                if (action === "sohbet-ozeti") {
-                    await sendMessage("!cmd:sohbet_ozeti", true);
-                }
-
-                if (action === "farkindalik") {
-                    await sendMessage("!cmd:farkindalik", true);
-                }
-
-                if (action === "luxching") {
-                    showPrompt("Sorunuz:", async (value) => {
-                        await sendMessage(`!cmd:luxching:${value}`, true);
-                    });
-                }
-
-                if (action === "luxdream") {
-                    setMode("luxdream");
-                    showPrompt("Rüyanı anlat:", async (value) => {
-                        if (value) {
-                            addUserMessage(value);
-                            await sendMessage(`!cmd:luxdream:${value}`, true);
-                        }
-                    });
-                }
-
-                panel.style.display = "none";
-            });
-        });
-    }
-
-    function initLanguageSelector() {
-        const langBtn = document.getElementById("langBtn");
-        const panel = document.getElementById("menuPanel");
-
-        langBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-
-            const oldPopup = document.querySelector(".lang-popup");
-            if (oldPopup) oldPopup.remove();
-
-            const popup = document.createElement("div");
-            popup.className = "lang-popup";
-
-            let html = "";
-            primaryLanguages.forEach(l => {
-                html += `<button data-lang="${l.code}">${l.label}</button>`;
-            });
-            html += `<button id="moreLangsBtn">Diğer Diller</button>`;
-
-            popup.innerHTML = html;
-            document.body.appendChild(popup);
-
-            popup.querySelectorAll("[data-lang]").forEach(btn => {
-                btn.onclick = () => {
-                    currentLang = btn.getAttribute("data-lang");
-                    updateUILanguage();
-                    popup.remove();
-                    panel.style.display = "none";
-                };
-            });
-
-            const moreBtn = popup.querySelector("#moreLangsBtn");
-            if (moreBtn) {
-                moreBtn.onclick = () => {
-                    popup.innerHTML = moreLanguages.map(l => `<button data-lang="${l.code}">${l.label}</button>`).join("");
-                    popup.querySelectorAll("[data-lang]").forEach(btn => {
-                        btn.onclick = () => {
-                            currentLang = btn.getAttribute("data-lang");
-                            updateUILanguage();
-                            popup.remove();
-                            panel.style.display = "none";
-                        };
-                    });
-                };
-            }
-
-            setTimeout(() => {
-                const stillThere = document.querySelector(".lang-popup");
-                if (stillThere) stillThere.remove();
-            }, 15000);
-        });
-    }
-
-    function initLuxtaInfo() {
-        const btn = document.getElementById("luxtaInfoBtn");
-        const chip = document.getElementById("luxtaChip");
-
-        btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-
-            const old = document.querySelector(".info-pop");
-            if (old) old.remove();
-
-            const rect = chip.getBoundingClientRect();
-            const pop = document.createElement("div");
-            pop.className = "info-pop";
-            pop.textContent = "Çok dinler, az konuşur.";
-            pop.style.left = `${rect.left + window.scrollX}px`;
-            pop.style.top = `${rect.bottom + 8 + window.scrollY}px`;
-            document.body.appendChild(pop);
-
-            setTimeout(() => {
-                if (pop) pop.remove();
-            }, 2500);
-        });
-
-        chip.addEventListener("click", async (e) => {
-            if (e.target === btn) return;
-            setMode("luxta");
-            document.getElementById("menuPanel").style.display = "none";
-            await sendToLuxviai("!cmd:luxta_info");
-        });
-    }
-
-    function removeSelectionMenu() {
-        if (selectionMenu) {
-            selectionMenu.remove();
-            selectionMenu = null;
-        }
-    }
-
-    function showSelectionMenu(x, y, text) {
-        removeSelectionMenu();
-        selectedText = text.trim();
-        if (!selectedText) return;
-
-        const menu = document.createElement("div");
-        menu.className = "selection-menu";
-        menu.style.left = `${x}px`;
-        menu.style.top = `${y}px`;
-
-        menu.innerHTML = `
-            <div class="menu-item" data-sel="note">Not al</div>
-            <div class="menu-item" data-sel="copy">Kopyala</div>
-            <div class="menu-item" data-sel="share">Paylaş</div>
-            <div class="menu-item" data-sel="explain">Açıkla</div>
-            <div class="menu-item" data-sel="more">...</div>
-        `;
-
-        document.body.appendChild(menu);
-        selectionMenu = menu;
-
-        menu.querySelectorAll(".menu-item").forEach(item => {
-            item.onclick = async () => {
-                const action = item.getAttribute("data-sel");
-
-                if (action === "note") {
-                    await sendMessage(`!cmd:not_al:${selectedText}`, true);
-                    removeSelectionMenu();
-                } else if (action === "copy") {
-                    navigator.clipboard.writeText(selectedText).catch(() => {});
-                    removeSelectionMenu();
-                } else if (action === "share") {
-                    const shareText = `${selectedText}\n\n@LUXVIAI — Light your way!`;
-                    if (navigator.share) {
-                        navigator.share({ text: shareText }).catch(() => {});
-                    } else {
-                        navigator.clipboard.writeText(shareText).catch(() => {});
-                    }
-                    removeSelectionMenu();
-                } else if (action === "explain") {
-                    addUserMessage(selectedText);
-                    await sendMessage(`Bunu biraz daha açıklar mısın:\n\n${selectedText}`, false);
-                    removeSelectionMenu();
-                } else if (action === "more") {
-                    const sub = document.createElement("div");
-                    sub.className = "hidden-submenu";
-                    sub.innerHTML = `
-                        <div class="menu-item" data-sub="mention">Bahset</div>
-                        <div class="menu-item" data-sub="remember">Hatırla</div>
-                        <div class="menu-item" data-sub="read">Sesli oku</div>
-                    `;
-                    menu.appendChild(sub);
-
-                    sub.querySelectorAll(".menu-item").forEach(subItem => {
-                        subItem.onclick = async () => {
-                            const subAction = subItem.getAttribute("data-sub");
-
-                            if (subAction === "mention") {
-                                addUserMessage(selectedText);
-                                await sendMessage(`Bundan biraz daha bahsetmek istiyorum:\n\n${selectedText}`, false);
-                            } else if (subAction === "remember") {
-                                await sendMessage(`!cmd:ara:${selectedText}`, true);
-                            } else if (subAction === "read") {
-                                const utterance = new SpeechSynthesisUtterance(selectedText);
-                                speechSynthesis.speak(utterance);
-                            }
-                            removeSelectionMenu();
-                        };
-                    });
-                }
-            };
-        });
-    }
-
-    function initLongPressSelection() {
-        let pressTimer = null;
-        const chatArea = document.getElementById("chatArea");
-
-        const tryShow = (target, clientX, clientY) => {
-            const msg = target.closest(".lux-msg, .lux-card-content");
-            if (!msg) return;
-
-            const text = window.getSelection().toString().trim() || msg.innerText.trim();
-            if (!text) return;
-
-            showSelectionMenu(clientX, clientY, text);
-        };
-
-        chatArea.addEventListener("mousedown", (e) => {
-            pressTimer = setTimeout(() => {
-                tryShow(e.target, e.clientX, e.clientY);
-            }, 550);
-        });
-
-        chatArea.addEventListener("mouseup", () => clearTimeout(pressTimer));
-        chatArea.addEventListener("mouseleave", () => clearTimeout(pressTimer));
-
-        chatArea.addEventListener("touchstart", (e) => {
-            const touch = e.touches[0];
-            pressTimer = setTimeout(() => {
-                tryShow(e.target, touch.clientX, touch.clientY);
-            }, 650);
-        }, { passive: true });
-
-        chatArea.addEventListener("touchend", () => clearTimeout(pressTimer));
-        chatArea.addEventListener("touchcancel", () => clearTimeout(pressTimer));
-
-        document.addEventListener("click", (e) => {
-            if (selectionMenu && !selectionMenu.contains(e.target)) {
-                removeSelectionMenu();
-            }
-        });
-    }
-
-    function initSpeechInput() {
-        const micBtn = document.getElementById("micBtn");
-        const input = document.getElementById("messageInput");
-
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            micBtn.onclick = () => {
-                alert("Bu tarayıcı sesli komutu desteklemiyor.");
-            };
-            return;
-        }
-
-        const recognition = new SpeechRecognition();
-        recognition.lang = "tr-TR";
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-
-        const startRecognition = () => {
-            recognition.lang = currentLang === "en" ? "en-US" : currentLang === "uk" ? "uk-UA" : "tr-TR";
-            try {
-                recognition.start();
-                micBtn.classList.add("recording");
-            } catch {}
-        };
-
-        const cancelHold = () => {
-            if (holdTimer) {
-                clearTimeout(holdTimer);
-                holdTimer = null;
-            }
-        };
-
-        micBtn.addEventListener("mousedown", () => {
-            holdTimer = setTimeout(startRecognition, 1000);
-        });
-        micBtn.addEventListener("mouseup", cancelHold);
-        micBtn.addEventListener("mouseleave", cancelHold);
-
-        micBtn.addEventListener("touchstart", () => {
-            holdTimer = setTimeout(startRecognition, 1000);
-        }, { passive: true });
-        micBtn.addEventListener("touchend", cancelHold);
-        micBtn.addEventListener("touchcancel", cancelHold);
-
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            input.value = transcript;
-            autoResizeTextarea();
-        };
-
-        recognition.onend = () => {
-            micBtn.classList.remove("recording");
-        };
-
-        recognition.onerror = () => {
-            micBtn.classList.remove("recording");
-        };
-    }
-
-    updateUILanguage();
-    initMenu();
-    initLanguageSelector();
-    initSpeechInput();
-    initLuxtaInfo();
-    initLongPressSelection();
-    setMode("normal");
-    setSendButtonMode("send");
-
-    document.getElementById("sendBtn").addEventListener("click", () => sendMessage());
-    document.getElementById("messageInput").addEventListener("input", autoResizeTextarea);
-    document.getElementById("messageInput").addEventListener("keydown", e => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
-
-    scrollChatToBottom(true);
-</script>
-</body>
-</html>
+def update_profile_from_analysis(analysis):
+    theme = analysis.get("theme")
+    if theme:
+        profil["core_trigger"] = theme
+        if theme in profil["themes"]:
+            profil["themes"][theme] += 1
+
+    if analysis.get("primary_emotion") == "kaygı":
+        profil["anxiety_score"] = min(100, profil["anxiety_score"] + 5)
+    elif analysis.get("primary_emotion") == "umut":
+        profil["anxiety_score"] = max(0, profil["anxiety_score"] - 3)
+
+def weekly_trend():
+    trend = {}
+    for kayit in duygusal_nabiz[-7:]:
+        duygu = kayit.get("primary_emotion", "bilinmiyor")
+        trend[duygu] = trend.get(duygu, 0) + 1
+    return trend
+
+def dominant_theme():
+    if not profil["themes"]:
+        return None
+    return max(profil["themes"], key=profil["themes"].get)
+
+def farkindalik_ozeti():
+    trend = weekly_trend()
+    dominant_emotion = max(trend, key=trend.get) if trend else "bilinmiyor"
+    tema = dominant_theme() or "henüz belirgin bir tetikleyici yok"
+
+    table = "| Başlık | Değer |\n|---|---|\n"
+    table += f"| Son günlerde öne çıkan duygu | {dominant_emotion} |\n"
+    table += f"| Öne çıkan tema | {tema} |\n"
+
+    return f"""FARKINDALIK
+
+{table}
+
+Bu bir tanı veya tedavi aracı değildir.
+Sadece duygusal farkındalık içindir.
+"""
+
+def not_kaydet(metin):
+    with open("luxviai_notlar.txt", "a", encoding="utf-8") as f:
+        f.write(f"{metin}|||{datetime.now(turkiye_tz).strftime('%Y-%m-%d %H:%M:%S')}\n")
+
+def notlari_listele():
+    if not os.path.exists("luxviai_notlar.txt"):
+        return []
+    lines = []
+    with open("luxviai_notlar.txt", "r", encoding="utf-8") as f:
+        for i, line in enumerate(f.readlines(), 1):
+            line = line.strip()
+            if not line:
+                continue
+            if "|||" in line:
+                metin, tarih = line.split("|||", 1)
+            else:
+                metin, tarih = line, ""
+            lines.append({
+                "index": i,
+                "text": metin,
+                "date": tarih
+            })
+    return lines
+
+def notlari_sil():
+    if os.path.exists("luxviai_notlar.txt"):
+        os.remove("luxviai_notlar.txt")
+        return True
+    return False
+
+def luxching_kontrol():
+    if len(konusma_gecmisi) < 5 or profil["anxiety_score"] == 50:
+        return False, "Henüz seni yeterince tanımıyorum. Biraz daha konuşalım, sonra Luxching'e bakabiliriz."
+    return True, None
+
+def sohbet_ozeti_uret():
+    ozet_prompt = """
+Son konuşmayı 2-3 kısa paragrafta özetle.
+Skor, etiket, tanı, klinik dil kullanma.
+Sadece duygusal temaları yumuşakça anlat.
+Gerekirse küçük liste veya tablo kullan.
+"""
+    response = client.chat.completions.create(
+        model="deepseek-v4-flash",
+        messages=[{"role": "system", "content": ozet_prompt}] + konusma_gecmisi[-10:],
+        max_tokens=220
+    )
+    return response.choices[0].message.content
+
+def ara_gecmiste(aranan):
+    sonuclar = []
+    if not aranan:
+        return "Aramak için bir kelime veya ifade yazmalısın."
+
+    for i, mesaj in enumerate(konusma_gecmisi, 1):
+        icerik = mesaj["content"]
+        if aranan.lower() in icerik.lower():
+            kim = "Sen" if mesaj["role"] == "user" else "Luxviai"
+            pattern = re.compile(re.escape(aranan), re.IGNORECASE)
+            vurgulu = pattern.sub(lambda m: f"[[RED]]{m.group(0)}[[/RED]]", icerik)
+            sonuclar.append(f"{i}. {kim}: {vurgulu}")
+
+    if not sonuclar:
+        return f"“{aranan}” için konuşma geçmişinde bir sonuç bulamadım."
+
+    return "ARAMA SONUÇLARI\n\n" + "\n\n".join(sonuclar)
+
+def bilge_soz_havuzu():
+    return [
+        {"author": "Freud", "quote": "Bilinçdışı, buzdağının görünmeyen kısmıdır."},
+        {"author": "Jung", "quote": "Kendi gölgenle yüzleşmek, aydınlanmanın ilk adımıdır."},
+        {"author": "Lacan", "quote": "Arzu, daima eksikliğin etrafında şekillenir."},
+        {"author": "Krishnamurti", "quote": "Gözlem, yargı olmadan başladığında zihin değişmeye başlar."},
+        {"author": "Winnicott", "quote": "Görülme ihtiyacı, insan ruhunun en sessiz açlıklarından biridir."},
+        {"author": "Bion", "quote": "Düşünemediğimiz şeyler, bazen bizi içten içe yönetir."},
+        {"author": "Fromm", "quote": "İnsan, kendini anladığı ölçüde başkasını da anlamaya başlar."},
+        {"author": "Yalom", "quote": "İnsan en çok görünmediğinde yalnızlaşır."},
+        {"author": "Hillman", "quote": "Ruh, çoğu zaman imgelerle konuşur."},
+        {"author": "Bachelard", "quote": "İmge, bazen düşünceden daha derin bir hafızaya dokunur."},
+        {"author": "Frankl", "quote": "Acıya rağmen anlam bulabilen insan, hayata tutunur."},
+        {"author": "Nietzsche", "quote": "Seni öldürmeyen şey, güçlendirir."},
+        {"author": "Schopenhauer", "quote": "İnsan istemekten vazgeçemez, çünkü varlığın özü istemektir."},
+    ]
+
+def bilge_soz_sec_baglama_gore():
+    sozler = bilge_soz_havuzu()
+    son_duygu = duygusal_nabiz[-1]["primary_emotion"] if duygusal_nabiz else "nötr"
+    tema = profil["core_trigger"] if profil["core_trigger"] else ""
+    secimler = []
+
+    if son_duygu in ["kaygı", "kararsızlık"] or tema == "belirsizlik":
+        secimler.extend([
+            {"author": "Krishnamurti", "quote": "Gözlem, yargı olmadan başladığında zihin değişmeye başlar."},
+            {"author": "Frankl", "quote": "Acıya rağmen anlam bulabilen insan, hayata tutunur."}
+        ])
+
+    if son_duygu in ["yalnızlık", "değersizlik"] or tema in ["görülmeme", "değersizlik", "terk edilme"]:
+        secimler.extend([
+            {"author": "Winnicott", "quote": "Görülme ihtiyacı, insan ruhunun en sessiz açlıklarından biridir."},
+            {"author": "Yalom", "quote": "İnsan en çok görünmediğinde yalnızlaşır."}
+        ])
+
+    if not secimler:
+        secimler = random.sample(sozler, k=min(2, len(sozler)))
+
+    unique = []
+    seen = set()
+    for s in secimler:
+        key = (s["author"], s["quote"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(s)
+
+    if len(unique) == 1:
+        s = unique[0]
+        return f"{s['quote']} – {s['author']}"
+    return "\n\n".join([f"{s['quote']} – {s['author']}" for s in unique[:2]])
+
+def luxdream_uret(ruya_metni):
+    dream_prompt = f"""
+Kullanıcı aşağıdaki rüyayı anlattı:
+
+\"\"\"{ruya_metni}\"\"\"
+
+Aşağıdaki yöntemi uygula:
+1. Önce rüyadaki ana imgeleri, figürleri, nesneleri ve duyguları ayıkla
+2. Freud / Jung / Lacan açısından kısa sembolik çerçeve düşün
+3. Gerekirse Hillman / Bachelard / Winnicott / Krishnamurti ile imgesel ve farkındalık derinliği ekle
+4. Kullanıcının mevcut tema ve duygu durumuyla ilişkilendir
+5. Ardından rüyanın eksik kısmını derinleştirecek yumuşak sorular sor:
+   - ortam nasıldı?
+   - kişi tanıdık mıydı?
+   - devam etseydi ne olurdu?
+   - uyandığında ne hissettin?
+6. Fal gibi değil, psikoanalitik ve sembolik bir eşlikçi gibi konuş
+
+Gerekirse tablo/şema kullan.
+"""
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-v4-pro",
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": f"Kullanıcının son baskın duygusu: {duygusal_nabiz[-1]['primary_emotion'] if duygusal_nabiz else 'nötr'} | Ana tema: {profil['core_trigger'] or 'belirsiz'}"},
+                {"role": "user", "content": dream_prompt}
+            ],
+            max_tokens=900
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Luxdream şu an işlenemedi: {e}"
+
+heksagramlar = {
+    1: {"isim": "Yaratılış (Ch'ien)", "anlam": "Yaratıcı güç, güçlü, başarılı, azimli."},
+    2: {"isim": "Kabul (K'un)", "anlam": "Şefkatli, toprak gibi açık, alıcı, sabırlı."},
+    3: {"isim": "Başlangıçtaki Güçlük (Chun)", "anlam": "Başlangıçlarda zorluk, kaos ve sabır ihtiyacı."},
+    4: {"isim": "Gençlik Aymazlığı (Meng)", "anlam": "Öğrenme arzusu, deneyimsizlik ve içgörüye açıklık."},
+    32: {"isim": "Süreklilik (Heng)", "anlam": "İstikrarlı olan başarılıdır; sağlam adımlar önemlidir."},
+}
+
+# ==============================================
+# STATIC
+# ==============================================
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.api_route("/", methods=["GET", "HEAD"])
+async def serve_frontend():
+    return FileResponse("static/index.html")
+
+# ==============================================
+# CHAT
+# ==============================================
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    global son_luxching_zamani
+
+    kullanici = request.message.strip()
+    if not kullanici:
+        return {"response": "Boş mesaj alamam."}
+
+    command_mode = kullanici.startswith("!cmd:")
+
+    if not command_mode:
+        konusma_gecmisi.append({"role": "user", "content": kullanici})
+        analysis = analyze_emotion(kullanici)
+        duygusal_nabiz.append(analysis)
+        update_profile_from_analysis(analysis)
+
+    # Saat / tarih
+    if any(kelime in kullanici.lower() for kelime in ["saat kaç", "günlerden ne", "tarih"]):
+        simdi = datetime.now(turkiye_tz)
+        return {"response": f"Şu an saat {simdi.strftime('%H:%M')}, tarih {simdi.strftime('%d.%m.%Y')}."}
+
+    # Yardım
+    if kullanici.lower() in ["!yardım", "!cmd:yardim"]:
+        return {"response": """Kullanabileceğin alanlar:
+
+1. Bilge
+2. Not al
+3. Notlar
+4. Notları sil
+5. Ara
+6. Sohbet özeti
+7. Farkındalık özeti
+8. Luxching
+9. Luxdream
+10. Luxta
+11. Normal Mod
+"""}
+
+    if kullanici.lower() in ["!farkındalık_özeti", "!cmd:farkindalik"]:
+        if len(konusma_gecmisi) < 5 or profil["anxiety_score"] == 50:
+            return {"response": "Henüz yeterli bilgiye sahip değilim. Biraz daha sohbet edelim."}
+        return {"response": farkindalik_ozeti()}
+
+    if kullanici.lower() in ["!sohbet_ozeti", "!cmd:sohbet_ozeti"]:
+        if len(konusma_gecmisi) < 5:
+            return {"response": "Henüz yeterli konuşma yok. Biraz daha sohbet edelim."}
+        try:
+            return {"response": sohbet_ozeti_uret()}
+        except Exception as e:
+            return {"response": f"Özet oluşturulamadı: {e}"}
+
+    if kullanici.lower() in ["!bilge", "!cmd:bilge"]:
+        return {"response": bilge_soz_sec_baglama_gore()}
+
+    if kullanici.lower().startswith("!cmd:not_al:"):
+        metin = kullanici.split("!cmd:not_al:", 1)[1].strip()
+        if metin:
+            not_kaydet(metin)
+            return {"response": "__NOTE_SAVED__"}
+        return {"response": "Not almak için bir metin gerekli."}
+
+    if kullanici.lower() in ["!notlar", "!cmd:notlar"]:
+        return {"response": json.dumps({"type": "notes_list", "items": notlari_listele()}, ensure_ascii=False)}
+
+    if kullanici.lower() in ["!notları sil", "!cmd:notlari_sil"]:
+        if notlari_sil():
+            return {"response": "__NOTES_CLEARED__"}
+        return {"response": "Hiç not yok."}
+
+    if kullanici.lower().startswith("!cmd:ara:"):
+        aranan = kullanici.split("!cmd:ara:", 1)[1].strip()
+        return {"response": ara_gecmiste(aranan)}
+
+    if kullanici.lower().startswith("!cmd:luxching:"):
+        soru = kullanici.split("!cmd:luxching:", 1)[1].strip()
+        if not soru:
+            return {"response": "Bir soru veya niyet belirt."}
+
+        if son_luxching_zamani and (datetime.now(turkiye_tz) - son_luxching_zamani).total_seconds() < 86400:
+            kalan_saat = 24 - (datetime.now(turkiye_tz) - son_luxching_zamani).total_seconds() / 3600
+            return {"response": f"Luxching hızlı tüketilmez. Yaklaşık {kalan_saat:.1f} saat sonra tekrar deneyebilirsin."}
+
+        durum, msg = luxching_kontrol()
+        if not durum:
+            return {"response": msg}
+
+        heksagram = random.choice(list(heksagramlar.values()))
+        son_duygu = duygusal_nabiz[-1].get("primary_emotion", "bilinmiyor") if duygusal_nabiz else "bilinmiyor"
+        tema = dominant_theme() or "belirsiz"
+
+        yorum = f"""LUXCHING
+
+Sembol:
+{heksagram['isim']}
+
+Klasik anlam:
+{heksagram['anlam']}
+
+Son analizde özellikle {son_duygu} duygusu daha görünür olmuş gibi.
+Özellikle “{tema}” teması tekrar ediyor olabilir.
+
+Bu sembol, belki de içinde zaten var olan bir şeyi hatırlatıyor.
+Bu bir fal değil.
+Sadece şu anki iç gerçekliğine tutulmuş sembolik bir ayna olabilir.
+
+Peki, bu bağlantı sende nasıl bir his uyandırdı?
+"""
+        son_luxching_zamani = datetime.now(turkiye_tz)
+        return {"response": yorum}
+
+    if kullanici.lower().startswith("!cmd:luxdream:"):
+        ruya_metni = kullanici.split("!cmd:luxdream:", 1)[1].strip()
+        if not ruya_metni:
+            return {"response": "Rüyanı anlatabilirsin."}
+        return {"response": luxdream_uret(ruya_metni)}
+
+    if kullanici.lower() == "!cmd:luxta_info":
+        return {"response": "Çok dinler, az konuşur."}
+
+    # Normal sohbet
+    trauma_mode = any(kelime in kullanici.lower() for kelime in [
+        "intihar", "kendime zarar", "şiddet", "tecavüz", "dayanamıyorum"
+    ])
+
+    aktif_prompt = SYSTEM_PROMPT
+    if trauma_mode:
+        aktif_prompt += "\n\nTravma güvenlik modundasın. Çok kısa, sıcak ve güvenli konuş."
+
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-v4-pro" if trauma_mode else "deepseek-v4-flash",
+            messages=[
+                {"role": "system", "content": aktif_prompt},
+                *konusma_gecmisi[-10:]
+            ]
+        )
+        cevap = response.choices[0].message.content
+        konusma_gecmisi.append({"role": "assistant", "content": cevap})
+        return {"response": cevap}
+    except Exception as e:
+        return {"response": f"Bağlantı sorunu: {e}"}

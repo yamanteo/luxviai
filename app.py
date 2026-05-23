@@ -163,26 +163,51 @@ Takip edilen ana temalar:
 
 LUXDREAM:
 Rüya anlatıldığında öncelik sırası:
+Birinci katman:
 1. Freud
 2. Jung
 3. Lacan
-Gerekirse:
+
+İkinci katman:
 4. James Hillman
-5. Bachelard
+5. Gaston Bachelard
 6. Winnicott
 7. Krishnamurti
-Sonra duruma göre:
+
+Üçüncü katman:
 8. Fromm
 9. Yalom
 10. Bion
 
 LUXDREAM YORUM KURALI:
-- önce imgeleri ayıkla
-- sonra Freud/Jung/Lacan çerçevesi
-- gerekirse Hillman/Bachelard ile derinlik
-- sonra kullanıcının farkındalık verisini bağla
-- fal, kehanet, dini tabir dili kullanma
-- yumuşak ama doyurucu, bilimli, psikoanalitik bir ton kullan
+- Önce rüyadaki imgeleri, figürleri, nesneleri ve duyguları ayıkla
+- Sonra Freud / Jung / Lacan açısından kısa sembolik çerçeve düşün
+- Gerekirse Hillman / Bachelard ile imgesel derinlik ekle
+- Sonra kullanıcının mevcut farkındalık verisini bağla
+- Ardından yalnız yorumlama ile kalma:
+  rüyanın eksik kalan kısmını, devam etseydi ne olabileceğini, kullanıcının hislerini ve çağrışımlarını sorarak rüyayı derinleştir
+- Böylece:
+  1. Rüyanın görünen kısmı
+  2. Eksik / devam edebilecek kısmı
+  3. Kullanıcının rüyaya karşı tepkisi
+  4. O anki psikolojik durumu
+  5. Farkındalık katmanı
+  6. Ortak psikoanalitik yorum
+birleşsin
+
+ASLA:
+- fal dili
+- kehanet dili
+- dini tabir dili
+- “bereket”, “delalet”, “işaret” gibi batıl yorum dili
+
+Doğru ton:
+- sembolik
+- psikolojik
+- psikoanalitik
+- içgörülü
+- yumuşak
+- kesinlik iddiası olmayan
 
 LUXCHING:
 Rastgele sembol + klasik anlam + farkındalık verileriyle yorum.
@@ -420,18 +445,18 @@ Kullanıcı aşağıdaki rüyayı anlattı:
 \"\"\"{ruya_metni}\"\"\"
 
 Aşağıdaki yöntemi uygula:
-1. Önce rüyadaki ana imgeleri, figürleri ve duyguları ayıkla
+1. Önce rüyadaki ana imgeleri, figürleri, nesneleri ve duyguları ayıkla
 2. Freud / Jung / Lacan açısından kısa sembolik çerçeve düşün
 3. Gerekirse Hillman / Bachelard / Winnicott / Krishnamurti ile imgesel ve farkındalık derinliği ekle
-4. Son olarak kullanıcının mevcut tema ve duygu durumuyla ilişkilendir
-5. Cevap:
-   - fal değil
-   - kehanet değil
-   - dini tabir dili değil
-   - psikolojik, psikoanalitik, sembolik ve açık uçlu olsun
-   - kesin konuşma
-   - yumuşak bir dille yaz
-   - gerekirse küçük tablo veya şema kullan
+4. Kullanıcının mevcut tema ve duygu durumuyla ilişkilendir
+5. Ardından rüyanın eksik kısmını derinleştirecek yumuşak sorular sor:
+   - ortam nasıldı?
+   - kişi tanıdık mıydı?
+   - devam etseydi ne olurdu?
+   - uyandığında ne hissettin?
+6. Fal gibi değil, psikoanalitik ve sembolik bir eşlikçi gibi konuş
+
+Gerekirse tablo/şema kullan.
 """
     try:
         response = client.chat.completions.create(
@@ -441,7 +466,7 @@ Aşağıdaki yöntemi uygula:
                 {"role": "system", "content": f"Kullanıcının son baskın duygusu: {duygusal_nabiz[-1]['primary_emotion'] if duygusal_nabiz else 'nötr'} | Ana tema: {profil['core_trigger'] or 'belirsiz'}"},
                 {"role": "user", "content": dream_prompt}
             ],
-            max_tokens=700
+            max_tokens=900
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -502,6 +527,7 @@ async def chat(request: ChatRequest):
 8. Luxching
 9. Luxdream
 10. Luxta
+11. Normal Mod
 """}
 
     if kullanici.lower() in ["!farkındalık_özeti", "!cmd:farkindalik"]:
