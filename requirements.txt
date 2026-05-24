@@ -4,3 +4,4 @@ openai
 pydantic
 pytz
 python-multipart
+slowapi
