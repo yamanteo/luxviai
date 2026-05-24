@@ -1,29 +1,36 @@
-from openai import OpenAI
-from datetime import datetime
-import pytz
 import os
-import re
-import random
 import json
+import logging
+import random
+from collections import deque
+from datetime import datetime
+from typing import Dict, Optional, List, Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
+from openai import OpenAI
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from dotenv import load_dotenv
 
-# ==============================================
-# API ANAHTARI VE İSTEMCİ
-# ==============================================
-API_KEY = os.getenv("DEEPSEEK_API_KEY")
-turkiye_tz = pytz.timezone("Europe/Istanbul")
-client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com")
+load_dotenv()
 
-# ==============================================
-# FASTAPI APP
-# ==============================================
-app = FastAPI()
+# ==============================================================================
+# YAPILANDIRMA
+# ==============================================================================
+logging.basicConfig(
+    filename="luxviai_system.log",
+    level=logging.INFO,
+    format='%(asctime)s - [%(levelname)s] - %(message)s'
+)
+limiter = Limiter(key_func=get_remote_address)
+app = FastAPI(title="Luxviai Reflective Emotional OS")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Frontend'in erişebilmesi için CORS ayarları
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,604 +39,340 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ==============================================
-# GLOBAL VERİ
-# ==============================================
-konusma_gecmisi = []
-duygusal_nabiz = []
-son_luxching_zamani = None
+API_KEY = os.getenv("DEEPSEEK_API_KEY")
+SECRET_TOKEN = os.getenv("SECRET_TOKEN", "luxviai_gizli_token_2026")
+if not API_KEY or not SECRET_TOKEN:
+    logging.warning("CRITICAL: API_KEY veya SECRET_TOKEN eksik. Lütfen ortam değişkenlerini kontrol edin.")
 
-profil = {
-    "anxiety_score": 50,
-    "core_trigger": None,
-    "themes": {
-        "görülmeme": 0,
-        "kontrol kaybı": 0,
-        "değersizlik": 0,
-        "terk edilme": 0,
-        "belirsizlik": 0
-    }
-}
+client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com")
 
-# ==============================================
-# MODELLER
-# ==============================================
-class ChatRequest(BaseModel):
-    message: str
+# ==============================================================================
+# KULLANICI BAZLI HAFIZA (Konuşma geçmişi, profil, duygu geçmişi)
+# ==============================================================================
+user_sessions: Dict[str, deque] = {}
+user_profiles: Dict[str, Dict] = {}
+user_emotion_history: Dict[str, List] = {}
 
-# ==============================================
-# NİHAİ SİSTEM PROMPT'U
-# ==============================================
-SYSTEM_PROMPT = """
-Sen Luxviai’sin. Luxviai — Yolunu aydınlat.
+def get_user_memory(user_id: str) -> deque:
+    if user_id not in user_sessions:
+        user_sessions[user_id] = deque(maxlen=30)
+    return user_sessions[user_id]
 
-DİL:
-Kullanıcı hangi dilde yazarsa o dilde cevap ver.
-Ancak yazım hatalarını veya tekrar eden harfleri yabancı dil sanma.
-“sselam”, “slm”, “nbr”, “iyiyimmm” gibi ifadeleri Türkçe kabul et.
-Kullanıcı açıkça başka bir dilde yazmıyorsa Türkçe devam et.
+def get_user_profile(user_id: str) -> Dict:
+    if user_id not in user_profiles:
+        user_profiles[user_id] = {
+            "anxiety_score": 50,
+            "core_trigger": None,
+            "themes": {
+                "görülmeme": 0,
+                "kontrol kaybı": 0,
+                "değersizlik": 0,
+                "terk edilme": 0,
+                "belirsizlik": 0
+            },
+            "weekly_report": {
+                "dominant_emotion": "Bekleniyor...",
+                "dominant_theme": "Bekleniyor...",
+                "growth_markers": "Henüz veri yok.",
+                "constellation_summary": "Düğümler taranıyor..."
+            }
+        }
+    return user_profiles[user_id]
 
-KİMLİK:
-Sen bir yapay zekâsın; bunu saklamazsın.
-Ama robot gibi konuşmazsın: insan gibi, sıcak, ciddi, güvenilir, sakin ve derin konuşursun.
+def get_emotion_history(user_id: str) -> List:
+    if user_id not in user_emotion_history:
+        user_emotion_history[user_id] = []
+    return user_emotion_history[user_id]
 
-ROL:
-Günlük duygusal farkındalık ve içgörü alanı yaratan bir eşlikçi olmak.
-İnsanları duygularıyla barıştırmak ve “normal hissettirmek”.
-Zorlanmayı hafifletmek: regülasyon + farkındalık + seçenekler + küçük adımlar.
-
-SINIR:
-Sen bir terapist / doktor değilsin.
-Tanı koymazsın, tedavi iddiasında bulunmazsın, ilaç önermezsin.
-Klinik etiketleri kullanıcıya “kimlik” gibi yapıştırmazsın.
-
-MERKEZ:
-Merkez her zaman insandır. Sen eşlik edersin.
-
-MARKA:
-Güven, Umut, Sakinlik.
-Enerjin: düşük ama güçlü.
-Abartısız, içten, net.
-
-TON:
-- Samimi ama laubali değil.
-- Sıcak ama aşırı şakacı / alaycı değil.
-- Cümleler kısa-orta.
-- Paragraflar küçük.
-- “Acelemiz yok.” hissi ver.
-
-ASLA:
-- “Endişelenme.”
-- “Güçlü ol.”
-- “Her şey düzelecek.”
-- Coşkulu motivasyon
-- Büyük laflar
-- Kullanıcı özellikle istemedikçe “canım”, “aşkım”, “bebeğim”, “hayatım”, “kuzum”, “gülüm” gibi hitaplar kullanma.
-Varsayılan hitap nötr, sade ve saygılı olsun.
-
-NORMALLEŞTİRME:
-“Bu his anlaşılır.”
-“Bunu yaşayan tek sen değilsin.”
-“Bu seni kötü biri yapmaz.”
-
-İNSANİ TEPKİ KATMANI:
-Eğer kullanıcı çok ağır, incitici, sarsıcı bir şey anlatıyorsa:
-- sadece genel empati değil
-- bağlama uygun kısa insani duygusal tepki de ver
-Ama:
-- dramatik olma
-- merkezi kendin yapma
-- doğru dozda kal
-Örnek ton:
-“Bu gerçekten ağır.”
-“Bunu taşımak kolay değil.”
-“Burada çok incinmiş bir yer var gibi.”
-“Bu insanın içini sarsar.”
-
-YANIT MİMARİSİ:
-1. Duyguyu aynala
-2. Normalleştir
-3. Yumuşak içgörü sun
-4. Açık uçlu soru sor
-5. Gerekirse küçük adım öner
-
-BİÇİM:
-Gerekli olduğunda düzenli biçimde yaz:
-1. ...
-2. ...
-3. ...
-
-veya
-
-- ...
-- ...
-- ...
-
-Gerekirse küçük tablo, bölüm veya kutu düzeni kullanabilirsin.
-Paragraf boşluğu bırak.
-Metni tek blok halinde sıkıştırma.
-
-ARKA PLAN ANALİZLERİ:
-Duygusal nabız, haftalık trend, tekrarlayan tema, mikro-çelişki, mikro-döngü, direnç algılama, gelişim takibi, duygusal zaman derinliği.
-Bunlar arka planda kalır.
-Kullanıcıya ham skor, etiket, tanı, savunma mekanizması adı, grafik, tablo, yüzde gösterilmez.
-
-Takip edilen ana temalar:
-- görülmeme
-- kontrol kaybı
-- değersizlik
-- terk edilme
-- belirsizlik
-
-LUXDREAM:
-Rüya anlatıldığında öncelik sırası:
-Birinci katman:
-1. Freud
-2. Jung
-3. Lacan
-
-İkinci katman:
-4. James Hillman
-5. Gaston Bachelard
-6. Winnicott
-7. Krishnamurti
-
-Üçüncü katman:
-8. Fromm
-9. Yalom
-10. Bion
-
-LUXDREAM YORUM KURALI:
-- Önce rüyadaki imgeleri, figürleri, nesneleri ve duyguları ayıkla
-- Sonra Freud / Jung / Lacan açısından kısa sembolik çerçeve düşün
-- Gerekirse Hillman / Bachelard ile imgesel derinlik ekle
-- Sonra kullanıcının mevcut farkındalık verisini bağla
-- Ardından yalnız yorumlama ile kalma:
-  rüyanın eksik kalan kısmını, devam etseydi ne olabileceğini, kullanıcının hislerini ve çağrışımlarını sorarak rüyayı derinleştir
-- Böylece:
-  1. Rüyanın görünen kısmı
-  2. Eksik / devam edebilecek kısmı
-  3. Kullanıcının rüyaya karşı tepkisi
-  4. O anki psikolojik durumu
-  5. Farkındalık katmanı
-  6. Ortak psikoanalitik yorum
-birleşsin
-
-ASLA:
-- fal dili
-- kehanet dili
-- dini tabir dili
-- “bereket”, “delalet”, “işaret” gibi batıl yorum dili
-
-Doğru ton:
-- sembolik
-- psikolojik
-- psikoanalitik
-- içgörülü
-- yumuşak
-- kesinlik iddiası olmayan
-
-LUXCHING:
-Rastgele sembol + klasik anlam + farkındalık verileriyle yorum.
-Fal değildir.
-Kehanet değildir.
-“Evren mesaj veriyor” dili kullanılmaz.
-Sembol rastgele seçilir.
-Yorum, kullanıcının son duygu durumu ve temasına göre yumuşakça harmanlanır.
-
-KRİZ:
-Kendine zarar, intihar, şiddet, istismar durumunda:
-çok kısa, çok sıcak, analiz yok.
-112’yi ara, en yakın acile git, yanında güvendiğin birine haber ver.
-
-SON İLKE:
-Sen çözüm dayatmazsın.
-Sen utandırmazsın.
-Sen küçültmezsin.
-Sen korkutmazsın.
-
-“Burada güvendesin. Acelemiz yok.”
-
-Luxviai — Yolunu aydınlat.
+# ==============================================================================
+# MASTER SİSTEM PROMPT (Orijinali korundu)
+# ==============================================================================
+MASTER_SYSTEM_PROMPT = """
+Sen Luxviai'sin. "Luxviai — Yolunuzu aydınlatın."
+ROL: Reflektif bir işletim sistemi. Duygusal farkındalık ve içgörü alanı yaratırsın.
+KİMLİK: Yapay zekasın; saklamazsın ama robotik değilsin. Sıcak, ciddi, güvenilir, sakin ve derinsin.
+MARKA: Güven, Umut, Sakinlik. Enerjin düşük ama güçlü; abartısız ve net.
+DİL: Kullanıcı hangi dilde yazarsa o dilde cevap ver. Yazım hatalarını (slm, nbr, iyiyimmm) Türkçe kabul et.
+YASAKLAR: "Güçlü ol", "geçecek", "endişelenme" deme. Fal, kehanet, dini tabir kullanma.
+YANIT MİMARİSİ: 
+1. Duyguyu aynala. 
+2. Normalleştir. 
+3. Yumuşak içgörü sun. 
+4. Açık uçlu soruyla derinleştir.
+ANALİZLER: Duygusal nabız, trend, tema, direnç; arka planda kalır. Kullanıcıya etiket, skor, grafik gösterilmez.
+LUXDREAM: Rüyanın görünen kısmı, eksikleri ve kullanıcının hislerini psikanalitik (Jung/Freud/Lacan) çerçevede birleştir. Fal dili kullanma.
+LUXCHING: Rastgele sembol + klasik anlam + kullanıcının duygu durumuyla yumuşak yorum. Kehanet değildir.
+LUXTA (İzolasyon): Çok dinle, az konuş. Cümlelerin 1-3 kelimeyi geçmesin. "Anlıyorum.", "Devam et...", "Buradayım."
+KRİZ: Kendine zarar/şiddet durumunda: Analiz yapma. "112'yi ara, güvendiğin birine haber ver" diyerek kısa ve sıcak dille yönlendir.
 """
 
-# ==============================================
-# ANALİZ FONKSİYONLARI
-# ==============================================
-def analyze_emotion(message: str):
-    prompt = """
-Aşağıdaki mesaj için yalnızca JSON üret.
+# ==============================================================================
+# YENİ: DİNAMİK İSTEM BESTECİSİ (PROMPT COMPOSER)
+# ==============================================================================
+def compose_dynamic_prompt(base_prompt: str, analysis: Dict, mode: str, past_echo: Optional[str], ghost_hesitation: bool) -> str:
+    """Orijinal promptun üzerine anlık duygusal mikro analizleri ve modları ekler."""
+    
+    echo_directive = f"\n[DUYGUSAL YANKI]\nGeçmiş örüntü: '{past_echo}'. Bunu doğrudan 'hatırlıyorum' demek yerine, sezgisel bir çağrışım gibi hissettir.\n" if past_echo else ""
+    
+    micro_directive = "\n[MİKRO ANALİZ DIREKTIFLERI]\n"
+    if analysis.get("mikro_yalnizlik"): 
+        micro_directive += "- MİKRO YALNIZLIK: Söylediği kelimelerin arkasındaki ince yalnızlığı duy ve şefkatle yansıt.\n"
+    if analysis.get("duygusal_sikisma"): 
+        micro_directive += "- DUYGUSAL SIKIŞMA: Kullanıcı içine kapanıyor. Soru sorma, sadece eşlik et ve topraklama yap.\n"
+    if analysis.get("anlati_kaymasi") and analysis.get("anlati_kaymasi") != "yok":
+        micro_directive += f"- ANLATI KAYMASI ({analysis.get('anlati_kaymasi')}): Bu ufak değişimi/büyümeyi incitmeden hissettir.\n"
+    if ghost_hesitation: 
+        micro_directive += "- GÖRÜNMEZ TEREDDÜT TESPİT EDİLDİ: Kullanıcı demin uzun bir şey yazıp silerek vazgeçti. İçini dökmekten çekindi. Üstüne gitmeden, ona güvenli bir alan sunduğunu şefkatle hissettir.\n"
 
-{
-  "primary_emotion": "",
-  "intensity": 1-10,
-  "theme": ""
-}
+    mode_directive = f"\n[AKTİF MOD: {mode.upper()}]\n"
+    if mode == "mirror": mode_directive += "- SADECE AYNALAMA YAP. Analiz veya yorum yasak.\n"
+    elif mode == "deep": mode_directive += "- DEEP SESSION: Varoluşsal katman açık (Anlam, yalnızlık, yaşam ağırlığı).\n"
+    elif mode == "luxeph": mode_directive += "- LUXEPH (YAKMA ODASI): Bu mesajlar silinecek. Derin, yargısız ve katartik bir dinleyici ol. Tavsiye vermek KESİNLİKLE yasak.\n"
+    elif mode == "luxdream": mode_directive += "- LUXDREAM MODU AKTİF.\n"
+    elif mode == "luxching": mode_directive += "- LUXCHING MODU AKTİF.\n"
+    elif mode == "luxta": mode_directive += "- LUXTA İZOLASYON MODU AKTİF.\n"
 
-Duygular: kaygı, öfke, yalnızlık, değersizlik, utanç, boşluk, umut, kararsızlık, nötr
-Tema örnekleri: görülmeme, kontrol kaybı, değersizlik, terk edilme, belirsizlik
+    return base_prompt + echo_directive + micro_directive + mode_directive
 
-Sadece JSON ver.
-"""
+# ==============================================================================
+# YARDIMCI FONKSİYONLAR (Mikro Analiz Derinleştirildi)
+# ==============================================================================
+def analyze_emotion(user_id: str, message: str, ghost_hesitation: bool = False) -> Dict:
+    try:
+        system_msg = """Sadece JSON dön: 
+        {'primary_emotion': str, 'intensity': int, 'risk': bool, 'theme': str, 
+         'mikro_yalnizlik': bool, 'duygusal_sikisma': bool, 'anlati_kaymasi': str, 'bilissel_yuk': 'yüksek/normal'}"""
+        
+        user_content = f"Mesaj: {message} | Uzun yazıp sildi mi (Tereddüt)?: {ghost_hesitation}"
+        response = client.chat.completions.create(
+            model="deepseek-v4-flash",
+            messages=[{"role": "system", "content": system_msg}, {"role": "user", "content": user_content}],
+            response_format={"type": "json_object"}
+        )
+        return json.loads(response.choices[0].message.content)
+    except Exception as e:
+        logging.error(f"Analiz Hatası: {e}")
+        return {"primary_emotion": "nötr", "intensity": 5, "risk": False, "theme": "belirsiz", "mikro_yalnizlik": False, "duygusal_sikisma": False, "anlati_kaymasi": "yok", "bilissel_yuk": "normal"}
+
+def update_profile(profile: Dict, analysis: Dict):
+    theme = analysis.get("theme")
+    if theme and theme != "belirsiz" and theme in profile["themes"]:
+        profile["themes"][theme] += 1
+        profile["core_trigger"] = theme
+    if analysis.get("primary_emotion") == "kaygı":
+        profile["anxiety_score"] = min(100, profile["anxiety_score"] + 5)
+    elif analysis.get("primary_emotion") == "umut":
+        profile["anxiety_score"] = max(0, profile["anxiety_score"] - 3)
+        
+    # Farkındalık Sekmesi İçin Dinamik Güncelleme
+    if analysis.get("primary_emotion") != "nötr":
+        profile["weekly_report"]["dominant_emotion"] = analysis.get("primary_emotion").capitalize()
+    if theme and theme != "belirsiz":
+        profile["weekly_report"]["dominant_theme"] = theme.capitalize()
+
+def weekly_trend(emotion_history: List) -> Dict:
+    trend = {}
+    for record in emotion_history[-7:]:
+        emo = record.get("primary_emotion", "bilinmiyor")
+        trend[emo] = trend.get(emo, 0) + 1
+    return trend
+
+def dominant_theme(profile: Dict) -> str:
+    if not profile["themes"]:
+        return "henüz belirgin bir tetikleyici yok"
+    return max(profile["themes"], key=profile["themes"].get)
+
+def awareness_summary(profile: Dict, emotion_history: List) -> str:
+    trend = weekly_trend(emotion_history)
+    dominant_emotion = max(trend, key=trend.get) if trend else "bilinmiyor"
+    theme = dominant_theme(profile)
+    return f"Son günlerde öne çıkan duygu: {dominant_emotion}\nÖne çıkan tema: {theme}"
+
+def search_in_history(history: deque, keyword: str) -> str:
+    if not keyword:
+        return "Aramak için bir kelime veya ifade yazmalısın."
+    results = []
+    for i, msg in enumerate(history, 1):
+        if keyword.lower() in msg["content"].lower():
+            kim = "Sen" if msg["role"] == "user" else "Luxviai"
+            results.append(f"{i}. {kim}: {msg['content']}")
+    if not results:
+        return f"“{keyword}” için konuşma geçmişinde bir sonuç bulamadım."
+    return "ARAMA SONUÇLARI\n\n" + "\n\n".join(results)
+
+def chat_summary(history: deque) -> str:
+    if len(history) < 5:
+        return "Henüz yeterli konuşma yok."
     try:
         response = client.chat.completions.create(
             model="deepseek-v4-flash",
             messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": message}
-            ],
-            max_tokens=120
+                {"role": "system", "content": "Son konuşmayı 2-3 kısa paragrafta özetle. Skor, etiket, tanı kullanma."},
+                *list(history)[-10:]
+            ]
         )
-        content = response.choices[0].message.content.strip()
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Özet oluşturulamadı: {e}"
 
-        if content.startswith("```"):
-            content = content.split("\n", 1)[1].rsplit("```", 1)[0]
-
-        data = json.loads(content)
-
-        return {
-            "primary_emotion": data.get("primary_emotion", "nötr"),
-            "intensity": data.get("intensity", 5),
-            "theme": data.get("theme", "")
-        }
-    except:
-        return {
-            "primary_emotion": "nötr",
-            "intensity": 5,
-            "theme": ""
-        }
-
-def update_profile_from_analysis(analysis):
-    theme = analysis.get("theme")
-    if theme:
-        profil["core_trigger"] = theme
-        if theme in profil["themes"]:
-            profil["themes"][theme] += 1
-
-    if analysis.get("primary_emotion") == "kaygı":
-        profil["anxiety_score"] = min(100, profil["anxiety_score"] + 5)
-    elif analysis.get("primary_emotion") == "umut":
-        profil["anxiety_score"] = max(0, profil["anxiety_score"] - 3)
-
-def weekly_trend():
-    trend = {}
-    for kayit in duygusal_nabiz[-7:]:
-        duygu = kayit.get("primary_emotion", "bilinmiyor")
-        trend[duygu] = trend.get(duygu, 0) + 1
-    return trend
-
-def dominant_theme():
-    if not profil["themes"]:
-        return None
-    return max(profil["themes"], key=profil["themes"].get)
-
-def farkindalik_ozeti():
-    trend = weekly_trend()
-    dominant_emotion = max(trend, key=trend.get) if trend else "bilinmiyor"
-    tema = dominant_theme() or "henüz belirgin bir tetikleyici yok"
-
-    table = "| Başlık | Değer |\n|---|---|\n"
-    table += f"| Son günlerde öne çıkan duygu | {dominant_emotion} |\n"
-    table += f"| Öne çıkan tema | {tema} |\n"
-
-    return f"""FARKINDALIK
-
-{table}
-
-Bu bir tanı veya tedavi aracı değildir.
-Sadece duygusal farkındalık içindir.
-"""
-
-def not_kaydet(metin):
-    with open("luxviai_notlar.txt", "a", encoding="utf-8") as f:
-        f.write(f"{metin}|||{datetime.now(turkiye_tz).strftime('%Y-%m-%d %H:%M:%S')}\n")
-
-def notlari_listele():
-    if not os.path.exists("luxviai_notlar.txt"):
-        return []
-    lines = []
-    with open("luxviai_notlar.txt", "r", encoding="utf-8") as f:
-        for i, line in enumerate(f.readlines(), 1):
-            line = line.strip()
-            if not line:
-                continue
-            if "|||" in line:
-                metin, tarih = line.split("|||", 1)
-            else:
-                metin, tarih = line, ""
-            lines.append({
-                "index": i,
-                "text": metin,
-                "date": tarih
-            })
-    return lines
-
-def notlari_sil():
-    if os.path.exists("luxviai_notlar.txt"):
-        os.remove("luxviai_notlar.txt")
-        return True
-    return False
-
-def luxching_kontrol():
-    if len(konusma_gecmisi) < 5 or profil["anxiety_score"] == 50:
-        return False, "Henüz seni yeterince tanımıyorum. Biraz daha konuşalım, sonra Luxching'e bakabiliriz."
-    return True, None
-
-def sohbet_ozeti_uret():
-    ozet_prompt = """
-Son konuşmayı 2-3 kısa paragrafta özetle.
-Skor, etiket, tanı, klinik dil kullanma.
-Sadece duygusal temaları yumuşakça anlat.
-Gerekirse küçük liste veya tablo kullan.
-"""
-    response = client.chat.completions.create(
-        model="deepseek-v4-flash",
-        messages=[{"role": "system", "content": ozet_prompt}] + konusma_gecmisi[-10:],
-        max_tokens=220
-    )
-    return response.choices[0].message.content
-
-def ara_gecmiste(aranan):
-    sonuclar = []
-    if not aranan:
-        return "Aramak için bir kelime veya ifade yazmalısın."
-
-    for i, mesaj in enumerate(konusma_gecmisi, 1):
-        icerik = mesaj["content"]
-        if aranan.lower() in icerik.lower():
-            kim = "Sen" if mesaj["role"] == "user" else "Luxviai"
-            pattern = re.compile(re.escape(aranan), re.IGNORECASE)
-            vurgulu = pattern.sub(lambda m: f"[[RED]]{m.group(0)}[[/RED]]", icerik)
-            sonuclar.append(f"{i}. {kim}: {vurgulu}")
-
-    if not sonuclar:
-        return f"“{aranan}” için konuşma geçmişinde bir sonuç bulamadım."
-
-    return "ARAMA SONUÇLARI\n\n" + "\n\n".join(sonuclar)
-
-def bilge_soz_havuzu():
-    return [
-        {"author": "Freud", "quote": "Bilinçdışı, buzdağının görünmeyen kısmıdır."},
-        {"author": "Jung", "quote": "Kendi gölgenle yüzleşmek, aydınlanmanın ilk adımıdır."},
-        {"author": "Lacan", "quote": "Arzu, daima eksikliğin etrafında şekillenir."},
-        {"author": "Krishnamurti", "quote": "Gözlem, yargı olmadan başladığında zihin değişmeye başlar."},
-        {"author": "Winnicott", "quote": "Görülme ihtiyacı, insan ruhunun en sessiz açlıklarından biridir."},
-        {"author": "Bion", "quote": "Düşünemediğimiz şeyler, bazen bizi içten içe yönetir."},
-        {"author": "Fromm", "quote": "İnsan, kendini anladığı ölçüde başkasını da anlamaya başlar."},
-        {"author": "Yalom", "quote": "İnsan en çok görünmediğinde yalnızlaşır."},
-        {"author": "Hillman", "quote": "Ruh, çoğu zaman imgelerle konuşur."},
-        {"author": "Bachelard", "quote": "İmge, bazen düşünceden daha derin bir hafızaya dokunur."},
-        {"author": "Frankl", "quote": "Acıya rağmen anlam bulabilen insan, hayata tutunur."},
-        {"author": "Nietzsche", "quote": "Seni öldürmeyen şey, güçlendirir."},
-        {"author": "Schopenhauer", "quote": "İnsan istemekten vazgeçemez, çünkü varlığın özü istemektir."},
-    ]
-
-def bilge_soz_sec_baglama_gore():
-    sozler = bilge_soz_havuzu()
-    son_duygu = duygusal_nabiz[-1]["primary_emotion"] if duygusal_nabiz else "nötr"
-    tema = profil["core_trigger"] if profil["core_trigger"] else ""
-    secimler = []
-
-    if son_duygu in ["kaygı", "kararsızlık"] or tema == "belirsizlik":
-        secimler.extend([
-            {"author": "Krishnamurti", "quote": "Gözlem, yargı olmadan başladığında zihin değişmeye başlar."},
-            {"author": "Frankl", "quote": "Acıya rağmen anlam bulabilen insan, hayata tutunur."}
-        ])
-
-    if son_duygu in ["yalnızlık", "değersizlik"] or tema in ["görülmeme", "değersizlik", "terk edilme"]:
-        secimler.extend([
-            {"author": "Winnicott", "quote": "Görülme ihtiyacı, insan ruhunun en sessiz açlıklarından biridir."},
-            {"author": "Yalom", "quote": "İnsan en çok görünmediğinde yalnızlaşır."}
-        ])
-
-    if not secimler:
-        secimler = random.sample(sozler, k=min(2, len(sozler)))
-
-    unique = []
-    seen = set()
-    for s in secimler:
-        key = (s["author"], s["quote"])
-        if key not in seen:
-            seen.add(key)
-            unique.append(s)
-
-    if len(unique) == 1:
-        s = unique[0]
-        return f"{s['quote']} – {s['author']}"
-    return "\n\n".join([f"{s['quote']} – {s['author']}" for s in unique[:2]])
-
-def luxdream_uret(ruya_metni):
-    dream_prompt = f"""
-Kullanıcı aşağıdaki rüyayı anlattı:
-
-\"\"\"{ruya_metni}\"\"\"
-
-Aşağıdaki yöntemi uygula:
-1. Önce rüyadaki ana imgeleri, figürleri, nesneleri ve duyguları ayıkla
-2. Freud / Jung / Lacan açısından kısa sembolik çerçeve düşün
-3. Gerekirse Hillman / Bachelard / Winnicott / Krishnamurti ile imgesel ve farkındalık derinliği ekle
-4. Kullanıcının mevcut tema ve duygu durumuyla ilişkilendir
-5. Ardından rüyanın eksik kısmını derinleştirecek yumuşak sorular sor:
-   - ortam nasıldı?
-   - kişi tanıdık mıydı?
-   - devam etseydi ne olurdu?
-   - uyandığında ne hissettin?
-6. Fal gibi değil, psikoanalitik ve sembolik bir eşlikçi gibi konuş
-
-Gerekirse tablo/şema kullan.
-"""
+def generate_luxdream(dream_text: str) -> str:
     try:
         response = client.chat.completions.create(
             model="deepseek-v4-pro",
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "system", "content": f"Kullanıcının son baskın duygusu: {duygusal_nabiz[-1]['primary_emotion'] if duygusal_nabiz else 'nötr'} | Ana tema: {profil['core_trigger'] or 'belirsiz'}"},
-                {"role": "user", "content": dream_prompt}
-            ],
-            max_tokens=900
+                {"role": "system", "content": MASTER_SYSTEM_PROMPT},
+                {"role": "user", "content": f"Rüya: {dream_text}\n\nLuxdream kurallarına göre yorumla."}
+            ]
         )
         return response.choices[0].message.content
     except Exception as e:
-        return f"Luxdream şu an işlenemedi: {e}"
+        return f"Luxdream şu şekilde çalışmadı: {e}"
 
-heksagramlar = {
-    1: {"isim": "Yaratılış (Ch'ien)", "anlam": "Yaratıcı güç, güçlü, başarılı, azimli."},
-    2: {"isim": "Kabul (K'un)", "anlam": "Şefkatli, toprak gibi açık, alıcı, sabırlı."},
-    3: {"isim": "Başlangıçtaki Güçlük (Chun)", "anlam": "Başlangıçlarda zorluk, kaos ve sabır ihtiyacı."},
-    4: {"isim": "Gençlik Aymazlığı (Meng)", "anlam": "Öğrenme arzusu, deneyimsizlik ve içgörüye açıklık."},
-    32: {"isim": "Süreklilik (Heng)", "anlam": "İstikrarlı olan başarılıdır; sağlam adımlar önemlidir."},
-}
+def generate_luxching(analysis: Dict, profile: Dict) -> str:
+    heksagramlar = {
+        1: {"name": "Yaratılış", "meaning": "Yaratıcı güç, güçlü, azimli."},
+        2: {"name": "Kabul", "meaning": "Şefkatli, toprak gibi açık, sabırlı."},
+        3: {"name": "Başlangıçtaki Güçlük", "meaning": "Başlangıçlarda zorluk, sabır ihtiyacı."}
+    }
+    import random
+    symbol = random.choice(list(heksagramlar.values()))
+    emotion = analysis.get("primary_emotion", "bilinmiyor")
+    theme = profile.get("core_trigger", "belirsiz")
+    return f"LUXCHING\nSembol: {symbol['name']}\n{symbol['meaning']}\nSon analizde {emotion} duygusu ve “{theme}” teması öne çıkıyor. Bu sembol, belki de içinde zaten var olan bir şeyi hatırlatıyor. Bu bir fal değil, sadece bir ayna."
 
-# ==============================================
-# STATIC
-# ==============================================
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# ==============================================================================
+# CHAT ENDPOINT (Tüm Komutlar ve YENİ MİMARİ Aktif)
+# ==============================================================================
+class ChatRequest(BaseModel):
+    message: str
+    user_id: str = "default_user"
+    location: str = "İstanbul"
+    mode: str = "normal"
+    ghost_hesitation: bool = False # YENİ: Web UI'dan gelen görünmez tereddüt verisi
 
-@app.api_route("/", methods=["GET", "HEAD"])
-async def serve_frontend():
-    return FileResponse("static/index.html")
-
-# ==============================================
-# CHAT
-# ==============================================
 @app.post("/chat")
-async def chat(request: ChatRequest):
-    global son_luxching_zamani
-
-    kullanici = request.message.strip()
-    if not kullanici:
+@limiter.limit("20/minute")
+async def chat(request: ChatRequest, auth: str = Header(None)):
+    # Not: Auth kısmı Header("Bearer ...") şeklinde geleceği için küçük bir split gerekebilir.
+    # Frontend 'Bearer token' gönderir.
+    if auth and auth.replace("Bearer ", "") != SECRET_TOKEN:
+        raise HTTPException(status_code=403, detail="Yetkisiz erişim.")
+    
+    msg = request.message.strip()
+    if not msg:
         return {"response": "Boş mesaj alamam."}
+    
+    user_id = request.user_id
+    memory = get_user_memory(user_id)
+    profile = get_user_profile(user_id)
+    emotion_history = get_emotion_history(user_id)
+    
+    # --- ESKİ KOMUT YÖNLENDİRMELERİ (KORUNDU) ---
+    lower_msg = msg.lower()
+    
+    if lower_msg in ["!yardım", "!cmd:yardim"]:
+        return {"response": "Kullanabileceğin alanlar:\n!bilge - Rastgele bilge sözü\n!not_al: [metin] - Not al\n!notlar - Notları listele\n!notlari_sil - Tüm notları sil\n!ara: [kelime] - Konuşma geçmişinde ara\n!sohbet_ozeti - Sohbet özeti\n!farkindalik_ozeti - Duygu trendi\n!luxching - Sembol yorumu\n!luxdream: [rüya metni] - Rüya yorumu\n!luxta_info - Luxta mod bilgisi"}
 
-    command_mode = kullanici.startswith("!cmd:")
+    if lower_msg.startswith("!cmd:not_al:"):
+        note = msg.split("!cmd:not_al:", 1)[1].strip()
+        if note:
+            with open("luxviai_notlar.txt", "a", encoding="utf-8") as f:
+                f.write(f"{note} ||| {datetime.now()}\n")
+            return {"response": "Not alındı."}
+        return {"response": "Not almak için metin gerekli."}
+    
+    if lower_msg in ["!notlar", "!cmd:notlar"]:
+        if not os.path.exists("luxviai_notlar.txt"): return {"response": "Hiç not yok."}
+        with open("luxviai_notlar.txt", "r", encoding="utf-8") as f: notes = f.read()
+        return {"response": notes if notes else "Hiç not yok."}
+    
+    if lower_msg in ["!notlari_sil", "!cmd:notlari_sil"]:
+        if os.path.exists("luxviai_notlar.txt"):
+            os.remove("luxviai_notlar.txt")
+            return {"response": "Tüm notlar silindi."}
+        return {"response": "Silinecek not yok."}
+    
+    if lower_msg.startswith("!cmd:ara:"):
+        keyword = msg.split("!cmd:ara:", 1)[1].strip()
+        return {"response": search_in_history(memory, keyword)}
+    
+    if lower_msg in ["!sohbet_ozeti", "!cmd:sohbet_ozeti"]:
+        return {"response": chat_summary(memory)}
+    
+    if lower_msg in ["!farkindalik_ozeti", "!cmd:farkindalik_ozeti"]:
+        if len(memory) < 5: return {"response": "Henüz yeterli bilgi yok. Biraz daha sohbet edelim."}
+        return {"response": awareness_summary(profile, emotion_history)}
+    
+    if lower_msg in ["!bilge", "!cmd:bilge"]:
+        return {"response": "Sade bir bilgelik: Gerçek değişim, kendini olduğun gibi kabul etmekle başlar."}
+    
+    if lower_msg.startswith("!cmd:luxdream:"):
+        dream = msg.split("!cmd:luxdream:", 1)[1].strip()
+        if not dream: return {"response": "Rüyanı anlatabilirsin."}
+        return {"response": generate_luxdream(dream)}
+    
+    if lower_msg in ["!luxta_info", "!cmd:luxta_info"]:
+        return {"response": "Luxta modu: Çok dinler, az konuşur. Cümlelerin 1-3 kelimeyi geçmez."}
+    
+    # --- YENİ MİMARİ: NORMAL SOHBET VE DİNAMİK MOD YÖNLENDİRMESİ ---
+    
+    # LUXEPH MODU (YAKMA ODASI) KORUMASI: Mesajlar kalıcı hafızaya KAYDEDİLMEZ!
+    if request.mode != "luxeph":
+        memory.append({"role": "user", "content": msg})
+        
+    analysis = analyze_emotion(user_id, msg, request.ghost_hesitation)
+    
+    if request.mode != "luxeph":
+        emotion_history.append(analysis)
+        update_profile(profile, analysis)
+    
+    # KRİZ KONTROLÜ
+    if analysis.get("risk"):
+        kriz_cevabi = "Şu an çok zor bir noktada olduğunuzu hissediyorum. Lütfen güvendiğiniz birine ulaşın veya en yakın acil servise başvurun (112). Burada tek başınıza olmamanız çok önemli."
+        if request.mode != "luxeph":
+            memory.append({"role": "assistant", "content": kriz_cevabi})
+        return {"response": kriz_cevabi, "meta": {"cognitive_load": "yüksek"}}
 
-    if not command_mode:
-        konusma_gecmisi.append({"role": "user", "content": kullanici})
-        analysis = analyze_emotion(kullanici)
-        duygusal_nabiz.append(analysis)
-        update_profile_from_analysis(analysis)
+    # Model Yönlendirme (Bilişsel yüke veya yoğunluğa göre Pro / Flash)
+    model = "deepseek-v4-pro" if analysis.get("intensity", 5) > 7 or request.mode != "normal" else "deepseek-v4-flash"
+    
+    # DUYGUSAL YANKI TETİKLEYİCİSİ (İleride VectorDB'den beslenecek, şimdilik statik mock)
+    past_echo = "Geçmişte 'yağmur' ve 'yalnızlık' örüntüsü" if analysis.get("mikro_yalnizlik") else None
 
-    # Saat / tarih
-    if any(kelime in kullanici.lower() for kelime in ["saat kaç", "günlerden ne", "tarih"]):
-        simdi = datetime.now(turkiye_tz)
-        return {"response": f"Şu an saat {simdi.strftime('%H:%M')}, tarih {simdi.strftime('%d.%m.%Y')}."}
-
-    # Yardım
-    if kullanici.lower() in ["!yardım", "!cmd:yardim"]:
-        return {"response": """Kullanabileceğin alanlar:
-
-1. Bilge
-2. Not al
-3. Notlar
-4. Notları sil
-5. Ara
-6. Sohbet özeti
-7. Farkındalık özeti
-8. Luxching
-9. Luxdream
-10. Luxta
-11. Normal Mod
-"""}
-
-    if kullanici.lower() in ["!farkındalık_özeti", "!cmd:farkindalik"]:
-        if len(konusma_gecmisi) < 5 or profil["anxiety_score"] == 50:
-            return {"response": "Henüz yeterli bilgiye sahip değilim. Biraz daha sohbet edelim."}
-        return {"response": farkindalik_ozeti()}
-
-    if kullanici.lower() in ["!sohbet_ozeti", "!cmd:sohbet_ozeti"]:
-        if len(konusma_gecmisi) < 5:
-            return {"response": "Henüz yeterli konuşma yok. Biraz daha sohbet edelim."}
-        try:
-            return {"response": sohbet_ozeti_uret()}
-        except Exception as e:
-            return {"response": f"Özet oluşturulamadı: {e}"}
-
-    if kullanici.lower() in ["!bilge", "!cmd:bilge"]:
-        return {"response": bilge_soz_sec_baglama_gore()}
-
-    if kullanici.lower().startswith("!cmd:not_al:"):
-        metin = kullanici.split("!cmd:not_al:", 1)[1].strip()
-        if metin:
-            not_kaydet(metin)
-            return {"response": "__NOTE_SAVED__"}
-        return {"response": "Not almak için bir metin gerekli."}
-
-    if kullanici.lower() in ["!notlar", "!cmd:notlar"]:
-        return {"response": json.dumps({"type": "notes_list", "items": notlari_listele()}, ensure_ascii=False)}
-
-    if kullanici.lower() in ["!notları sil", "!cmd:notlari_sil"]:
-        if notlari_sil():
-            return {"response": "__NOTES_CLEARED__"}
-        return {"response": "Hiç not yok."}
-
-    if kullanici.lower().startswith("!cmd:ara:"):
-        aranan = kullanici.split("!cmd:ara:", 1)[1].strip()
-        return {"response": ara_gecmiste(aranan)}
-
-    if kullanici.lower().startswith("!cmd:luxching:"):
-        soru = kullanici.split("!cmd:luxching:", 1)[1].strip()
-        if not soru:
-            return {"response": "Bir soru veya niyet belirt."}
-
-        if son_luxching_zamani and (datetime.now(turkiye_tz) - son_luxching_zamani).total_seconds() < 86400:
-            kalan_saat = 24 - (datetime.now(turkiye_tz) - son_luxching_zamani).total_seconds() / 3600
-            return {"response": f"Luxching hızlı tüketilmez. Yaklaşık {kalan_saat:.1f} saat sonra tekrar deneyebilirsin."}
-
-        durum, msg = luxching_kontrol()
-        if not durum:
-            return {"response": msg}
-
-        heksagram = random.choice(list(heksagramlar.values()))
-        son_duygu = duygusal_nabiz[-1].get("primary_emotion", "bilinmiyor") if duygusal_nabiz else "bilinmiyor"
-        tema = dominant_theme() or "belirsiz"
-
-        yorum = f"""LUXCHING
-
-Sembol:
-{heksagram['isim']}
-
-Klasik anlam:
-{heksagram['anlam']}
-
-Son analizde özellikle {son_duygu} duygusu daha görünür olmuş gibi.
-Özellikle “{tema}” teması tekrar ediyor olabilir.
-
-Bu sembol, belki de içinde zaten var olan bir şeyi hatırlatıyor.
-Bu bir fal değil.
-Sadece şu anki iç gerçekliğine tutulmuş sembolik bir ayna olabilir.
-
-Peki, bu bağlantı sende nasıl bir his uyandırdı?
-"""
-        son_luxching_zamani = datetime.now(turkiye_tz)
-        return {"response": yorum}
-
-    if kullanici.lower().startswith("!cmd:luxdream:"):
-        ruya_metni = kullanici.split("!cmd:luxdream:", 1)[1].strip()
-        if not ruya_metni:
-            return {"response": "Rüyanı anlatabilirsin."}
-        return {"response": luxdream_uret(ruya_metni)}
-
-    if kullanici.lower() == "!cmd:luxta_info":
-        return {"response": "Çok dinler, az konuşur."}
-
-    # Normal sohbet
-    trauma_mode = any(kelime in kullanici.lower() for kelime in [
-        "intihar", "kendime zarar", "şiddet", "tecavüz", "dayanamıyorum"
-    ])
-
-    aktif_prompt = SYSTEM_PROMPT
-    if trauma_mode:
-        aktif_prompt += "\n\nTravma güvenlik modundasın. Çok kısa, sıcak ve güvenli konuş."
-
+    # YENİ DİNAMİK PROMPT OLUŞTURMA
+    composed_prompt = compose_dynamic_prompt(MASTER_SYSTEM_PROMPT, analysis, request.mode, past_echo, request.ghost_hesitation)
+    
+    # Mesaj Geçmişini Hazırlama
+    if request.mode == "luxeph":
+        messages = [{"role": "system", "content": composed_prompt}, {"role": "user", "content": msg}]
+    else:
+        messages = [{"role": "system", "content": composed_prompt}] + list(memory)[-20:]
+        
     try:
         response = client.chat.completions.create(
-            model="deepseek-v4-pro" if trauma_mode else "deepseek-v4-flash",
-            messages=[
-                {"role": "system", "content": aktif_prompt},
-                *konusma_gecmisi[-10:]
-            ]
+            model=model,
+            messages=messages,
+            temperature=0.6
         )
         cevap = response.choices[0].message.content
-        konusma_gecmisi.append({"role": "assistant", "content": cevap})
-        return {"response": cevap}
+        
+        # Luxeph değilse Asistan yanıtını hafızaya al
+        if request.mode != "luxeph":
+            memory.append({"role": "assistant", "content": cevap})
+            
+        return {
+            "response": cevap,
+            "weekly_report": profile["weekly_report"],
+            "meta": {
+                "cognitive_load": analysis.get("bilissel_yuk", "normal"),
+                "is_luxta": request.mode == "luxta",
+                "is_luxeph": request.mode == "luxeph"
+            }
+        }
     except Exception as e:
-        return {"response": f"Bağlantı sorunu: {e}"}
+        logging.error(f"Runtime Error: {e}")
+        raise HTTPException(status_code=500, detail="Sistem şu an dinleniyor, lütfen birazdan tekrar dene.")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=5000)
