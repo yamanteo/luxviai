@@ -5,3 +5,4 @@ pydantic
 pytz
 python-multipart
 slowapi
+dotenv
