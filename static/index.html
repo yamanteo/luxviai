@@ -2,1014 +2,506 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Luxviai – Dijital Bilinç Alanı</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Luxviai — Light your way!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        input, textarea, .selectable { -webkit-user-select: auto; user-select: auto; }
+        
+        body { font-family: 'Inter', sans-serif; background-color: #0b1120; color: #94a3b8; overflow: hidden; margin: 0; }
+        
+        /* Luxeph Güvenlik Karartması (Ekran Görüntüsü Koruması) */
+        #security-blur { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity 0.1s; display: flex; align-items: center; justify-content: center; color: #facc15; font-size: 1.2rem; letter-spacing: 0.2em; text-transform: uppercase; }
+        body.blurred #security-blur { opacity: 1; pointer-events: all; }
 
-        html, body {
-            background: #000;
-            font-family: 'Segoe UI', 'SF Pro Text', system-ui, -apple-system, Roboto, sans-serif;
-            height: 100%;
-            overflow: hidden;
-        }
+        /* Piksel Arka Plan Kanvası (Geçici Yankı) */
+        #pixel-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 150px; pointer-events: none; z-index: 0; opacity: 0.6; }
 
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+        /* Sidebar & Layout */
+        #sidebar { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); transform: translateX(-100%); width: 300px; z-index: 40; border-right: 1px solid #1e293b; }
+        #sidebar.open { transform: translateX(0); }
+        .menu-divider { width: 4px; background: transparent; position: absolute; left: 0; height: 100%; top: 0; z-index: 39; }
+        .menu-divider:hover + #main-wrapper { margin-left: 300px; } /* Hover efekti simülasyonu */
 
-        .app {
-            width: 100%;
-            height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            background: #000;
-            position: relative;
-        }
+        #main-wrapper { transition: all 0.5s; z-index: 10; position: relative; }
+        #chat-box { scroll-behavior: smooth; }
+        
+        /* Mesaj Balonları */
+        .user-msg { background-color: #1e293b; color: #e2e8f0; border: 1px solid #334155; }
+        .ai-msg { color: #94a3b8; line-height: 1.8; }
+        .msg-animation { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(10px); }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        
+        /* Luxeph Toz Efekti (Piksel Dağılımı) */
+        .dust-fade { animation: dissolve 2s forwards; pointer-events: none; }
+        @keyframes dissolve { 0% { opacity: 1; filter: blur(0px); transform: translateY(0); } 100% { opacity: 0; filter: blur(8px); transform: translateY(30px) scale(0.95); } }
 
-        .header {
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            padding: 18px 20px 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #1e1e1e;
-            background: #000;
-            flex-shrink: 0;
-        }
+        /* Topraklama (Grounding) Dimmer */
+        .dimmed-history .msg-container:not(:last-child) { opacity: 0.2; filter: blur(1.5px); transition: all 1.5s ease; }
+        
+        /* Luxta Modu UI */
+        .luxta-mode .msg-container:not(:last-child) { opacity: 0 !important; transition: opacity 1s; }
+        .luxta-mode #header-bar { opacity: 0; transition: opacity 0.5s; }
+        .luxta-mode #header-bar.visible { opacity: 1; }
+        .luxta-mode { background-color: #000 !important; }
+        .luxta-mode #footer-bg { background: transparent; }
+        .luxta-mode #send-btn { opacity: 0.3; }
 
-        .logo {
-            text-align: center;
-            flex: 1;
-        }
+        /* Luxdream Lucid Efektleri (Simli Parıltı) */
+        .luxdream-mode { background: radial-gradient(circle at center, #111827 0%, #0b1120 100%); }
+        .luxdream-mode::after { content: ''; position: absolute; top:0; left:0; width:100%; height:100%; background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.04"/></svg>'); pointer-events: none; z-index: 1; mix-blend-mode: overlay; animation: lucidShimmer 6s infinite alternate; }
+        @keyframes lucidShimmer { 0% { opacity: 0.02; } 100% { opacity: 0.05; } }
+        .luxdream-mode .ai-msg { animation: subtleWave 4s ease-in-out infinite; }
+        @keyframes subtleWave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); color: #cbd5e1; } }
 
-        .logo h1 {
-            font-size: 1.65rem;
-            letter-spacing: 4px;
-            background: linear-gradient(135deg, #f5a623, #e6b422);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
+        /* Luxdream Gönderim Neon Işığı */
+        .neon-border { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 1rem; pointer-events: none; opacity: 0; z-index: -1; }
+        .neon-border.active { animation: neonRun 2s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+        @keyframes neonRun { 0% { box-shadow: 0 0 0px 0px rgba(250, 204, 21, 0); opacity: 1; } 50% { box-shadow: 0 0 15px 2px rgba(250, 204, 21, 0.8); opacity: 1; } 100% { box-shadow: 0 0 0px 0px rgba(250, 204, 21, 0); opacity: 0; } }
 
-        .logo p {
-            font-size: 0.72rem;
-            color: #8d8d8d;
-            letter-spacing: 1.2px;
-        }
+        /* Uzun Bas (Long Press) Yüzen Menüsü */
+        #long-press-menu { display: none; position: absolute; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border: 1px solid #334155; border-radius: 12px; padding: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 100; flex-direction: row; gap: 4px; }
+        #long-press-menu.active { display: flex; animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .lp-btn { color: #cbd5e1; font-size: 11px; padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+        .lp-btn:hover { background: #334155; color: #fff; }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.9) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
-        .menu-btn {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            width: 30px;
-            height: 28px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 4px;
-            flex-shrink: 0;
-        }
+        /* Detay Fısıltısı (Sözlük/Açıklama) */
+        .whisper-detail { font-size: 10px; color: #64748b; margin-top: 6px; font-style: italic; opacity: 0; animation: fadeIn 1s forwards; padding-left: 8px; border-left: 1px solid #334155; }
 
-        .menu-line {
-            width: 18px;
-            height: 2px;
-            background-color: #f5a623;
-            border-radius: 2px;
-        }
+        /* Mod Merkez Geçiş Animasyonu */
+        #center-mode-alert { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2rem; font-weight: 300; letter-spacing: 0.3em; pointer-events: none; opacity: 0; z-index: 9999; }
+        .alert-anim { animation: colorShift 2s forwards; }
+        @keyframes colorShift { 0% { color: #ef4444; opacity: 0; transform: translate(-50%, -40%); } 25% { color: #22c55e; opacity: 1; transform: translate(-50%, -50%); } 50% { color: #3b82f6; opacity: 1; } 75% { color: #facc15; opacity: 1; } 100% { color: #facc15; text-shadow: 0 0 20px rgba(250,204,21,0.6); opacity: 0; transform: translate(-50%, -50%); filter: blur(4px); } }
 
-        .menu-panel {
-            display: none;
-            background: #090909;
-            padding: 14px 16px;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: flex-start;
-            align-items: center;
-            border-bottom: 1px solid #161616;
-            z-index: 30;
-        }
+        /* Dil Geçişi Matrix Glitch Efekti */
+        .glitch-text { animation: glitch 0.5s linear; }
+        @keyframes glitch { 0% { opacity: 0; letter-spacing: 0.5em; } 50% { opacity: 0.5; letter-spacing: 0.1em; color: #facc15; } 100% { opacity: 1; letter-spacing: 0.05em; } }
 
-        .menu-panel button {
-            background: #111;
-            border: 1px solid #222;
-            padding: 7px 14px;
-            border-radius: 999px;
-            color: #f5a623;
-            font-weight: 500;
-            cursor: pointer;
-            font-size: 0.76rem;
-        }
-
-        .menu-panel button:hover {
-            background: #1a1a1a;
-        }
-
-        .lang-selector {
-            background: #111;
-            border: 1px solid #222;
-            padding: 7px 14px;
-            border-radius: 999px;
-            color: #fff;
-            font-weight: 500;
-            cursor: pointer;
-            font-size: 0.76rem;
-            margin-left: auto;
-        }
-
-        .lang-selector:hover {
-            background: #191919;
-        }
-
-        .chat-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 18px 16px 14px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            background: #000;
-            min-height: 0;
-            scroll-behavior: smooth;
-        }
-
-        .chat-area::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .chat-area::-webkit-scrollbar-thumb {
-            background: #222;
-            border-radius: 10px;
-        }
-
-        .user-msg {
-            align-self: flex-end;
-            background: rgba(60, 60, 65, 0.45);
-            border-radius: 18px;
-            padding: 11px 15px;
-            color: #fff;
-            max-width: 82%;
-            font-size: 0.94rem;
-            line-height: 1.65;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .lux-msg {
-            align-self: flex-start;
-            color: #fff;
-            max-width: 96%;
-            width: auto;
-            font-size: 0.96rem;
-            line-height: 1.9;
-            white-space: pre-wrap;
-            word-break: break-word;
-            padding-right: 4px;
-        }
-
-        .lux-dash {
-            color: #f5a623;
-            margin-right: 6px;
-        }
-
-        .lux-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-            background: #0b0b0b;
-            color: #ddd;
-            margin: 12px 0;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .lux-table th,
-        .lux-table td {
-            border: 1px solid #2a2a2a;
-            padding: 10px;
-            text-align: left;
-            vertical-align: top;
-            word-wrap: break-word;
-            line-height: 1.6;
-        }
-
-        .lux-table th {
-            background: #111;
-            color: #f5a623;
-            font-weight: 600;
-        }
-
-        .lux-card {
-            background: #0b0b0b;
-            border-left: 4px solid #f5a623;
-            border-radius: 16px;
-            width: 100%;
-            margin: 8px 0;
-        }
-
-        .lux-card-header {
-            padding: 12px 18px;
-            font-weight: 700;
-            color: #f5a623;
-            border-bottom: 1px solid #1e1e1e;
-            font-size: 0.75rem;
-            letter-spacing: 1px;
-        }
-
-        .lux-card-content {
-            padding: 15px 18px;
-            color: #d0d0d0;
-            line-height: 1.85;
-            font-size: 0.9rem;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .highlight-red {
-            color: #ff4d4d;
-            font-weight: 700;
-        }
-
-        .message-actions {
-            margin-top: 10px;
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .continue-btn {
-            background: #f5a623;
-            color: #000;
-            border: none;
-            padding: 7px 12px;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            cursor: pointer;
-            font-weight: 700;
-        }
-
-        .continue-btn:hover {
-            background: #e6b422;
-        }
-
-        .input-wrapper {
-            position: sticky;
-            bottom: 0;
-            z-index: 20;
-            display: flex;
-            justify-content: center;
-            padding: 12px 14px max(12px, env(safe-area-inset-bottom));
-            background: #000;
-            border-top: 1px solid #151515;
-            flex-shrink: 0;
-        }
-
-        .input-area {
-            width: 100%;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            background: #0c0c0c;
-            padding: 8px 10px 8px 14px;
-            border-radius: 999px;
-            border: 1px solid #202020;
-        }
-
-        #messageInput {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: #f5f5f5;
-            font-size: 0.92rem;
-            outline: none;
-            min-width: 0;
-        }
-
-        #messageInput::placeholder {
-            color: #666;
-        }
-
-        .action-btn {
-            background: #f5a623;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 999px;
-            color: #000;
-            font-weight: 700;
-            cursor: pointer;
-            font-size: 0.82rem;
-            white-space: nowrap;
-        }
-
-        .action-btn:hover {
-            background: #e6b422;
-        }
-
-        .mic-btn {
-            background: #111;
-            border: 1px solid #262626;
-            color: #fff;
-            border-radius: 999px;
-            padding: 8px 12px;
-            cursor: pointer;
-            font-size: 0.82rem;
-            white-space: nowrap;
-        }
-
-        .mic-btn:hover {
-            background: #1a1a1a;
-        }
-
-        .mic-btn.recording {
-            border-color: #f5a623;
-            color: #f5a623;
-        }
-
-        .prompt-overlay {
-            width: calc(100% - 28px);
-            margin: 8px auto;
-            display: flex;
-            gap: 10px;
-            background: #0b0b0b;
-            padding: 10px 14px;
-            border-radius: 18px;
-            border: 1px solid #1b1b1b;
-        }
-
-        .small-input {
-            flex: 1;
-            background: #050505;
-            border: 1px solid #2a2a2a;
-            padding: 8px 12px;
-            border-radius: 999px;
-            color: white;
-        }
-
-        .small-input:focus {
-            outline: none;
-            border-color: #f5a623;
-        }
-
-        .lang-popup {
-            position: absolute;
-            right: 16px;
-            top: 72px;
-            background: #0c0c0c;
-            border: 1px solid #1d1d1d;
-            border-radius: 14px;
-            z-index: 1000;
-            max-height: 300px;
-            overflow-y: auto;
-            min-width: 170px;
-            padding: 8px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.45);
-        }
-
-        .lang-popup button {
-            display: block;
-            width: 100%;
-            background: #0f0f0f;
-            color: #fff;
-            border: 1px solid #222;
-            margin: 4px 0;
-            padding: 10px 12px;
-            text-align: left;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 0.82rem;
-        }
-
-        .lang-popup button:hover {
-            background: #191919;
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                padding: 14px 14px 10px 14px;
-            }
-
-            .logo h1 {
-                font-size: 1.22rem;
-                letter-spacing: 2px;
-            }
-
-            .logo p {
-                font-size: 0.66rem;
-                letter-spacing: 0.8px;
-            }
-
-            .chat-area {
-                padding: 14px 12px 12px 12px;
-                gap: 14px;
-            }
-
-            .lux-msg,
-            .lux-card,
-            .lux-table {
-                max-width: 100%;
-                width: 100%;
-            }
-
-            .user-msg {
-                max-width: 88%;
-                font-size: 0.92rem;
-                line-height: 1.7;
-            }
-
-            .lux-msg {
-                font-size: 0.95rem;
-                line-height: 1.9;
-            }
-
-            .input-wrapper {
-                padding: 10px 10px max(10px, env(safe-area-inset-bottom));
-            }
-
-            .input-area {
-                width: 100%;
-                gap: 8px;
-                padding: 8px 8px 8px 12px;
-            }
-
-            .action-btn,
-            .mic-btn {
-                font-size: 0.78rem;
-                padding: 8px 10px;
-            }
-        }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
     </style>
 </head>
-<body>
-<div class="app">
-    <div class="header">
-        <div class="logo">
-            <h1>L U X V I A I</h1>
-            <p>Yolunu aydınlat</p>
-        </div>
-        <button class="menu-btn" id="menuToggle">
-            <div class="menu-line"></div>
-            <div class="menu-line"></div>
-            <div class="menu-line"></div>
-        </button>
-    </div>
+<body oncontextmenu="return false;">
 
-    <div class="menu-panel" id="menuPanel">
-        <button data-cmd="!bilge" data-key="wise">Bilge</button>
-        <button data-cmd="!not al" data-key="note">Not al</button>
-        <button data-cmd="!notlar" data-key="notes">Notlar</button>
-        <button data-cmd="!notları sil" data-key="delnotes">Notları sil</button>
-        <button data-cmd="!ara" data-key="search">Ara</button>
-        <button data-cmd="!sohbet_ozeti" data-key="summary">Özet</button>
-        <button data-cmd="!farkındalık_özeti" data-key="awareness">Farkındalık</button>
-        <button data-cmd="!luxching" data-key="luxching">Luxching</button>
-        <button class="lang-selector" id="langBtn">Dil</button>
-    </div>
+    <!-- Luxeph Gizlilik Kalkanı -->
+    <div id="security-blur">GÜVENLİK ALANI</div>
+    
+    <!-- Geçici Yankı (Piksel Semboller) -->
+    <canvas id="pixel-canvas"></canvas>
 
-    <div class="chat-area" id="chatArea">
-        <div class="lux-msg" id="welcomeMsg"></div>
-    </div>
+    <!-- Merkez Mod Uyarı Metni -->
+    <div id="center-mode-alert">LUXDREAM</div>
 
-    <div class="input-wrapper">
-        <div class="input-area">
-            <input type="text" id="messageInput" placeholder="Yolunu aydınlat" autocomplete="off">
-            <button class="mic-btn" id="micBtn">Mikrofon</button>
-            <button class="action-btn" id="sendBtn">Gönder</button>
+    <!-- Yüzen Uzun Bas Menüsü -->
+    <div id="long-press-menu">
+        <div class="lp-btn" onclick="execCmd('copy')">Kopyala</div>
+        <div class="lp-btn" onclick="execCmd('select')">Tümünü Seç</div>
+        <div class="lp-btn" onclick="execCmd('share')">Paylaş</div>
+        <div class="lp-btn" onclick="execCmd('detail')">Detay</div>
+        <div class="lp-btn relative group">
+            •••
+            <div class="absolute bottom-full left-0 mb-2 hidden group-hover:flex flex-col bg-slate-800 border border-slate-700 rounded-lg p-1">
+                <div class="lp-btn" onclick="execCmd('search')">Ara</div>
+                <div class="lp-btn" onclick="execCmd('tts')">Sesli Oku</div>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    let currentLang = "tr";
-    let isTyping = false;
-    let typingStopped = false;
-    let remainingText = "";
-    let currentTypingElement = null;
+    <!-- Menü Tetikleyici Alan (Hover Bar) -->
+    <div class="menu-divider" onmouseenter="toggleSidebar()"></div>
 
-    const translations = {
-        en: {
-            wise: "Wise",
-            note: "Note",
-            notes: "Notes",
-            delnotes: "Delete notes",
-            search: "Search",
-            summary: "Summary",
-            awareness: "Awareness",
-            luxching: "Luxching",
-            lang: "Language",
-            placeholder: "Light your way",
-            greeting: {
-                morning: "Good morning.",
-                day: "Hello.",
-                evening: "Good evening.",
-                night: "Good night."
-            }
-        },
-        tr: {
-            wise: "Bilge",
-            note: "Not al",
-            notes: "Notlar",
-            delnotes: "Notları sil",
-            search: "Ara",
-            summary: "Özet",
-            awareness: "Farkındalık",
-            luxching: "Luxching",
-            lang: "Dil",
-            placeholder: "Yolunu aydınlat",
-            greeting: {
-                morning: "Günaydın.",
-                day: "Merhaba.",
-                evening: "İyi akşamlar.",
-                night: "İyi geceler."
-            }
-        }
-    };
+    <!-- SOL MENÜ (Sidebar) -->
+    <aside id="sidebar" class="absolute left-0 top-0 h-full bg-[#0f172a] flex flex-col" onmouseleave="closeSidebar()">
+        <div class="p-6 border-b border-[#1e293b] flex justify-between items-center">
+            <h2 class="text-xs font-semibold tracking-widest text-[#facc15] uppercase">Luxviai OS</h2>
+            <button onclick="closeSidebar()" class="text-gray-500 hover:text-gray-300">✕</button>
+        </div>
+        
+        <div class="p-4 overflow-y-auto flex-1 space-y-3">
+            <!-- Yeni Sohbet Balonu -->
+            <div class="bg-[#1e293b] p-3 mb-4 rounded-full border border-[#334155] cursor-pointer hover:bg-slate-700 transition flex items-center justify-center w-12 h-12 mx-auto">
+                <span class="text-[#facc15] text-xl font-light leading-none">+</span>
+            </div>
+            
+            <div class="space-y-1">
+                <button class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-[#1e293b] rounded transition">Not Al</button>
+                <button class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-[#1e293b] rounded transition">Notlar</button>
+                <button class="w-full text-left px-4 py-2.5 text-xs text-[#facc15] hover:bg-[#1e293b] rounded transition flex justify-between">Ara <span class="text-gray-500">Ctrl+F</span></button>
+                <button class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-[#1e293b] rounded transition">Özet</button>
+                <button class="w-full text-left px-4 py-2.5 text-xs text-indigo-400 hover:bg-[#1e293b] rounded transition" onclick="switchMode('normal')">Farkındalık</button>
+                <button class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-[#1e293b] rounded transition" onclick="switchMode('luxching')">Luxching</button>
+                <button class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-[#1e293b] rounded transition" onclick="switchMode('luxdream')">Luxdream</button>
+                <button class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-[#1e293b] rounded transition flex justify-between items-center" onclick="switchMode('luxta')">
+                    Luxta <span class="text-[9px] border border-gray-600 rounded-full w-4 h-4 flex items-center justify-center text-gray-400" title="Çok dinle, az konuş">i</span>
+                </button>
+                <button class="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-[#1e293b] rounded transition" onclick="switchMode('luxeph')">Luxeph</button>
+            </div>
 
-    function scrollChatToBottom(force = false) {
-        const chat = document.getElementById("chatArea");
-        if (force) {
-            chat.scrollTop = chat.scrollHeight;
-            return;
-        }
-        requestAnimationFrame(() => {
-            chat.scrollTop = chat.scrollHeight;
+            <!-- İlk 12 Dil + Ukraynaca Öncelikli -->
+            <div class="mt-6 pt-4 border-t border-[#1e293b]">
+                <h3 class="text-[10px] text-gray-500 uppercase mb-2 px-2">Diller</h3>
+                <select id="lang-select" class="w-full bg-[#1e293b] text-xs text-gray-300 p-2 rounded outline-none border border-[#334155]" onchange="changeLang()">
+                    <option value="en">English</option><option value="de">Deutsch</option>
+                    <option value="fr">Français</option><option value="ru">Русский</option>
+                    <option value="ar">العربية</option><option value="tr" selected>Türkçe</option>
+                    <option value="uk">Українська</option><option value="es">Español</option>
+                    <option value="it">Italiano</option><option value="zh">中文</option>
+                    <option value="ja">日本語</option><option value="ko">한국어</option>
+                    <option disabled>──────────</option>
+                    <option value="other">Diğer Diller...</option>
+                </select>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ANA ARAYÜZ -->
+    <div id="main-wrapper" class="flex-1 flex flex-col h-full relative">
+        <header id="header-bar" class="p-5 border-b border-[#1e293b] bg-[#0b1120]/80 backdrop-blur-md flex justify-between items-center z-20">
+            <div class="flex items-center gap-4">
+                <div class="flex flex-col cursor-text group ml-4">
+                    <input type="text" id="chat-title" value="Luxviai" class="bg-transparent text-[11px] font-semibold tracking-[0.25em] text-gray-400 uppercase outline-none w-48 focus:text-white transition" />
+                    <span id="motto-text" class="text-[9px] text-gray-600 mt-0.5 tracking-wider inline-block">Light your way!</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <!-- Podcast Modu Ses İkonu -->
+                <div class="flex items-center gap-2 cursor-pointer" onclick="toggleVoice()">
+                    <svg class="w-4 h-4 text-gray-500 hover:text-[#facc15] transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                    <span id="voice-indicator" class="w-1.5 h-1.5 rounded-full bg-gray-600"></span>
+                </div>
+            </div>
+        </header>
+
+        <main id="chat-box" class="flex-1 overflow-y-auto p-6 space-y-8 w-full md:w-1/2 mx-auto pb-32 relative z-10">
+            <!-- Mesajlar Buraya Yüklenecek -->
+        </main>
+
+        <footer id="footer-bg" class="absolute bottom-0 w-full p-6 bg-gradient-to-t from-[#0b1120] via-[#0b1120] to-transparent z-20">
+            <div class="w-full md:w-1/2 mx-auto relative flex items-center gap-3">
+                <!-- Piksel Ses Dalgalı Mikrofon Tuşu -->
+                <button class="bg-[#1e293b] border border-[#334155] rounded-full p-3 hover:bg-slate-700 transition relative overflow-hidden group">
+                    <svg class="w-5 h-5 text-[#facc15]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 003-3V6a3 3 0 00-6 0v5a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2z"/></svg>
+                    <!-- Tıklayınca akacak olan hafif renkler -->
+                    <div class="absolute inset-0 opacity-0 group-active:opacity-30 bg-gradient-to-t from-red-500 via-green-500 to-blue-500 transition-opacity"></div>
+                </button>
+
+                <div class="relative flex-1">
+                    <div id="neon-ring" class="neon-border"></div>
+                    <input type="text" id="user-input" 
+                           class="w-full bg-[#1e293b] border border-[#334155] rounded-2xl py-4 px-6 text-gray-200 outline-none focus:border-[#facc15] text-sm transition-all duration-300"
+                           placeholder="Zihninden geçenleri bırak..." autocomplete="off">
+                </div>
+                
+                <button id="send-btn" onclick="sendMessage()" class="bg-[#1e293b] border border-[#334155] rounded-2xl px-6 py-4 text-[10px] tracking-widest text-gray-400 uppercase hover:bg-slate-700 hover:text-[#facc15] transition">
+                    NORMAL
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- LUXVIAI MAKER CANVAS (Gizli) -->
+    <canvas id="maker-canvas" class="hidden"></canvas>
+
+    <script>
+        // --- TEMEL DEĞİŞKENLER ---
+        const chatBox = document.getElementById('chat-box');
+        const inputField = document.getElementById('user-input');
+        const lpMenu = document.getElementById('long-press-menu');
+        const headerBar = document.getElementById('header-bar');
+        
+        let currentMode = "normal";
+        let maxInputLength = 0;
+        let ghostHesitation = false; // Görünmez Tereddüt
+        let luxtaTimer = null;
+        let selectedElementForMenu = null;
+        let voiceActive = false;
+        let luxephQueue = []; // Luxeph mesaj takibi
+
+        // --- GÜVENLİK (Luxeph Blur & Kopyalama Koruması) ---
+        window.addEventListener('blur', () => {
+            if(currentMode === 'luxeph') document.body.classList.add('blurred');
         });
-    }
-
-    function updateUILanguage() {
-        const t = translations[currentLang] || translations.en;
-
-        document.querySelectorAll("[data-key]").forEach(el => {
-            const key = el.getAttribute("data-key");
-            if (t[key] && el.tagName === "BUTTON") el.innerText = t[key];
+        window.addEventListener('focus', () => document.body.classList.remove('blurred'));
+        document.addEventListener('copy', (e) => {
+            if(currentMode === 'luxeph') { e.preventDefault(); e.clipboardData.setData('text/plain', ''); }
         });
 
-        const langBtn = document.getElementById("langBtn");
-        if (langBtn) langBtn.innerText = t.lang;
+        // --- GHOST KEYSTROKE TRACKING ---
+        inputField.addEventListener('input', () => {
+            const len = inputField.value.length;
+            if (len > maxInputLength) maxInputLength = len;
+            if (maxInputLength > 20 && len < 5) ghostHesitation = true; 
+        });
 
-        document.getElementById("messageInput").placeholder = t.placeholder;
-        updateGreeting();
-    }
-
-    function getTimeBasedGreeting() {
-        const now = new Date();
-        const hour = now.getHours();
-        const t = translations[currentLang] || translations.en;
-
-        if (!t.greeting) return "Hello.";
-
-        if (hour >= 5 && hour < 12) return t.greeting.morning;
-        if (hour >= 12 && hour < 18) return t.greeting.day;
-        if (hour >= 18 && hour < 22) return t.greeting.evening;
-        return t.greeting.night;
-    }
-
-    function updateGreeting() {
-        const greetingText = getTimeBasedGreeting();
-        const welcomeDiv = document.getElementById("welcomeMsg");
-        if (welcomeDiv) {
-            welcomeDiv.innerHTML = `<span class="lux-dash">—</span> ${greetingText}`;
+        // --- ARAYÜZ YÖNETİMİ ---
+        function toggleSidebar() { document.getElementById('sidebar').classList.add('open'); }
+        function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); }
+        
+        function changeLang() {
+            const mottos = { "tr": "Yolunuzu aydınlatın!", "en": "Light your way!", "uk": "Освіти свій шлях!", "ru": "Освети свой путь!", "de": "Erleuchte deinen Weg!", "fr": "Éclaire ton chemin!", "ar": "أضئ طريقك!" };
+            const lang = document.getElementById('lang-select').value;
+            const textEl = document.getElementById('motto-text');
+            
+            // Matrix Glitch Efekti
+            textEl.classList.remove('glitch-text');
+            void textEl.offsetWidth; 
+            textEl.innerText = mottos[lang] || "Light your way!";
+            textEl.classList.add('glitch-text');
+            closeSidebar();
         }
-    }
 
-    function markdownTableToHtml(md) {
-        let lines = md.trim().split("\n");
-        if (lines.length < 2 || !lines[0].includes("|")) return md;
+        function switchMode(mode) {
+            currentMode = mode;
+            document.body.className = '';
+            document.body.classList.add(`${mode}-mode`);
+            document.getElementById('send-btn').innerText = mode.toUpperCase();
+            
+            // Renk Geçişli Ortalanmış Metin Animasyonu
+            const alertEl = document.getElementById('center-mode-alert');
+            alertEl.innerText = mode.toUpperCase();
+            alertEl.classList.remove('alert-anim');
+            void alertEl.offsetWidth;
+            alertEl.classList.add('alert-anim');
 
-        let inTable = false;
-        let html = '<table class="lux-table">';
+            if(mode === 'luxeph') chatBox.innerHTML = ''; // Odayı Temizle
+            closeSidebar();
+        }
 
-        for (let i = 0; i < lines.length; i++) {
-            let line = lines[i].trim();
+        function toggleVoice() {
+            voiceActive = !voiceActive;
+            document.getElementById('voice-indicator').style.backgroundColor = voiceActive ? '#22c55e' : '#4b5563';
+        }
 
-            if (line.startsWith("|") && line.endsWith("|")) {
-                if (!inTable) inTable = true;
-                if (line.includes("---")) continue;
+        // --- LUXTA MODU ZAMANLAYICI ---
+        headerBar.addEventListener('click', () => {
+            if (currentMode !== 'luxta') return;
+            headerBar.classList.add('visible');
+            clearTimeout(luxtaTimer);
+            // Sadece tıklanırsa 3 saniye, işlem (menü vb.) yapılırsa 5 sn mantığı:
+            // Ana body'e tıklama algılayıp süreyi ayarlıyoruz. (Basitleştirilmiş hali)
+            luxtaTimer = setTimeout(() => headerBar.classList.remove('visible'), 3000);
+        });
+        document.getElementById('sidebar').addEventListener('click', () => {
+            if (currentMode === 'luxta') { clearTimeout(luxtaTimer); luxtaTimer = setTimeout(() => headerBar.classList.remove('visible'), 5000); }
+        });
 
-                let cells = line.split("|").filter(c => c.trim() !== "");
-                if (i === 0 || (i === 1 && lines[1] && lines[1].includes("---"))) {
-                    html += "<tr>";
-                    for (let cell of cells) html += `<th>${cell.trim()}</th>`;
-                    html += "</tr>";
-                } else {
-                    html += "<tr>";
-                    for (let cell of cells) html += `<td>${cell.trim()}</td>`;
-                    html += "</tr>";
+        // --- UZUN BAS MENÜSÜ (Long Press) ---
+        let pressTimer;
+        const startPress = (e, el) => {
+            if(currentMode === 'luxeph') return; // Luxeph'te kopyalama/paylaşma yasak
+            pressTimer = setTimeout(() => {
+                selectedElementForMenu = el;
+                const touch = e.touches ? e.touches[0] : e;
+                lpMenu.style.left = `${Math.min(touch.clientX - 50, window.innerWidth - 150)}px`;
+                lpMenu.style.top = `${touch.clientY - 50}px`;
+                lpMenu.classList.add('active');
+            }, 500);
+        };
+        const cancelPress = () => clearTimeout(pressTimer);
+        document.addEventListener('click', (e) => { if(!lpMenu.contains(e.target)) lpMenu.classList.remove('active'); });
+
+        function execCmd(cmd) {
+            lpMenu.classList.remove('active');
+            if(!selectedElementForMenu) return;
+            const text = selectedElementForMenu.innerText.replace("Yapay zeka arka plan fısıltısı:", "").trim();
+            
+            if(cmd === 'copy') navigator.clipboard.writeText(text);
+            if(cmd === 'detail') {
+                // Fısıltı Sözlük (Kelime altına mini açıklama)
+                const detail = document.createElement('div');
+                detail.className = "whisper-detail";
+                detail.innerText = "Fısıltı: " + text.split(' ').slice(0,3).join(' ') + " kelimeleri derin bir yorgunluk kökeninden geliyor olabilir...";
+                selectedElementForMenu.appendChild(detail);
+            }
+            if(cmd === 'tts' && voiceActive) {
+                const ut = new SpeechSynthesisUtterance(text);
+                ut.pitch = 0.9; ut.rate = 0.95; // Erkek/Kadın Podcast Tonu (OS'e göre değişir)
+                window.speechSynthesis.speak(ut);
+            }
+            if(cmd === 'share') openSocialMaker(text);
+        }
+
+        // --- LUXVIAI MAKER (Sosyal Paylaşım & Kırpma) ---
+        function openSocialMaker(text) {
+            const canvas = document.getElementById('maker-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 1080; canvas.height = 1080;
+            
+            // Koyu Matris Çerçeve
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(0,0,1080,1080);
+            ctx.strokeStyle = '#334155'; ctx.lineWidth = 10; ctx.strokeRect(20,20,1040,1040);
+            
+            // Metin
+            ctx.fillStyle = '#e2e8f0'; ctx.font = '300 45px Inter'; 
+            wrapText(ctx, '"' + text.substring(0,200) + '..."', 80, 400, 920, 60);
+            
+            // Filigran
+            ctx.fillStyle = '#facc15'; ctx.font = '300 30px Inter'; 
+            ctx.fillText('@LUXVIAI Light your way!', 650, 1020);
+            
+            // Web Share API (WhatsApp, X, IG, TikTok Yönlendirmesi)
+            if(navigator.share) {
+                canvas.toBlob(blob => {
+                    const file = new File([blob], "luxviai_insight.png", {type: "image/png"});
+                    navigator.share({ title: "Luxviai", files: [file] }).catch(err => console.log(err));
+                });
+            } else { alert("Tarayıcınız yerleşik paylaşımı desteklemiyor."); }
+        }
+
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            const words = text.split(' '); let line = '';
+            for(let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' ';
+                let metrics = context.measureText(testLine);
+                if (metrics.width > maxWidth && n > 0) { context.fillText(line, x, y); line = words[n] + ' '; y += lineHeight; } 
+                else { line = testLine; }
+            }
+            context.fillText(line, x, y);
+        }
+
+        // --- BİLİŞSEL NEFES RİTMİ (Cognitive Typing Pacing) ---
+        async function typeMessage(container, text, loadType) {
+            const p = document.createElement('p');
+            p.className = "mb-3 last:mb-0 selectable";
+            container.appendChild(p);
+            
+            // Eğer yük yüksekse (Kriz), milisaniyeler yavaşlar (4-7-8 nefes mantığı)
+            const baseSpeed = loadType === 'yüksek' ? 50 : 15; 
+            
+            for(let i=0; i<text.length; i++) {
+                p.innerHTML += text.charAt(i);
+                chatBox.scrollTop = chatBox.scrollHeight;
+                let delay = baseSpeed;
+                if(text.charAt(i) === '.' || text.charAt(i) === ',') delay += (loadType === 'yüksek' ? 400 : 150);
+                await new Promise(r => setTimeout(r, delay));
+            }
+        }
+
+        // --- MESAJ GÖNDERİM ---
+        async function sendMessage() {
+            const text = inputField.value.trim();
+            if (!text) return;
+
+            // Neon Ring Efekti (Luxdream)
+            if(currentMode === 'luxdream') {
+                const ring = document.getElementById('neon-ring');
+                ring.classList.remove('active'); void ring.offsetWidth; ring.classList.add('active');
+            }
+
+            // User Message
+            const div = document.createElement('div');
+            div.className = "msg-container flex justify-end mb-6 msg-animation";
+            div.innerHTML = `<div class="user-msg px-5 py-3 rounded-2xl rounded-br-sm max-w-[85%] text-sm font-light leading-relaxed selectable">${text}</div>`;
+            chatBox.appendChild(div);
+            
+            // Luxeph Yönetimi (Maksimum 3 mesaj kalır)
+            if(currentMode === 'luxeph') {
+                luxephQueue.push(div);
+                if(luxephQueue.length > 3) {
+                    const old = luxephQueue.shift();
+                    old.classList.add('dust-fade');
+                    setTimeout(() => old.remove(), 2000);
                 }
-            } else if (inTable) {
-                html += "</table>";
-                return html;
-            } else {
-                return md;
-            }
-        }
-
-        if (inTable) html += "</table>";
-        return html;
-    }
-
-    function processSpecialMarkup(text) {
-        return text.replace(/\[\[RED\]\](.*?)\[\[\/RED\]\]/g, '<span class="highlight-red">$1</span>');
-    }
-
-    async function sendToLuxviai(userText) {
-        const response = await fetch("/chat", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ message: userText })
-        });
-
-        const data = await response.json();
-        return data.response;
-    }
-
-    function setSendButtonMode(mode) {
-        const btn = document.getElementById("sendBtn");
-
-        if (mode === "send") {
-            btn.innerText = "Gönder";
-            btn.dataset.mode = "send";
-        } else if (mode === "stop") {
-            btn.innerText = "Dur";
-            btn.dataset.mode = "stop";
-        }
-    }
-
-    function stopTyping() {
-        typingStopped = true;
-        isTyping = false;
-        setSendButtonMode("send");
-    }
-
-    async function typeText(element, text, withDash = false) {
-        isTyping = true;
-        typingStopped = false;
-        remainingText = text;
-        currentTypingElement = element;
-        setSendButtonMode("stop");
-
-        element.innerHTML = "";
-
-        if (withDash) {
-            const dashSpan = document.createElement("span");
-            dashSpan.className = "lux-dash";
-            dashSpan.innerText = "— ";
-            element.appendChild(dashSpan);
-        }
-
-        let textNode = document.createTextNode("");
-        element.appendChild(textNode);
-
-        let cutIndex = 0;
-
-        for (let i = 0; i < text.length; i++) {
-            if (typingStopped) {
-                cutIndex = i;
-                break;
             }
 
-            const ch = text[i];
-            textNode.textContent += ch;
+            inputField.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+            
+            // Backend'e gidecek Ghost datası
+            const currentGhost = ghostHesitation;
+            ghostHesitation = false; maxInputLength = 0;
 
-            let delay = 26;
-            if (ch === "," || ch === ";") delay = 110;
-            if (ch === "." || ch === "!" || ch === "?") delay = 220;
-            if (ch === "\n") delay = 180;
+            try {
+                const response = await fetch("http://127.0.0.1:5000/chat", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer luxviai_gizli_token_2026' },
+                    body: JSON.stringify({ message: text, mode: currentMode, ghost_hesitation: currentGhost })
+                });
 
-            scrollChatToBottom();
-            await new Promise(r => setTimeout(r, delay));
-        }
-
-        if (typingStopped) {
-            remainingText = text.slice(cutIndex);
-            addContinueButton(element);
-        } else {
-            remainingText = "";
-        }
-
-        isTyping = false;
-        setSendButtonMode("send");
-        scrollChatToBottom(true);
-    }
-
-    function addContinueButton(messageElement) {
-        if (!remainingText) return;
-
-        const actions = document.createElement("div");
-        actions.className = "message-actions";
-
-        const continueBtn = document.createElement("button");
-        continueBtn.className = "continue-btn";
-        continueBtn.innerText = "Devam et";
-
-        continueBtn.onclick = async () => {
-            actions.remove();
-            const remaining = remainingText;
-            remainingText = "";
-            await continueTyping(messageElement, remaining);
-        };
-
-        actions.appendChild(continueBtn);
-        messageElement.appendChild(actions);
-        scrollChatToBottom(true);
-    }
-
-    async function continueTyping(messageElement, text) {
-        isTyping = true;
-        typingStopped = false;
-        remainingText = text;
-        setSendButtonMode("stop");
-
-        let textNode = null;
-
-        const walker = document.createTreeWalker(
-            messageElement,
-            NodeFilter.SHOW_TEXT,
-            null
-        );
-
-        while (walker.nextNode()) {
-            const node = walker.currentNode;
-            if (node.textContent !== "— ") {
-                textNode = node;
-            }
-        }
-
-        if (!textNode) {
-            textNode = document.createTextNode("");
-            messageElement.appendChild(textNode);
-        }
-
-        let cutIndex = 0;
-
-        for (let i = 0; i < text.length; i++) {
-            if (typingStopped) {
-                cutIndex = i;
-                break;
-            }
-
-            const ch = text[i];
-            textNode.textContent += ch;
-
-            let delay = 26;
-            if (ch === "," || ch === ";") delay = 110;
-            if (ch === "." || ch === "!" || ch === "?") delay = 220;
-            if (ch === "\n") delay = 180;
-
-            scrollChatToBottom();
-            await new Promise(r => setTimeout(r, delay));
-        }
-
-        if (typingStopped) {
-            remainingText = text.slice(cutIndex);
-            addContinueButton(messageElement);
-        } else {
-            remainingText = "";
-        }
-
-        isTyping = false;
-        setSendButtonMode("send");
-        scrollChatToBottom(true);
-    }
-
-    function addUserMessage(text) {
-        const chat = document.getElementById("chatArea");
-        const div = document.createElement("div");
-        div.className = "user-msg";
-        div.innerText = text;
-        chat.appendChild(div);
-        scrollChatToBottom(true);
-    }
-
-    async function addLuxviaiMessage(rawText, isSpecial = false) {
-        const chat = document.getElementById("chatArea");
-        let displayHtml = processSpecialMarkup(rawText);
-
-        if (rawText.includes("|") && rawText.includes("---")) {
-            displayHtml = markdownTableToHtml(rawText);
-        }
-
-        if (isSpecial && (rawText.includes("FARKINDALIK") || rawText.includes("ÖZET") || rawText.includes("Luxching") || rawText.includes("LUXCHING") || rawText.includes("ARAMA SONUÇLARI"))) {
-            let title = "Luxviai";
-            if (rawText.includes("FARKINDALIK")) title = "FARKINDALIK";
-            else if (rawText.toUpperCase().includes("LUXCHING")) title = "LUXCHING";
-            else if (rawText.includes("ÖZET")) title = "ÖZET";
-            else if (rawText.includes("ARAMA SONUÇLARI")) title = "ARAMA SONUÇLARI";
-
-            const card = document.createElement("div");
-            card.className = "lux-card";
-            card.innerHTML = `<div class="lux-card-header">${title}</div><div class="lux-card-content">${displayHtml}</div>`;
-            chat.appendChild(card);
-            scrollChatToBottom(true);
-        } else if (displayHtml !== rawText || rawText.includes("<table")) {
-            const div = document.createElement("div");
-            div.className = "lux-msg";
-            div.innerHTML = displayHtml;
-            chat.appendChild(div);
-            scrollChatToBottom(true);
-        } else {
-            const div = document.createElement("div");
-            div.className = "lux-msg";
-            chat.appendChild(div);
-            scrollChatToBottom(true);
-            await typeText(div, rawText, true);
-        }
-    }
-
-    function showPrompt(cmd, promptText, callback) {
-        const oldPrompt = document.querySelector(".prompt-overlay");
-        if (oldPrompt) oldPrompt.remove();
-
-        const container = document.createElement("div");
-        container.className = "prompt-overlay";
-        container.innerHTML = `
-            <input type="text" id="promptInput" class="small-input" placeholder="${promptText}" autocomplete="off">
-            <button id="promptOk" class="continue-btn">Tamam</button>
-            <button id="promptCancel" class="continue-btn">İptal</button>
-        `;
-        document.querySelector(".input-wrapper").after(container);
-        document.getElementById("promptInput").focus();
-
-        const handleOk = () => {
-            const val = document.getElementById("promptInput").value.trim();
-            container.remove();
-            if (val) callback(cmd + " " + val);
-            else callback(cmd);
-        };
-
-        document.getElementById("promptOk").onclick = handleOk;
-        document.getElementById("promptCancel").onclick = () => container.remove();
-    }
-
-    async function sendMessage(forceText = null) {
-        const input = document.getElementById("messageInput");
-        let raw = forceText !== null ? forceText : input.value.trim();
-
-        if (document.getElementById("sendBtn").dataset.mode === "stop") {
-            stopTyping();
-            return;
-        }
-
-        if (!raw) return;
-
-        input.value = "";
-        addUserMessage(raw);
-
-        try {
-            const reply = await sendToLuxviai(raw);
-            const isSpecial =
-                raw.startsWith("!farkındalık_özeti") ||
-                raw.startsWith("!sohbet_ozeti") ||
-                raw.startsWith("!luxching") ||
-                raw.startsWith("!ara") ||
-                raw.startsWith("!bilge") ||
-                raw.startsWith("!not");
-
-            await addLuxviaiMessage(reply, isSpecial);
-        } catch (error) {
-            await addLuxviaiMessage("Bağlantı kurulamadı.");
-            console.error(error);
-        }
-    }
-
-    function initMenu() {
-        const panel = document.getElementById("menuPanel");
-        const toggle = document.getElementById("menuToggle");
-
-        toggle.addEventListener("click", () => {
-            panel.style.display = panel.style.display === "none" || panel.style.display === "" ? "flex" : "none";
-        });
-
-        document.querySelectorAll(".menu-panel button[data-cmd]").forEach(btn => {
-            btn.addEventListener("click", async () => {
-                const cmd = btn.getAttribute("data-cmd");
-                const needsPrompt = ["!not al", "!ara", "!luxching"].includes(cmd);
-
-                const promptText = {
-                    "!not al": "Not metnini gir:",
-                    "!ara": "Aranacak kelime:",
-                    "!luxching": "Sorunuz:"
-                }[cmd] || "Değer girin:";
-
-                if (needsPrompt) {
-                    showPrompt(cmd, promptText, async (fullCmd) => {
-                        await sendMessage(fullCmd);
-                    });
+                const data = await response.json();
+                
+                // Karartma (Grounding Dimmer) Kontrolü
+                if(data.meta && data.meta.cognitive_load === 'yüksek' && currentMode !== 'luxta') {
+                    chatBox.classList.add('dimmed-history');
                 } else {
-                    await sendMessage(cmd);
+                    chatBox.classList.remove('dimmed-history');
                 }
 
-                panel.style.display = "none";
-            });
-        });
-    }
+                // AI Message Container
+                const aiDiv = document.createElement('div');
+                aiDiv.className = "msg-container flex justify-start mb-6 msg-animation";
+                const innerDiv = document.createElement('div');
+                innerDiv.className = "ai-msg px-2 max-w-[90%] text-sm font-light relative";
+                
+                // Mouse & Touch Events for Long Press
+                innerDiv.addEventListener('mousedown', (e) => startPress(e, innerDiv));
+                innerDiv.addEventListener('mouseup', cancelPress);
+                innerDiv.addEventListener('mouseleave', cancelPress);
+                innerDiv.addEventListener('touchstart', (e) => startPress(e, innerDiv));
+                innerDiv.addEventListener('touchend', cancelPress);
 
-    function initLanguageSelector() {
-        const langBtn = document.getElementById("langBtn");
-        const panel = document.getElementById("menuPanel");
+                aiDiv.appendChild(innerDiv);
+                chatBox.appendChild(aiDiv);
 
-        langBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
+                // Geçici Yankı (Piksel Semboller)
+                if(text.includes("?")) drawPixelSymbol("question");
+                else if(text.includes("!")) drawPixelSymbol("exclamation");
 
-            const allLanguages = ["en", "tr"];
-            const langNames = {
-                en: "English",
-                tr: "Türkçe"
-            };
+                // Yazı Ritmi
+                await typeMessage(innerDiv, data.response, data.meta ? data.meta.cognitive_load : 'normal');
 
-            const oldPopup = document.querySelector(".lang-popup");
-            if (oldPopup) oldPopup.remove();
+                // Luxeph Yönetimi (AI yanıtı için)
+                if(currentMode === 'luxeph') {
+                    luxephQueue.push(aiDiv);
+                    if(luxephQueue.length > 3) {
+                        const old = luxephQueue.shift();
+                        old.classList.add('dust-fade');
+                        setTimeout(() => old.remove(), 2000);
+                    }
+                }
+                
+                if(voiceActive) {
+                    const ut = new SpeechSynthesisUtterance(data.response);
+                    ut.pitch = 0.9; ut.rate = 0.95;
+                    window.speechSynthesis.speak(ut);
+                }
 
-            const popup = document.createElement("div");
-            popup.className = "lang-popup";
-
-            popup.innerHTML = allLanguages.map(l =>
-                `<button data-lang="${l}">${langNames[l] || l}</button>`
-            ).join("");
-
-            document.body.appendChild(popup);
-
-            popup.querySelectorAll("[data-lang]").forEach(btn => {
-                btn.onclick = () => {
-                    currentLang = btn.getAttribute("data-lang");
-                    updateUILanguage();
-                    popup.remove();
-                    panel.style.display = "none";
-                };
-            });
-
-            setTimeout(() => {
-                const stillThere = document.querySelector(".lang-popup");
-                if (stillThere) stillThere.remove();
-            }, 15000);
-        });
-    }
-
-    function initSpeechInput() {
-        const micBtn = document.getElementById("micBtn");
-        const input = document.getElementById("messageInput");
-
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-        if (!SpeechRecognition) {
-            micBtn.onclick = () => {
-                alert("Bu tarayıcı sesli komutu desteklemiyor.");
-            };
-            return;
+            } catch (error) {
+                console.error(error);
+            }
         }
 
-        const recognition = new SpeechRecognition();
-        recognition.lang = "tr-TR";
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
+        inputField.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } });
 
-        micBtn.addEventListener("click", () => {
-            recognition.lang = currentLang === "en" ? "en-US" : "tr-TR";
-            recognition.start();
-            micBtn.classList.add("recording");
-            micBtn.innerText = "Dinliyor";
-        });
+        // --- PİKSEL CANVAS (Geçici Yankı) ---
+        const canvas = document.getElementById('pixel-canvas');
+        const ctx = canvas.getContext('2d');
+        function resize() { canvas.width = window.innerWidth; canvas.height = 150; }
+        window.addEventListener('resize', resize); resize();
 
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            input.value = transcript;
-        };
-
-        recognition.onend = () => {
-            micBtn.classList.remove("recording");
-            micBtn.innerText = "Mikrofon";
-        };
-
-        recognition.onerror = () => {
-            micBtn.classList.remove("recording");
-            micBtn.innerText = "Mikrofon";
-        };
-    }
-
-    updateUILanguage();
-    initMenu();
-    initLanguageSelector();
-    initSpeechInput();
-    setSendButtonMode("send");
-
-    document.getElementById("sendBtn").addEventListener("click", () => sendMessage());
-    document.getElementById("messageInput").addEventListener("keypress", e => {
-        if (e.key === "Enter") sendMessage();
-    });
-
-    scrollChatToBottom(true);
-</script>
+        function drawPixelSymbol(type) {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = '#facc15'; // Lux Sarısı
+            ctx.shadowBlur = 15; ctx.shadowColor = '#facc15';
+            
+            let cx = canvas.width / 2; let cy = 50;
+            
+            if(type === 'question') {
+                ctx.fillRect(cx-5, cy-20, 10, 10); ctx.fillRect(cx-15, cy-30, 10, 10);
+                ctx.fillRect(cx+5, cy-30, 10, 10); ctx.fillRect(cx+15, cy-20, 10, 10);
+                ctx.fillRect(cx+5, cy-10, 10, 10); ctx.fillRect(cx-5, cy, 10, 10);
+                ctx.fillRect(cx-5, cy+20, 10, 10);
+            } else if (type === 'exclamation') {
+                ctx.fillRect(cx-5, cy-30, 10, 30);
+                ctx.fillRect(cx-5, cy+10, 10, 10);
+            }
+            
+            canvas.style.opacity = 1;
+            setTimeout(() => { canvas.style.opacity = 0; }, 3000);
+        }
+    </script>
 </body>
 </html>
