@@ -27,6 +27,12 @@ logging.basicConfig(
 )
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="Luxviai Reflective Emotional OS")
+@app.get("/")
+def ana_sayfa():
+    return {
+        "mesaj": "Luxviai çalışıyor",
+        "durum": "bağlantı başarılı"
+    }
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
