@@ -2,7 +2,4 @@ fastapi
 uvicorn
 openai
 pydantic
-pytz
-python-multipart
-slowapi
-dotenv
+python-dotenv
