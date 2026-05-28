@@ -8,6 +8,7 @@ from typing import Dict, Optional, List, Any
 
 from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from openai import OpenAI
 from pydantic import BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -26,13 +27,10 @@ logging.basicConfig(
     format='%(asctime)s - [%(levelname)s] - %(message)s'
 )
 limiter = Limiter(key_func=get_remote_address)
-app = FastAPI(title="Luxviai Reflective Emotional OS")
 @app.get("/")
 def ana_sayfa():
-    return {
-        "mesaj": "Luxviai çalışıyor",
-        "durum": "bağlantı başarılı"
-    }
+    return FileResponse("statik/index.html")
+    
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
