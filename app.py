@@ -205,6 +205,39 @@ STOPWORDS = {
     "diye", "var", "yok", "hem", "ya", "veya", "çünkü", "ise"
 }
 
+KEYWORD_DROPWORDS = {
+    "ol", "olur", "oldu", "oluyor", "olacak", "olmak", "olunca",
+    "miyim", "mıyım", "misin", "mısın", "musun", "müsün",
+    "acaba", "yani", "hani", "artık", "tamam", "evet", "hayır",
+    "belki", "şeyler", "falan", "filan", "bence", "sence",
+}
+
+TOPIC_QUALIFIERS = {
+    "yeni", "eski", "ilk", "son", "mevcut", "gelecek", "şimdiki", "şuanki"
+}
+
+SHORT_IMPORTANT_TOKENS = {"iş", "ev", "aşk", "aile", "okul"}
+
+# Hafıza anahtar kelimelerinde selamlaşma/gürültü ifadelerini temizler.
+MEMORY_NOISE_WORDS = {
+    "merhaba", "selam", "slm", "hey", "hi", "hello", "hola", "alo",
+    "nasilsin", "naber", "nbr", "iyiyim", "iyidir", "iyim",
+    "gunaydin", "iyiaksamlar", "iyigeceler", "tesekkur", "tesekkurler",
+    "ok", "oke", "okey", "tamam", "peki", "hmm", "hmmm", "h", "sss", "sus",
+    "luxviai", "luxdream", "luxching", "luxta", "luxeph", "mod", "modu", "soru",
+}
+
+# Duygusal/tematik ve imgelenebilir alanları öne çıkarmak için temel kökler.
+THEMATIC_TOKEN_ROOTS = (
+    "kaygi", "anksiyet", "kork", "korkunc", "panik", "uzgun", "huzun", "yas",
+    "yalniz", "yalnizlik", "bosluk", "deger", "degersiz", "utanc", "ofke",
+    "sinir", "stres", "bunalt", "sikis", "tuken", "umut", "arzu", "etik",
+    "belirsiz", "kararsiz", "ikilem", "travma", "ruya", "sembol", "imge",
+    "anlam", "amac", "gelecek", "gecmis", "kayip", "ozlem", "bag", "baglan",
+    "iliski", "yakinlik", "guven", "aile", "is", "kariyer", "basari",
+    "basarisiz", "sikici", "mutlu", "mutsuz", "huzur",
+)
+
 LUXTA_REPLIES = ["Anlıyorum.", "Dinliyorum.", "Buradayım.", "Hmm.", "Devam et.", "Yavaşça."]
 
 ANALYSIS_LAYER_NAMES = [
@@ -354,12 +387,94 @@ def clamp_int(v: Any, lo: int, hi: int, default: int = 5) -> int:
         return default
 
 
+def normalize_keyword_token(raw_token: str) -> str:
+    t = (raw_token or "").strip().lower()
+    t = t.replace("’", "").replace("'", "")
+    if not t:
+        return ""
+
+    for suf in ["mıyım", "miyim", "muyum", "müyüm", "mısın", "misin", "musun", "müsün", "mı", "mi", "mu", "mü"]:
+        if t.endswith(suf) and len(t) - len(suf) >= 3:
+            t = t[: -len(suf)]
+            break
+
+    for suf in ["larımız", "lerimiz", "ımız", "imiz", "umuz", "ümüz", "lar", "ler"]:
+        if t.endswith(suf) and len(t) - len(suf) >= 3:
+            t = t[: -len(suf)]
+            break
+
+    if t.endswith(("ım", "im", "um", "üm")) and len(t) > 4:
+        t = t[:-2]
+
+    if t.startswith("başar"):
+        t = "başarı"
+    if t.startswith("iş"):
+        t = "iş"
+
+    if t in STOPWORDS or t in KEYWORD_DROPWORDS:
+        return ""
+    if len(t) <= 2 and t not in SHORT_IMPORTANT_TOKENS:
+        return ""
+    return t
+
+
 def tokenize(text: str) -> List[str]:
-    return [
-        t.lower()
-        for t in re.findall(r"[A-Za-zÇĞİÖŞÜçğıöşü0-9]+", text or "")
-        if len(t) > 2 and t.lower() not in STOPWORDS
-    ]
+    out: List[str] = []
+    for raw in re.findall(r"[A-Za-zÇĞİÖŞÜçğıöşü0-9]+", text or ""):
+        norm = normalize_keyword_token(raw)
+        if norm:
+            out.append(norm)
+    return out
+
+
+def fold_turkish_ascii(value: str) -> str:
+    table = str.maketrans({
+        "ç": "c", "Ç": "c",
+        "ğ": "g", "Ğ": "g",
+        "ı": "i", "İ": "i",
+        "ö": "o", "Ö": "o",
+        "ş": "s", "Ş": "s",
+        "ü": "u", "Ü": "u",
+    })
+    return (value or "").translate(table).lower()
+
+
+def is_memory_noise_token(token: str) -> bool:
+    folded = fold_turkish_ascii(token)
+    return token in MEMORY_NOISE_WORDS or folded in MEMORY_NOISE_WORDS
+
+
+def is_thematic_token(token: str) -> bool:
+    if not token or is_memory_noise_token(token):
+        return False
+    folded = fold_turkish_ascii(token)
+    return any(folded.startswith(root) for root in THEMATIC_TOKEN_ROOTS)
+
+
+def is_thematic_phrase(value: str) -> bool:
+    parts = [p for p in (value or "").split() if p]
+    if not parts:
+        return False
+    return any(is_thematic_token(p) for p in parts)
+
+
+def thematic_tokens_from_text(text: str, limit: int = 6) -> List[str]:
+    picked: List[str] = []
+    seen = set()
+    for token in tokenize(text):
+        if token in seen:
+            continue
+        if not is_thematic_token(token):
+            continue
+        seen.add(token)
+        picked.append(token)
+        if len(picked) >= limit:
+            break
+    return picked
+
+
+def has_thematic_signal(text: str) -> bool:
+    return len(thematic_tokens_from_text(text, limit=1)) > 0
 
 
 def keyword_score(query: str, text: str) -> int:
@@ -389,10 +504,64 @@ def is_model_auth_error(exc: Exception) -> bool:
 
 
 def top_keywords(texts: List[str], limit: int = 8) -> List[str]:
-    counts = Counter()
+    unigram_counts = Counter()
+    bigram_counts = Counter()
+
     for text in texts:
-        counts.update(tokenize(text))
-    return [w for w, _ in counts.most_common(limit)]
+        tokens = [t for t in tokenize(text) if not is_memory_noise_token(t)]
+        if not tokens:
+            continue
+        unigram_counts.update(tokens)
+        for a, b in zip(tokens, tokens[1:]):
+            if a == b:
+                continue
+            if is_memory_noise_token(a) or is_memory_noise_token(b):
+                continue
+            bigram_counts[f"{a} {b}"] += 1
+
+    ranked_phrases: List[tuple[float, str]] = []
+    for phrase, count in bigram_counts.items():
+        parts = phrase.split()
+        first = parts[0]
+        thematic = any(is_thematic_token(p) for p in parts)
+        if count == 1 and not thematic and first not in TOPIC_QUALIFIERS:
+            continue
+        score = count * 2.0 + (1.2 if first in TOPIC_QUALIFIERS else 0.0) + (1.0 if thematic else 0.0)
+        ranked_phrases.append((score, phrase))
+    ranked_phrases.sort(key=lambda x: x[0], reverse=True)
+
+    results: List[str] = []
+    seen = set()
+    phrase_budget = max(1, limit // 2)
+
+    for _, phrase in ranked_phrases:
+        if phrase not in seen:
+            seen.add(phrase)
+            results.append(phrase)
+        if len(results) >= phrase_budget:
+            break
+
+    thematic_unigrams: List[str] = []
+    repeated_unigrams: List[str] = []
+    for token, count in unigram_counts.most_common(limit * 4):
+        if token in TOPIC_QUALIFIERS:
+            continue
+        if is_memory_noise_token(token):
+            continue
+        if is_thematic_token(token):
+            thematic_unigrams.append(token)
+            continue
+        if count >= 2 and len(token) >= 4:
+            repeated_unigrams.append(token)
+
+    for token in thematic_unigrams + repeated_unigrams:
+        if token not in seen:
+            seen.add(token)
+            results.append(token)
+        if len(results) >= limit:
+            break
+
+    return results[:limit]
 
 
 def compact_text(text: str, limit: int = 160) -> str:
@@ -1822,7 +1991,9 @@ def append_memory_garden_anchor(garden: List[Dict[str, Any]], message: str, anal
 def build_memory_overview(profile: Dict[str, Any], session: Dict[str, Any], garden: List[Dict[str, Any]]) -> Dict[str, Any]:
     user_texts = [m.get("content", "") for m in session.get("messages", []) if m.get("role") == "user"]
     analyses = session.get("analyses", [])[-60:]
-    keywords = top_keywords(user_texts, 10)
+    raw_keywords = top_keywords(user_texts, 12)
+    keywords = [k for k in raw_keywords if is_thematic_phrase(k)]
+    keywords = keywords[:10]
     theme_counts = Counter(a.get("theme", "belirsiz") for a in analyses if a.get("theme") != "belirsiz")
     emotion_counts = Counter(a.get("primary_emotion", "nötr") for a in analyses if a.get("primary_emotion") != "nötr")
 
@@ -1846,6 +2017,8 @@ def build_memory_overview(profile: Dict[str, Any], session: Dict[str, Any], gard
         "general_state": (
             "Henüz yeterli iz yok."
             if len(user_texts) < 3
+            else "Henüz belirgin tematik kelime birikmedi."
+            if not keywords
             else "Konuşmada tekrar eden duygu, tema ve sembolik izler oluşmaya başladı."
         ),
     }
@@ -2126,7 +2299,6 @@ def generate_session_summary(session: Dict[str, Any]) -> str:
         return "Henüz yeterli konuşma yok."
 
     keywords = top_keywords(user_texts, 8)
-    key_sentences = [compact_text(t, 120) for t in user_texts[-3:] if t.strip()]
 
     if client and len(user_texts) >= 2:
         try:
@@ -2134,9 +2306,11 @@ def generate_session_summary(session: Dict[str, Any]) -> str:
                 "Sadece bu aktif konuşmayı özetle. "
                 "2 kısa paragraf yaz. "
                 "Sonunda 'Başlıca kelimeler:' ve 'Başlıca cümleler:' alanları ekle. "
-                "Skor, tanı, klinik etiket kullanma."
+                "Skor, tanı, klinik etiket kullanma. "
+                "Kullanıcının cümlesini birebir kopyalama; tekrar eden ham kelimeler yerine kavram yaz "
+                "(ör. 'yeni iş', 'başarı', 'ilişki gerilimi')."
             )
-            return call_model(
+            model_text = call_model(
                 [{"role": "system", "content": prompt}] + [
                     {"role": m["role"], "content": m["content"]}
                     for m in msgs
@@ -2146,13 +2320,24 @@ def generate_session_summary(session: Dict[str, Any]) -> str:
                 temperature=0.3,
                 max_tokens=320,
             )
+            kw_line = "Başlıca kelimeler: " + (", ".join(keywords) if keywords else "Henüz belirgin değil")
+            if "Başlıca kelimeler:" in model_text:
+                model_text = re.sub(
+                    r"Başlıca kelimeler:.*?(?:\n|$)",
+                    kw_line + "\n",
+                    model_text,
+                    flags=re.IGNORECASE | re.DOTALL,
+                )
+            else:
+                model_text = model_text.rstrip() + "\n\n" + kw_line
+            return model_text.strip()
         except Exception as e:
             logging.warning(f"Session summary fallback: {e}")
 
     return (
-        "Bu konuşmada henüz kısa bir iz oluştu.\n\n"
-        "Başlıca kelimeler: " + (", ".join(keywords) if keywords else "Henüz belirgin değil") + "\n"
-        "Başlıca cümleler:\n- " + "\n- ".join(key_sentences or ["Henüz belirgin değil"])
+        "Bu konuşmada şu an kısa ama anlamlı bir iz oluştu.\n\n"
+        "Başlıca kavramlar: " + (", ".join(keywords) if keywords else "Henüz belirgin değil") + "\n"
+        "Kısa özet: Konuşma ana olarak bu kavramların etrafında dönüyor."
     )
 
 
@@ -2493,24 +2678,34 @@ def prepare_chat_plan(
         locs = profile["ecological_context"].setdefault("locations", {})
         locs[location] = int(locs.get(location, 0)) + 1
 
-    if mode == "luxching":
-        if not is_luxching_question(message):
-            return {
-                "kind": "command",
-                "response": "Lütfen sorunuzu sorunuz.",
-                "meta": {"mode": mode, "session_id": None},
-            }
-        ok, msg = check_luxching_limit(profile)
-        if not ok:
-            return {
-                "kind": "command",
-                "response": msg,
-                "meta": {"mode": mode, "session_id": None},
-            }
-        profile["luxching_last_used"] = now_iso()
-        save_user_state(user_id, profile, notes, garden)
-
     active, session = load_or_create_session(user_id, mode)
+
+    if mode == "luxching":
+        # LUXCHING is two-phase:
+        # 1) "new draw" is limited to once per 24h
+        # 2) follow-up conversation on the same draw is interactive (no re-lock)
+        existing_user_turns = [
+            m for m in session.get("messages", [])
+            if safe_dict(m).get("role") == "user" and safe_dict(m).get("content")
+        ]
+        is_new_draw = len(existing_user_turns) == 0
+
+        if is_new_draw:
+            if not is_luxching_question(message):
+                return {
+                    "kind": "command",
+                    "response": "Lütfen sorunuzu sorunuz.",
+                    "meta": {"mode": mode, "session_id": session.get("session_id")},
+                }
+            ok, msg = check_luxching_limit(profile)
+            if not ok:
+                return {
+                    "kind": "command",
+                    "response": msg,
+                    "meta": {"mode": mode, "session_id": session.get("session_id")},
+                }
+            profile["luxching_last_used"] = now_iso()
+            save_user_state(user_id, profile, notes, garden)
 
     add_message(session, "user", message, {"mode": mode})
     analysis = analyze_emotion(message, profile, session, location, ghost_hesitation, client_signals)
@@ -2778,20 +2973,28 @@ async def memory(user_id: str = "default_user"):
 
     items = []
     for item in reversed(garden[-30:]):
+        text = item.get("text", "")
+        theme = item.get("theme", "belirsiz")
+        emotion = item.get("emotion", "nötr")
+        if not has_thematic_signal(text) and theme == "belirsiz" and emotion == "nötr":
+            continue
         items.append({
             "source": "memory",
-            "text": item.get("text", ""),
-            "theme": item.get("theme", "belirsiz"),
-            "emotion": item.get("emotion", "nötr"),
+            "text": text,
+            "theme": theme,
+            "emotion": emotion,
             "layers": item.get("layers", {}),
             "ts": item.get("ts", ""),
         })
 
     for msg in reversed(session.get("messages", [])[-10:]):
         if msg.get("role") == "user":
+            text = msg.get("content", "")
+            if not has_thematic_signal(text):
+                continue
             items.append({
                 "source": "session",
-                "text": msg.get("content", ""),
+                "text": text,
                 "theme": profile.get("core_trigger", "belirsiz") or "belirsiz",
                 "emotion": "nötr",
                 "ts": msg.get("ts", ""),

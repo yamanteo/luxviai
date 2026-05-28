@@ -25,10 +25,10 @@ body {
   height: 100vh;
   overflow: hidden;
 }
-*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar { width: 6px; height: 6px; }
 *::-webkit-scrollbar-track { background: #000; }
-*::-webkit-scrollbar-thumb { background: #7A7D81; border-radius: 8px; }
-* { scrollbar-color: #7A7D81 #000; scrollbar-width: thin; }
+*::-webkit-scrollbar-thumb { background: #5A5D63; border-radius: 8px; min-height: 28px; }
+* { scrollbar-color: #5A5D63 #000; scrollbar-width: thin; }
 
 .app {
   width: 100%;
@@ -64,21 +64,14 @@ body {
 .header-tools {
   position: absolute;
   right: 18px;
-  top: 16px;
+  bottom: 4px;
   display: flex;
   align-items: center;
   gap: 14px;
   padding-bottom: 4px;
 }
 .header-tools::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -2px;
-  height: 1px;
-  background: rgba(237,145,7,0.28);
-  pointer-events: none;
+  display: none;
 }
 .search-capsule {
   height: 36px;
@@ -177,17 +170,15 @@ body.luxdream-mode .chat-box::before {
     radial-gradient(circle at 89% 24%, rgba(245,214,138,.36) 0 1px, transparent 1.4px),
     radial-gradient(circle at 96% 56%, rgba(237,145,7,.28) 0 1px, transparent 1.4px);
   image-rendering: pixelated;
-  animation: dreamSparkle 6s steps(4, end) infinite;
-}
-body.luxdream-mode .chat-box::before {
-  display: none;
+  animation: dreamSparkle 9s steps(5, end) infinite;
+  opacity: .12;
 }
 @keyframes dreamSparkle {
-  0% { opacity: .16; }
-  25% { opacity: .28; }
-  50% { opacity: .20; }
-  75% { opacity: .32; }
-  100% { opacity: .16; }
+  0% { opacity: .05; }
+  25% { opacity: .10; }
+  50% { opacity: .07; }
+  75% { opacity: .12; }
+  100% { opacity: .05; }
 }
 .msg {
   max-width: fit-content;
@@ -213,7 +204,7 @@ body.luxdream-mode .chat-box::before {
   color: var(--lux);
   margin-right: 6px;
 }
-body.luxta-mode .msg.ai { color: #F5F0E6; }
+body.luxta-mode .msg.ai { color: #EDE5D6; }
 .msg mark {
   background: var(--lux);
   color: #000;
@@ -244,7 +235,7 @@ body.luxta-mode .msg.ai { color: #F5F0E6; }
   bottom: 0;
   left: 0;
   width: 100%;
-  padding: 14px 18px 24px;
+  padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
   background: #000;
   z-index: 8;
 }
@@ -266,7 +257,11 @@ textarea {
   resize: none;
   min-height: 54px;
   max-height: 150px;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+textarea::-webkit-scrollbar { display: none; }
 textarea:focus { border-color: var(--lux); outline: none; }
 textarea::placeholder { color: var(--muted); opacity: 0.7; }
 .send-btn {
@@ -464,54 +459,73 @@ body.luxdream-mode .light-line { display: block; }
 
 /* left rail + drawer */
 .left-edge {
-  position: fixed;
-  left: 0;
-  top: var(--rail-top);
-  bottom: var(--rail-bottom);
-  width: 120px;
-  background: transparent;
-  z-index: 30;
-  cursor: pointer;
+  display: none;
 }
 .topic-rail {
   position: fixed;
   left: 0;
-  top: var(--rail-top);
-  bottom: var(--rail-bottom);
-  width: 120px;
+  top: 0;
+  bottom: 0;
+  width: 300px;
   z-index: 26;
-  background: rgba(0,0,0,0.96);
-  border-right: 1px solid rgba(237,145,7,0.18);
+  background: rgba(8,8,8,0.98);
+  border-right: none;
 }
 .topic-rail-scroll {
   height: 100%;
   overflow-y: auto;
-  padding: 8px 8px 10px 10px;
+  padding: 14px 14px calc(18px + env(safe-area-inset-bottom));
+}
+.topic-search-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(8,8,8,0.98);
+  padding-bottom: 10px;
+}
+.topic-search {
+  width: 100%;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: #171717;
+  color: #D4D6DB;
+  font-size: .95rem;
+  padding: 0 14px;
+  outline: none;
+}
+.topic-section-title {
+  margin: 12px 4px 8px;
+  color: var(--lux);
+  font-size: .52rem;
+  font-weight: 600;
+  letter-spacing: .45px;
+  text-transform: uppercase;
 }
 .left-drawer {
   position: fixed;
-  left: 0;
-  top: var(--rail-top);
-  bottom: var(--rail-bottom);
-  width: 12px;
-  background: rgba(0,0,0,0.96);
-  border-right: 1px solid rgba(237,145,7,0.28);
+  left: 300px;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: rgba(6,6,6,0.98);
+  border-right: none;
   transition: width .22s ease;
-  z-index: 29;
+  z-index: 34;
   overflow: hidden;
 }
-.left-drawer.open { width: min(36vw, 320px); }
+.left-drawer.open { width: min(40vw, 360px); }
 .drawer-scroll {
   height: 100%;
   overflow-y: auto;
   opacity: 0;
   transition: opacity .12s ease;
-  padding: 10px;
+  padding: 16px 14px calc(18px + env(safe-area-inset-bottom));
 }
 .left-drawer.open .drawer-scroll { opacity: 1; }
 .left-drawer .drawer-head,
 .left-drawer .drawer-sub,
-.left-drawer #topicList { display: none; }
+.left-drawer #topicList { display: block; }
 .drawer-head {
   display: flex;
   justify-content: space-between;
@@ -545,25 +559,36 @@ body.luxdream-mode .light-line { display: block; }
   margin-bottom: 8px;
 }
 .topic-item {
-  border: none;
-  border-radius: 0;
-  padding: 3px 0;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 8px 10px;
   cursor: pointer;
   background: transparent;
 }
-.topic-item.active { color: var(--lux-soft); }
+.topic-item:hover {
+  background: rgba(237,145,7,.06);
+  border-color: rgba(237,145,7,.18);
+}
+.topic-item.active {
+  color: var(--lux-soft);
+  background: rgba(237,145,7,.06);
+  border-color: rgba(237,145,7,.42);
+}
 .topic-title {
-  color: #d4cfc4;
-  font-size: .62rem;
-  line-height: 1.32;
-  font-family: "Plus Jakarta Sans", sans-serif;
-  font-weight: 300;
-  letter-spacing: .2px;
+  color: #DDE2EA;
+  font-size: .66rem;
+  line-height: 1.25;
+  font-family: "Inter", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 .topic-meta {
-  margin-top: 3px;
-  color: #8a8f92;
-  font-size: .56rem;
+  margin-top: 2px;
+  color: #8F97A6;
+  font-size: .45rem;
+  line-height: 1.32;
+  text-transform: none;
 }
 .insight-pane {
   border-top: 1px solid rgba(237,145,7,.18);
@@ -590,6 +615,61 @@ body.luxdream-mode .light-line { display: block; }
   font-size: .73rem;
   line-height: 1.55;
   white-space: pre-wrap;
+}
+.topic-insight {
+  display: none;
+  margin: 0 2px 10px;
+  border: 1px solid rgba(237,145,7,.24);
+  border-radius: 12px;
+  background: rgba(10,10,10,.95);
+  overflow: hidden;
+}
+.topic-insight.open { display: block; }
+.topic-insight-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(237,145,7,.18);
+}
+.topic-insight-head b {
+  color: var(--lux-soft);
+  font-size: .56rem;
+  letter-spacing: .35px;
+  text-transform: uppercase;
+}
+.topic-insight-close {
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(237,145,7,.35);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lux);
+  font-size: .68rem;
+  cursor: pointer;
+}
+.topic-insight-body {
+  max-height: 34vh;
+  overflow-y: auto;
+  padding: 8px 10px 10px;
+  color: #c3bcae;
+  font-size: .66rem;
+  line-height: 1.46;
+  white-space: pre-wrap;
+}
+.topic-rail-scroll::-webkit-scrollbar,
+.drawer-scroll::-webkit-scrollbar { width: 2px; }
+.topic-rail-scroll::-webkit-scrollbar-thumb,
+.drawer-scroll::-webkit-scrollbar-thumb {
+  background: #23262b;
+  border-radius: 8px;
+  min-height: 40px; /* ~1 cm */
+}
+.topic-rail-scroll,
+.drawer-scroll {
+  scrollbar-color: #23262b #000;
+  scrollbar-width: thin;
 }
 
 /* context + overlays */
@@ -703,12 +783,40 @@ body.luxdream-mode .light-line { display: block; }
   max-width: 100%;
   margin: 0 auto;
   image-rendering: pixelated;
+  touch-action: none;
 }
 .share-targets {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
+}
+.editor-text-capsule {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  border: 1px solid rgba(237,145,7,.3);
+  border-radius: 999px;
+  background: #090909;
+  height: 34px;
+  padding: 0 8px;
+}
+.editor-text-capsule.open { display: inline-flex; }
+.editor-text-capsule input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #E8E5DF;
+  width: 200px;
+  font-size: .75rem;
+}
+.editor-text-capsule button {
+  border: none;
+  background: transparent;
+  color: #ED9107;
+  font-size: .75rem;
+  cursor: pointer;
 }
 .share-btn {
   border: 1px solid rgba(237,145,7,.36);
@@ -720,20 +828,29 @@ body.luxdream-mode .light-line { display: block; }
   font-size: .74rem;
 }
 
-body.luxta-mode .header,
-body.luxta-mode .header-tools {
-  opacity: 0;
-  transition: opacity .2s;
-}
+body.luxta-mode .header { opacity: 0; transition: opacity .2s; }
+body.luxta-mode .header-tools { opacity: .28; transition: opacity .2s; }
 body.luxta-mode .header:hover,
 body.luxta-mode .header-tools:hover,
 body.luxta-mode.luxta-top-visible .header,
 body.luxta-mode.luxta-top-visible .header-tools {
-  opacity: .4;
+  opacity: .48;
 }
-body.luxta-mode .side-menu.open { opacity: .85; }
+body.luxta-mode .side-menu.open { opacity: .84; }
+body.luxta-mode #searchOpenBtn {
+  opacity: .86;
+  color: #F3C26A;
+  border-color: rgba(237,145,7,.72);
+}
+body.luxta-mode #menuButton {
+  opacity: .78;
+  color: #E7AA4A;
+}
+body.luxta-mode .side-menu.open ~ .app .header-tools {
+  opacity: .44;
+}
 body.luxta-mode .composer-wrap { opacity: .7; }
-body.luxta-mode .msg.ai { color: #F5F0E6; }
+body.luxta-mode .msg.ai { color: #EDE5D6; }
 body.luxta-mode #voiceButton { opacity: .7; }
 body.luxta-mode .left-edge { opacity: .18; }
 body.luxta-mode textarea { background: rgba(17, 17, 17, 0.78); }
@@ -753,6 +870,14 @@ body.luxeph-mode .context-menu { display: none !important; }
   display: none;
 }
 .screen-shield.active { display: block; }
+.topics-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display: none;
+  z-index: 25;
+}
+body.topics-open .topics-overlay { display: block; }
 @media print {
   body * { visibility: hidden !important; }
   body::before {
@@ -769,34 +894,62 @@ body.luxeph-mode .context-menu { display: none !important; }
   .send-btn { padding: 0 16px; font-size: 0.74rem; }
   .search-capsule.open { width: 56vw; }
   .glyph-strip { height: 72px; }
-  .topic-rail { width: 96px; }
-  .left-edge { left: 0; width: 96px; }
-  .left-drawer { left: 0; }
-  .left-drawer.open { width: min(80vw, 320px); }
+  .topic-rail {
+    width: min(84vw, 360px);
+    transform: translateX(-104%);
+    transition: transform .22s ease;
+    z-index: 32;
+  }
+  body.topics-open .topic-rail { transform: translateX(0); }
+  .left-drawer {
+    left: 0;
+    transform: translateX(-104%);
+    transition: transform .22s ease;
+    width: min(86vw, 380px);
+  }
+  .left-drawer.open {
+    transform: translateX(0);
+    width: min(86vw, 380px);
+  }
+  .topic-title { font-size: .66rem; }
+  .topic-meta { font-size: .45rem; }
+  .composer { gap: 8px; }
+  #messageInput { max-height: 190px; }
 }
 </style>
 </head>
 <body>
 <div id="screenShield" class="screen-shield"></div>
 <div id="floatingWhisper" class="floating-whisper"></div>
+<div id="topicsOverlay" class="topics-overlay"></div>
 
 <div id="leftEdge" class="left-edge"></div>
 <aside id="topicRail" class="topic-rail">
   <div class="topic-rail-scroll">
+    <div class="topic-search-wrap">
+      <input id="topicSearchInput" class="topic-search" type="text" placeholder="Sohbet içinde ara...">
+    </div>
+    <div id="topicInsight" class="topic-insight">
+      <div class="topic-insight-head">
+        <b id="topicInsightTitle">Açıklama</b>
+        <button id="topicInsightClose" class="topic-insight-close">×</button>
+      </div>
+      <div id="topicInsightBody" class="topic-insight-body"></div>
+    </div>
     <div id="topicListRail" class="topic-list"></div>
   </div>
 </aside>
 <aside id="leftDrawer" class="left-drawer">
   <div class="drawer-scroll">
     <div class="drawer-head">
-      <b>KONU BASLIKLARI</b>
+      <b>KONU BAŞLIKLARI</b>
       <button id="drawerClose" class="drawer-close">×</button>
     </div>
     <div class="drawer-sub">Son 14 gun</div>
     <div id="topicList" class="topic-list"></div>
     <div class="insight-pane">
       <div class="insight-head">
-        <b id="insightTitle">Aciklama</b>
+        <b id="insightTitle">Açıklama</b>
         <button id="insightClose" class="drawer-close">×</button>
       </div>
       <div id="insightBody" class="insight-body">Burada Farkindalik, Ozet, Memory ve Notlar icerigi gorunur.</div>
@@ -854,7 +1007,7 @@ body.luxeph-mode .context-menu { display: none !important; }
   <div class="menu-section">
     <div class="menu-item fark" id="farkBtn">FARKINDALIK</div>
     <div class="tiny-row">
-      <div class="menu-item" id="summaryBtn">OZET</div>
+      <div class="menu-item" id="summaryBtn">ÖZET</div>
       <div class="menu-item" id="memoryBtn">MEMORY</div>
     </div>
     <div class="tiny-row">
@@ -922,6 +1075,10 @@ body.luxeph-mode .context-menu { display: none !important; }
       <button class="tool-btn" id="toolUndo">Geri</button>
       <button class="tool-btn" id="toolReset">Sıfırla</button>
       <button class="tool-btn" id="toolClose">Kapat</button>
+      <div id="editorTextCapsule" class="editor-text-capsule">
+        <input id="editorTextInput" type="text" placeholder="Kart yazısı...">
+        <button id="editorTextApply">Ekle</button>
+      </div>
     </div>
     <div class="editor-wrap">
       <canvas id="editorCanvas" width="1000" height="620"></canvas>
@@ -978,6 +1135,8 @@ let soundEnabled = true;
 let activeDict = null;
 let activeUi = null;
 let localizedSoundItems = [];
+let pendingTextPoint = null;
+let topicsOpen = false;
 const soundLocaleCache = {};
 const typingSignals = {
   startedAt: 0,
@@ -1023,6 +1182,12 @@ const leftDrawer = document.getElementById("leftDrawer");
 const drawerClose = document.getElementById("drawerClose");
 const topicList = document.getElementById("topicList");
 const topicListRail = document.getElementById("topicListRail");
+const topicRail = document.getElementById("topicRail");
+const topicSearchInput = document.getElementById("topicSearchInput");
+const topicInsight = document.getElementById("topicInsight");
+const topicInsightTitle = document.getElementById("topicInsightTitle");
+const topicInsightBody = document.getElementById("topicInsightBody");
+const topicInsightClose = document.getElementById("topicInsightClose");
 const insightTitle = document.getElementById("insightTitle");
 const insightBody = document.getElementById("insightBody");
 const insightClose = document.getElementById("insightClose");
@@ -1033,6 +1198,10 @@ const moreLangWrap = document.getElementById("moreLangWrap");
 const shareOverlay = document.getElementById("shareOverlay");
 const editorCanvas = document.getElementById("editorCanvas");
 const editorCtx = editorCanvas.getContext("2d");
+const editorTextCapsule = document.getElementById("editorTextCapsule");
+const editorTextInput = document.getElementById("editorTextInput");
+const editorTextApply = document.getElementById("editorTextApply");
+const topicsOverlay = document.getElementById("topicsOverlay");
 
 const userId = localStorage.getItem("lux_uid") || "user_" + Math.random().toString(36).slice(2);
 localStorage.setItem("lux_uid", userId);
@@ -1157,10 +1326,10 @@ const uiLocale = {
 Object.assign(textMap, {
   tr: {
     tagline: "Light your way!",
-    greetMorning: "Gunaydin",
+    greetMorning: "Günaydın",
     greetDay: "Merhaba",
-    greetEvening: "Iyi aksamlar",
-    greetNight: "Iyi geceler",
+    greetEvening: "İyi akşamlar",
+    greetNight: "İyi geceler",
     placeholder: "Light your way!"
   },
   ru: {
@@ -1223,43 +1392,43 @@ Object.assign(textMap, {
 
 Object.assign(uiLocale, {
   tr: {
-    drawerTitle: "KONU BASLIKLARI",
-    drawerSub: "Son 14 gun",
-    insightDefault: "Burada Farkindalik, Ozet, Memory ve Notlar icerigi gorunur.",
-    insightTitle: "Aciklama",
+    drawerTitle: "KONU BAŞLIKLARI",
+    drawerSub: "Son 14 gün",
+    insightDefault: "Burada Farkındalık, Özet, Memory ve Notlar içeriği görünür.",
+    insightTitle: "Açıklama",
     searchPlaceholder: "Ara...",
     searchTitle: "Ara",
-    searchMatches: "eslesme bulundu.",
+    searchMatches: "eşleşme bulundu.",
     fark: "FARKINDALIK",
-    summary: "OZET",
+    summary: "ÖZET",
     memory: "MEMORY",
     notes: "NOTLAR",
     modes: "MODLAR",
-    sound: "Ses ayarlari",
+    sound: "Ses ayarları",
     language: "Dil",
     female: "KADIN",
     male: "ERKEK",
     podcast: "PODCAST",
     night: "GECE RADYOSU",
-    soundOn: "SES ACIK",
+    soundOn: "SES AÇIK",
     soundOff: "SES KAPALI",
-    luxchingPrompt: "Lutfen sorunuzu sorunuz.",
-    luxdreamPrompt: "Lutfen ruyanizi anlatin!",
-    luxdreamGreeting: "Ruya analizi.",
-    noData: "Veri alinamadi.",
-    noSummary: "Henuz ozet yok.",
-    noMemory: "Henuz hafiza kaydi yok.",
-    noNotes: "Henuz not yok.",
-    notesSelectAll: "HEPSINI SEC",
-    notesDelete: "SIL",
-    notesSaved: "Not alindi.",
-    awarenessEmotion: "One cikan duygu",
-    awarenessTheme: "One cikan tema",
-    awarenessGrowth: "Gelisim",
-    awarenessOpenThemes: "Acik temalar",
+    luxchingPrompt: "Lütfen sorunuzu sorunuz.",
+    luxdreamPrompt: "Lütfen rüyanızı anlatın!",
+    luxdreamGreeting: "Rüya analizi.",
+    noData: "Veri alınamadı.",
+    noSummary: "Henüz özet yok.",
+    noMemory: "Henüz hafıza kaydı yok.",
+    noNotes: "Henüz not yok.",
+    notesSelectAll: "HEPSİNİ SEÇ",
+    notesDelete: "SİL",
+    notesSaved: "Not alındı.",
+    awarenessEmotion: "Öne çıkan duygu",
+    awarenessTheme: "Öne çıkan tema",
+    awarenessGrowth: "Gelişim",
+    awarenessOpenThemes: "Açık temalar",
     memoryThemes: "Temalar",
-    memorySymbols: "Imgeler",
-    memoryRecords: "Kayitlar"
+    memorySymbols: "İmgeler",
+    memoryRecords: "Kayıtlar"
   },
   en: {
     drawerTitle: "TOPICS",
@@ -1852,22 +2021,32 @@ Object.assign(uiLocale, {
 });
 
 const soundItems = [
-  ["wind", "Ruzgar", "Dusuk ve genis hava hareketi. Zihni yormadan alan hissi verir.", "natural"],
-  ["rain", "Yagmur", "Tekrarli damla sesi, dikkati yumusatip ic ritmi sakinlestirebilir.", "natural"],
-  ["fire", "Ates", "Citirtili, sicak ve kucuk aralikli ses. Gece esligi icin uygundur.", "natural"],
-  ["cicada", "Agustos bocegi", "Yaz aksami hissi veren sabit arka plan dokusu.", "natural"],
-  ["bird", "Kus", "Hafif ve aralikli dogal ses. Sabah acikligi hissi verir.", "natural"],
-  ["wave", "Dalga", "Gelip giden genis ritim. Nefesle uyumlanmaya yardim edebilir.", "natural"],
-  ["forest", "Orman", "Cok katmanli dogal ambiyans. Dis dunya basincini azaltabilir.", "natural"],
-  ["stream", "Dere", "Akis hissi veren berrak arka plan sesi.", "natural"],
-  ["delta", "Delta (0.5-4 Hz)", "Derin dinlenme ve uyku evreleriyle iliskilendirilen yavas bant.", "freq", 2],
-  ["theta", "Theta (4-8 Hz)", "Imge, cagrisim ve gevek dikkat alaniyla iliskilendirilen bant.", "freq", 6],
-  ["alpha", "Alpha (8-12 Hz)", "Sakin uyaniklik ve gevseme ile iliskilendirilen bant.", "freq", 10],
-  ["beta", "Beta (12-30 Hz)", "Odak, dusunme ve aktif zihinsel islemle iliskilendirilen bant.", "freq", 18],
-  ["gamma", "Gamma (30-100 Hz)", "Yogun bilissel butunleme ve dikkat ile iliskilendirilen bant.", "freq", 40],
-  ["binaural", "Binaural Beats", "Iki kulaga yakin ama farkli frekanslar verilerek ritmik algi olusturulur.", "freq", 7],
-  ["solfeggio", "Solfeggio (174-963 Hz)", "Muzikal/frekans temelli rahatlama pratiği olarak kullanilan ton ailesi.", "freq", 528]
+  ["wind", "Rüzgar", "Düşük ve geniş hava hareketi. Zihni yormadan alan hissi verir.", "natural"],
+  ["rain", "Yağmur", "Tekrarlı damla sesi, dikkati yumuşatıp iç ritmi sakinleştirebilir.", "natural"],
+  ["fire", "Ateş", "Çıtırtılı, sıcak ve küçük aralıklı ses. Gece eşliği için uygundur.", "natural"],
+  ["cicada", "Ağustos böceği", "Yaz akşamı hissi veren sabit arka plan dokusu.", "natural"],
+  ["bird", "Kuş", "Hafif ve aralıklı doğal ses. Sabah açıklığı hissi verir.", "natural"],
+  ["wave", "Dalga", "Gelip giden geniş ritim. Nefesle uyumlanmaya yardım edebilir.", "natural"],
+  ["forest", "Orman", "Çok katmanlı doğal ambiyans. Dış dünya basıncını azaltabilir.", "natural"],
+  ["stream", "Dere", "Akış hissi veren berrak arka plan sesi.", "natural"],
+  ["delta", "Delta (0.5-4 Hz)", "Derin dinlenme ve uyku evreleriyle ilişkilendirilen yavaş bant.", "freq", 2],
+  ["theta", "Theta (4-8 Hz)", "İmge, çağrışım ve gevşek dikkat alanıyla ilişkilendirilen bant.", "freq", 6],
+  ["alpha", "Alpha (8-12 Hz)", "Sakin uyanıklık ve gevşeme ile ilişkilendirilen bant.", "freq", 10],
+  ["beta", "Beta (12-30 Hz)", "Odak, düşünme ve aktif zihinsel işlemle ilişkilendirilen bant.", "freq", 18],
+  ["gamma", "Gamma (30-100 Hz)", "Yoğun bilişsel bütünleme ve dikkat ile ilişkilendirilen bant.", "freq", 40],
+  ["binaural", "Binaural Beats", "İki kulağa yakın ama farklı frekanslar verilerek ritmik algı oluşturulur.", "freq", 7],
+  ["solfeggio", "Solfeggio (174-963 Hz)", "Müzikal/frekans temelli rahatlama pratiği olarak kullanılan ton ailesi.", "freq", 528]
 ];
+
+const soundLabelMap = {
+  en: { wind: "Wind", rain: "Rain", fire: "Fire", cicada: "Cicada", bird: "Bird", wave: "Wave", forest: "Forest", stream: "Stream" },
+  ru: { wind: "Ветер", rain: "Дождь", fire: "Огонь", cicada: "Цикада", bird: "Птица", wave: "Волна", forest: "Лес", stream: "Ручей" },
+  ar: { wind: "رياح", rain: "مطر", fire: "نار", cicada: "زيز", bird: "طائر", wave: "موج", forest: "غابة", stream: "جدول" },
+  fa: { wind: "باد", rain: "باران", fire: "آتش", cicada: "زنجره", bird: "پرنده", wave: "موج", forest: "جنگل", stream: "جویبار" },
+  de: { wind: "Wind", rain: "Regen", fire: "Feuer", cicada: "Zikade", bird: "Vogel", wave: "Welle", forest: "Wald", stream: "Bach" },
+  fr: { wind: "Vent", rain: "Pluie", fire: "Feu", cicada: "Cigale", bird: "Oiseau", wave: "Vague", forest: "Foret", stream: "Ruisseau" },
+  es: { wind: "Viento", rain: "Lluvia", fire: "Fuego", cicada: "Cigarra", bird: "Pajaro", wave: "Ola", forest: "Bosque", stream: "Arroyo" }
+};
 
 const termHints = {
   anksiyete: "Kaygi. Bedenin ve zihnin tehdit varmis gibi tetikte kalmasi.",
@@ -1881,6 +2060,19 @@ const termHints = {
   trigger: "Tetikleyici. Eski veya hassas bir duyguyu yeniden uyandiran isaret.",
   attachment: "Baglanma. Yakinlik kurma, guvenme ve ayrilmaya verilen tepki duzeni."
 };
+
+function normalizeHintKey(s) {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/[İIı]/g, "i")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim();
+}
 
 function getCurrentDict() {
   return activeDict || textMap[currentLang] || textMap.tr;
@@ -2011,20 +2203,78 @@ function loadConversation(id) {
   drawGlyphStrip();
   saveHistory();
   renderTopicList();
+  if (window.innerWidth <= 720) closeTopics();
 }
+function topicBucketLabel(ts, lang) {
+  const d = new Date(ts);
+  const now = new Date();
+  const isToday =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  if (isToday) return lang === "tr" ? "Bugün" : "Today";
+
+  const monthsTr = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+  const monthsEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  return (lang === "tr" ? monthsTr : monthsEn)[d.getMonth()];
+}
+
 function renderTopicList() {
   const targets = [topicListRail].filter(Boolean);
+  const q = (topicSearchInput?.value || "").trim().toLowerCase();
   targets.forEach(t => { t.innerHTML = ""; });
-  userHistory.conversations.slice(0, 40).forEach(c => {
-    targets.forEach(target => {
-      const item = document.createElement("div");
-      item.className = "topic-item" + (c.id === activeConversationId ? " active" : "");
-      item.innerHTML = `
-        <div class="topic-title">${escapeHtml(c.title || c.mode || "Konusma")}</div>
-        <div class="topic-meta">${escapeHtml((c.mode || "luxviai").toUpperCase())}</div>
-      `;
-      item.onclick = () => loadConversation(c.id);
-      target.appendChild(item);
+
+  const rows = userHistory.conversations
+    .slice()
+    .filter(c => (c.mode || "").toLowerCase() !== "luxeph")
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
+    .filter(c => {
+      if (!q) return true;
+      const title = (c.title || "").toLowerCase();
+      const body = (c.messages || []).map(m => m.text || "").join(" ").toLowerCase();
+      return title.includes(q) || body.includes(q);
+    })
+    .slice(0, 80);
+
+  const sections = [];
+  const map = {};
+  rows.forEach(c => {
+    const ts = new Date(c.updatedAt || c.createdAt || Date.now()).getTime();
+    const key = topicBucketLabel(ts, currentLang === "tr" ? "tr" : "en");
+    if (!map[key]) {
+      map[key] = [];
+      sections.push(key);
+    }
+    map[key].push(c);
+  });
+
+  targets.forEach(target => {
+    if (!rows.length) {
+      const empty = document.createElement("div");
+      empty.className = "topic-meta";
+      empty.style.padding = "8px 6px";
+      empty.innerText = currentLang === "tr" ? "Sonuç bulunamadı." : "No result found.";
+      target.appendChild(empty);
+      return;
+    }
+    sections.forEach(sec => {
+      const h = document.createElement("div");
+      h.className = "topic-section-title";
+      h.innerText = sec;
+      target.appendChild(h);
+
+      map[sec].forEach(c => {
+        const item = document.createElement("div");
+        item.className = "topic-item" + (c.id === activeConversationId ? " active" : "");
+        const modeLabel = (c.mode || "luxviai").toUpperCase();
+        const topicLabel = c.title || "Konuşma";
+        item.innerHTML = `
+          <div class="topic-title">${escapeHtml(modeLabel)}</div>
+          <div class="topic-meta">${escapeHtml(topicLabel)}</div>
+        `;
+        item.onclick = () => loadConversation(c.id);
+        target.appendChild(item);
+      });
     });
   });
 }
@@ -2059,22 +2309,39 @@ menuOverlay.onclick = closeMenu;
 
 function openDrawer() { leftDrawer.classList.add("open"); }
 function closeDrawer() { leftDrawer.classList.remove("open"); }
-leftEdge.addEventListener("mouseenter", openDrawer);
-leftDrawer.addEventListener("mouseenter", openDrawer);
-leftDrawer.addEventListener("mouseleave", () => setTimeout(() => { if (!leftDrawer.matches(":hover")) closeDrawer(); }, 300));
 drawerClose.onclick = closeDrawer;
 
+function openTopics() {
+  topicsOpen = true;
+  document.body.classList.add("topics-open");
+}
+function closeTopics() {
+  topicsOpen = false;
+  document.body.classList.remove("topics-open");
+}
+
+if (topicsOverlay) topicsOverlay.onclick = () => closeTopics();
+if (topicSearchInput) topicSearchInput.oninput = () => renderTopicList();
+
 let touchStartX = null;
+let touchStartY = null;
 document.addEventListener("touchstart", e => {
   if (!e.touches[0]) return;
   touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
 }, { passive: true });
 document.addEventListener("touchmove", e => {
   if (touchStartX === null || !e.touches[0]) return;
   const dx = e.touches[0].clientX - touchStartX;
-  if (touchStartX < 30 && dx > 60) openDrawer();
+  const dy = e.touches[0].clientY - touchStartY;
+  if (Math.abs(dy) > 36) return;
+  if (touchStartX < 24 && dx > 52) openTopics();
+  if (topicsOpen && dx < -52) closeTopics();
 }, { passive: true });
-document.addEventListener("touchend", () => { touchStartX = null; }, { passive: true });
+document.addEventListener("touchend", () => {
+  touchStartX = null;
+  touchStartY = null;
+}, { passive: true });
 
 function showPopup(title, html) {
   popupTitle.innerText = title;
@@ -2085,11 +2352,22 @@ function closePopup() { popup.classList.remove("active"); }
 popupClose.onclick = closePopup;
 
 function openInsight(title, content) {
-  openDrawer();
+  if (window.innerWidth <= 720) openTopics();
+  if (topicInsight && topicInsightTitle && topicInsightBody) {
+    topicInsight.classList.add("open");
+    topicInsightTitle.innerText = title;
+    topicInsightBody.innerHTML = content;
+  }
   insightTitle.innerText = title;
   insightBody.innerHTML = content;
 }
-insightClose.onclick = () => { insightBody.innerHTML = ""; };
+function closeInsightPanel() {
+  if (topicInsight) topicInsight.classList.remove("open");
+  if (topicInsightBody) topicInsightBody.innerHTML = "";
+  insightBody.innerHTML = "";
+}
+insightClose.onclick = closeInsightPanel;
+if (topicInsightClose) topicInsightClose.onclick = closeInsightPanel;
 
 function setLanguageSelectors(lang) {
   if (popularLanguageCodes.has(lang)) {
@@ -2171,9 +2449,12 @@ async function localizeSoundItems(lang) {
       return s;
     }
   };
+  const labelMap = soundLabelMap[(lang || "").toLowerCase()] || {};
+  const fallbackMap = soundLabelMap.en || {};
   const items = await Promise.all(soundItems.map(async ([key, label, info, kind, freq]) => {
     const [l, i] = await Promise.all([tr(label), tr(info)]);
-    return [key, l || label, i || info, kind, freq];
+    const bestLabel = labelMap[key] || ((l && l !== label) ? l : (fallbackMap[key] || label));
+    return [key, bestLabel, i || info, kind, freq];
   }));
   soundLocaleCache[lang] = items;
   localizedSoundItems = items;
@@ -2445,7 +2726,11 @@ async function sendMessage(customText) {
       })
     });
     const data = await res.json();
-    const response = data.response || "Bunu duydum.";
+    let response = data.response || "Bunu duydum.";
+    if (currentLang !== "tr" && response) {
+      const t = await translateText(response, deeplTargetCode(currentLang));
+      if (t && t.trim()) response = t;
+    }
     appendMessage("ai", response);
     resetTypingSignals();
   } catch (_) {
@@ -2560,6 +2845,10 @@ async function sendMessageLive(customText) {
       aiDiv.innerText = responseText;
     }
     if (!aiDiv.innerText.trim()) aiDiv.innerText = responseText || "Bunu duydum.";
+    if (currentLang !== "tr" && aiDiv.innerText.trim()) {
+      const translated = await translateText(aiDiv.innerText, deeplTargetCode(currentLang));
+      if (translated && translated.trim()) aiDiv.innerText = translated;
+    }
     addMessageToHistory("assistant", aiDiv.innerText);
     resetTypingSignals();
   } catch (_) {
@@ -2614,7 +2903,7 @@ searchInput.oninput = () => {
   if (!q) return;
   const count = highlightMessages(q);
   const ui = getCurrentUi();
-  openInsight(ui.searchTitle || "Ara", `${count} ${ui.searchMatches || "eslesme bulundu."}`);
+  openInsight(ui.searchTitle || "Ara", `${count} ${ui.searchMatches || "eşleşme bulundu."}`);
 };
 
 farkBtn.onclick = async () => {
@@ -2629,15 +2918,15 @@ farkBtn.onclick = async () => {
       `${ui.awarenessOpenThemes || "Acik temalar"}:\n- ${(w.unresolved_themes || []).join("\n- ")}\n\n` +
       `${escapeHtml(w.constellation_summary || "")}`
     );
-  } catch (_) { openInsight(ui.fark || "FARKINDALIK", ui.noData || "Veri alinamadi."); }
+  } catch (_) { openInsight(ui.fark || "FARKINDALIK", ui.noData || "Veri alınamadı."); }
   closeMenu();
 };
 summaryBtn.onclick = async () => {
   const ui = getCurrentUi();
   try {
     const data = await fetchJson(`/summary?user_id=${encodeURIComponent(userId)}`);
-    openInsight(ui.summary || "OZET", escapeHtml(data.summary || ui.noSummary || "Henuz ozet yok."));
-  } catch (_) { openInsight(ui.summary || "OZET", ui.noData || "Veri alinamadi."); }
+    openInsight(ui.summary || "ÖZET", escapeHtml(data.summary || ui.noSummary || "Henüz özet yok."));
+  } catch (_) { openInsight(ui.summary || "ÖZET", ui.noData || "Veri alınamadı."); }
   closeMenu();
 };
 memoryBtn.onclick = async () => {
@@ -2649,10 +2938,10 @@ memoryBtn.onclick = async () => {
     let txt = "";
     if (analysis.general_state) txt += `${analysis.general_state}\n\n`;
     if (analysis.repeating_themes?.length) txt += `${ui.memoryThemes || "Temalar"}: ${analysis.repeating_themes.join(", ")}\n`;
-    if (analysis.images_symbols?.length) txt += `${ui.memorySymbols || "Imgeler"}: ${analysis.images_symbols.join(", ")}\n`;
-    txt += `\n${ui.memoryRecords || "Kayitlar"}:\n` + (items.length ? items.map(i => `- ${i.text}`).join("\n") : (ui.noMemory || "Henuz hafiza kaydi yok."));
+    if (analysis.images_symbols?.length) txt += `${ui.memorySymbols || "İmgeler"}: ${analysis.images_symbols.join(", ")}\n`;
+    txt += `\n${ui.memoryRecords || "Kayıtlar"}:\n` + (items.length ? items.map(i => `- ${i.text}`).join("\n") : (ui.noMemory || "Henüz hafıza kaydı yok."));
     openInsight(ui.memory || "MEMORY", escapeHtml(txt));
-  } catch (_) { openInsight(ui.memory || "MEMORY", ui.noData || "Veri alinamadi."); }
+  } catch (_) { openInsight(ui.memory || "MEMORY", ui.noData || "Veri alınamadı."); }
   closeMenu();
 };
 
@@ -2664,7 +2953,7 @@ async function openNotesPopup() {
     const html = `
       <div class="tiny-row">
         <div class="menu-item" id="selectAllNotes">${escapeHtml(ui.notesSelectAll || "HEPSINI SEC")}</div>
-        <div class="menu-item" id="deleteNotes">${escapeHtml(ui.notesDelete || "SIL")}</div>
+        <div class="menu-item" id="deleteNotes">${escapeHtml(ui.notesDelete || "SİL")}</div>
       </div>
       <br>
       ${notes.length ? notes.map(n => `
@@ -2672,12 +2961,12 @@ async function openNotesPopup() {
           <span class="note-dot"></span>
           <span class="note-text">${escapeHtml(n.text || "")}</span>
         </div>
-      `).join("") : `<p>${escapeHtml(ui.noNotes || "Henuz not yok.")}</p>`}
+      `).join("") : `<p>${escapeHtml(ui.noNotes || "Henüz not yok.")}</p>`}
     `;
     showPopup(ui.notes || "NOTLAR", html);
     setTimeout(() => setupNotesActions(notes), 0);
   } catch (_) {
-    showPopup(ui.notes || "NOTLAR", ui.noData || "Veri alinamadi.");
+    showPopup(ui.notes || "NOTLAR", ui.noData || "Veri alınamadı.");
   }
 }
 notesBtn.onclick = () => { openNotesPopup(); closeMenu(); };
@@ -2742,21 +3031,48 @@ function selectedOrTargetText(target) {
   const sel = window.getSelection().toString().trim();
   return sel || (target ? target.innerText || target.value || "" : "");
 }
-function showContextMenu(x, y, target) {
+function extractWordAtPoint(x, y, target) {
+  try {
+    let node = null;
+    let offset = 0;
+    if (document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(x, y);
+      node = pos?.offsetNode || null;
+      offset = pos?.offset || 0;
+    } else if (document.caretRangeFromPoint) {
+      const range = document.caretRangeFromPoint(x, y);
+      node = range?.startContainer || null;
+      offset = range?.startOffset || 0;
+    }
+    if (!node) return "";
+    const text = (node.nodeType === Node.TEXT_NODE ? node.textContent : node.innerText) || "";
+    if (!text) return "";
+    const idx = Math.max(0, Math.min(offset, text.length - 1));
+    let s = idx;
+    let e = idx;
+    while (s > 0 && /\S/.test(text[s - 1])) s--;
+    while (e < text.length && /\S/.test(text[e])) e++;
+    const w = text.slice(s, e).replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+    return w || "";
+  } catch (_) {
+    return "";
+  }
+}
+function showContextMenu(x, y, target, preferredText = "") {
   if (currentMode === "luxeph") return;
   lastContextTarget = target;
-  const text = selectedOrTargetText(target);
+  const text = (preferredText || selectedOrTargetText(target) || "").trim();
   contextMenu.innerHTML = "";
+  const isTr = currentLang === "tr";
   const actions = [
-    ["Kopyala", () => navigator.clipboard.writeText(text)],
-    ["Yapistir", async () => { if (messageInput) messageInput.value += await navigator.clipboard.readText(); }],
-    ["Sesli oku", () => speakText(text)],
-    ["Gonder (Kart Olustur)", () => openCardFromText(text)],
-    ["Ekran Goruntusu Gonder", () => openEditorFromScreenshot()],
-    ["Ara", () => { openSearch(); searchInput.value = text; searchInput.dispatchEvent(new Event("input")); }],
-    ["Acikla (Fisilti)", () => explainText(text, target)],
-    ["Cevir", () => explainText(text, target, true)],
-    ["Not al", () => saveNote(text)]
+    [isTr ? "Kopyala" : "Copy", () => navigator.clipboard.writeText(text)],
+    [isTr ? "Yapıştır" : "Paste", async () => { if (messageInput) messageInput.value += await navigator.clipboard.readText(); }],
+    [isTr ? "Sesli oku" : "Read aloud", () => speakText(text)],
+    [isTr ? "Gönder (Kart Oluştur)" : "Send (Create Card)", () => openCardFromText(text)],
+    [isTr ? "Ara" : "Search", () => { openSearch(); searchInput.value = text; searchInput.dispatchEvent(new Event("input")); }],
+    [isTr ? "Açıkla" : "Explain", () => explainText(text, target)],
+    [isTr ? "Çevir" : "Translate", () => explainText(text, target, true)],
+    [isTr ? "Not al" : "Save note", () => saveNote(text)]
   ];
   actions.forEach(([label, fn]) => {
     const b = document.createElement("button");
@@ -2764,8 +3080,15 @@ function showContextMenu(x, y, target) {
     b.onclick = async () => { try { await fn(); } catch (_) {} contextMenu.style.display = "none"; };
     contextMenu.appendChild(b);
   });
-  contextMenu.style.left = Math.min(x, window.innerWidth - 230) + "px";
-  contextMenu.style.top = Math.min(y, window.innerHeight - 340) + "px";
+  const menuW = 230;
+  const menuH = 320;
+  const offsetPx = 20; // ~5mm
+  const left = Math.min(Math.max(8, x), window.innerWidth - menuW - 8);
+  let top = y + offsetPx;
+  if (top + menuH > window.innerHeight - 8) top = y - menuH - offsetPx;
+  top = Math.max(8, top);
+  contextMenu.style.left = left + "px";
+  contextMenu.style.top = top + "px";
   contextMenu.style.display = "flex";
 }
 chatBox.addEventListener("contextmenu", e => {
@@ -2777,9 +3100,15 @@ chatBox.addEventListener("contextmenu", e => {
 chatBox.addEventListener("touchstart", e => {
   const target = e.target.closest(".msg");
   if (!target) return;
+  const t0 = e.touches[0];
+  const px = t0?.clientX || 0;
+  const py = t0?.clientY || 0;
+  const pickedWord = extractWordAtPoint(px, py, target);
   longPressTimer = setTimeout(() => {
     const t = e.touches[0];
-    showContextMenu(t.clientX, t.clientY, target);
+    const x = t?.clientX || px;
+    const y = t?.clientY || py;
+    showContextMenu(x, y, target, pickedWord || "");
   }, 650);
 }, { passive: true });
 chatBox.addEventListener("touchend", () => clearTimeout(longPressTimer));
@@ -2806,7 +3135,17 @@ async function explainText(text, target, forceTranslate = false) {
   const clean = (text || "").trim().toLowerCase();
   if (!clean) return;
   const words = clean.split(/\s+/);
-  const direct = termHints[clean] || words.map(w => termHints[w]).filter(Boolean)[0];
+  const normalized = normalizeHintKey(clean);
+  let direct = termHints[clean] || termHints[normalized] || "";
+  if (!direct) {
+    for (const w of words) {
+      const d = termHints[w] || termHints[normalizeHintKey(w)];
+      if (d) {
+        direct = d;
+        break;
+      }
+    }
+  }
   let whisper = direct || "";
   const looksForeign = /[a-z]/i.test(clean) && !/[çğıöşü]/i.test(clean);
   if (forceTranslate || looksForeign || !whisper) {
@@ -2815,32 +3154,23 @@ async function explainText(text, target, forceTranslate = false) {
       whisper = whisper ? `${whisper} | ${translated}` : translated;
     }
   }
-  if (!whisper) whisper = `"${text}" icin su an kisitli aciklama var.`;
-  showInlineWhisper(whisper, target);
+  if (!whisper) {
+    whisper = currentLang === "tr"
+      ? `"${text}" için kısa bir açıklama üretemedim, bağlama göre tekrar deneyebilirsin.`
+      : `No short explanation found for "${text}" in this context.`;
+  }
+  showInlineWhisper(whisper, target || lastContextTarget || chatBox.lastElementChild);
 }
 
 function showInlineWhisper(text, targetEl) {
   if (!targetEl) return;
-  const sel = window.getSelection();
-  if (sel && sel.rangeCount && sel.toString().trim()) {
-    const range = sel.getRangeAt(0);
-    const marker = document.createElement("span");
-    marker.className = "inline-whisper";
-    marker.innerText = text;
-    try {
-      range.collapse(false);
-      range.insertNode(marker);
-    } catch (_) {
-      targetEl.appendChild(marker);
-    }
-    setTimeout(() => marker.remove(), 4000);
-    return;
-  }
-  const marker = document.createElement("span");
+  const old = targetEl.querySelector(".inline-whisper");
+  if (old) old.remove();
+  const marker = document.createElement("div");
   marker.className = "inline-whisper";
   marker.innerText = text;
   targetEl.appendChild(marker);
-  setTimeout(() => marker.remove(), 4000);
+  setTimeout(() => marker.remove(), 6500);
 }
 
 async function saveNote(text) {
@@ -3082,21 +3412,26 @@ function loadEditorCanvas(sourceCanvas) {
   editorCanvas.height = sourceCanvas.height;
   editorCtx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
   editorCtx.drawImage(sourceCanvas, 0, 0);
-  editorHistory = [editorCanvas.toDataURL("image/png")];
+  editorHistory = [{ url: editorCanvas.toDataURL("image/png"), w: editorCanvas.width, h: editorCanvas.height }];
 }
 function pushEditorHistory() {
-  editorHistory.push(editorCanvas.toDataURL("image/png"));
+  editorHistory.push({ url: editorCanvas.toDataURL("image/png"), w: editorCanvas.width, h: editorCanvas.height });
   editorHistory = editorHistory.slice(-25);
 }
-function restoreFromDataUrl(url) {
+function restoreFromDataUrl(entryOrUrl) {
+  const entry = typeof entryOrUrl === "string"
+    ? { url: entryOrUrl, w: editorCanvas.width, h: editorCanvas.height }
+    : entryOrUrl;
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
+      editorCanvas.width = entry.w || img.width;
+      editorCanvas.height = entry.h || img.height;
       editorCtx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
-      editorCtx.drawImage(img, 0, 0);
+      editorCtx.drawImage(img, 0, 0, editorCanvas.width, editorCanvas.height);
       resolve();
     };
-    img.src = url;
+    img.src = entry.url;
   });
 }
 
@@ -3108,12 +3443,11 @@ editorCanvas.addEventListener("mousedown", e => {
     return;
   }
   if (shareEditorMode === "text") {
-    const t = prompt("Yazi:");
-    if (t) {
-      editorCtx.fillStyle = shareDrawColor;
-      editorCtx.font = `${Math.max(18, shareLineSize * 8)}px Inter`;
-      editorCtx.fillText(t, p.x, p.y);
-      pushEditorHistory();
+    pendingTextPoint = p;
+    if (editorTextCapsule) editorTextCapsule.classList.add("open");
+    if (editorTextInput) {
+      editorTextInput.value = "";
+      editorTextInput.focus();
     }
     return;
   }
@@ -3151,10 +3485,13 @@ editorCanvas.addEventListener("mouseup", async e => {
 });
 
 function getCanvasPos(e) {
+  return getCanvasPosFromCoords(e.clientX, e.clientY);
+}
+function getCanvasPosFromCoords(clientX, clientY) {
   const rect = editorCanvas.getBoundingClientRect();
   const sx = editorCanvas.width / rect.width;
   const sy = editorCanvas.height / rect.height;
-  return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
+  return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
 }
 function previewCropRect(a, b) {
   if (!editorHistory.length) return;
@@ -3180,6 +3517,67 @@ async function applyCrop(a, b) {
   editorCanvas.height = h;
   editorCtx.drawImage(tmp, 0, 0);
 }
+
+editorCanvas.addEventListener("touchstart", e => {
+  if (!e.touches[0]) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  const p = getCanvasPosFromCoords(t.clientX, t.clientY);
+  if (shareEditorMode === "crop") {
+    isCropping = true;
+    cropStart = p;
+    return;
+  }
+  if (shareEditorMode === "text") {
+    pendingTextPoint = p;
+    if (editorTextCapsule) editorTextCapsule.classList.add("open");
+    if (editorTextInput) {
+      editorTextInput.value = "";
+      editorTextInput.focus();
+    }
+    return;
+  }
+  if (shareEditorMode === "pen") {
+    isDrawing = true;
+    editorCtx.strokeStyle = shareDrawColor;
+    editorCtx.lineWidth = shareLineSize;
+    editorCtx.lineCap = "round";
+    editorCtx.beginPath();
+    editorCtx.moveTo(p.x, p.y);
+  }
+}, { passive: false });
+
+editorCanvas.addEventListener("touchmove", e => {
+  if (!e.touches[0]) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  const p = getCanvasPosFromCoords(t.clientX, t.clientY);
+  if (isDrawing) {
+    editorCtx.lineTo(p.x, p.y);
+    editorCtx.stroke();
+  }
+  if (isCropping && cropStart) {
+    previewCropRect(cropStart, p);
+  }
+}, { passive: false });
+
+editorCanvas.addEventListener("touchend", async e => {
+  e.preventDefault();
+  if (isDrawing) {
+    isDrawing = false;
+    pushEditorHistory();
+  }
+  if (isCropping && cropStart) {
+    const t = e.changedTouches && e.changedTouches[0];
+    if (t) {
+      const p = getCanvasPosFromCoords(t.clientX, t.clientY);
+      await applyCrop(cropStart, p);
+      pushEditorHistory();
+    }
+    isCropping = false;
+    cropStart = null;
+  }
+}, { passive: false });
 
 document.getElementById("toolPen").onclick = () => setEditorMode("pen");
 document.getElementById("toolCrop").onclick = () => setEditorMode("crop");
@@ -3215,6 +3613,30 @@ function setEditorMode(mode) {
   document.getElementById("toolPen").classList.toggle("active", mode === "pen");
   document.getElementById("toolCrop").classList.toggle("active", mode === "crop");
   document.getElementById("toolText").classList.toggle("active", mode === "text");
+  if (mode !== "text" && editorTextCapsule) editorTextCapsule.classList.remove("open");
+}
+
+function applyEditorText() {
+  const t = (editorTextInput?.value || "").trim();
+  if (!t || !pendingTextPoint) {
+    if (editorTextCapsule) editorTextCapsule.classList.remove("open");
+    return;
+  }
+  editorCtx.fillStyle = shareDrawColor;
+  editorCtx.font = `${Math.max(18, shareLineSize * 8)}px Inter`;
+  editorCtx.fillText(t, pendingTextPoint.x, pendingTextPoint.y);
+  pushEditorHistory();
+  if (editorTextCapsule) editorTextCapsule.classList.remove("open");
+  pendingTextPoint = null;
+}
+if (editorTextApply) editorTextApply.onclick = applyEditorText;
+if (editorTextInput) {
+  editorTextInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      applyEditorText();
+    }
+  });
 }
 
 function stampSignature() {
@@ -3239,7 +3661,9 @@ function openShareUrl(platform, text) {
     instagram: "https://www.instagram.com/",
     tiktok: "https://www.tiktok.com/"
   }[platform];
-  if (u) window.open(u, "_blank", "noopener");
+  if (!u) return;
+  const w = window.open(u, "_blank", "noopener");
+  if (!w) window.location.href = u;
 }
 document.querySelectorAll(".share-btn").forEach(btn => {
   btn.onclick = async () => {
@@ -3260,7 +3684,11 @@ document.querySelectorAll(".share-btn").forEach(btn => {
     }
     if (platform === "native") {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], text: shareText, title: "LUXVIAI" }); } catch (_) {}
+        try {
+          await navigator.share({ files: [file], text: shareText, title: "LUXVIAI" });
+        } catch (_) {
+          openShareUrl("whatsapp", shareText);
+        }
       } else {
         openShareUrl("whatsapp", shareText);
       }
