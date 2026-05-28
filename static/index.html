@@ -22,12 +22,15 @@
   --platinum: #A7A9AC;
   --rail-top: 72px;
   --rail-bottom: 18px;
+  --app-height: 100dvh;
 }
 body {
   background: var(--bg);
   font-family: "Inter", sans-serif;
   color: var(--fg);
-  height: 100vh;
+  height: 100%;
+  min-height: 100svh;
+  min-height: var(--app-height);
   overflow: hidden;
 }
 *::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -38,7 +41,9 @@ body {
 .app {
   width: 100%;
   max-width: 1280px;
-  height: 100vh;
+  height: 100%;
+  min-height: 100svh;
+  min-height: var(--app-height);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -168,7 +173,7 @@ body {
   bottom: var(--chat-scroll-bottom, 122px);
   width: 4px;
   background: transparent;
-  pointer-events: none;
+  pointer-events: auto;
   z-index: 11;
 }
 .chat-scroll-thumb {
@@ -253,6 +258,19 @@ body.luxta-mode .msg.ai { color: #F2EBDD; }
   line-height: 1.35;
   opacity: .94;
 }
+.resume-btn {
+  display: inline-flex;
+  align-items: center;
+  margin: 6px 0 14px 0;
+  padding: 6px 12px;
+  border: 1px solid rgba(237,145,7,.44);
+  border-radius: 999px;
+  background: #0a0a0a;
+  color: #E6D6B4;
+  font-size: .72rem;
+  cursor: pointer;
+}
+.resume-btn:hover { color: #ED9107; border-color: #ED9107; }
 .floating-whisper {
   position: fixed;
   z-index: 220;
@@ -271,7 +289,7 @@ body.luxta-mode .msg.ai { color: #F2EBDD; }
   bottom: 0;
   left: 0;
   width: 100%;
-  padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+  padding: 14px 18px calc(14px + max(env(safe-area-inset-bottom), 14px));
   background: #000;
   z-index: 8;
 }
@@ -1205,6 +1223,7 @@ let recordInterval = null;
 let recordTranscriptText = "";
 let recognitionFinalText = "";
 let recognitionCommittedText = "";
+let recognitionSupported = true;
 let mediaStream = null;
 let analyser = null;
 let eqAnimation = null;
@@ -2203,6 +2222,11 @@ function escapeHtml(str) {
   }[s]));
 }
 function escapeRegExp(str) { return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+function setAppHeight() {
+  const vv = window.visualViewport;
+  const h = Math.round(vv ? vv.height : window.innerHeight);
+  document.documentElement.style.setProperty("--app-height", `${h}px`);
+}
 function syncChatScrollbarBounds() {
   if (!chatScrollbar) return;
   const headerEl = document.querySelector(".header");
@@ -2387,8 +2411,8 @@ function renderTopicList() {
     .filter(c => {
       if (!q) return true;
       const title = (c.title || "").toLowerCase();
-      const body = (c.messages || []).map(m => m.text || "").join(" ").toLowerCase();
-      return title.includes(q) || body.includes(q);
+      const mode = (c.mode || "").toLowerCase();
+      return title.includes(q) || mode.includes(q);
     })
     .slice(0, 80);
 
@@ -2460,7 +2484,11 @@ function trimLuxephMessages() {
   }
 }
 
-function openMenu() { sideMenu.classList.add("open"); menuOverlay.classList.add("active"); }
+function openMenu() {
+  if (currentMode === "luxta") revealLuxtaTop(3000);
+  sideMenu.classList.add("open");
+  menuOverlay.classList.add("active");
+}
 function closeMenu() { sideMenu.classList.remove("open"); menuOverlay.classList.remove("active"); }
 menuButton.onclick = openMenu;
 menuOverlay.onclick = closeMenu;
@@ -2483,11 +2511,21 @@ if (topicSearchInput) topicSearchInput.oninput = () => renderTopicList();
 if (topicRailScroll) topicRailScroll.addEventListener("scroll", syncTopicScrollbarThumb, { passive: true });
 if (chatBox) chatBox.addEventListener("scroll", syncChatScrollbarThumb, { passive: true });
 window.addEventListener("resize", () => {
+  setAppHeight();
   syncTopicScrollbarBounds();
   syncTopicScrollbarThumb();
   syncChatScrollbarBounds();
   syncChatScrollbarThumb();
 });
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    setAppHeight();
+    syncTopicScrollbarBounds();
+    syncTopicScrollbarThumb();
+    syncChatScrollbarBounds();
+    syncChatScrollbarThumb();
+  });
+}
 
 let touchStartX = null;
 let touchStartY = null;
@@ -2925,7 +2963,7 @@ function ensureSocket() {
 
 function setResponseLock(locked) {
   aiResponding = locked;
-  messageInput.readOnly = locked;
+  messageInput.readOnly = false;
   voiceButton.disabled = locked;
   voiceButton.style.opacity = locked ? "0.46" : "";
   sendButton.innerText = locked ? (currentLang === "tr" ? "DURDUR" : "STOP") : currentMode.toUpperCase();
@@ -3003,6 +3041,25 @@ function stopActiveResponse() {
   setResponseLock(false);
 }
 
+function continuePromptText() {
+  return currentLang === "tr" ? "Kaldığın yerden devam et." : "Please continue from where you stopped.";
+}
+
+function appendResumeButton(afterMsgEl) {
+  if (!afterMsgEl || !afterMsgEl.parentNode) return;
+  document.querySelectorAll(".resume-btn").forEach(x => x.remove());
+  const btn = document.createElement("button");
+  btn.className = "resume-btn";
+  btn.type = "button";
+  btn.innerText = currentLang === "tr" ? "Devam et" : "Continue";
+  btn.onclick = () => {
+    btn.remove();
+    if (aiResponding) return;
+    sendMessageLive(continuePromptText());
+  };
+  afterMsgEl.insertAdjacentElement("afterend", btn);
+}
+
 function sendMessageViaSocket(payload, onChunk) {
   return new Promise((resolve, reject) => {
     if (wsPending) {
@@ -3072,7 +3129,7 @@ async function sendMessageLive(customText) {
 
   const aiDiv = appendMessage("ai", "", false);
   activeAiDiv = aiDiv;
-  const writer = createPacedWriter(aiDiv, 0.7);
+  const writer = createPacedWriter(aiDiv, 0.9);
   const payload = {
     message: text,
     user_id: userId,
@@ -3091,6 +3148,7 @@ async function sendMessageLive(customText) {
       wsPending = null;
       if (!aiDiv.innerText.trim()) aiDiv.innerText = (currentLang === "tr" ? "Yanıt durduruldu." : "Response stopped.");
       addMessageToHistory("assistant", aiDiv.innerText);
+      appendResumeButton(aiDiv);
       activeAiDiv = null;
     };
 
@@ -3131,13 +3189,10 @@ sendButton.onclick = () => {
   sendMessageLive();
 };
 messageInput.addEventListener("keydown", e => {
-  if (aiResponding) {
-    e.preventDefault();
-    return;
-  }
   recordTypingSignal(e);
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
+    if (aiResponding) return;
     sendMessageLive();
   }
 });
@@ -3163,6 +3218,8 @@ function highlightMessages(q) {
   return count;
 }
 function openSearch() {
+  if (topicSearchInput) topicSearchInput.blur();
+  if (topicsOpen && window.innerWidth <= 720) closeTopics();
   searchCapsule.classList.add("open");
   setTimeout(() => searchInput.focus(), 80);
 }
@@ -3177,10 +3234,13 @@ searchInput.oninput = () => {
   clearHighlights();
   const q = searchInput.value.trim();
   if (!q) return;
-  const count = highlightMessages(q);
-  const ui = getCurrentUi();
-  openInsight(ui.searchTitle || "Ara", `${count} ${ui.searchMatches || "eşleşme bulundu."}`);
+  highlightMessages(q);
 };
+if (topicSearchInput) {
+  topicSearchInput.addEventListener("focus", () => {
+    closeSearch();
+  });
+}
 
 farkBtn.onclick = async () => {
   const ui = getCurrentUi();
@@ -3342,7 +3402,8 @@ function extractWordAtPoint(x, y, target) {
 function showContextMenu(x, y, target, preferredText = "") {
   if (currentMode === "luxeph") return;
   lastContextTarget = target;
-  const text = (preferredText || selectedOrTargetText(target) || "").trim();
+  const selectedText = selectedOrTargetText(target);
+  const text = (selectedText || preferredText || (target ? target.innerText || target.value || "" : "") || "").trim();
   contextMenu.innerHTML = "";
   const isTr = currentLang === "tr";
   const actions = [
@@ -3358,7 +3419,11 @@ function showContextMenu(x, y, target, preferredText = "") {
   actions.forEach(([label, fn]) => {
     const b = document.createElement("button");
     b.textContent = label;
-    b.onclick = async () => { try { await fn(); } catch (_) {} contextMenu.style.display = "none"; };
+    b.onclick = async () => {
+      try { await fn(); } catch (_) {}
+      clearBrowserSelection();
+      contextMenu.style.display = "none";
+    };
     contextMenu.appendChild(b);
   });
   const menuW = 230;
@@ -3378,7 +3443,6 @@ function showContextMenu(x, y, target, preferredText = "") {
   contextMenu.style.left = left + "px";
   contextMenu.style.top = top + "px";
   contextMenu.style.display = "flex";
-  clearBrowserSelection();
 }
 chatBox.addEventListener("contextmenu", e => {
   e.preventDefault();
@@ -3397,7 +3461,8 @@ chatBox.addEventListener("touchstart", e => {
     const t = e.touches[0];
     const x = t?.clientX || px;
     const y = t?.clientY || py;
-    showContextMenu(x, y, target, pickedWord || "");
+    const selectedNow = (window.getSelection && window.getSelection().toString().trim()) || "";
+    showContextMenu(x, y, target, selectedNow || pickedWord || "");
   }, 650);
 }, { passive: true });
 chatBox.addEventListener("touchend", () => clearTimeout(longPressTimer));
@@ -3512,7 +3577,10 @@ document.querySelectorAll("[data-voice-tone]").forEach(btn => {
 
 function setupRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) return null;
+  if (!SpeechRecognition) {
+    recognitionSupported = false;
+    return null;
+  }
   const rec = new SpeechRecognition();
   rec.lang = "tr-TR";
   rec.interimResults = true;
@@ -3539,6 +3607,17 @@ function setupRecognition() {
       .replace(/\s+/g, " ")
       .trim();
     recordTranscript.innerText = recordTranscriptText;
+  };
+  rec.onerror = event => {
+    const code = event?.error || "";
+    if (code === "not-allowed" || code === "service-not-allowed") {
+      recordTranscript.innerText = currentLang === "tr"
+        ? "Mikrofon izni gerekiyor."
+        : "Microphone permission is required.";
+      stopRecording(false);
+      return;
+    }
+    if (code === "no-speech") return;
   };
   rec.onend = () => { if (recording) { try { rec.start(); } catch (_) {} } };
   return rec;
@@ -3595,6 +3674,10 @@ async function startRecording() {
     if (recognition) {
       recognition.lang = speechLangCode();
       recognition.start();
+    } else if (!recognitionSupported) {
+      recordTranscript.innerText = currentLang === "tr"
+        ? "Bu cihazda anlık ses-yazı desteği sınırlı."
+        : "Live speech-to-text is limited on this device.";
     }
   } catch (_) {}
   recordInterval = setInterval(() => {
@@ -3733,10 +3816,21 @@ async function openCardFromText(text, sourceEl = null) {
     ctx.fillText(line, 70, y);
     y += fontPx + lineGap;
   });
+  drawCardFrame(ctx, canvas.width, canvas.height);
   loadEditorCanvas(canvas);
   resetEditorStickers();
   setEditorMode("pen");
   shareOverlay.classList.add("active");
+}
+
+function drawCardFrame(ctx, width, height) {
+  const pad = Math.max(16, Math.round(Math.min(width, height) * 0.026));
+  const lw = Math.max(2, Math.round(Math.min(width, height) * 0.0032));
+  ctx.save();
+  ctx.strokeStyle = "#ED9107";
+  ctx.lineWidth = lw;
+  ctx.strokeRect(pad, pad, width - (pad * 2), height - (pad * 2));
+  ctx.restore();
 }
 
 function wrapTextForCanvas(ctx, text, maxWidth) {
@@ -4060,9 +4154,9 @@ window.addEventListener("pointermove", e => {
 }, { passive: false });
 window.addEventListener("pointerup", stopStickerDrag);
 
-document.getElementById("toolPen").onclick = () => setEditorMode("pen");
+document.getElementById("toolPen").onclick = () => setEditorMode("text");
 document.getElementById("toolCrop").onclick = () => setEditorMode("crop");
-document.getElementById("toolText").onclick = () => setEditorMode("text");
+document.getElementById("toolText").onclick = () => setEditorMode("pen");
 document.getElementById("toolUndo").onclick = async () => {
   commitEditorStickers();
   if (editorHistory.length <= 1) return;
@@ -4097,9 +4191,9 @@ document.querySelectorAll(".tool-btn[data-size]").forEach(btn => {
 function setEditorMode(mode) {
   if (shareEditorMode === "text" && mode !== "text") commitEditorStickers();
   shareEditorMode = mode;
-  document.getElementById("toolPen").classList.toggle("active", mode === "pen");
+  document.getElementById("toolPen").classList.toggle("active", mode === "text");
   document.getElementById("toolCrop").classList.toggle("active", mode === "crop");
-  document.getElementById("toolText").classList.toggle("active", mode === "text");
+  document.getElementById("toolText").classList.toggle("active", mode === "pen");
   if (mode !== "text" && editorTextCapsule) editorTextCapsule.classList.remove("open");
 }
 
@@ -4203,21 +4297,24 @@ document.addEventListener("keydown", e => {
   }
 });
 
+function revealLuxtaTop(timeoutMs = 3000) {
+  if (currentMode !== "luxta") return;
+  document.body.classList.add("luxta-top-visible");
+  clearTimeout(luxTopTimer);
+  luxTopTimer = setTimeout(() => document.body.classList.remove("luxta-top-visible"), timeoutMs);
+}
+
 document.addEventListener("mousemove", e => {
   if (currentMode !== "luxta") return;
   if (e.clientY < 90) {
-    document.body.classList.add("luxta-top-visible");
-    clearTimeout(luxTopTimer);
-    luxTopTimer = setTimeout(() => document.body.classList.remove("luxta-top-visible"), 1200);
+    revealLuxtaTop(3000);
   }
 });
 document.addEventListener("touchstart", e => {
   if (currentMode !== "luxta") return;
   const t = e.touches[0];
   if (t && t.clientY < 120) {
-    document.body.classList.add("luxta-top-visible");
-    clearTimeout(luxTopTimer);
-    luxTopTimer = setTimeout(() => document.body.classList.remove("luxta-top-visible"), 1600);
+    revealLuxtaTop(3000);
   }
 }, { passive: true });
 
@@ -4234,6 +4331,7 @@ async function bootGreeting() {
 }
 
 async function initApp() {
+  setAppHeight();
   populateLanguages();
   try {
     await applyLanguage(currentLang);
