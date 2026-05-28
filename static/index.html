@@ -1204,6 +1204,7 @@ let recordSeconds = 30;
 let recordInterval = null;
 let recordTranscriptText = "";
 let recognitionFinalText = "";
+let recognitionCommittedText = "";
 let mediaStream = null;
 let analyser = null;
 let eqAnimation = null;
@@ -3518,16 +3519,21 @@ function setupRecognition() {
   rec.continuous = true;
   rec.maxAlternatives = 1;
   rec.onresult = event => {
-    const finals = [];
     let interim = "";
-    for (let i = 0; i < event.results.length; i++) {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
       const phrase = (event.results[i][0]?.transcript || "").trim();
       if (!phrase) continue;
-      if (event.results[i].isFinal) finals.push(phrase);
+      if (event.results[i].isFinal) {
+        recognitionCommittedText = [recognitionCommittedText, phrase]
+          .filter(Boolean)
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
       else interim += (interim ? " " : "") + phrase;
     }
-    recognitionFinalText = finals.join(" ").replace(/\s+/g, " ").trim();
-    recordTranscriptText = [recognitionFinalText, interim.trim()]
+    recognitionFinalText = recognitionCommittedText;
+    recordTranscriptText = [recognitionCommittedText, interim.trim()]
       .filter(Boolean)
       .join(" ")
       .replace(/\s+/g, " ")
@@ -3566,6 +3572,7 @@ async function startRecording() {
   recordSeconds = 30;
   recordTranscriptText = "";
   recognitionFinalText = "";
+  recognitionCommittedText = "";
   recordTranscript.innerText = "";
   recordTimer.innerText = "30";
   recordProgress.style.width = "0%";
