@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
@@ -7,7 +7,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
 :root {
   --lux: #ED9107;
   --lux-soft: #F5D68A;
@@ -152,8 +157,31 @@ body {
   position: relative;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 .chat-box::-webkit-scrollbar { display: none; }
+.chat-scrollbar {
+  position: fixed;
+  right: 6px;
+  top: var(--chat-scroll-top, 112px);
+  bottom: var(--chat-scroll-bottom, 122px);
+  width: 4px;
+  background: transparent;
+  pointer-events: none;
+  z-index: 11;
+}
+.chat-scroll-thumb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 19px; /* ~0.5 cm */
+  border-radius: 999px;
+  background: #15181d;
+  opacity: .9;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+}
 body.luxdream-mode .chat-box::before {
   content: "";
   position: absolute;
@@ -204,7 +232,7 @@ body.luxdream-mode .chat-box::before {
   color: var(--lux);
   margin-right: 6px;
 }
-body.luxta-mode .msg.ai { color: #EDE5D6; }
+body.luxta-mode .msg.ai { color: #F2EBDD; }
 .msg mark {
   background: var(--lux);
   color: #000;
@@ -212,10 +240,18 @@ body.luxta-mode .msg.ai { color: #EDE5D6; }
 }
 .inline-whisper {
   display: block;
-  margin-top: 4px;
-  font-size: .74rem;
-  color: #bdb7aa;
-  opacity: .72;
+  margin: 6px 0 0 0;
+  padding: 5px 8px;
+  max-width: min(92%, 620px);
+  background: #EFE2C8;
+  color: #111;
+  border: 1px solid rgba(0,0,0,.16);
+  border-radius: 8px;
+  font-size: .72rem;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.35;
+  opacity: .94;
 }
 .floating-whisper {
   position: fixed;
@@ -471,11 +507,35 @@ body.luxdream-mode .light-line { display: block; }
   background: rgba(8,8,8,0.98);
   border-right: none;
 }
+.topic-rail-scrollbar {
+  position: absolute;
+  right: 3px;
+  top: var(--topic-scroll-top, 112px);
+  bottom: var(--topic-scroll-bottom, 122px);
+  width: 4px;
+  background: transparent;
+  pointer-events: none;
+  z-index: 3;
+}
+.topic-rail-thumb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 19px; /* ~0.5 cm */
+  border-radius: 999px;
+  background: #15181d;
+  opacity: .92;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+}
 .topic-rail-scroll {
   height: 100%;
   overflow-y: auto;
   padding: 14px 14px calc(18px + env(safe-area-inset-bottom));
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.topic-rail-scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .topic-search-wrap {
   position: sticky;
   top: 0;
@@ -658,18 +718,10 @@ body.luxdream-mode .light-line { display: block; }
   line-height: 1.46;
   white-space: pre-wrap;
 }
-.topic-rail-scroll::-webkit-scrollbar,
-.drawer-scroll::-webkit-scrollbar { width: 2px; }
-.topic-rail-scroll::-webkit-scrollbar-thumb,
-.drawer-scroll::-webkit-scrollbar-thumb {
-  background: #23262b;
-  border-radius: 8px;
-  min-height: 40px; /* ~1 cm */
-}
-.topic-rail-scroll,
+.drawer-scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .drawer-scroll {
-  scrollbar-color: #23262b #000;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 /* context + overlays */
@@ -759,6 +811,16 @@ body.luxdream-mode .light-line { display: block; }
   gap: 6px;
   align-items: center;
 }
+.tool-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tool-sep {
+  width: 1px;
+  height: 24px;
+  background: rgba(237,145,7,.18);
+}
 .tool-btn {
   border: 1px solid rgba(237,145,7,.33);
   background: #090909;
@@ -784,6 +846,25 @@ body.luxdream-mode .light-line { display: block; }
   margin: 0 auto;
   image-rendering: pixelated;
   touch-action: none;
+}
+.editor-sticker-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.editor-sticker {
+  position: absolute;
+  pointer-events: auto;
+  color: #E8E5DF;
+  font-family: "Inter", sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: pre-wrap;
+  max-width: min(78vw, 560px);
+  cursor: move;
+  touch-action: none;
+  user-select: none;
 }
 .share-targets {
   display: flex;
@@ -850,7 +931,7 @@ body.luxta-mode .side-menu.open ~ .app .header-tools {
   opacity: .44;
 }
 body.luxta-mode .composer-wrap { opacity: .7; }
-body.luxta-mode .msg.ai { color: #EDE5D6; }
+body.luxta-mode .msg.ai { color: #F2EBDD; }
 body.luxta-mode #voiceButton { opacity: .7; }
 body.luxta-mode .left-edge { opacity: .18; }
 body.luxta-mode textarea { background: rgba(17, 17, 17, 0.78); }
@@ -938,6 +1019,7 @@ body.topics-open .topics-overlay { display: block; }
     </div>
     <div id="topicListRail" class="topic-list"></div>
   </div>
+  <div class="topic-rail-scrollbar"><span id="topicRailThumb" class="topic-rail-thumb"></span></div>
 </aside>
 <aside id="leftDrawer" class="left-drawer">
   <div class="drawer-scroll">
@@ -976,6 +1058,7 @@ body.topics-open .topics-overlay { display: block; }
   </div>
 
   <div id="chatBox" class="chat-box"></div>
+  <div id="chatScrollbar" class="chat-scrollbar"><span id="chatScrollThumb" class="chat-scroll-thumb"></span></div>
 
   <div class="composer-wrap">
     <div class="composer">
@@ -1019,8 +1102,6 @@ body.topics-open .topics-overlay { display: block; }
     <div class="menu-title">MODLAR</div>
     <div class="menu-items">
       <div class="menu-item active" data-mode="luxviai">LUXVIAI</div>
-      <div class="menu-item" data-mode="luxdream">LUXDREAM</div>
-      <div class="menu-item" data-mode="luxching">LUXCHING</div>
       <div class="menu-item" data-mode="luxta">LUXTA</div>
       <div class="menu-item" data-mode="luxeph">LUXEPH</div>
     </div>
@@ -1062,19 +1143,30 @@ body.topics-open .topics-overlay { display: block; }
 <div id="shareOverlay" class="share-overlay">
   <div class="share-shell">
     <div class="share-toolbar">
-      <button class="tool-btn" id="toolPen">Kalem</button>
-      <button class="tool-btn" id="toolCrop">Kırp</button>
-      <button class="tool-btn" id="toolText">Yazı</button>
-      <button class="tool-btn" data-color="#000000">Siyah</button>
-      <button class="tool-btn" data-color="#FFFFFF">Beyaz</button>
-      <button class="tool-btn" data-color="#D34242">Kırmızı</button>
-      <button class="tool-btn active" data-color="#ED9107">Lux Sarısı</button>
-      <button class="tool-btn" data-size="2">İnce</button>
-      <button class="tool-btn active" data-size="4">Orta</button>
-      <button class="tool-btn" data-size="8">Kalın</button>
-      <button class="tool-btn" id="toolUndo">Geri</button>
-      <button class="tool-btn" id="toolReset">Sıfırla</button>
-      <button class="tool-btn" id="toolClose">Kapat</button>
+      <div class="tool-group">
+        <button class="tool-btn" id="toolPen">Ekle</button>
+        <button class="tool-btn" id="toolCrop">Kırp</button>
+        <button class="tool-btn" id="toolText">Çiz</button>
+      </div>
+      <span class="tool-sep"></span>
+      <div class="tool-group">
+        <button class="tool-btn" data-color="#000000">Siyah</button>
+        <button class="tool-btn" data-color="#FFFFFF">Beyaz</button>
+        <button class="tool-btn" data-color="#D34242">Kırmızı</button>
+        <button class="tool-btn active" data-color="#ED9107">Lux Sarısı</button>
+      </div>
+      <span class="tool-sep"></span>
+      <div class="tool-group">
+        <button class="tool-btn" data-size="2">İnce</button>
+        <button class="tool-btn active" data-size="4">Orta</button>
+        <button class="tool-btn" data-size="8">Kalın</button>
+      </div>
+      <span class="tool-sep"></span>
+      <div class="tool-group">
+        <button class="tool-btn" id="toolUndo">Geri</button>
+        <button class="tool-btn" id="toolReset">Sıfırla</button>
+        <button class="tool-btn" id="toolClose">Kapat</button>
+      </div>
       <div id="editorTextCapsule" class="editor-text-capsule">
         <input id="editorTextInput" type="text" placeholder="Kart yazısı...">
         <button id="editorTextApply">Ekle</button>
@@ -1082,6 +1174,7 @@ body.topics-open .topics-overlay { display: block; }
     </div>
     <div class="editor-wrap">
       <canvas id="editorCanvas" width="1000" height="620"></canvas>
+      <div id="editorStickerLayer" class="editor-sticker-layer"></div>
     </div>
     <div class="share-targets">
       <button class="share-btn" data-share="native">Cihazda Paylaş</button>
@@ -1110,6 +1203,7 @@ let recording = false;
 let recordSeconds = 30;
 let recordInterval = null;
 let recordTranscriptText = "";
+let recognitionFinalText = "";
 let mediaStream = null;
 let analyser = null;
 let eqAnimation = null;
@@ -1126,16 +1220,21 @@ let isCropping = false;
 let cropStart = null;
 let editorHistory = [];
 let editorActiveText = "";
+let editorTextStickers = [];
+let stickerDrag = null;
 let lastVoiceEnergy = 0;
 let lastSpeechRateWpm = 0;
 let ws = null;
 let wsReady = false;
 let wsPending = null;
+let aiResponding = false;
+let stopStreamRequested = false;
+let streamAbort = null;
+let activeAiDiv = null;
 let soundEnabled = true;
 let activeDict = null;
 let activeUi = null;
 let localizedSoundItems = [];
-let pendingTextPoint = null;
 let topicsOpen = false;
 const soundLocaleCache = {};
 const typingSignals = {
@@ -1147,6 +1246,8 @@ const typingSignals = {
 };
 
 const chatBox = document.getElementById("chatBox");
+const chatScrollbar = document.getElementById("chatScrollbar");
+const chatScrollThumb = document.getElementById("chatScrollThumb");
 const messageInput = document.getElementById("messageInput");
 const sendButton = document.getElementById("sendButton");
 const menuButton = document.getElementById("menuButton");
@@ -1183,6 +1284,8 @@ const drawerClose = document.getElementById("drawerClose");
 const topicList = document.getElementById("topicList");
 const topicListRail = document.getElementById("topicListRail");
 const topicRail = document.getElementById("topicRail");
+const topicRailScroll = document.querySelector(".topic-rail-scroll");
+const topicRailThumb = document.getElementById("topicRailThumb");
 const topicSearchInput = document.getElementById("topicSearchInput");
 const topicInsight = document.getElementById("topicInsight");
 const topicInsightTitle = document.getElementById("topicInsightTitle");
@@ -1198,6 +1301,7 @@ const moreLangWrap = document.getElementById("moreLangWrap");
 const shareOverlay = document.getElementById("shareOverlay");
 const editorCanvas = document.getElementById("editorCanvas");
 const editorCtx = editorCanvas.getContext("2d");
+const editorStickerLayer = document.getElementById("editorStickerLayer");
 const editorTextCapsule = document.getElementById("editorTextCapsule");
 const editorTextInput = document.getElementById("editorTextInput");
 const editorTextApply = document.getElementById("editorTextApply");
@@ -2049,16 +2153,16 @@ const soundLabelMap = {
 };
 
 const termHints = {
-  anksiyete: "Kaygi. Bedenin ve zihnin tehdit varmis gibi tetikte kalmasi.",
-  depresyon: "Uzun sureli cokkünlük, isteksizlik ve enerji azalmasiyla iliskili klinik tablo.",
-  travma: "Kisinin bas etme kapasitesini asan zorlayici yasantinin biraktigi iz.",
-  dissosiyasyon: "Zihnin yogun stres altinda kopma, uzaklasma veya gercek disilik hissi uretmesi.",
-  panik: "Ani ve yogun korku dalgasi; carpinti, nefes sikismasi gibi belirtilerle gelebilir.",
+  anksiyete: "Kaygı. Bedenin ve zihnin tehdit varmış gibi tetikte kalması.",
+  depresyon: "Uzun süreli çökkünlük, isteksizlik ve enerji azalmasıyla ilişkili klinik tablo.",
+  travma: "Kişinin baş etme kapasitesini aşan zorlayıcı yaşantının bıraktığı iz.",
+  dissosiyasyon: "Zihnin yoğun stres altında kopma, uzaklaşma veya gerçek dışılık hissi üretmesi.",
+  panik: "Ani ve yoğun korku dalgası; çarpıntı, nefes sıkışması gibi belirtilerle gelebilir.",
   psikanaliz: "Bilinçdışı süreçleri, tekrarları ve iç çatışmaları anlamaya çalışan yaklaşım.",
-  klinik: "Saglik/ruh sagligi degerlendirme ve uygulama alaniyla ilgili.",
+  klinik: "Sağlık/ruh sağlığı değerlendirme ve uygulama alanıyla ilgili.",
   semptom: "Belirti.",
-  trigger: "Tetikleyici. Eski veya hassas bir duyguyu yeniden uyandiran isaret.",
-  attachment: "Baglanma. Yakinlik kurma, guvenme ve ayrilmaya verilen tepki duzeni."
+  trigger: "Tetikleyici. Eski veya hassas bir duyguyu yeniden uyandıran işaret.",
+  attachment: "Bağlanma. Yakınlık kurma, güvenme ve ayrılmaya verilen tepki düzeni."
 };
 
 function normalizeHintKey(s) {
@@ -2098,7 +2202,33 @@ function escapeHtml(str) {
   }[s]));
 }
 function escapeRegExp(str) { return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
-function scrollBottom() { chatBox.scrollTop = chatBox.scrollHeight; }
+function syncChatScrollbarBounds() {
+  if (!chatScrollbar) return;
+  const headerEl = document.querySelector(".header");
+  const composerEl = document.querySelector(".composer-wrap");
+  const headerBottom = headerEl ? headerEl.getBoundingClientRect().bottom : 112;
+  const composerTop = composerEl ? composerEl.getBoundingClientRect().top : (window.innerHeight - 122);
+  const top = Math.max(86, Math.round(headerBottom));
+  const bottom = Math.max(92, Math.round(window.innerHeight - composerTop));
+  chatScrollbar.style.setProperty("--chat-scroll-top", `${top}px`);
+  chatScrollbar.style.setProperty("--chat-scroll-bottom", `${bottom}px`);
+}
+function syncChatScrollbarThumb() {
+  if (!chatScrollThumb || !chatBox) return;
+  const maxScroll = Math.max(0, chatBox.scrollHeight - chatBox.clientHeight);
+  const track = chatScrollThumb.parentElement;
+  if (!track) return;
+  const thumbH = 19;
+  const trackH = Math.max(thumbH, track.clientHeight);
+  const p = maxScroll > 0 ? (chatBox.scrollTop / maxScroll) : 0;
+  const y = Math.round((trackH - thumbH) * p);
+  chatScrollThumb.style.transform = `translateY(${y}px)`;
+  chatScrollThumb.style.opacity = maxScroll > 0 ? ".9" : ".35";
+}
+function scrollBottom() {
+  chatBox.scrollTop = chatBox.scrollHeight;
+  syncChatScrollbarThumb();
+}
 function recordTypingSignal(e) {
   const now = Date.now();
   if (!typingSignals.startedAt) typingSignals.startedAt = now;
@@ -2189,13 +2319,13 @@ function loadConversation(id) {
   if (!conv) return;
   activeConversationId = id;
   currentMode = conv.mode || currentMode;
+  if (currentMode === "luxching" || currentMode === "luxdream") currentMode = "luxviai";
   document.querySelectorAll("[data-mode]").forEach(x => x.classList.toggle("active", x.dataset.mode === currentMode));
-  sendButton.innerText = currentMode.toUpperCase();
+  setResponseLock(false);
   document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode");
   luxtaPanel.classList.remove("active");
   if (currentMode === "luxta") document.body.classList.add("luxta-mode");
   if (currentMode === "luxta") luxtaPanel.classList.add("active");
-  if (currentMode === "luxdream") document.body.classList.add("luxdream-mode");
   if (currentMode === "luxeph") document.body.classList.add("luxeph-mode");
 
   chatBox.innerHTML = "";
@@ -2217,6 +2347,31 @@ function topicBucketLabel(ts, lang) {
   const monthsTr = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
   const monthsEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   return (lang === "tr" ? monthsTr : monthsEn)[d.getMonth()];
+}
+
+function syncTopicScrollbarBounds() {
+  if (!topicRail) return;
+  const headerEl = document.querySelector(".header");
+  const composerEl = document.querySelector(".composer-wrap");
+  const headerBottom = headerEl ? headerEl.getBoundingClientRect().bottom : 112;
+  const composerTop = composerEl ? composerEl.getBoundingClientRect().top : (window.innerHeight - 122);
+  const top = Math.max(86, Math.round(headerBottom));
+  const bottom = Math.max(92, Math.round(window.innerHeight - composerTop));
+  topicRail.style.setProperty("--topic-scroll-top", `${top}px`);
+  topicRail.style.setProperty("--topic-scroll-bottom", `${bottom}px`);
+}
+
+function syncTopicScrollbarThumb() {
+  if (!topicRailScroll || !topicRailThumb) return;
+  const maxScroll = Math.max(0, topicRailScroll.scrollHeight - topicRailScroll.clientHeight);
+  const track = topicRailThumb.parentElement;
+  if (!track) return;
+  const thumbH = 19;
+  const trackH = Math.max(thumbH, track.clientHeight);
+  const p = maxScroll > 0 ? (topicRailScroll.scrollTop / maxScroll) : 0;
+  const y = Math.round((trackH - thumbH) * p);
+  topicRailThumb.style.transform = `translateY(${y}px)`;
+  topicRailThumb.style.opacity = maxScroll > 0 ? ".92" : ".42";
 }
 
 function renderTopicList() {
@@ -2277,6 +2432,8 @@ function renderTopicList() {
       });
     });
   });
+  syncTopicScrollbarBounds();
+  syncTopicScrollbarThumb();
 }
 
 function appendMessage(role, text, track = true) {
@@ -2322,6 +2479,14 @@ function closeTopics() {
 
 if (topicsOverlay) topicsOverlay.onclick = () => closeTopics();
 if (topicSearchInput) topicSearchInput.oninput = () => renderTopicList();
+if (topicRailScroll) topicRailScroll.addEventListener("scroll", syncTopicScrollbarThumb, { passive: true });
+if (chatBox) chatBox.addEventListener("scroll", syncChatScrollbarThumb, { passive: true });
+window.addEventListener("resize", () => {
+  syncTopicScrollbarBounds();
+  syncTopicScrollbarThumb();
+  syncChatScrollbarBounds();
+  syncChatScrollbarThumb();
+});
 
 let touchStartX = null;
 let touchStartY = null;
@@ -2466,10 +2631,7 @@ function refreshModeIntro(dict, ui) {
   const userMessages = Array.from(chatBox.querySelectorAll(".msg.user"));
   if (!aiMessages.length || userMessages.length > 0) return;
 
-  const intro =
-    currentMode === "luxdream" ? (ui.luxdreamGreeting || "Rüya analizi.") :
-    currentMode === "luxching" ? (ui.luxchingPrompt || "Lütfen sorunuzu sorunuz.") :
-    `${pickGreetingPrefix(dict)}.`;
+  const intro = `${pickGreetingPrefix(dict)}.`;
 
   const lastAi = aiMessages[aiMessages.length - 1];
   if (lastAi) lastAi.innerText = intro;
@@ -2537,8 +2699,7 @@ async function applyLanguage(lang) {
   buildLuxtaPanel();
 
   if (messageInput.value.trim() === "") {
-    if (currentMode === "luxdream") messageInput.placeholder = ui.luxdreamPrompt || dict.placeholder;
-    else messageInput.placeholder = dict.placeholder;
+    messageInput.placeholder = dict.placeholder;
   }
   refreshModeIntro(dict, ui);
 }
@@ -2761,7 +2922,87 @@ function ensureSocket() {
   };
 }
 
-function sendMessageViaSocket(payload, aiDiv) {
+function setResponseLock(locked) {
+  aiResponding = locked;
+  messageInput.readOnly = locked;
+  voiceButton.disabled = locked;
+  voiceButton.style.opacity = locked ? "0.46" : "";
+  sendButton.innerText = locked ? (currentLang === "tr" ? "DURDUR" : "STOP") : currentMode.toUpperCase();
+  sendButton.style.background = locked ? "rgba(155,58,35,.92)" : "rgba(237,145,7,0.9)";
+}
+
+function createPacedWriter(targetEl, speedFactor = 0.7) {
+  const queue = [];
+  const baseDelay = 50;
+  const delay = Math.max(22, Math.round(baseDelay / Math.max(0.2, speedFactor)));
+  let timer = null;
+  let current = "";
+  let stopped = false;
+  let idleResolvers = [];
+
+  const resolveIdle = () => {
+    const pending = idleResolvers.slice();
+    idleResolvers = [];
+    pending.forEach(r => { try { r(); } catch (_) {} });
+  };
+
+  const pump = () => {
+    if (stopped) {
+      timer = null;
+      resolveIdle();
+      return;
+    }
+    if (!queue.length) {
+      timer = null;
+      resolveIdle();
+      return;
+    }
+    current += queue.shift();
+    targetEl.innerText = current;
+    scrollBottom();
+    timer = setTimeout(pump, delay);
+  };
+
+  return {
+    push(chunk) {
+      if (stopped || !chunk) return;
+      for (const ch of chunk) queue.push(ch);
+      if (!timer) pump();
+    },
+    setExact(text) {
+      if (stopped) return;
+      queue.length = 0;
+      current = text || "";
+      targetEl.innerText = current;
+      scrollBottom();
+      if (!timer) resolveIdle();
+    },
+    waitIdle() {
+      if (!timer && !queue.length) return Promise.resolve();
+      return new Promise(resolve => idleResolvers.push(resolve));
+    },
+    stop() {
+      stopped = true;
+      queue.length = 0;
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      resolveIdle();
+    }
+  };
+}
+
+function stopActiveResponse() {
+  stopStreamRequested = true;
+  if (typeof streamAbort === "function") {
+    try { streamAbort(); } catch (_) {}
+  }
+  streamAbort = null;
+  setResponseLock(false);
+}
+
+function sendMessageViaSocket(payload, onChunk) {
   return new Promise((resolve, reject) => {
     if (wsPending) {
       reject(new Error("socket_busy"));
@@ -2779,8 +3020,7 @@ function sendMessageViaSocket(payload, aiDiv) {
               const chunk = data.text || "";
               if (chunk) {
                 streamed += chunk;
-                aiDiv.innerText = streamed;
-                scrollBottom();
+                if (typeof onChunk === "function") onChunk(chunk);
               }
               return;
             }
@@ -2819,14 +3059,19 @@ async function sendMessageViaHttp(payload) {
 }
 
 async function sendMessageLive(customText) {
+  if (aiResponding) return;
   const text = (customText || messageInput.value).trim();
   if (!text) return;
 
+  stopStreamRequested = false;
+  setResponseLock(true);
   appendMessage("user", text);
   messageInput.value = "";
   triggerDreamLight();
 
   const aiDiv = appendMessage("ai", "", false);
+  activeAiDiv = aiDiv;
+  const writer = createPacedWriter(aiDiv, 0.7);
   const payload = {
     message: text,
     user_id: userId,
@@ -2837,28 +3082,58 @@ async function sendMessageLive(customText) {
   };
 
   try {
+    streamAbort = () => {
+      writer.stop();
+      if (wsPending && typeof wsPending.reject === "function") {
+        wsPending.reject(new Error("stopped_by_user"));
+      }
+      wsPending = null;
+      if (!aiDiv.innerText.trim()) aiDiv.innerText = (currentLang === "tr" ? "Yanıt durduruldu." : "Response stopped.");
+      addMessageToHistory("assistant", aiDiv.innerText);
+      activeAiDiv = null;
+    };
+
     let responseText = "";
     try {
-      responseText = await sendMessageViaSocket(payload, aiDiv);
-    } catch (_) {
+      responseText = await sendMessageViaSocket(payload, chunk => writer.push(chunk));
+      await writer.waitIdle();
+    } catch (socketErr) {
+      if (stopStreamRequested) return;
       responseText = await sendMessageViaHttp(payload);
-      aiDiv.innerText = responseText;
+      writer.setExact(responseText);
     }
-    if (!aiDiv.innerText.trim()) aiDiv.innerText = responseText || "Bunu duydum.";
+    if (stopStreamRequested) return;
+    if (!aiDiv.innerText.trim()) writer.setExact(responseText || "Bunu duydum.");
     if (currentLang !== "tr" && aiDiv.innerText.trim()) {
       const translated = await translateText(aiDiv.innerText, deeplTargetCode(currentLang));
-      if (translated && translated.trim()) aiDiv.innerText = translated;
+      if (translated && translated.trim()) writer.setExact(translated);
     }
     addMessageToHistory("assistant", aiDiv.innerText);
     resetTypingSignals();
   } catch (_) {
-    aiDiv.innerText = "Bağlantı kurulamadı. Sunucu çalışıyor mu kontrol et.";
-    addMessageToHistory("assistant", aiDiv.innerText);
+    if (!stopStreamRequested) {
+      aiDiv.innerText = "Bağlantı kurulamadı. Sunucu çalışıyor mu kontrol et.";
+      addMessageToHistory("assistant", aiDiv.innerText);
+    }
+  } finally {
+    streamAbort = null;
+    activeAiDiv = null;
+    setResponseLock(false);
   }
 }
 
-sendButton.onclick = () => sendMessageLive();
+sendButton.onclick = () => {
+  if (aiResponding) {
+    stopActiveResponse();
+    return;
+  }
+  sendMessageLive();
+};
 messageInput.addEventListener("keydown", e => {
+  if (aiResponding) {
+    e.preventDefault();
+    return;
+  }
   recordTypingSignal(e);
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
@@ -2997,7 +3272,8 @@ document.querySelectorAll("[data-mode]").forEach(btn => {
     document.querySelectorAll("[data-mode]").forEach(x => x.classList.remove("active"));
     btn.classList.add("active");
     currentMode = btn.dataset.mode;
-    sendButton.innerText = currentMode.toUpperCase();
+    if (currentMode === "luxching" || currentMode === "luxdream") currentMode = "luxviai";
+    setResponseLock(false);
     createConversation(currentMode);
     clearChat();
     document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode", "luxta-top-visible");
@@ -3007,13 +3283,6 @@ document.querySelectorAll("[data-mode]").forEach(btn => {
       document.body.classList.add("luxta-mode");
       luxtaPanel.classList.add("active");
       appendMessage("ai", hello);
-    } else if (currentMode === "luxching") {
-      messageInput.placeholder = dict.placeholder;
-      appendMessage("ai", ui.luxchingPrompt || "Lütfen sorunuzu sorunuz.");
-    } else if (currentMode === "luxdream") {
-      document.body.classList.add("luxdream-mode");
-      messageInput.placeholder = ui.luxdreamPrompt || "Lütfen rüyanızı anlatın!";
-      appendMessage("ai", ui.luxdreamGreeting || "Rüya analizi.");
     } else if (currentMode === "luxeph") {
       document.body.classList.add("luxeph-mode");
       messageInput.placeholder = dict.placeholder;
@@ -3030,6 +3299,17 @@ document.querySelectorAll("[data-mode]").forEach(btn => {
 function selectedOrTargetText(target) {
   const sel = window.getSelection().toString().trim();
   return sel || (target ? target.innerText || target.value || "" : "");
+}
+function getSelectionAnchorRect() {
+  try {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount < 1) return null;
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    if (!rect || (!rect.width && !rect.height)) return null;
+    return rect;
+  } catch (_) {
+    return null;
+  }
 }
 function extractWordAtPoint(x, y, target) {
   try {
@@ -3068,7 +3348,7 @@ function showContextMenu(x, y, target, preferredText = "") {
     [isTr ? "Kopyala" : "Copy", () => navigator.clipboard.writeText(text)],
     [isTr ? "Yapıştır" : "Paste", async () => { if (messageInput) messageInput.value += await navigator.clipboard.readText(); }],
     [isTr ? "Sesli oku" : "Read aloud", () => speakText(text)],
-    [isTr ? "Gönder (Kart Oluştur)" : "Send (Create Card)", () => openCardFromText(text)],
+    [isTr ? "Gönder (Kart Oluştur)" : "Send (Create Card)", () => openCardFromText(text, target)],
     [isTr ? "Ara" : "Search", () => { openSearch(); searchInput.value = text; searchInput.dispatchEvent(new Event("input")); }],
     [isTr ? "Açıkla" : "Explain", () => explainText(text, target)],
     [isTr ? "Çevir" : "Translate", () => explainText(text, target, true)],
@@ -3083,13 +3363,21 @@ function showContextMenu(x, y, target, preferredText = "") {
   const menuW = 230;
   const menuH = 320;
   const offsetPx = 20; // ~5mm
-  const left = Math.min(Math.max(8, x), window.innerWidth - menuW - 8);
-  let top = y + offsetPx;
-  if (top + menuH > window.innerHeight - 8) top = y - menuH - offsetPx;
+  const selectionRect = getSelectionAnchorRect();
+  const anchorX = selectionRect ? (selectionRect.left + (selectionRect.width / 2)) : x;
+  const anchorTopY = selectionRect ? selectionRect.top : y;
+  const anchorBottomY = selectionRect ? selectionRect.bottom : y;
+  const left = Math.min(Math.max(8, anchorX - (menuW / 2)), window.innerWidth - menuW - 8);
+  let top = anchorBottomY + offsetPx;
+  const preferAbove = anchorTopY > (window.innerHeight * 0.56);
+  if (preferAbove) top = anchorTopY - menuH - offsetPx;
+  if (top + menuH > window.innerHeight - 8) top = anchorTopY - menuH - offsetPx;
+  if (top < 8) top = anchorBottomY + offsetPx;
   top = Math.max(8, top);
   contextMenu.style.left = left + "px";
   contextMenu.style.top = top + "px";
   contextMenu.style.display = "flex";
+  clearBrowserSelection();
 }
 chatBox.addEventListener("contextmenu", e => {
   e.preventDefault();
@@ -3114,6 +3402,7 @@ chatBox.addEventListener("touchstart", e => {
 chatBox.addEventListener("touchend", () => clearTimeout(longPressTimer));
 document.addEventListener("click", e => {
   if (!contextMenu.contains(e.target)) contextMenu.style.display = "none";
+  if (!e.target.closest(".inline-whisper") && !e.target.closest(".context-menu")) clearInlineWhispers();
 });
 
 async function translateText(text, targetLang) {
@@ -3132,45 +3421,53 @@ async function translateText(text, targetLang) {
 }
 
 async function explainText(text, target, forceTranslate = false) {
-  const clean = (text || "").trim().toLowerCase();
+  const clean = (text || "").trim();
   if (!clean) return;
-  const words = clean.split(/\s+/);
-  const normalized = normalizeHintKey(clean);
-  let direct = termHints[clean] || termHints[normalized] || "";
-  if (!direct) {
-    for (const w of words) {
-      const d = termHints[w] || termHints[normalizeHintKey(w)];
-      if (d) {
-        direct = d;
-        break;
-      }
+
+  let whisper = "";
+  try {
+    const res = await fetch("/explain", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: clean,
+        user_lang: currentLang || "tr",
+        force_translate: !!forceTranslate
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      whisper = (data.text || "").trim();
     }
-  }
-  let whisper = direct || "";
-  const looksForeign = /[a-z]/i.test(clean) && !/[çğıöşü]/i.test(clean);
-  if (forceTranslate || looksForeign || !whisper) {
-    const translated = await translateText(text, deeplTargetCode(currentLang));
-    if (translated && translated !== text) {
-      whisper = whisper ? `${whisper} | ${translated}` : translated;
-    }
+  } catch (_) {}
+
+  if (!whisper) {
+    const normalized = normalizeHintKey(clean.toLowerCase());
+    whisper = termHints[clean.toLowerCase()] || termHints[normalized] || "";
   }
   if (!whisper) {
     whisper = currentLang === "tr"
-      ? `"${text}" için kısa bir açıklama üretemedim, bağlama göre tekrar deneyebilirsin.`
-      : `No short explanation found for "${text}" in this context.`;
+      ? `"${clean}" için kısa bir açıklama üretemedim.`
+      : `No short explanation found for "${clean}".`;
   }
   showInlineWhisper(whisper, target || lastContextTarget || chatBox.lastElementChild);
 }
 
+function clearInlineWhispers() {
+  document.querySelectorAll(".inline-whisper").forEach(el => el.remove());
+}
+
 function showInlineWhisper(text, targetEl) {
+  clearInlineWhispers();
   if (!targetEl) return;
-  const old = targetEl.querySelector(".inline-whisper");
-  if (old) old.remove();
   const marker = document.createElement("div");
   marker.className = "inline-whisper";
   marker.innerText = text;
-  targetEl.appendChild(marker);
-  setTimeout(() => marker.remove(), 6500);
+  if (targetEl.classList && targetEl.classList.contains("msg")) {
+    targetEl.insertAdjacentElement("afterend", marker);
+  } else {
+    targetEl.appendChild(marker);
+  }
 }
 
 async function saveNote(text) {
@@ -3181,7 +3478,7 @@ async function saveNote(text) {
     body: JSON.stringify({ user_id: userId, text })
   });
   const ui = getCurrentUi();
-  showInlineWhisper(ui.notesSaved || "Not alindi.", lastContextTarget || chatBox.lastElementChild);
+  showInlineWhisper(ui.notesSaved || "Not alındı.", lastContextTarget || chatBox.lastElementChild);
 }
 
 function speakText(text) {
@@ -3219,10 +3516,22 @@ function setupRecognition() {
   rec.lang = "tr-TR";
   rec.interimResults = true;
   rec.continuous = true;
+  rec.maxAlternatives = 1;
   rec.onresult = event => {
-    let text = "";
-    for (let i = event.resultIndex; i < event.results.length; i++) text += event.results[i][0].transcript;
-    recordTranscriptText = text.trim();
+    const finals = [];
+    let interim = "";
+    for (let i = 0; i < event.results.length; i++) {
+      const phrase = (event.results[i][0]?.transcript || "").trim();
+      if (!phrase) continue;
+      if (event.results[i].isFinal) finals.push(phrase);
+      else interim += (interim ? " " : "") + phrase;
+    }
+    recognitionFinalText = finals.join(" ").replace(/\s+/g, " ").trim();
+    recordTranscriptText = [recognitionFinalText, interim.trim()]
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
     recordTranscript.innerText = recordTranscriptText;
   };
   rec.onend = () => { if (recording) { try { rec.start(); } catch (_) {} } };
@@ -3230,11 +3539,33 @@ function setupRecognition() {
 }
 recognition = setupRecognition();
 
+function speechLangCode() {
+  const map = {
+    tr: "tr-TR",
+    en: "en-US",
+    ru: "ru-RU",
+    ar: "ar-SA",
+    fa: "fa-IR",
+    de: "de-DE",
+    fr: "fr-FR",
+    es: "es-ES",
+    it: "it-IT",
+    pt: "pt-PT",
+    nl: "nl-NL",
+    hi: "hi-IN",
+    zh: "zh-CN",
+    ja: "ja-JP",
+    ko: "ko-KR",
+  };
+  return map[currentLang] || "tr-TR";
+}
+
 async function startRecording() {
   if (currentMode === "luxeph" || recording) return;
   recording = true;
   recordSeconds = 30;
   recordTranscriptText = "";
+  recognitionFinalText = "";
   recordTranscript.innerText = "";
   recordTimer.innerText = "30";
   recordProgress.style.width = "0%";
@@ -3253,12 +3584,17 @@ async function startRecording() {
     analyser = null;
   }
   drawEqualizer();
-  try { recognition && recognition.start(); } catch (_) {}
+  try {
+    if (recognition) {
+      recognition.lang = speechLangCode();
+      recognition.start();
+    }
+  } catch (_) {}
   recordInterval = setInterval(() => {
     recordSeconds--;
     recordTimer.innerText = String(recordSeconds);
     recordProgress.style.width = `${((30 - recordSeconds) / 30) * 100}%`;
-    if (recordSeconds <= 0) stopRecording(true);
+    if (recordSeconds <= 0) stopRecording(false);
   }, 1000);
 }
 function stopRecording(autoSend = false) {
@@ -3279,6 +3615,10 @@ function stopRecording(autoSend = false) {
   if (recordTranscriptText) {
     messageInput.value = recordTranscriptText;
     if (autoSend) sendMessageLive(recordTranscriptText);
+    else {
+      messageInput.focus();
+      messageInput.setSelectionRange(messageInput.value.length, messageInput.value.length);
+    }
   }
 }
 function drawEqualizer() {
@@ -3305,10 +3645,10 @@ function drawEqualizer() {
   draw();
 }
 voiceButton.addEventListener("mousedown", startRecording);
-voiceButton.addEventListener("mouseup", () => stopRecording(true));
-voiceButton.addEventListener("mouseleave", () => stopRecording(true));
+voiceButton.addEventListener("mouseup", () => stopRecording(false));
+voiceButton.addEventListener("mouseleave", () => stopRecording(false));
 voiceButton.addEventListener("touchstart", e => { e.preventDefault(); startRecording(); }, { passive: false });
-voiceButton.addEventListener("touchend", e => { e.preventDefault(); stopRecording(true); }, { passive: false });
+voiceButton.addEventListener("touchend", e => { e.preventDefault(); stopRecording(false); }, { passive: false });
 
 function drawGlyphStrip() {
   const canvas = document.getElementById("glyphCanvas");
@@ -3354,24 +3694,41 @@ async function buildGreeting() {
   return `${pickGreetingPrefix(getCurrentDict())}.`;
 }
 
-async function openCardFromText(text) {
+function clearBrowserSelection() {
+  try {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount) sel.removeAllRanges();
+  } catch (_) {}
+}
+
+async function openCardFromText(text, sourceEl = null) {
   if (!text || currentMode === "luxeph") return;
+  clearBrowserSelection();
   editorActiveText = text;
+
+  const srcFont = sourceEl ? parseFloat(getComputedStyle(sourceEl).fontSize || "16") : 16;
+  const previewWidth = Math.max(360, Math.min(window.innerWidth * 0.9, 980));
+  const scale = 1080 / previewWidth;
+  const fontPx = Math.max(18, Math.round(srcFont * scale));
+  const lineGap = Math.max(10, Math.round(fontPx * 0.42));
+
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
   canvas.height = 1080;
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = "#ED9107";
-  ctx.lineWidth = 4;
-  ctx.strokeRect(28, 28, canvas.width - 56, canvas.height - 56);
   ctx.fillStyle = "#E8E5DF";
-  ctx.font = "500 42px Inter";
-  const lines = wrapTextForCanvas(ctx, text, 900);
-  let y = 200;
-  lines.slice(0, 16).forEach(line => { ctx.fillText(line, 90, y); y += 56; });
+  ctx.font = `500 ${fontPx}px Inter`;
+  const lines = wrapTextForCanvas(ctx, text, canvas.width - 140);
+  let y = 120;
+  lines.slice(0, 38).forEach(line => {
+    ctx.fillText(line, 70, y);
+    y += fontPx + lineGap;
+  });
   loadEditorCanvas(canvas);
+  resetEditorStickers();
+  setEditorMode("pen");
   shareOverlay.classList.add("active");
 }
 
@@ -3412,9 +3769,12 @@ function loadEditorCanvas(sourceCanvas) {
   editorCanvas.height = sourceCanvas.height;
   editorCtx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
   editorCtx.drawImage(sourceCanvas, 0, 0);
+  resetEditorStickers();
+  syncEditorStickerLayer();
   editorHistory = [{ url: editorCanvas.toDataURL("image/png"), w: editorCanvas.width, h: editorCanvas.height }];
 }
 function pushEditorHistory() {
+  commitEditorStickers();
   editorHistory.push({ url: editorCanvas.toDataURL("image/png"), w: editorCanvas.width, h: editorCanvas.height });
   editorHistory = editorHistory.slice(-25);
 }
@@ -3429,10 +3789,79 @@ function restoreFromDataUrl(entryOrUrl) {
       editorCanvas.height = entry.h || img.height;
       editorCtx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
       editorCtx.drawImage(img, 0, 0, editorCanvas.width, editorCanvas.height);
+      resetEditorStickers();
+      syncEditorStickerLayer();
       resolve();
     };
     img.src = entry.url;
   });
+}
+
+function syncEditorStickerLayer() {
+  if (!editorStickerLayer) return;
+  editorStickerLayer.style.left = `${editorCanvas.offsetLeft}px`;
+  editorStickerLayer.style.top = `${editorCanvas.offsetTop}px`;
+  editorStickerLayer.style.width = `${editorCanvas.clientWidth}px`;
+  editorStickerLayer.style.height = `${editorCanvas.clientHeight}px`;
+}
+
+function resetEditorStickers() {
+  editorTextStickers = [];
+  stickerDrag = null;
+  if (editorStickerLayer) editorStickerLayer.innerHTML = "";
+}
+
+function renderEditorStickers() {
+  if (!editorStickerLayer) return;
+  editorStickerLayer.innerHTML = "";
+  editorTextStickers.forEach(item => {
+    const node = document.createElement("div");
+    node.className = "editor-sticker";
+    node.dataset.id = item.id;
+    node.dataset.x = String(item.x);
+    node.dataset.y = String(item.y);
+    node.dataset.size = String(item.size);
+    node.style.left = `${item.x}px`;
+    node.style.top = `${item.y}px`;
+    node.style.fontSize = `${item.size}px`;
+    node.style.color = item.color;
+    node.innerText = item.text;
+    editorStickerLayer.appendChild(node);
+  });
+}
+
+function addEditorSticker(text) {
+  if (!editorStickerLayer) return;
+  syncEditorStickerLayer();
+  const wrapW = editorStickerLayer.clientWidth || 600;
+  const wrapH = editorStickerLayer.clientHeight || 420;
+  const size = Math.max(16, Math.min(34, shareLineSize * 8));
+  const id = `st_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const item = {
+    id,
+    text,
+    x: Math.max(14, Math.round(wrapW * 0.16)),
+    y: Math.max(14, Math.round(wrapH * 0.28)),
+    size,
+    color: shareDrawColor,
+  };
+  editorTextStickers.push(item);
+  renderEditorStickers();
+}
+
+function commitEditorStickers() {
+  if (!editorTextStickers.length) return;
+  const sx = editorCanvas.clientWidth > 0 ? (editorCanvas.width / editorCanvas.clientWidth) : 1;
+  const sy = editorCanvas.clientHeight > 0 ? (editorCanvas.height / editorCanvas.clientHeight) : 1;
+  editorTextStickers.forEach(item => {
+    editorCtx.save();
+    editorCtx.fillStyle = item.color || "#E8E5DF";
+    editorCtx.font = `${Math.max(14, Math.round(item.size * sy))}px Inter`;
+    editorCtx.textBaseline = "top";
+    editorCtx.fillText(item.text, item.x * sx, item.y * sy);
+    editorCtx.restore();
+  });
+  resetEditorStickers();
 }
 
 editorCanvas.addEventListener("mousedown", e => {
@@ -3443,7 +3872,6 @@ editorCanvas.addEventListener("mousedown", e => {
     return;
   }
   if (shareEditorMode === "text") {
-    pendingTextPoint = p;
     if (editorTextCapsule) editorTextCapsule.classList.add("open");
     if (editorTextInput) {
       editorTextInput.value = "";
@@ -3494,17 +3922,17 @@ function getCanvasPosFromCoords(clientX, clientY) {
   return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
 }
 function previewCropRect(a, b) {
+  commitEditorStickers();
   if (!editorHistory.length) return;
   const base = editorHistory[editorHistory.length - 1];
   restoreFromDataUrl(base).then(() => {
-    editorCtx.setLineDash([10, 8]);
     editorCtx.strokeStyle = "#ED9107";
-    editorCtx.lineWidth = 2;
+    editorCtx.lineWidth = 1.5;
     editorCtx.strokeRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(a.x - b.x), Math.abs(a.y - b.y));
-    editorCtx.setLineDash([]);
   });
 }
 async function applyCrop(a, b) {
+  commitEditorStickers();
   const x = Math.min(a.x, b.x);
   const y = Math.min(a.y, b.y);
   const w = Math.abs(a.x - b.x);
@@ -3529,7 +3957,6 @@ editorCanvas.addEventListener("touchstart", e => {
     return;
   }
   if (shareEditorMode === "text") {
-    pendingTextPoint = p;
     if (editorTextCapsule) editorTextCapsule.classList.add("open");
     if (editorTextInput) {
       editorTextInput.value = "";
@@ -3579,20 +4006,72 @@ editorCanvas.addEventListener("touchend", async e => {
   }
 }, { passive: false });
 
+function startStickerDrag(clientX, clientY, node) {
+  if (!node || !editorStickerLayer) return;
+  const id = node.dataset.id;
+  const item = editorTextStickers.find(x => x.id === id);
+  if (!item) return;
+  stickerDrag = {
+    id,
+    startX: clientX,
+    startY: clientY,
+    itemX: item.x,
+    itemY: item.y,
+  };
+}
+
+function moveStickerDrag(clientX, clientY) {
+  if (!stickerDrag || !editorStickerLayer) return;
+  const item = editorTextStickers.find(x => x.id === stickerDrag.id);
+  if (!item) return;
+  const dx = clientX - stickerDrag.startX;
+  const dy = clientY - stickerDrag.startY;
+  const maxX = Math.max(8, editorStickerLayer.clientWidth - 24);
+  const maxY = Math.max(8, editorStickerLayer.clientHeight - 24);
+  item.x = Math.max(8, Math.min(maxX, stickerDrag.itemX + dx));
+  item.y = Math.max(8, Math.min(maxY, stickerDrag.itemY + dy));
+  renderEditorStickers();
+}
+
+function stopStickerDrag() {
+  if (!stickerDrag) return;
+  stickerDrag = null;
+}
+
+if (editorStickerLayer) {
+  editorStickerLayer.addEventListener("pointerdown", e => {
+    const node = e.target.closest(".editor-sticker");
+    if (!node) return;
+    e.preventDefault();
+    startStickerDrag(e.clientX, e.clientY, node);
+  });
+}
+window.addEventListener("pointermove", e => {
+  if (!stickerDrag) return;
+  e.preventDefault();
+  moveStickerDrag(e.clientX, e.clientY);
+}, { passive: false });
+window.addEventListener("pointerup", stopStickerDrag);
+
 document.getElementById("toolPen").onclick = () => setEditorMode("pen");
 document.getElementById("toolCrop").onclick = () => setEditorMode("crop");
 document.getElementById("toolText").onclick = () => setEditorMode("text");
 document.getElementById("toolUndo").onclick = async () => {
+  commitEditorStickers();
   if (editorHistory.length <= 1) return;
   editorHistory.pop();
   await restoreFromDataUrl(editorHistory[editorHistory.length - 1]);
 };
 document.getElementById("toolReset").onclick = async () => {
+  commitEditorStickers();
   if (!editorHistory.length) return;
   await restoreFromDataUrl(editorHistory[0]);
   editorHistory = [editorHistory[0]];
 };
-document.getElementById("toolClose").onclick = () => { shareOverlay.classList.remove("active"); };
+document.getElementById("toolClose").onclick = () => {
+  commitEditorStickers();
+  shareOverlay.classList.remove("active");
+};
 document.querySelectorAll(".tool-btn[data-color]").forEach(btn => {
   btn.onclick = () => {
     shareDrawColor = btn.dataset.color;
@@ -3609,6 +4088,7 @@ document.querySelectorAll(".tool-btn[data-size]").forEach(btn => {
 });
 
 function setEditorMode(mode) {
+  if (shareEditorMode === "text" && mode !== "text") commitEditorStickers();
   shareEditorMode = mode;
   document.getElementById("toolPen").classList.toggle("active", mode === "pen");
   document.getElementById("toolCrop").classList.toggle("active", mode === "crop");
@@ -3618,16 +4098,12 @@ function setEditorMode(mode) {
 
 function applyEditorText() {
   const t = (editorTextInput?.value || "").trim();
-  if (!t || !pendingTextPoint) {
+  if (!t) {
     if (editorTextCapsule) editorTextCapsule.classList.remove("open");
     return;
   }
-  editorCtx.fillStyle = shareDrawColor;
-  editorCtx.font = `${Math.max(18, shareLineSize * 8)}px Inter`;
-  editorCtx.fillText(t, pendingTextPoint.x, pendingTextPoint.y);
-  pushEditorHistory();
+  addEditorSticker(t);
   if (editorTextCapsule) editorTextCapsule.classList.remove("open");
-  pendingTextPoint = null;
 }
 if (editorTextApply) editorTextApply.onclick = applyEditorText;
 if (editorTextInput) {
@@ -3769,12 +4245,20 @@ async function initApp() {
     renderTopicList();
     setEditorMode("pen");
     await bootGreeting();
+    syncTopicScrollbarBounds();
+    syncTopicScrollbarThumb();
+    syncChatScrollbarBounds();
+    syncChatScrollbarThumb();
     return;
   }
 
   loadConversation(activeConversationId);
   renderTopicList();
   setEditorMode("pen");
+  syncTopicScrollbarBounds();
+  syncTopicScrollbarThumb();
+  syncChatScrollbarBounds();
+  syncChatScrollbarThumb();
 }
 
 initApp();

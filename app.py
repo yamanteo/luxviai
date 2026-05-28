@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import json
@@ -111,6 +111,12 @@ class TranslateRequest(BaseModel):
     text: str = Field(min_length=1, max_length=8000)
     target_lang: str = "EN"
     source_lang: Optional[str] = None
+
+
+class ExplainRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=300)
+    user_lang: str = "tr"
+    force_translate: bool = False
 
 
 # =========================================================
@@ -237,6 +243,26 @@ THEMATIC_TOKEN_ROOTS = (
     "iliski", "yakinlik", "guven", "aile", "is", "kariyer", "basari",
     "basarisiz", "sikici", "mutlu", "mutsuz", "huzur",
 )
+
+TERM_EXPLANATIONS_TR = {
+    "anksiyete": "Kaygının yoğun ve süreğen biçimi; zihin ve bedenin tetikte kalması.",
+    "depresyon": "Uzun süren çökkünlük, isteksizlik ve enerji düşüşüyle seyreden klinik durum.",
+    "travma": "Kişinin baş etme kapasitesini aşan zorlayıcı yaşantının bıraktığı psikolojik iz.",
+    "dissosiyasyon": "Yoğun stres altında kopma, uzaklaşma veya gerçek dışılık hissi.",
+    "panik": "Ani başlayan yoğun korku dalgası; çarpıntı ve nefes sıkışması gibi belirtilerle gelebilir.",
+    "psikanaliz": "Bilinçdışı süreçleri, iç çatışmaları ve tekrar örüntülerini inceleyen yaklaşım.",
+    "klinik": "Sağlık/ruh sağlığı değerlendirme ve uygulama alanı.",
+    "etik": "İyi-kötü, doğru-yanlış ve sorumlulukla ilgili ilke ve değerlendirmeler bütünü.",
+    "arzu": "Kişiyi bir şeye yönelten içsel isteme ve çekim gücü.",
+    "belirsizlik": "Sonucun net olmadığı durumda oluşan açıkta kalma hissi.",
+    "kararsızlık": "Seçenekler arasında net bir seçim yapamama durumu.",
+    "özlem": "Uzakta ya da eksik olana yönelen duygusal çekim.",
+    "yalnızlık": "Yeterli duygusal bağ hissedememe durumunun yarattığı içsel boşluk.",
+    "kırgınlık": "İncinme sonrası içe kapanma veya mesafe koyma eğilimi.",
+    "stres": "Zorlayıcı taleplere karşı bedenin ve zihnin verdiği yüklenme tepkisi.",
+    "tükenmişlik": "Süreğen yük ve baskı sonrası enerji, motivasyon ve dayanıklılıkta düşüş.",
+    "bağlanma": "Yakınlık kurma, güvenme ve ayrılığa verilen duygusal tepki düzeni.",
+}
 
 LUXTA_REPLIES = ["Anlıyorum.", "Dinliyorum.", "Buradayım.", "Hmm.", "Devam et.", "Yavaşça."]
 
@@ -2090,14 +2116,14 @@ def build_system_prompt(
             f"- spontaneite: {policy.get('spontaneity_label', 'orta')}\n"
             f"- pacing: {policy.get('pacing', 'orta')}\n"
             f"- takip sorusu: {policy.get('followup_question_count', 1)} adet\n"
-            f"- belirsizlik toleransi: {round(safe_float(policy.get('ambiguity_tolerance', 0.55)), 2)}\n"
-            f"- sicaklik kalibrasyonu: {policy.get('warmth_label', 'orta')}\n"
-            f"- kultur karisimi: japan={round(safe_float(mix.get('japan_silence', 0.5)), 2)}, "
+            f"- belirsizlik toleransı: {round(safe_float(policy.get('ambiguity_tolerance', 0.55)), 2)}\n"
+            f"- sıcaklık kalibrasyonu: {policy.get('warmth_label', 'orta')}\n"
+            f"- kültür karışımı: japan={round(safe_float(mix.get('japan_silence', 0.5)), 2)}, "
             f"turkish={round(safe_float(mix.get('turkish_imply', 0.5)), 2)}, "
             f"german={round(safe_float(mix.get('german_direct', 0.5)), 2)}, "
             f"latin={round(safe_float(mix.get('latin_warmth', 0.5)), 2)}\n"
-            "- Kullaniciya skor gosterme; bu sinyaller sadece ton, ritim, soru derinligi ve empatiyi ayarlasin.\n"
-            "- Asla klinik tani, tedavi, ilac, dini/fal dili veya kesin yargi kullanma.\n"
+            "- Kullanıcıya skor gösterme; bu sinyaller sadece ton, ritim, soru derinliği ve empatiyi ayarlasın.\n"
+            "- Asla klinik tanı, tedavi, ilaç, dini/fal dili veya kesin yargı kullanma.\n"
         )
     )
 
@@ -2176,12 +2202,7 @@ Bu bölüm kullanıcıya doğrudan gösterilmez; sadece tonu, ritmi, soru derinl
     if mode == "luxviai":
         mode_block += "- Dengeli, sıcak ve net kal.\n"
     elif mode == "luxching":
-        mode_block += (
-            "- Sembolik, yorumlayıcı, kesinlik yok.\n"
-            "- Yanıt mutlaka LUXCHING başlığıyla başlasın.\n"
-            "- Bir sembol, kısa anlam, kişisel bağlam ve tek yumuşak soru içersin.\n"
-            "- I Ching mantığı, fal değil, ayna.\n"
-        )
+        mode_block += "- LUXCHING artık arka plan sembolik lens olarak çalışır; zorunlu format yok.\n"
     elif mode == "luxdream":
         mode_block += "- Rüya yorumu, imgeler, çağrışımlar.\n- Psikanalitik çerçeve, kesinlik yok.\n"
     elif mode == "luxta":
@@ -2218,7 +2239,7 @@ def fallback_reply(mode: str, analysis: Dict[str, Any]) -> str:
     if mode == "luxeph":
         return f"Buradayım. {emotion} tarafını duyuyorum; bunu bu anın içinde, kayıt tutmadan taşıyabiliriz."
     if mode == "luxching":
-        return generate_luxching(default_profile(), analysis)
+        return f"Bunu duyuyorum. {emotion} tarafı ve {theme} teması biraz öne çıkıyor gibi."
     if mode == "luxdream":
         return "Rüya analizi… İmgeler, bilinçdışı, çağrışımlar. Anlatmaya devam edebilirsin."
     return f"Bunu duyuyorum. {emotion} tarafı ve {theme} teması biraz öne çıkıyor gibi."
@@ -2584,6 +2605,123 @@ def check_luxching_limit(profile: Dict[str, Any]) -> tuple[bool, str]:
     return True, ""
 
 
+def should_offer_luxching_background(profile: Dict[str, Any], analysis: Dict[str, Any], mode: str) -> bool:
+    if mode in {"luxta", "luxeph", "luxdream"}:
+        return False
+
+    last_used = profile.get("luxching_background_last_suggested_at")
+    if last_used:
+        try:
+            last = datetime.fromisoformat(str(last_used).replace("Z", "+00:00"))
+            if last.tzinfo is not None:
+                now_same_tz = datetime.now(last.tzinfo)
+                delta = now_same_tz - last
+            else:
+                delta = datetime.now() - last
+            if delta < timedelta(hours=24):
+                return False
+        except Exception:
+            pass
+
+    emotion = str(analysis.get("primary_emotion", "nötr"))
+    theme = str(analysis.get("theme", "belirsiz"))
+    contradiction = str(analysis.get("contradiction_marker", "yok"))
+    narrative = str(analysis.get("narrative_marker", "yok"))
+    intensity = clamp_int(analysis.get("intensity", 5), 1, 10, 5)
+
+    if emotion in {"kararsızlık", "kaygı", "yalnızlık", "kırgınlık"}:
+        return True
+    if theme in {"belirsizlik", "yön kaybı", "çatışma", "özlem"}:
+        return True
+    if contradiction == "var" or narrative in {"anlatı", "savunma"}:
+        return True
+    if intensity >= 8:
+        return True
+    return False
+
+
+def luxching_background_suggestion_text() -> str:
+    return (
+        "İstersen I Ching felsefesini bu konuya LUXCHING lensiyle de yorumlayabilirim; "
+        "istersen bakabiliriz."
+    )
+
+
+def apply_luxching_nudge(plan: Dict[str, Any], response_text: str) -> str:
+    nudge = str(plan.get("luxching_nudge") or "").strip()
+    if not nudge:
+        return response_text
+    low_response = (response_text or "").lower()
+    if "luxching" in low_response or nudge.lower() in low_response:
+        plan["luxching_nudge_used"] = True
+        return response_text
+    plan["luxching_nudge_used"] = True
+    return (response_text or "").rstrip() + "\n\n" + nudge
+
+
+def should_offer_luxdream_background(profile: Dict[str, Any], analysis: Dict[str, Any], message: str, mode: str) -> bool:
+    if mode in {"luxta", "luxeph"}:
+        return False
+
+    last_used = profile.get("luxdream_background_last_suggested_at")
+    if last_used:
+        try:
+            last = datetime.fromisoformat(str(last_used).replace("Z", "+00:00"))
+            if last.tzinfo is not None:
+                now_same_tz = datetime.now(last.tzinfo)
+                delta = now_same_tz - last
+            else:
+                delta = datetime.now() - last
+            if delta < timedelta(hours=24):
+                return False
+        except Exception:
+            pass
+
+    low = (message or "").lower()
+    dream_words = [
+        "rüya", "ruya", "rüyam", "rüyada", "kabus", "kâbus", "hayal", "uyandım",
+        "uyandigimda", "sembol", "sahne", "bilinçdışı", "bilincdisi",
+    ]
+    if any(w in low for w in dream_words):
+        return True
+
+    layers = safe_dict(analysis.get("layers"))
+    symbolic = safe_dict(layers.get("symbolic"))
+    dream = safe_dict(layers.get("dream"))
+    if analysis.get("symbolic_density") == "yüksek":
+        return True
+    if symbolic.get("density") == "yüksek":
+        return True
+    if dream.get("image_extraction") == "aktif" or dream.get("continuation") == "aktif":
+        return True
+    return False
+
+
+def luxdream_background_suggestion_text() -> str:
+    return (
+        "İstersen LUXDREAM rüya analizi ve rüya eşlikçisiyle, "
+        "rüyanı daha ayrıntılı ve eşlik ederek birlikte yorumlayabilirim."
+    )
+
+
+def apply_background_nudges(plan: Dict[str, Any], response_text: str) -> str:
+    pieces = []
+    if plan.get("luxching_nudge"):
+        pieces.append(str(plan.get("luxching_nudge")).strip())
+        plan["luxching_nudge_used"] = True
+    if plan.get("luxdream_nudge"):
+        pieces.append(str(plan.get("luxdream_nudge")).strip())
+        plan["luxdream_nudge_used"] = True
+    pieces = [p for p in pieces if p]
+    if not pieces:
+        return response_text
+    low_response = (response_text or "").lower()
+    add_texts = [p for p in pieces if p.lower() not in low_response]
+    if not add_texts:
+        return response_text
+    return (response_text or "").rstrip() + "\n\n" + "\n".join(add_texts)
+
+
 # =========================================================
 # CHAT PLAN
 # =========================================================
@@ -2659,6 +2797,9 @@ def prepare_chat_plan(
     mode = (mode or "luxviai").lower().strip()
     if mode not in ALLOWED_MODES:
         mode = "luxviai"
+    if mode in {"luxching", "luxdream"}:
+        # Dedicated LUXCHING/LUXDREAM modes are retired; both run as background lenses.
+        mode = "luxviai"
 
     if mode == "luxeph":
         return prepare_luxeph_plan(user_id, message, location, ghost_hesitation, client_signals)
@@ -2680,33 +2821,6 @@ def prepare_chat_plan(
 
     active, session = load_or_create_session(user_id, mode)
 
-    if mode == "luxching":
-        # LUXCHING is two-phase:
-        # 1) "new draw" is limited to once per 24h
-        # 2) follow-up conversation on the same draw is interactive (no re-lock)
-        existing_user_turns = [
-            m for m in session.get("messages", [])
-            if safe_dict(m).get("role") == "user" and safe_dict(m).get("content")
-        ]
-        is_new_draw = len(existing_user_turns) == 0
-
-        if is_new_draw:
-            if not is_luxching_question(message):
-                return {
-                    "kind": "command",
-                    "response": "Lütfen sorunuzu sorunuz.",
-                    "meta": {"mode": mode, "session_id": session.get("session_id")},
-                }
-            ok, msg = check_luxching_limit(profile)
-            if not ok:
-                return {
-                    "kind": "command",
-                    "response": msg,
-                    "meta": {"mode": mode, "session_id": session.get("session_id")},
-                }
-            profile["luxching_last_used"] = now_iso()
-            save_user_state(user_id, profile, notes, garden)
-
     add_message(session, "user", message, {"mode": mode})
     analysis = analyze_emotion(message, profile, session, location, ghost_hesitation, client_signals)
 
@@ -2716,6 +2830,12 @@ def prepare_chat_plan(
         analysis.setdefault("layers", {}).setdefault("hidden", {})["ghost_hesitation"] = True
 
     analysis = enrich_analysis_with_human_policy(message, analysis, profile, session, client_signals)
+    luxching_nudge = ""
+    luxdream_nudge = ""
+    if should_offer_luxching_background(profile, analysis, mode):
+        luxching_nudge = luxching_background_suggestion_text()
+    if should_offer_luxdream_background(profile, analysis, message, mode):
+        luxdream_nudge = luxdream_background_suggestion_text()
 
     if analysis.get("crisis_risk") or is_crisis_message(message, analysis):
         crisis = crisis_reply()
@@ -2750,22 +2870,8 @@ def prepare_chat_plan(
     profile["last_mode"] = mode
 
     memory_snippets = retrieve_memory_snippets(message, session, notes, garden, profile, limit=5)
-    if mode == "luxching":
-        symbol = random.choice(LUXCHING_SYMBOLS)
-        memory_snippets = [f"LUXCHING sembolü: {symbol['name']} - {symbol['meaning']}"] + memory_snippets
-        analysis["luxching_symbol"] = symbol
     prompt = build_system_prompt(profile, analysis, mode, memory_snippets, digest)
     openai_messages = build_openai_messages(session, prompt)
-    if mode == "luxching":
-        symbol = analysis.get("luxching_symbol", random.choice(LUXCHING_SYMBOLS))
-        openai_messages.append({
-            "role": "user",
-            "content": (
-                f"Bu soru için LUXCHING yanıtı ver. "
-                f"Sembol: {symbol['name']} ({symbol['meaning']}). "
-                "Kişisel bağlamı duygu ve tema üzerinden kur. Fal gibi konuşma."
-            ),
-        })
     model, temp, max_tokens = choose_generation_params(mode, analysis)
 
     return {
@@ -2783,6 +2889,8 @@ def prepare_chat_plan(
         "max_tokens": max_tokens,
         "weekly_report": digest,
         "memory_preview": memory_snippets,
+        "luxching_nudge": luxching_nudge,
+        "luxdream_nudge": luxdream_nudge,
         "user_id": user_id,
         "mode": mode,
         "message": message,
@@ -2802,6 +2910,10 @@ def finalize_chat(plan: Dict[str, Any], response_text: str):
     mode = plan["mode"]
 
     add_message(session, "assistant", response_text, {"mode": mode})
+    if plan.get("luxching_nudge_used"):
+        profile["luxching_background_last_suggested_at"] = now_iso()
+    if plan.get("luxdream_nudge_used"):
+        profile["luxdream_background_last_suggested_at"] = now_iso()
 
     digest = build_weekly_digest(profile, session, garden)
     profile["weekly_report"] = digest
@@ -2812,8 +2924,6 @@ def finalize_chat(plan: Dict[str, Any], response_text: str):
 
 
 def chat_fallback_response(plan: Dict[str, Any]) -> str:
-    if plan.get("mode") == "luxching":
-        return generate_luxching(plan.get("profile", default_profile()), plan.get("analysis", {}), plan.get("message", ""))
     return fallback_reply(plan["mode"], plan["analysis"])
 
 
@@ -2902,6 +3012,40 @@ def deepl_translate_text(text: str, target_lang: str, source_lang: Optional[str]
             "detected_source_language": None,
             "error": f"deepl_error: {e}",
         }
+
+
+def looks_foreign_word(text: str) -> bool:
+    s = (text or "").strip()
+    if not s:
+        return False
+    # Turkish letters absent + at least one latin char.
+    if re.search(r"[A-Za-z]", s) and not re.search(r"[çğıöşüÇĞİÖŞÜ]", s):
+        return True
+    return False
+
+
+def explain_with_model_tr(text: str) -> str:
+    if not client:
+        return ""
+    system_prompt = (
+        "Kısa Türkçe sözlük açıklaması üret. "
+        "Tek cümle, en fazla 18 kelime. "
+        "Tıbbi/felsefi terimse sade anlat. "
+        "Tanı, tedavi, kesin hüküm verme."
+    )
+    try:
+        out = call_model(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": text},
+            ],
+            model="deepseek-chat",
+            temperature=0.2,
+            max_tokens=80,
+        ).strip()
+        return out
+    except Exception:
+        return ""
 
 
 # =========================================================
@@ -3040,6 +3184,36 @@ async def translate(payload: TranslateRequest, auth: Optional[str] = Header(None
     }
 
 
+@app.post("/explain")
+async def explain(payload: ExplainRequest, auth: Optional[str] = Header(None)):
+    check_auth(auth)
+    text = (payload.text or "").strip()
+    if not text:
+        return {"ok": False, "text": "", "kind": "none"}
+
+    normalized = normalize_keyword_token(text) or fold_turkish_ascii(text)
+    direct = TERM_EXPLANATIONS_TR.get(normalized) or TERM_EXPLANATIONS_TR.get(fold_turkish_ascii(text))
+    if direct:
+        return {"ok": True, "text": direct, "kind": "definition"}
+
+    if payload.force_translate or looks_foreign_word(text):
+        tr = deepl_translate_text(text, "TR")
+        translated = str(tr.get("translated_text", text)).strip()
+        if translated and translated.lower() != text.lower():
+            return {"ok": True, "text": translated, "kind": "translation"}
+
+    model_exp = explain_with_model_tr(text)
+    if model_exp:
+        return {"ok": True, "text": model_exp, "kind": "definition"}
+
+    fallback = (
+        f"“{text}” için kısa bir açıklama üretemedim."
+        if (payload.user_lang or "tr").lower().startswith("tr")
+        else f"No short explanation produced for “{text}”."
+    )
+    return {"ok": False, "text": fallback, "kind": "fallback"}
+
+
 @app.post("/chat")
 async def chat(request: ChatRequest, auth: Optional[str] = Header(None)):
     check_auth(auth)
@@ -3090,6 +3264,7 @@ async def chat(request: ChatRequest, auth: Optional[str] = Header(None)):
         else:
             response_text = chat_fallback_response(plan)
 
+    response_text = apply_background_nudges(plan, response_text)
     digest_data = finalize_chat(plan, response_text)
     return {
         "response": response_text,
@@ -3177,6 +3352,7 @@ async def ws_chat(websocket: WebSocket):
                 else:
                     response_text = chat_fallback_response(plan)
 
+                response_text = apply_background_nudges(plan, response_text)
                 digest_data = finalize_chat(plan, response_text)
 
                 await websocket.send_json({
@@ -3200,6 +3376,7 @@ async def ws_chat(websocket: WebSocket):
                     response_text = auth_error_response()
                 else:
                     response_text = chat_fallback_response(plan)
+                response_text = apply_background_nudges(plan, response_text)
                 digest_data = finalize_chat(plan, response_text)
                 await websocket.send_json({
                     "type": "done",
