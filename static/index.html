@@ -420,6 +420,8 @@ textarea::placeholder { color: var(--muted); opacity: 0.7; }
   color: #000;
   font-weight: 600;
   cursor: pointer;
+  align-self: flex-end;
+  margin-bottom: 0;
 }
 .voice-btn {
   width: 54px;
@@ -430,6 +432,8 @@ textarea::placeholder { color: var(--muted); opacity: 0.7; }
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  align-self: flex-end;
+  margin-bottom: 0;
 }
 .mic-ring {
   width: 30px;
@@ -549,6 +553,30 @@ body.luxdream-mode .light-line { display: block; }
   color: #AEB5B8;
   margin-bottom: 10px;
 }
+.sound-title-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+.sound-toggle-icon {
+  color: #D4AA67;
+  font-size: .74rem;
+  line-height: 1;
+  opacity: .9;
+  transition: transform .2s ease, opacity .2s ease;
+}
+.sound-section-body {
+  display: none;
+  margin-top: 6px;
+}
+.menu-section.sound-open .sound-section-body { display: block; }
+.menu-section.sound-open .sound-toggle-icon { transform: rotate(180deg); opacity: 1; }
 .menu-items { display: flex; flex-direction: column; gap: 8px; }
 .menu-item {
   border: 1px solid rgba(237,145,7,0.3);
@@ -611,19 +639,22 @@ body.luxdream-mode .light-line { display: block; }
 }
 .topic-rail {
   position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
+  left: 8px;
+  top: var(--topic-panel-top, 112px);
+  bottom: var(--topic-panel-bottom, 122px);
   width: 180px; /* daraltildi */
   z-index: 26;
-  background: rgba(8,8,8,0.98);
+  background: #050505;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
   border-right: none;
+  overflow: hidden;
 }
 .topic-rail-scrollbar {
   position: absolute;
-  right: 3px;
-  top: var(--topic-scroll-top, 112px);
-  bottom: var(--topic-scroll-bottom, 122px);
+  right: 4px;
+  top: var(--topic-scroll-top, 10px);
+  bottom: var(--topic-scroll-bottom, 10px);
   width: 4px;
   background: transparent;
   pointer-events: none;
@@ -643,7 +674,7 @@ body.luxdream-mode .light-line { display: block; }
 .topic-rail-scroll {
   height: 100%;
   overflow-y: auto;
-  padding: 14px 14px calc(18px + env(safe-area-inset-bottom));
+  padding: 12px 14px calc(14px + env(safe-area-inset-bottom));
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -652,7 +683,7 @@ body.luxdream-mode .light-line { display: block; }
   position: sticky;
   top: 0;
   z-index: 2;
-  background: rgba(8,8,8,0.98);
+  background: #050505;
   padding-bottom: 10px;
 }
 .topic-search {
@@ -1080,6 +1111,37 @@ body.luxta-mode #voiceButton { opacity: .7; }
 body.luxta-mode .left-edge { opacity: .18; }
 body.luxta-mode textarea { background: rgba(17, 17, 17, 0.78); }
 body.luxta-mode .send-btn { background: rgba(237, 145, 7, 0.86); }
+@media (min-width: 721px) {
+  body.menu-open .topic-rail,
+  body.menu-open .left-edge {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  body.luxta-mode .left-edge {
+    display: block;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 16px;
+    z-index: 27;
+    background: transparent;
+    opacity: .01;
+    pointer-events: auto;
+  }
+  body.luxta-mode .topic-rail {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+  }
+  body.luxta-mode.luxta-topic-visible .topic-rail {
+    opacity: .55;
+    pointer-events: auto;
+  }
+  body.luxta-mode.luxta-topic-visible .topic-rail:hover {
+    opacity: .74;
+  }
+}
 
 body.luxeph-mode { user-select: none; }
 body.luxeph-mode .light-line,
@@ -1117,13 +1179,47 @@ body.topics-open .topics-overlay { display: block; }
 @media (max-width: 720px) {
   .logo { font-size: 2.1rem; }
   .send-btn { padding: 0 16px; font-size: 0.74rem; }
+  .header-tools,
+  .header-tools-left {
+    bottom: 1px;
+    padding-bottom: 0;
+    gap: 10px;
+  }
+  .icon-btn,
+  .new-chat-btn,
+  .menu-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .menu-btn {
+    border-radius: 50%;
+    border: 1px solid rgba(237,145,7,0.42);
+    background: rgba(0,0,0,0.72);
+    color: #E7AA4A;
+    font-size: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .search-capsule {
+    height: 34px;
+    background: rgba(0,0,0,0.9);
+  }
   .search-capsule.open { width: 56vw; }
+  .topic-search-wrap { padding-top: 2px; padding-bottom: 8px; }
+  .topic-search {
+    height: 34px;
+    font-size: .82rem;
+    border-color: rgba(237,145,7,.26);
+  }
   .glyph-strip { height: 0; }
   .topic-rail {
     width: min(52vw, 220px);
     transform: translateX(-104%);
     transition: transform .22s ease;
     z-index: 32;
+    left: 6px;
   }
   body.topics-open .topic-rail { transform: translateX(0); }
   .left-drawer {
@@ -1147,6 +1243,10 @@ body.topics-open .topics-overlay { display: block; }
   .topic-title { font-size: .66rem; }
   .topic-meta { font-size: .45rem; }
   .composer { gap: 8px; }
+  .send-btn,
+  .voice-btn {
+    margin-bottom: 1px;
+  }
   #messageInput { max-height: 190px; }
   .composer-wrap {
     position: fixed;
@@ -1270,7 +1370,7 @@ body.topics-open .topics-overlay { display: block; }
   </div>
 
   <div class="menu-section">
-    <div class="menu-title">MODLAR</div>
+    <div class="menu-title" id="menuModesTitle">MODLAR</div>
     <div class="menu-items">
       <div class="menu-item active" data-mode="luxviai">LUXVIAI</div>
       <div class="menu-item" data-mode="luxta">LUXTA</div>
@@ -1278,28 +1378,27 @@ body.topics-open .topics-overlay { display: block; }
     </div>
   </div>
 
-  <div class="menu-section">
-    <div class="menu-title">Ses ayarları</div>
-    <div id="luxtaPanel" class="luxta-panel"></div>
-    <div class="tiny-row">
-      <div class="menu-item active" data-voice-gender="female">KADIN</div>
-      <div class="menu-item" data-voice-gender="male">ERKEK</div>
-    </div>
-    <div class="tiny-row">
-      <div class="menu-item active" data-voice-tone="podcast">PODCAST</div>
-      <div class="menu-item" data-voice-tone="night">GECE RADYOSU</div>
+  <div class="menu-section" id="soundSection">
+    <button type="button" class="menu-title sound-title-toggle" id="soundSectionToggle" aria-expanded="false">
+      <span id="soundSectionLabel">Ses ayarları</span>
+      <span class="sound-toggle-icon" aria-hidden="true">⌄</span>
+    </button>
+    <div id="soundSectionBody" class="sound-section-body">
+      <div id="luxtaPanel" class="luxta-panel"></div>
+      <div class="tiny-row">
+        <div class="menu-item active" data-voice-gender="female">KADIN</div>
+        <div class="menu-item" data-voice-gender="male">ERKEK</div>
+      </div>
+      <div class="tiny-row">
+        <div class="menu-item active" data-voice-tone="podcast">PODCAST</div>
+        <div class="menu-item" data-voice-tone="night">GECE RADYOSU</div>
+      </div>
     </div>
   </div>
 
   <div class="menu-section">
-    <div class="menu-title">Dil</div>
-    <div class="tiny-row">
-      <select id="languageSelect" style="width:100%;background:#0A0A0A;color:#E8E5DF;border:1px solid rgba(237,145,7,.3);border-radius:14px;padding:8px;"></select>
-      <button id="moreLangBtn" class="tool-btn">+</button>
-    </div>
-    <div id="moreLangWrap" style="display:none;margin-top:8px;">
-      <select id="extraLanguageSelect" style="width:100%;background:#0A0A0A;color:#E8E5DF;border:1px solid rgba(237,145,7,.3);border-radius:14px;padding:8px;"></select>
-    </div>
+    <div class="menu-title" id="menuLanguageTitle">Dil</div>
+    <select id="languageSelect" style="width:100%;background:#0A0A0A;color:#E8E5DF;border:1px solid rgba(237,145,7,.3);border-radius:14px;padding:8px;"></select>
   </div>
 </div>
 
@@ -1424,6 +1523,11 @@ const luxtaTopState = {
   visible: false,
   locks: new Set()
 };
+const luxtaTopicState = {
+  timer: null,
+  visible: false,
+  locks: new Set()
+};
 const missingI18nKeys = new Set();
 const typingSignals = {
   startedAt: 0,
@@ -1486,9 +1590,12 @@ const insightTitle = document.getElementById("insightTitle");
 const insightBody = document.getElementById("insightBody");
 const insightClose = document.getElementById("insightClose");
 const languageSelect = document.getElementById("languageSelect");
-const extraLanguageSelect = document.getElementById("extraLanguageSelect");
-const moreLangBtn = document.getElementById("moreLangBtn");
-const moreLangWrap = document.getElementById("moreLangWrap");
+const menuModesTitle = document.getElementById("menuModesTitle");
+const soundSection = document.getElementById("soundSection");
+const soundSectionToggle = document.getElementById("soundSectionToggle");
+const soundSectionLabel = document.getElementById("soundSectionLabel");
+const soundSectionBody = document.getElementById("soundSectionBody");
+const menuLanguageTitle = document.getElementById("menuLanguageTitle");
 const shareOverlay = document.getElementById("shareOverlay");
 const editorCanvas = document.getElementById("editorCanvas");
 const editorCtx = editorCanvas.getContext("2d");
@@ -1530,8 +1637,16 @@ const deepLExtraLanguages = [
   ["id","Indonesian"], ["vi","Vietnamese"], ["th","Thai"], ["he","Hebrew"], ["nb","Norwegian"],
   ["ms","Malay"], ["hr","Croatian"], ["sr","Serbian"], ["ca","Catalan"]
 ];
-const popularLanguageCodes = new Set(popularLanguages.map(x => x[0]));
-const extraLanguageCodes = new Set(deepLExtraLanguages.map(x => x[0]));
+const allLanguages = (() => {
+  const map = new Map();
+  [...popularLanguages, ...deepLExtraLanguages].forEach(([code, label]) => {
+    const k = String(code || "").trim().toLowerCase();
+    if (!k || map.has(k)) return;
+    map.set(k, [k, label]);
+  });
+  return Array.from(map.values());
+})();
+const allLanguageCodes = new Set(allLanguages.map(x => x[0]));
 const dynamicLanguageCache = {};
 
 const textMap = {
@@ -1736,7 +1851,16 @@ Object.assign(uiLocale, {
     awarenessOpenThemes: "Açık temalar",
     memoryThemes: "Temalar",
     memorySymbols: "İmgeler",
-    memoryRecords: "Kayıtlar"
+    memoryRecords: "Kayıtlar",
+    ctxCopy: "Kopyala",
+    ctxPaste: "Yapıştır",
+    ctxReadAloud: "Sesli oku",
+    ctxSendCard: "Gönder (Kart Oluştur)",
+    ctxSearch: "Ara",
+    ctxExplain: "Açıkla",
+    ctxTranslate: "Çevir",
+    ctxSaveNote: "Not al",
+    translateDisabled: "Çeviri yakında aktif olacak."
   },
   en: {
     drawerTitle: "TOPICS",
@@ -1775,7 +1899,16 @@ Object.assign(uiLocale, {
     awarenessOpenThemes: "Open themes",
     memoryThemes: "Themes",
     memorySymbols: "Symbols",
-    memoryRecords: "Records"
+    memoryRecords: "Records",
+    ctxCopy: "Copy",
+    ctxPaste: "Paste",
+    ctxReadAloud: "Read aloud",
+    ctxSendCard: "Send (Create Card)",
+    ctxSearch: "Search",
+    ctxExplain: "Explain",
+    ctxTranslate: "Translate",
+    ctxSaveNote: "Save note",
+    translateDisabled: "Translation will be enabled soon."
   },
   ru: {
     drawerTitle: "ТЕМЫ",
@@ -1814,7 +1947,16 @@ Object.assign(uiLocale, {
     awarenessOpenThemes: "Открытые темы",
     memoryThemes: "Темы",
     memorySymbols: "Символы",
-    memoryRecords: "Записи"
+    memoryRecords: "Записи",
+    ctxCopy: "Копировать",
+    ctxPaste: "Вставить",
+    ctxReadAloud: "Озвучить",
+    ctxSendCard: "Отправить (карточка)",
+    ctxSearch: "Поиск",
+    ctxExplain: "Объяснить",
+    ctxTranslate: "Перевести",
+    ctxSaveNote: "Сохранить заметку",
+    translateDisabled: "Перевод скоро будет доступен."
   }
 });
 
@@ -2613,11 +2755,14 @@ function loadConversation(id) {
   if (currentMode === "luxching" || currentMode === "luxdream") currentMode = "luxviai";
   document.querySelectorAll("[data-mode]").forEach(x => x.classList.toggle("active", x.dataset.mode === currentMode));
   if (!aiResponding) setResponseLock(false);
-  document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode");
+  document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode", "luxta-top-visible", "luxta-topic-visible");
   luxtaPanel.classList.remove("active");
   luxtaTopState.locks.clear();
   luxtaClearTimer();
   luxtaSetVisible(false);
+  luxtaTopicState.locks.clear();
+  luxtaTopicClearTimer();
+  luxtaTopicSetVisible(false);
   if (currentMode === "luxta") document.body.classList.add("luxta-mode");
   if (currentMode === "luxta") luxtaPanel.classList.add("active");
   if (currentMode === "luxeph") document.body.classList.add("luxeph-mode");
@@ -2658,8 +2803,10 @@ function syncTopicScrollbarBounds() {
   const composerTop = composerEl ? composerEl.getBoundingClientRect().top : (window.innerHeight - 122);
   const top = Math.max(86, Math.round(headerBottom));
   const bottom = Math.max(92, Math.round(window.innerHeight - composerTop));
-  topicRail.style.setProperty("--topic-scroll-top", `${top}px`);
-  topicRail.style.setProperty("--topic-scroll-bottom", `${bottom}px`);
+  topicRail.style.setProperty("--topic-panel-top", `${top}px`);
+  topicRail.style.setProperty("--topic-panel-bottom", `${bottom}px`);
+  topicRail.style.setProperty("--topic-scroll-top", "10px");
+  topicRail.style.setProperty("--topic-scroll-bottom", "10px");
 }
 
 function syncTopicScrollbarThumb() {
@@ -2785,11 +2932,14 @@ function startNewTopConversation() {
   setResponseLock(false);
   activeConversationId = null;
   clearChat();
-  document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode", "luxta-top-visible");
+  document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode", "luxta-top-visible", "luxta-topic-visible");
   luxtaPanel.classList.remove("active");
   luxtaTopState.locks.clear();
   luxtaClearTimer();
   luxtaSetVisible(false);
+  luxtaTopicState.locks.clear();
+  luxtaTopicClearTimer();
+  luxtaTopicSetVisible(false);
   stopRecording();
   messageInput.placeholder = dict.placeholder;
   if (currentMode === "luxta") {
@@ -2811,10 +2961,12 @@ function startNewTopConversation() {
 
 function openMenu() {
   if (currentMode === "luxta") luxtaAcquire("menu");
+  document.body.classList.add("menu-open");
   sideMenu.classList.add("open");
   menuOverlay.classList.add("active");
 }
 function closeMenu() {
+  document.body.classList.remove("menu-open");
   sideMenu.classList.remove("open");
   menuOverlay.classList.remove("active");
   if (currentMode === "luxta") luxtaRelease("menu", 3000);
@@ -2822,6 +2974,19 @@ function closeMenu() {
 menuButton.onclick = openMenu;
 menuOverlay.onclick = closeMenu;
 if (newChatBtn) newChatBtn.onclick = startNewTopConversation;
+bindFastTap(newChatBtn, () => startNewTopConversation());
+
+function setSoundSectionOpen(open) {
+  if (!soundSection) return;
+  const next = !!open;
+  soundSection.classList.toggle("sound-open", next);
+  if (soundSectionToggle) soundSectionToggle.setAttribute("aria-expanded", next ? "true" : "false");
+}
+if (soundSectionToggle) {
+  soundSectionToggle.onclick = () => setSoundSectionOpen(!soundSection.classList.contains("sound-open"));
+  bindFastTap(soundSectionToggle, () => setSoundSectionOpen(!soundSection.classList.contains("sound-open")));
+}
+setSoundSectionOpen(false);
 
 function bindFastTap(el, handler) {
   if (!el || !handler) return;
@@ -2957,18 +3122,11 @@ insightClose.onclick = closeInsightPanel;
 if (topicInsightClose) topicInsightClose.onclick = closeInsightPanel;
 
 function setLanguageSelectors(lang) {
-  if (popularLanguageCodes.has(lang)) {
+  if (allLanguageCodes.has(lang)) {
     languageSelect.value = lang;
-    extraLanguageSelect.value = "";
-    return;
-  }
-  if (extraLanguageCodes.has(lang)) {
-    extraLanguageSelect.value = lang;
-    languageSelect.value = "";
     return;
   }
   languageSelect.value = "tr";
-  extraLanguageSelect.value = "";
 }
 
 async function buildDynamicLanguagePack(lang) {
@@ -2991,7 +3149,8 @@ async function buildDynamicLanguagePack(lang) {
     fark, summary, memory, notes, modes, sound, language,
     female, male, podcast, night, soundOn, soundOff, luxchingPrompt, luxdreamPrompt, luxdreamGreeting,
     noData, noSummary, noMemory, noNotes, notesSelectAll, notesDelete, notesSaved,
-    awarenessEmotion, awarenessTheme, awarenessGrowth, awarenessOpenThemes, memoryThemes, memorySymbols, memoryRecords
+    awarenessEmotion, awarenessTheme, awarenessGrowth, awarenessOpenThemes, memoryThemes, memorySymbols, memoryRecords,
+    ctxCopy, ctxPaste, ctxReadAloud, ctxSendCard, ctxSearch, ctxExplain, ctxTranslate, ctxSaveNote, translateDisabled
   ] = await Promise.all([
     tr(baseDict.tagline), tr(baseDict.placeholder), tr(baseDict.greetMorning), tr(baseDict.greetDay), tr(baseDict.greetEvening), tr(baseDict.greetNight),
     tr(baseUi.drawerTitle), tr(baseUi.drawerSub), tr(baseUi.insightDefault), tr(baseUi.insightTitle), tr(baseUi.searchPlaceholder), tr(baseUi.searchTitle), tr(baseUi.searchMatches),
@@ -3000,7 +3159,8 @@ async function buildDynamicLanguagePack(lang) {
     tr(baseUi.luxchingPrompt), tr(baseUi.luxdreamPrompt), tr(baseUi.luxdreamGreeting),
     tr(baseUi.noData), tr(baseUi.noSummary), tr(baseUi.noMemory), tr(baseUi.noNotes), tr(baseUi.notesSelectAll), tr(baseUi.notesDelete), tr(baseUi.notesSaved),
     tr(baseUi.awarenessEmotion), tr(baseUi.awarenessTheme), tr(baseUi.awarenessGrowth), tr(baseUi.awarenessOpenThemes),
-    tr(baseUi.memoryThemes), tr(baseUi.memorySymbols), tr(baseUi.memoryRecords)
+    tr(baseUi.memoryThemes), tr(baseUi.memorySymbols), tr(baseUi.memoryRecords),
+    tr(baseUi.ctxCopy), tr(baseUi.ctxPaste), tr(baseUi.ctxReadAloud), tr(baseUi.ctxSendCard), tr(baseUi.ctxSearch), tr(baseUi.ctxExplain), tr(baseUi.ctxTranslate), tr(baseUi.ctxSaveNote), tr(baseUi.translateDisabled)
   ]);
 
   const pack = {
@@ -3010,7 +3170,8 @@ async function buildDynamicLanguagePack(lang) {
       fark, summary, memory, notes, modes, sound, language,
       female, male, podcast, night, soundOn, soundOff, luxchingPrompt, luxdreamPrompt, luxdreamGreeting,
       noData, noSummary, noMemory, noNotes, notesSelectAll, notesDelete, notesSaved,
-      awarenessEmotion, awarenessTheme, awarenessGrowth, awarenessOpenThemes, memoryThemes, memorySymbols, memoryRecords
+      awarenessEmotion, awarenessTheme, awarenessGrowth, awarenessOpenThemes, memoryThemes, memorySymbols, memoryRecords,
+      ctxCopy, ctxPaste, ctxReadAloud, ctxSendCard, ctxSearch, ctxExplain, ctxTranslate, ctxSaveNote, translateDisabled
     }
   };
   dynamicLanguageCache[lang] = pack;
@@ -3079,19 +3240,15 @@ async function applyLanguage(lang) {
   if (!dict || !ui) {
     const pack = await buildDynamicLanguagePack(currentLang);
     if (seq !== languageApplySeq) return;
-    const untranslated = pack &&
-      pack.ui &&
-      pack.dict &&
-      pack.ui.fark === uiLocale.tr.fark &&
-      pack.ui.summary === uiLocale.tr.summary &&
-      pack.dict.greetDay === textMap.tr.greetDay;
-    if (untranslated) {
-      dict = textMap.en;
-      ui = uiLocale.en;
-    } else {
-      dict = pack.dict;
-      ui = pack.ui;
-    }
+    dict = dict || pack.dict;
+    ui = ui || pack.ui;
+  }
+  const missingContextKeys = !ui?.ctxCopy || !ui?.ctxPaste || !ui?.ctxTranslate || !ui?.translateDisabled;
+  if (missingContextKeys) {
+    const pack = await buildDynamicLanguagePack(currentLang);
+    if (seq !== languageApplySeq) return;
+    ui = { ...(ui || {}), ...(pack?.ui || {}) };
+    dict = { ...(dict || {}), ...(pack?.dict || {}) };
   }
   activeDict = dict;
   activeUi = ui;
@@ -3112,10 +3269,9 @@ async function applyLanguage(lang) {
   summaryBtn.innerText = ui.summary;
   memoryBtn.innerText = ui.memory;
   notesBtn.innerText = ui.notes;
-  const menuTitles = document.querySelectorAll(".menu-title");
-  if (menuTitles[0]) menuTitles[0].innerText = ui.modes;
-  if (menuTitles[1]) menuTitles[1].innerText = ui.sound;
-  if (menuTitles[2]) menuTitles[2].innerText = ui.language;
+  if (menuModesTitle) menuModesTitle.innerText = ui.modes;
+  if (soundSectionLabel) soundSectionLabel.innerText = ui.sound;
+  if (menuLanguageTitle) menuLanguageTitle.innerText = ui.language;
   const genderButtons = document.querySelectorAll("[data-voice-gender]");
   if (genderButtons[0]) genderButtons[0].innerText = ui.female;
   if (genderButtons[1]) genderButtons[1].innerText = ui.male;
@@ -3132,34 +3288,19 @@ async function applyLanguage(lang) {
 
 function populateLanguages() {
   languageSelect.innerHTML = "<option value=''>-</option>";
-  popularLanguages.forEach(([code, label]) => {
+  allLanguages.forEach(([code, label]) => {
     const opt = document.createElement("option");
     opt.value = code;
     opt.innerText = label;
     languageSelect.appendChild(opt);
-  });
-  extraLanguageSelect.innerHTML = "<option value=''>-</option>";
-  deepLExtraLanguages.forEach(([code, label]) => {
-    const opt = document.createElement("option");
-    opt.value = code;
-    opt.innerText = label;
-    extraLanguageSelect.appendChild(opt);
   });
   setLanguageSelectors(currentLang);
 }
 languageSelect.onchange = async () => {
   const code = languageSelect.value;
   if (!code) return;
-  extraLanguageSelect.value = "";
   await applyLanguage(code);
 };
-extraLanguageSelect.onchange = async () => {
-  const code = extraLanguageSelect.value;
-  if (!code) return;
-  languageSelect.value = "";
-  await applyLanguage(code);
-};
-moreLangBtn.onclick = () => { moreLangWrap.style.display = moreLangWrap.style.display === "none" ? "block" : "none"; };
 
 function soundPowerLabel() {
   const ui = getCurrentUi();
@@ -3433,8 +3574,30 @@ function stopActiveResponse() {
 
 function continuePromptText() {
   return currentLang === "tr"
-    ? "Önceki yanıtını aynı bağlamdan, kaldığın kelimeden devam ettir. Yeni soru gibi davranma."
-    : "Continue your previous answer from the exact point you stopped, not as a new question.";
+    ? "Önceki yanıtını aynı bağlamdan, kaldığın noktadan devam ettir. Önceki metni tekrar etme, sadece kaldığın yerden sürdür."
+    : "Continue your previous answer from the exact point you stopped. Do not repeat earlier text.";
+}
+
+function mergeContinuationText(baseText, incomingFullText) {
+  const base = String(baseText || "");
+  const incoming = String(incomingFullText || "");
+  if (!incoming) return base;
+  if (!base) return incoming;
+  if (incoming.startsWith(base)) return incoming;
+
+  const maxOverlap = Math.min(base.length, incoming.length);
+  for (let size = maxOverlap; size >= 4; size--) {
+    if (base.slice(-size) === incoming.slice(0, size)) {
+      return base + incoming.slice(size);
+    }
+  }
+
+  const probe = Math.min(20, base.length, incoming.length);
+  if (probe >= 8 && base.slice(0, probe).toLowerCase() === incoming.slice(0, probe).toLowerCase()) {
+    return incoming.length >= base.length ? incoming : base;
+  }
+
+  return base + incoming;
 }
 
 function showMiniToast(text) {
@@ -3483,12 +3646,19 @@ async function continueInterruptedResponse(targetAiEl) {
   const continueRunId = ++responseRunId;
   const conversationId = state.conversationId || activeConversationId || getActiveConversation().id;
   if (currentMode !== state.mode) currentMode = state.mode;
-  const bridgeMessage = `${continuePromptText()}\n\nKullanıcı mesajı: ${state.userText}\nKaldığın metin: ${state.partialText}`;
+  const baseText = state.partialText || targetAiEl.innerText || "";
+  const bridgeMessage = `${continuePromptText()}\n\nKullanıcı mesajı: ${state.userText}\nKaldığın metin: ${baseText}`;
   stopStreamRequested = false;
   setResponseLock(true);
   const writer = createPacedWriter(targetAiEl, 0.9);
-  writer.setExact(state.partialText || targetAiEl.innerText || "");
+  writer.setExact(baseText);
   activeGeneration = { runId: continueRunId, conversationId, messageEl: targetAiEl, writer, kind: "continue" };
+  let continuedRawText = "";
+  const applyContinueChunk = (chunk) => {
+    if (!chunk) return;
+    continuedRawText += chunk;
+    writer.setExact(mergeContinuationText(baseText, continuedRawText));
+  };
   const payload = {
     message: bridgeMessage,
     user_id: userId,
@@ -3500,11 +3670,12 @@ async function continueInterruptedResponse(targetAiEl) {
   try {
     let responseText = "";
     try {
-      responseText = await sendMessageViaSocket(payload, chunk => writer.push(chunk));
+      responseText = await sendMessageViaSocket(payload, chunk => applyContinueChunk(chunk));
       await writer.waitIdle();
     } catch (_) {
       responseText = await sendMessageViaHttp(payload);
-      writer.push(responseText);
+      const merged = mergeContinuationText(baseText, responseText);
+      writer.setExact(merged);
       await writer.waitIdle();
     }
     if (responseRunId !== continueRunId) return;
@@ -3823,11 +3994,14 @@ document.querySelectorAll("[data-mode]").forEach(btn => {
     setResponseLock(false);
     activeConversationId = null;
     clearChat();
-    document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode", "luxta-top-visible");
+    document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode", "luxta-top-visible", "luxta-topic-visible");
     luxtaPanel.classList.remove("active");
     luxtaTopState.locks.clear();
     luxtaClearTimer();
     luxtaSetVisible(false);
+    luxtaTopicState.locks.clear();
+    luxtaTopicClearTimer();
+    luxtaTopicSetVisible(false);
     stopRecording();
     if (currentMode === "luxta") {
       document.body.classList.add("luxta-mode");
@@ -3897,16 +4071,16 @@ function showContextMenu(x, y, target, preferredText = "") {
   const selectedText = selectedOrTargetText(target);
   const text = (selectedText || preferredText || (target ? target.innerText || target.value || "" : "") || "").trim();
   contextMenu.innerHTML = "";
-  const isTr = currentLang === "tr";
+  const ui = getCurrentUi();
   const actions = [
-    [isTr ? "Kopyala" : "Copy", () => navigator.clipboard.writeText(text)],
-    [isTr ? "Yapıştır" : "Paste", async () => { if (messageInput) messageInput.value += await navigator.clipboard.readText(); }],
-    [isTr ? "Sesli oku" : "Read aloud", () => speakText(text)],
-    [isTr ? "Gönder (Kart Oluştur)" : "Send (Create Card)", () => openCardFromText(text, target)],
-    [isTr ? "Ara" : "Search", () => { openSearch(); searchInput.value = text; searchInput.dispatchEvent(new Event("input")); }],
-    [isTr ? "Açıkla" : "Explain", () => explainText(text, target)],
-    [isTr ? "Çevir" : "Translate", () => explainText(text, target, true)],
-    [isTr ? "Not al" : "Save note", () => saveNote(text)]
+    [ui.ctxCopy || "Copy", () => navigator.clipboard.writeText(text)],
+    [ui.ctxPaste || "Paste", async () => { if (messageInput) messageInput.value += await navigator.clipboard.readText(); }],
+    [ui.ctxReadAloud || "Read aloud", () => speakText(text)],
+    [ui.ctxSendCard || "Send (Create Card)", () => openCardFromText(text, target)],
+    [ui.ctxSearch || "Search", () => { openSearch(); searchInput.value = text; searchInput.dispatchEvent(new Event("input")); }],
+    [ui.ctxExplain || "Explain", () => explainText(text, target)],
+    [ui.ctxTranslate || "Translate", () => showMiniToast(ui.translateDisabled || "Translation will be enabled soon.")],
+    [ui.ctxSaveNote || "Save note", () => saveNote(text)]
   ];
   actions.forEach(([label, fn]) => {
     const b = document.createElement("button");
@@ -4621,8 +4795,23 @@ function addEditorSticker(text) {
     size,
     color: shareDrawColor,
   };
+  clampStickerToFrame(item, wrapW, wrapH);
   editorTextStickers.push(item);
   renderEditorStickers();
+}
+
+function clampStickerToFrame(item, width, height) {
+  if (!item) return;
+  const w = Math.max(1, width || editorCanvas.clientWidth || editorCanvas.width || 1);
+  const h = Math.max(1, height || editorCanvas.clientHeight || editorCanvas.height || 1);
+  const framePad = Math.max(16, Math.round(Math.min(w, h) * 0.024));
+  const safePad = framePad + 6;
+  const approxTextW = Math.max(30, Math.round(String(item.text || "").length * Math.max(12, item.size || 16) * 0.58));
+  const approxTextH = Math.max(18, Math.round((item.size || 16) * 1.35));
+  const maxX = Math.max(safePad, w - safePad - approxTextW);
+  const maxY = Math.max(safePad, h - safePad - approxTextH);
+  item.x = Math.max(safePad, Math.min(maxX, item.x || safePad));
+  item.y = Math.max(safePad, Math.min(maxY, item.y || safePad));
 }
 
 function commitEditorStickers() {
@@ -4728,6 +4917,7 @@ async function applyCrop(a, b) {
       const withinY = item.y >= -20 && item.y <= (h + 20);
       return withinX && withinY;
     });
+  editorTextStickers.forEach(item => clampStickerToFrame(item, w, h));
   syncEditorStickerLayer();
   renderEditorStickers();
 }
@@ -4906,8 +5096,51 @@ function stampSignature() {
   editorCtx.fillStyle = "#A7A9AC";
   const sig = "LUXVIAI Light your way!";
   const w = editorCtx.measureText(sig).width;
-  editorCtx.fillText(sig, editorCanvas.width - w - (pad + 12), editorCanvas.height - (pad + 16));
+  editorCtx.fillText(sig, editorCanvas.width - w - (pad + 16), editorCanvas.height - (pad + 20));
   editorCtx.restore();
+}
+
+function ensureCardContentInset() {
+  const w = editorCanvas.width;
+  const h = editorCanvas.height;
+  if (!w || !h) return;
+  const safeInset = Math.max(18, Math.round(Math.min(w, h) * 0.026));
+  const img = editorCtx.getImageData(0, 0, w, h).data;
+  let minX = w, minY = h, maxX = -1, maxY = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const a = img[i + 3];
+      if (a < 10) continue;
+      const r = img[i];
+      const g = img[i + 1];
+      const b = img[i + 2];
+      if ((r + g + b) < 24) continue;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (maxX < 0 || maxY < 0) return;
+  const addLeft = Math.max(0, safeInset - minX);
+  const addTop = Math.max(0, safeInset - minY);
+  const addRight = Math.max(0, safeInset - (w - 1 - maxX));
+  const addBottom = Math.max(0, safeInset - (h - 1 - maxY));
+  if (!(addLeft || addTop || addRight || addBottom)) return;
+
+  const tmp = document.createElement("canvas");
+  tmp.width = w + addLeft + addRight;
+  tmp.height = h + addTop + addBottom;
+  const tctx = tmp.getContext("2d");
+  tctx.fillStyle = "#000";
+  tctx.fillRect(0, 0, tmp.width, tmp.height);
+  tctx.drawImage(editorCanvas, addLeft, addTop);
+
+  editorCanvas.width = tmp.width;
+  editorCanvas.height = tmp.height;
+  editorCtx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
+  editorCtx.drawImage(tmp, 0, 0);
 }
 
 async function canvasToBlob(canvas) {
@@ -4931,6 +5164,7 @@ document.querySelectorAll(".share-btn").forEach(btn => {
     const platform = btn.dataset.share;
     if (!platform) return;
     commitEditorStickers();
+    ensureCardContentInset();
     drawCardFrame(editorCtx, editorCanvas.width, editorCanvas.height);
     stampSignature();
     const blob = await canvasToBlob(editorCanvas);
@@ -5022,6 +5256,43 @@ function revealLuxtaTop(timeoutMs = 3000) {
   luxtaScheduleHide(timeoutMs);
 }
 
+function luxtaTopicSetVisible(visible) {
+  luxtaTopicState.visible = !!visible;
+  document.body.classList.toggle("luxta-topic-visible", !!visible);
+}
+function luxtaTopicClearTimer() {
+  if (luxtaTopicState.timer) {
+    clearTimeout(luxtaTopicState.timer);
+    luxtaTopicState.timer = null;
+  }
+}
+function luxtaTopicScheduleHide(timeoutMs = 3000) {
+  luxtaTopicClearTimer();
+  if (currentMode !== "luxta") return;
+  if (window.innerWidth <= 720) return;
+  if (luxtaTopicState.locks.size > 0) return;
+  luxtaTopicState.timer = setTimeout(() => {
+    if (currentMode !== "luxta") return;
+    if (luxtaTopicState.locks.size > 0) return;
+    luxtaTopicSetVisible(false);
+  }, timeoutMs);
+}
+function luxtaTopicAcquire(reason) {
+  if (currentMode !== "luxta" || window.innerWidth <= 720) return;
+  luxtaTopicState.locks.add(reason);
+  luxtaTopicSetVisible(true);
+  luxtaTopicClearTimer();
+}
+function luxtaTopicRelease(reason, timeoutMs = 3000) {
+  luxtaTopicState.locks.delete(reason);
+  luxtaTopicScheduleHide(timeoutMs);
+}
+function revealLuxtaTopics(timeoutMs = 3000) {
+  if (currentMode !== "luxta" || window.innerWidth <= 720) return;
+  luxtaTopicSetVisible(true);
+  luxtaTopicScheduleHide(timeoutMs);
+}
+
 document.addEventListener("mousemove", e => {
   if (currentMode !== "luxta") return;
   if (e.clientY < 90) revealLuxtaTop(3000);
@@ -5037,6 +5308,24 @@ document.addEventListener("pointerdown", e => {
     revealLuxtaTop(3000);
   }
 }, { passive: true });
+if (leftEdge) {
+  leftEdge.addEventListener("pointerdown", () => {
+    if (currentMode === "luxta" && window.innerWidth > 720) {
+      revealLuxtaTopics(3000);
+    }
+  }, { passive: true });
+}
+if (topicRail) {
+  topicRail.addEventListener("pointerenter", () => {
+    if (currentMode === "luxta" && window.innerWidth > 720) luxtaTopicAcquire("topic_rail");
+  });
+  topicRail.addEventListener("pointerleave", () => {
+    if (currentMode === "luxta" && window.innerWidth > 720) luxtaTopicRelease("topic_rail", 3000);
+  });
+  topicRail.addEventListener("pointerdown", () => {
+    if (currentMode === "luxta" && window.innerWidth > 720) luxtaTopicAcquire("topic_rail");
+  }, { passive: true });
+}
 
 async function bootGreeting() {
   const instant = `${pickGreetingPrefix(getCurrentDict())}.`;
