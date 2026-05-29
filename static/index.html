@@ -57,6 +57,7 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
 }
 .header {
   text-align: center;
@@ -154,18 +155,30 @@ body {
   cursor: pointer;
 }
 .new-chat-btn {
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   border: 1px solid rgba(237,145,7,0.52);
   background: rgba(0,0,0,0.72);
   color: #F0C16A;
-  font-size: .95rem;
-  line-height: 1;
+  font-size: .62rem;
+  line-height: 1.05;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   cursor: pointer;
+}
+.new-chat-btn .new-chat-text {
+  font-size: .48rem;
+  letter-spacing: .35px;
+  font-weight: 600;
+}
+.new-chat-btn .new-chat-plus {
+  font-size: .82rem;
+  line-height: .9;
+  font-weight: 500;
 }
 .new-chat-btn.inactive {
   opacity: .32;
@@ -188,10 +201,10 @@ body {
 
 .chat-box {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   padding: 20px;
   margin-right: 0;
   padding-right: 6px;
@@ -201,6 +214,10 @@ body {
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+}
+.chat-box::before {
+  content: "";
+  margin-top: auto;
 }
 .chat-box::-webkit-scrollbar { display: none; }
 .chat-scrollbar {
@@ -910,6 +927,9 @@ body.luxdream-mode .light-line { display: block; }
   flex-basis: 100%;
   height: 0;
 }
+.tool-gap-left {
+  margin-left: 12px;
+}
 .tool-btn {
   border: 1px solid rgba(237,145,7,.33);
   background: #090909;
@@ -1119,7 +1139,7 @@ body.topics-open .topics-overlay { display: block; }
     z-index: 30;
   }
   .chat-box {
-    padding-bottom: calc(300px + max(env(safe-area-inset-bottom), var(--mobile-nav-guard), 0px));
+    padding-bottom: calc(240px + max(env(safe-area-inset-bottom), var(--mobile-nav-guard), 0px));
   }
 }
 </style>
@@ -1177,7 +1197,10 @@ body.topics-open .topics-overlay { display: block; }
       </div>
     </div>
     <div class="header-tools">
-      <button id="newChatBtn" class="new-chat-btn" aria-label="Yeni sohbet">+</button>
+      <button id="newChatBtn" class="new-chat-btn" aria-label="Yeni sohbet">
+        <span class="new-chat-text">NEW</span>
+        <span class="new-chat-plus">+</span>
+      </button>
       <button id="menuButton" class="menu-btn" aria-label="Menu">☰</button>
     </div>
   </div>
@@ -1279,7 +1302,7 @@ body.topics-open .topics-overlay { display: block; }
       </div>
       <span class="tool-sep"></span>
       <div class="tool-group">
-        <button class="tool-btn active" data-color="#ED9107">Lux Sarısı</button>
+        <button class="tool-btn active tool-gap-left" data-color="#ED9107">Lux Sarısı</button>
         <button class="tool-btn" data-color="#FFFFFF">Beyaz</button>
         <button class="tool-btn" data-color="#D34242">Kırmızı</button>
         <button class="tool-btn" data-color="#000000">Siyah</button>
@@ -1292,7 +1315,7 @@ body.topics-open .topics-overlay { display: block; }
       </div>
       <span class="tool-sep"></span>
       <div class="tool-group">
-        <button class="tool-btn" id="toolUndo">Geri</button>
+        <button class="tool-btn tool-gap-left" id="toolUndo">Geri</button>
         <button class="tool-btn" id="toolReset">Sıfırla</button>
         <button class="tool-btn" id="toolClose">Kapat</button>
       </div>
@@ -3195,7 +3218,7 @@ function setResponseLock(locked) {
   sendButton.style.background = locked ? "rgba(155,58,35,.92)" : "rgba(237,145,7,0.9)";
 }
 
-function createPacedWriter(targetEl, speedFactor = 0.8) {
+function createPacedWriter(targetEl, speedFactor = 0.9) {
   const queue = [];
   const baseDelay = 50;
   const delay = Math.max(22, Math.round(baseDelay / Math.max(0.2, speedFactor)));
@@ -3301,7 +3324,7 @@ async function continueInterruptedResponse(targetAiEl) {
   const bridgeMessage = `${continuePromptText()}\n\nKullanıcı mesajı: ${state.userText}\nKaldığın metin: ${state.partialText}`;
   stopStreamRequested = false;
   setResponseLock(true);
-  const writer = createPacedWriter(targetAiEl, 0.8);
+  const writer = createPacedWriter(targetAiEl, 0.9);
   writer.setExact(state.partialText || targetAiEl.innerText || "");
   const payload = {
     message: bridgeMessage,
@@ -3401,7 +3424,7 @@ async function sendMessageLive(customText) {
 
   const aiDiv = appendMessage("ai", "", false);
   activeAiDiv = aiDiv;
-  const writer = createPacedWriter(aiDiv, 0.8);
+  const writer = createPacedWriter(aiDiv, 0.9);
   const payload = {
     message: text,
     user_id: userId,
@@ -3776,6 +3799,7 @@ async function explainText(text, target, forceTranslate = false) {
   if (!clean) return;
 
   let whisper = "";
+  let externalUrl = "";
   try {
     const res = await fetch("/explain", {
       method: "POST",
@@ -3789,6 +3813,7 @@ async function explainText(text, target, forceTranslate = false) {
     if (res.ok) {
       const data = await res.json();
       whisper = (data.text || "").trim();
+      externalUrl = String(data.open_external_url || "").trim();
     }
   } catch (_) {}
 
@@ -3800,6 +3825,10 @@ async function explainText(text, target, forceTranslate = false) {
     whisper = currentLang === "tr"
       ? `"${clean}" için kısa bir açıklama üretemedim.`
       : `No short explanation found for "${clean}".`;
+  }
+  if (forceTranslate && externalUrl && (!whisper || whisper.toLowerCase().includes("çeviri bulunamadı") || whisper.toLowerCase().includes("no translation found"))) {
+    const w = window.open(externalUrl, "_blank", "noopener");
+    if (!w) window.location.href = externalUrl;
   }
   showInlineWhisper(whisper, target || lastContextTarget || chatBox.lastElementChild);
 }
@@ -4380,10 +4409,12 @@ function getCanvasPosFromCoords(clientX, clientY) {
   return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
 }
 function previewCropRect(a, b) {
-  commitEditorStickers();
   if (!editorHistory.length) return;
   const base = editorHistory[editorHistory.length - 1];
+  const stickerSnapshot = editorTextStickers.map(item => ({ ...item }));
   restoreFromDataUrl(base).then(() => {
+    editorTextStickers = stickerSnapshot;
+    renderEditorStickers();
     editorCtx.strokeStyle = "#ED9107";
     editorCtx.lineWidth = 1.5;
     editorCtx.strokeRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(a.x - b.x), Math.abs(a.y - b.y));
@@ -4580,7 +4611,7 @@ function stampSignature() {
   editorCtx.fillStyle = "#A7A9AC";
   const sig = "LUXVIAI Light your way!";
   const w = editorCtx.measureText(sig).width;
-  editorCtx.fillText(sig, editorCanvas.width - w - (pad + 4), editorCanvas.height - (pad + 8));
+  editorCtx.fillText(sig, editorCanvas.width - w - (pad + 8), editorCanvas.height - (pad + 12));
   editorCtx.restore();
 }
 

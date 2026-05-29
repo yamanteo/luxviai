@@ -13,6 +13,7 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Dict, List, Optional
 from urllib.error import HTTPError, URLError
+from urllib.parse import quote
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -3111,6 +3112,97 @@ def local_phrase_translate(text: str, target_lang: str) -> Optional[str]:
     return None
 
 
+def user_lang_to_deepl_target(user_lang: str) -> str:
+    lang = (user_lang or "tr").strip().lower()
+    mapping = {
+        "tr": "TR",
+        "en": "EN",
+        "de": "DE",
+        "fr": "FR",
+        "es": "ES",
+        "it": "IT",
+        "pt": "PT-PT",
+        "ru": "RU",
+        "ar": "AR",
+        "nl": "NL",
+        "pl": "PL",
+        "ja": "JA",
+        "zh": "ZH",
+        "ko": "KO",
+        "uk": "UK",
+        "nb": "NB",
+        "no": "NB",
+        "sv": "SV",
+        "fi": "FI",
+        "da": "DA",
+        "cs": "CS",
+        "el": "EL",
+        "ro": "RO",
+        "hu": "HU",
+        "bg": "BG",
+        "id": "ID",
+        "sk": "SK",
+        "sl": "SL",
+        "et": "ET",
+        "lv": "LV",
+        "lt": "LT",
+    }
+    return mapping.get(lang, lang.upper()[:5] or "TR")
+
+
+def looks_turkish_text(text: str) -> bool:
+    s = (text or "").strip()
+    if not s:
+        return False
+    if re.search(r"[çğıöşüÇĞİÖŞÜ]", s):
+        return True
+    if re.search(r"[A-Za-z]", s) and not looks_foreign_word(s):
+        return True
+    return False
+
+
+def tdk_define_once(text: str) -> Optional[str]:
+    cleaned = re.sub(r"[^\wçğıöşüÇĞİÖŞÜ\- ]", " ", str(text or "")).strip()
+    if not cleaned:
+        return None
+    tokens = [t for t in cleaned.split() if t]
+    if len(tokens) != 1:
+        return None
+    word = tokens[0]
+    if len(word) < 2:
+        return None
+    try:
+        url = f"https://sozluk.gov.tr/gts?ara={quote(word)}"
+        req = Request(url=url, method="GET", headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        with urlopen(req, timeout=8) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+        if not isinstance(body, list) or not body:
+            return None
+        entry = safe_dict(body[0])
+        meanings = safe_list(entry.get("anlamlarListe"))
+        if not meanings:
+            return None
+        first = safe_dict(meanings[0])
+        meaning = str(first.get("anlam", "")).strip()
+        if not meaning:
+            return None
+        meaning = re.sub(r"<[^>]+>", "", meaning).strip()
+        return meaning[:320]
+    except Exception:
+        return None
+
+
+def translate_if_needed(text: str, target_lang: str) -> str:
+    tgt = (target_lang or "TR").upper()
+    if tgt.startswith("TR"):
+        return text
+    result = deepl_translate_text(text, tgt)
+    translated = str(result.get("translated_text", text) or text).strip()
+    if translated and translated.lower() != text.lower():
+        return translated
+    return text
+
+
 def explain_with_model_tr(text: str) -> str:
     if not client:
         return ""
@@ -3287,38 +3379,63 @@ async def explain(payload: ExplainRequest, auth: Optional[str] = Header(None)):
     if not text:
         return {"ok": False, "text": "", "kind": "none"}
 
+    user_lang = (payload.user_lang or "tr").lower()
+    target_lang = user_lang_to_deepl_target(user_lang)
+
+    if payload.force_translate:
+        out = deepl_translate_text(text, target_lang)
+        translated = str(out.get("translated_text", "")).strip()
+        if translated and translated.lower() != text.lower():
+            return {"ok": True, "text": translated, "kind": "translation"}
+        return {
+            "ok": False,
+            "text": (
+                f"\"{text}\" için çeviri bulunamadı."
+                if user_lang.startswith("tr")
+                else f"No translation found for \"{text}\"."
+            ),
+            "kind": "fallback",
+            "open_external_url": f"https://translate.google.com/?sl=auto&tl={quote(user_lang)}&text={quote(text)}&op=translate",
+        }
+
     normalized = normalize_keyword_token(text) or fold_turkish_ascii(text)
     direct = TERM_EXPLANATIONS_TR.get(normalized) or TERM_EXPLANATIONS_TR.get(fold_turkish_ascii(text))
     if direct:
-        return {"ok": True, "text": direct, "kind": "definition"}
+        return {"ok": True, "text": translate_if_needed(direct, target_lang), "kind": "definition"}
 
-    foreign_text = payload.force_translate or looks_foreign_word(text)
+    if looks_turkish_text(text):
+        tdk_hit = tdk_define_once(text)
+        if tdk_hit:
+            return {"ok": True, "text": translate_if_needed(tdk_hit, target_lang), "kind": "definition"}
+
+    foreign_text = looks_foreign_word(text)
     if foreign_text:
-        local_hit = local_phrase_translate(text, "TR")
+        local_hit = local_phrase_translate(text, target_lang)
         if local_hit:
             return {"ok": True, "text": local_hit, "kind": "translation"}
-        tr = deepl_translate_text(text, "TR")
+        tr = deepl_translate_text(text, target_lang)
         translated = str(tr.get("translated_text", text)).strip()
         if translated and translated.lower() != text.lower():
             return {"ok": True, "text": translated, "kind": "translation"}
-        # Yabancı metinlerde modelden "sohbet cevabı" dönmemesi için
-        # çeviri başarısızsa kısa fallback ver, model açıklamasına düşme.
-        fallback_tr = f"“{text}” için çeviri bulunamadı."
-        fallback_en = f"No translation found for “{text}”."
         return {
             "ok": False,
-            "text": fallback_tr if (payload.user_lang or "tr").lower().startswith("tr") else fallback_en,
+            "text": (
+                f"\"{text}\" için çeviri bulunamadı."
+                if user_lang.startswith("tr")
+                else f"No translation found for \"{text}\"."
+            ),
             "kind": "fallback",
+            "open_external_url": f"https://translate.google.com/?sl=auto&tl={quote(user_lang)}&text={quote(text)}&op=translate",
         }
 
     model_exp = explain_with_model_tr(text)
     if model_exp:
-        return {"ok": True, "text": model_exp, "kind": "definition"}
+        return {"ok": True, "text": translate_if_needed(model_exp, target_lang), "kind": "definition"}
 
     fallback = (
-        f"“{text}” için kısa bir açıklama üretemedim."
-        if (payload.user_lang or "tr").lower().startswith("tr")
-        else f"No short explanation produced for “{text}”."
+        f"\"{text}\" için kısa bir açıklama üretemedim."
+        if user_lang.startswith("tr")
+        else f"No short explanation produced for \"{text}\"."
     )
     return {"ok": False, "text": fallback, "kind": "fallback"}
 
