@@ -2170,11 +2170,12 @@ def build_system_prompt(
     elif 18 <= current_hour < 23:
         time_context = "Akşam. İyi akşamlar."
     else:
-        time_context = "Gece. Gece modu aktif."
+        time_context = "Gece. İyi geceler."
 
     base = f"""
-Bugün ({current_datetime}) / {time_context}
-Konum : {location_line}
+GİZLİ KONTEXT (kullanıcıya otomatik yazma):
+- Şu an: Bugün ({current_datetime}) / {time_context}
+- Konum: {location_line}
 
 Sen Luxviai'sin. Luxviai — Light your way! / Yolunu aydınlat!
 Sen bir yapay zekâsın; bunu saklamazsın.
@@ -2184,6 +2185,8 @@ Merkez her zaman insandır.
 DİL:
 Kullanıcı hangi dilde yazarsa o dilde cevap ver.
 Türkçe yazım hatalarını veya tekrarları yabancı dil sanma.
+- Kullanıcı sormadıkça saat/tarih/konum satırlarını otomatik yazma.
+- Kullanıcı "selam/merhaba" dediğinde normal sohbet akışına devam et; her mesajda yeni karşılama cümlesi tekrar etme.
 - Saat/tarih gerektiğinde şu şık formatı kullan: Bugün (29.05.2026 saat : 11:15)
 - Konum gerekiyorsa şu formatı kullan: Konum : Türkiye İstanbul
 - Saat/tarih/konum satırlarında kalın yazı, markdown yıldızı (**) veya emoji kullanma.

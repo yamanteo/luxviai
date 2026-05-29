@@ -61,7 +61,7 @@ body {
 }
 .header {
   text-align: center;
-  padding: 26px 20px 18px;
+  padding: 18px 20px 10px;
   border-bottom: 1px solid rgba(237,145,7,0.2);
   background: #000;
   z-index: 10;
@@ -84,7 +84,7 @@ body {
 .header-tools {
   position: absolute;
   right: 18px;
-  bottom: 4px;
+  bottom: 8px;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -93,7 +93,7 @@ body {
 .header-tools-left {
   position: absolute;
   left: 18px; /* ~0.5 cm */
-  bottom: 4px;
+  bottom: 8px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -168,6 +168,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 1px;
+  padding-top: 2px;
   cursor: pointer;
 }
 .new-chat-btn .new-chat-text {
@@ -187,10 +188,11 @@ body {
 
 .glyph-strip {
   width: 100%;
-  height: 132px;
+  height: 0;
   background: #000;
   position: relative;
   overflow: hidden;
+  pointer-events: none;
 }
 #glyphCanvas {
   width: 100%;
@@ -241,6 +243,22 @@ body {
   opacity: .9;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
 }
+.chat-new-indicator {
+  position: fixed;
+  right: 14px;
+  bottom: calc(96px + max(env(safe-area-inset-bottom), 10px));
+  z-index: 28;
+  border: 1px solid rgba(237,145,7,.42);
+  border-radius: 999px;
+  background: rgba(8,8,8,.92);
+  color: #E1D2B4;
+  font-size: .7rem;
+  line-height: 1;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: none;
+}
+.chat-new-indicator.show { display: inline-flex; align-items: center; }
 body.luxdream-mode .chat-box::before {
   content: "";
   position: absolute;
@@ -1100,7 +1118,7 @@ body.topics-open .topics-overlay { display: block; }
   .logo { font-size: 2.1rem; }
   .send-btn { padding: 0 16px; font-size: 0.74rem; }
   .search-capsule.open { width: 56vw; }
-  .glyph-strip { height: 72px; }
+  .glyph-strip { height: 0; }
   .topic-rail {
     width: min(52vw, 220px);
     transform: translateX(-104%);
@@ -1134,12 +1152,12 @@ body.topics-open .topics-overlay { display: block; }
     position: fixed;
     left: 0;
     right: 0;
-    bottom: calc(var(--keyboard-lift) + max(env(safe-area-inset-bottom), var(--mobile-nav-guard), 8px));
-    padding-bottom: calc(12px + max(env(safe-area-inset-bottom), 8px));
+    bottom: max(env(safe-area-inset-bottom), var(--mobile-nav-guard), 8px);
+    padding-bottom: calc(10px + max(env(safe-area-inset-bottom), 8px));
     z-index: 30;
   }
   .chat-box {
-    padding-bottom: calc(240px + max(env(safe-area-inset-bottom), var(--mobile-nav-guard), 0px));
+    padding-bottom: calc(190px + max(env(safe-area-inset-bottom), var(--mobile-nav-guard), 0px));
   }
 }
 </style>
@@ -1211,6 +1229,7 @@ body.topics-open .topics-overlay { display: block; }
 
   <div id="chatBox" class="chat-box"></div>
   <div id="chatScrollbar" class="chat-scrollbar"><span id="chatScrollThumb" class="chat-scroll-thumb"></span></div>
+  <button id="chatNewIndicator" class="chat-new-indicator" type="button">Yeni mesajlar</button>
 
   <div class="composer-wrap">
     <div class="composer">
@@ -1363,7 +1382,6 @@ let analyser = null;
 let eqAnimation = null;
 let lastContextTarget = null;
 let longPressTimer = null;
-let luxTopTimer = null;
 let currentLang = localStorage.getItem("lux_lang") || "tr";
 let languageApplySeq = 0;
 let hiddenLocationLabel = null;
@@ -1393,7 +1411,20 @@ let activeDict = null;
 let activeUi = null;
 let localizedSoundItems = [];
 let topicsOpen = false;
+let activeGeneration = null;
+let responseRunId = 0;
 const soundLocaleCache = {};
+const scrollState = {
+  autoFollow: true,
+  userAtBottom: true,
+  unseenCount: 0
+};
+const luxtaTopState = {
+  timer: null,
+  visible: false,
+  locks: new Set()
+};
+const missingI18nKeys = new Set();
 const typingSignals = {
   startedAt: 0,
   keyCount: 0,
@@ -1405,6 +1436,7 @@ const typingSignals = {
 const chatBox = document.getElementById("chatBox");
 const chatScrollbar = document.getElementById("chatScrollbar");
 const chatScrollThumb = document.getElementById("chatScrollThumb");
+const chatNewIndicator = document.getElementById("chatNewIndicator");
 const messageInput = document.getElementById("messageInput");
 const sendButton = document.getElementById("sendButton");
 const newChatBtn = document.getElementById("newChatBtn");
@@ -2356,6 +2388,32 @@ function getCurrentDict() {
 function getCurrentUi() {
   return activeUi || uiLocale[currentLang] || uiLocale.tr;
 }
+function tDict(key, fallback = "") {
+  const dict = getCurrentDict() || {};
+  const v = dict[key];
+  if (v !== undefined && v !== null && String(v).trim() !== "") return String(v);
+  const tr = textMap.tr || {};
+  if (tr[key] !== undefined) return String(tr[key]);
+  const miss = `dict:${key}`;
+  if (!missingI18nKeys.has(miss)) {
+    missingI18nKeys.add(miss);
+    console.warn("Missing dictionary key:", key, "lang:", currentLang);
+  }
+  return fallback || key;
+}
+function tUi(key, fallback = "") {
+  const ui = getCurrentUi() || {};
+  const v = ui[key];
+  if (v !== undefined && v !== null && String(v).trim() !== "") return String(v);
+  const tr = uiLocale.tr || {};
+  if (tr[key] !== undefined) return String(tr[key]);
+  const miss = `ui:${key}`;
+  if (!missingI18nKeys.has(miss)) {
+    missingI18nKeys.add(miss);
+    console.warn("Missing UI locale key:", key, "lang:", currentLang);
+  }
+  return fallback || key;
+}
 function deeplTargetCode(lang) {
   const normalized = (lang || "en").toLowerCase();
   const map = {
@@ -2424,9 +2482,33 @@ function syncChatScrollbarThumb() {
   chatScrollThumb.style.transform = `translateY(${y}px)`;
   chatScrollThumb.style.opacity = maxScroll > 0 ? ".9" : ".35";
 }
-function scrollBottom() {
+function isChatNearBottom(gap = 34) {
+  const remain = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight;
+  return remain <= gap;
+}
+function setChatNewIndicator(visible) {
+  if (!chatNewIndicator) return;
+  chatNewIndicator.classList.toggle("show", !!visible);
+}
+function syncAutoScrollStateFromViewport() {
+  const near = isChatNearBottom();
+  scrollState.userAtBottom = near;
+  scrollState.autoFollow = near;
+  if (near) {
+    scrollState.unseenCount = 0;
+    setChatNewIndicator(false);
+  }
+}
+function scrollBottom(force = false) {
+  if (!force && !scrollState.autoFollow) return;
   chatBox.scrollTop = chatBox.scrollHeight;
   syncChatScrollbarThumb();
+  syncAutoScrollStateFromViewport();
+}
+function notifyIncomingWhileReading() {
+  if (scrollState.autoFollow) return;
+  scrollState.unseenCount += 1;
+  setChatNewIndicator(true);
 }
 function recordTypingSignal(e) {
   const now = Date.now();
@@ -2503,15 +2585,25 @@ function getActiveConversation() {
   }
   return conv;
 }
-function addMessageToHistory(role, text) {
-  const conv = getActiveConversation();
+function addMessageToHistoryForConversation(conversationId, role, text) {
+  let conv = userHistory.conversations.find(x => x.id === conversationId);
+  if (!conv) {
+    conv = getActiveConversation();
+    conversationId = conv.id;
+  }
+  if (!conversationId) conversationId = conv.id;
   conv.messages.push({ role, text, ts: new Date().toISOString() });
   conv.messages = conv.messages.slice(-120);
   conv.updatedAt = new Date().toISOString();
   const firstUser = conv.messages.find(m => m.role === "user");
   if (firstUser) conv.title = firstUser.text.slice(0, 46) + (firstUser.text.length > 46 ? "..." : "");
   saveHistory();
-  renderTopicList();
+  if (activeConversationId === conversationId) renderTopicList();
+  return conv;
+}
+function addMessageToHistory(role, text) {
+  const conv = getActiveConversation();
+  addMessageToHistoryForConversation(conv.id, role, text);
 }
 function loadConversation(id) {
   const conv = userHistory.conversations.find(x => x.id === id);
@@ -2520,15 +2612,24 @@ function loadConversation(id) {
   currentMode = conv.mode || currentMode;
   if (currentMode === "luxching" || currentMode === "luxdream") currentMode = "luxviai";
   document.querySelectorAll("[data-mode]").forEach(x => x.classList.toggle("active", x.dataset.mode === currentMode));
-  setResponseLock(false);
+  if (!aiResponding) setResponseLock(false);
   document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode");
   luxtaPanel.classList.remove("active");
+  luxtaTopState.locks.clear();
+  luxtaClearTimer();
+  luxtaSetVisible(false);
   if (currentMode === "luxta") document.body.classList.add("luxta-mode");
   if (currentMode === "luxta") luxtaPanel.classList.add("active");
   if (currentMode === "luxeph") document.body.classList.add("luxeph-mode");
+  if (currentMode === "luxta") revealLuxtaTop(3000);
 
   chatBox.innerHTML = "";
   conv.messages.forEach(m => appendMessage(m.role === "assistant" ? "ai" : "user", m.text, false));
+  document.querySelectorAll(".resume-btn").forEach(x => x.remove());
+  if (interruptedState && interruptedState.conversationId === id) {
+    const lastAi = Array.from(chatBox.querySelectorAll(".msg.ai")).pop();
+    if (lastAi) appendResumeButton(lastAi);
+  }
   drawGlyphStrip();
   saveHistory();
   renderTopicList();
@@ -2643,11 +2744,23 @@ function appendMessage(role, text, track = true) {
   chatBox.appendChild(div);
   if (track) addMessageToHistory(role === "ai" ? "assistant" : "user", text);
   if (currentMode === "luxeph") trimLuxephMessages();
-  scrollBottom();
+  if (role === "user") {
+    scrollState.autoFollow = true;
+    scrollBottom(true);
+  } else if (scrollState.autoFollow) {
+    scrollBottom();
+  } else {
+    notifyIncomingWhileReading();
+    syncChatScrollbarThumb();
+  }
   return div;
 }
 function clearChat() {
   chatBox.innerHTML = "";
+  scrollState.autoFollow = true;
+  scrollState.userAtBottom = true;
+  scrollState.unseenCount = 0;
+  setChatNewIndicator(false);
 }
 function trimLuxephMessages() {
   const msgs = Array.from(chatBox.querySelectorAll(".msg"));
@@ -2674,8 +2787,18 @@ function startNewTopConversation() {
   clearChat();
   document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode", "luxta-top-visible");
   luxtaPanel.classList.remove("active");
+  luxtaTopState.locks.clear();
+  luxtaClearTimer();
+  luxtaSetVisible(false);
   stopRecording();
   messageInput.placeholder = dict.placeholder;
+  if (currentMode === "luxta") {
+    document.body.classList.add("luxta-mode");
+    luxtaPanel.classList.add("active");
+    revealLuxtaTop(3000);
+  } else if (currentMode === "luxeph") {
+    document.body.classList.add("luxeph-mode");
+  }
   appendMessage("ai", hello, false);
   drawGlyphStrip();
   closeMenu();
@@ -2687,11 +2810,15 @@ function startNewTopConversation() {
 }
 
 function openMenu() {
-  if (currentMode === "luxta") revealLuxtaTop(3000);
+  if (currentMode === "luxta") luxtaAcquire("menu");
   sideMenu.classList.add("open");
   menuOverlay.classList.add("active");
 }
-function closeMenu() { sideMenu.classList.remove("open"); menuOverlay.classList.remove("active"); }
+function closeMenu() {
+  sideMenu.classList.remove("open");
+  menuOverlay.classList.remove("active");
+  if (currentMode === "luxta") luxtaRelease("menu", 3000);
+}
 menuButton.onclick = openMenu;
 menuOverlay.onclick = closeMenu;
 if (newChatBtn) newChatBtn.onclick = startNewTopConversation;
@@ -2724,7 +2851,19 @@ function closeTopics() {
 if (topicsOverlay) topicsOverlay.onclick = () => closeTopics();
 if (topicSearchInput) topicSearchInput.oninput = () => renderTopicList();
 if (topicRailScroll) topicRailScroll.addEventListener("scroll", syncTopicScrollbarThumb, { passive: true });
-if (chatBox) chatBox.addEventListener("scroll", syncChatScrollbarThumb, { passive: true });
+if (chatBox) {
+  chatBox.addEventListener("scroll", () => {
+    syncChatScrollbarThumb();
+    syncAutoScrollStateFromViewport();
+  }, { passive: true });
+}
+if (chatNewIndicator) {
+  chatNewIndicator.addEventListener("click", () => {
+    scrollState.autoFollow = true;
+    scrollBottom(true);
+    setChatNewIndicator(false);
+  });
+}
 window.addEventListener("resize", () => {
   setAppHeight();
   positionNotesPopup();
@@ -2961,6 +3100,7 @@ async function applyLanguage(lang) {
 
   document.getElementById("tagline").innerText = "Light your way!";
   searchInput.placeholder = ui.searchPlaceholder;
+  if (chatNewIndicator) chatNewIndicator.innerText = currentLang === "tr" ? "Yeni mesajlar" : "New messages";
   const drawerTitle = document.querySelector(".drawer-head b");
   const drawerSub = document.querySelector(".drawer-sub");
   if (drawerTitle) drawerTitle.innerText = ui.drawerTitle;
@@ -3147,7 +3287,7 @@ function triggerDreamLight() {
 
 async function fetchJson(url, options) {
   const res = await fetch(url, options);
-  if (!res.ok) throw new Error("Istek basarisiz");
+  if (!res.ok) throw new Error("request_failed");
   return res.json();
 }
 
@@ -3173,7 +3313,7 @@ async function sendMessage(customText) {
       })
     });
     const data = await res.json();
-    let response = data.response || "Bunu duydum.";
+    let response = data.response || heardFallback();
     if (currentLang !== "tr" && response) {
       const t = await translateText(response, deeplTargetCode(currentLang));
       if (t && t.trim()) response = t;
@@ -3246,7 +3386,8 @@ function createPacedWriter(targetEl, speedFactor = 0.9) {
     }
     current += queue.shift();
     targetEl.innerText = current;
-    scrollBottom();
+    if (scrollState.autoFollow) scrollBottom();
+    else notifyIncomingWhileReading();
     timer = setTimeout(pump, delay);
   };
 
@@ -3261,7 +3402,8 @@ function createPacedWriter(targetEl, speedFactor = 0.9) {
       queue.length = 0;
       current = text || "";
       targetEl.innerText = current;
-      scrollBottom();
+      if (scrollState.autoFollow) scrollBottom();
+      else notifyIncomingWhileReading();
       if (!timer) resolveIdle();
     },
     waitIdle() {
@@ -3301,6 +3443,24 @@ function showMiniToast(text) {
   toastMini.classList.add("show");
   setTimeout(() => toastMini.classList.remove("show"), 1000);
 }
+function heardFallback() {
+  return currentLang === "tr" ? "Bunu duydum." : "I heard you.";
+}
+function stoppedFallback() {
+  return currentLang === "tr" ? "Yanıt durduruldu." : "Response stopped.";
+}
+function connectionFallback() {
+  return currentLang === "tr"
+    ? "Bağlantı kurulamadı. Sunucu çalışıyor mu kontrol et."
+    : "Connection failed. Check whether the server is running.";
+}
+
+function clearInterruptedState(removeButtons = true) {
+  interruptedState = null;
+  if (removeButtons) {
+    document.querySelectorAll(".resume-btn").forEach(x => x.remove());
+  }
+}
 
 function appendResumeButton(afterMsgEl) {
   if (!afterMsgEl || !afterMsgEl.parentNode) return;
@@ -3320,12 +3480,15 @@ function appendResumeButton(afterMsgEl) {
 async function continueInterruptedResponse(targetAiEl) {
   const state = interruptedState;
   if (!state || !targetAiEl) return;
+  const continueRunId = ++responseRunId;
+  const conversationId = state.conversationId || activeConversationId || getActiveConversation().id;
   if (currentMode !== state.mode) currentMode = state.mode;
   const bridgeMessage = `${continuePromptText()}\n\nKullanıcı mesajı: ${state.userText}\nKaldığın metin: ${state.partialText}`;
   stopStreamRequested = false;
   setResponseLock(true);
   const writer = createPacedWriter(targetAiEl, 0.9);
   writer.setExact(state.partialText || targetAiEl.innerText || "");
+  activeGeneration = { runId: continueRunId, conversationId, messageEl: targetAiEl, writer, kind: "continue" };
   const payload = {
     message: bridgeMessage,
     user_id: userId,
@@ -3344,12 +3507,14 @@ async function continueInterruptedResponse(targetAiEl) {
       writer.push(responseText);
       await writer.waitIdle();
     }
-    addMessageToHistory("assistant", targetAiEl.innerText || responseText);
-    interruptedState = null;
+    if (responseRunId !== continueRunId) return;
+    addMessageToHistoryForConversation(conversationId, "assistant", targetAiEl.innerText || responseText);
+    clearInterruptedState(true);
     resetTypingSignals();
   } catch (_) {
     // no-op
   } finally {
+    if (activeGeneration && activeGeneration.runId === continueRunId) activeGeneration = null;
     setResponseLock(false);
   }
 }
@@ -3377,7 +3542,7 @@ function sendMessageViaSocket(payload, onChunk) {
               return;
             }
             if (data.type === "done") {
-              const finalText = (data.response || streamed || "Bunu duydum.").trim();
+              const finalText = (data.response || streamed || heardFallback()).trim();
               wsPending = null;
               resolve(finalText);
             }
@@ -3407,24 +3572,27 @@ async function sendMessageViaHttp(payload) {
     body: JSON.stringify(payload)
   });
   const data = await res.json();
-  return (data.response || "Bunu duydum.").trim();
+  return (data.response || heardFallback()).trim();
 }
 
 async function sendMessageLive(customText) {
   if (aiResponding) return;
   const text = (customText || messageInput.value).trim();
   if (!text) return;
+  const runId = ++responseRunId;
 
   stopStreamRequested = false;
   setResponseLock(true);
+  clearInterruptedState(true);
   appendMessage("user", text);
-  interruptedState = null;
   messageInput.value = "";
   triggerDreamLight();
+  const conversationId = activeConversationId || getActiveConversation().id;
 
   const aiDiv = appendMessage("ai", "", false);
   activeAiDiv = aiDiv;
   const writer = createPacedWriter(aiDiv, 0.9);
+  activeGeneration = { runId, conversationId, messageEl: aiDiv, writer, kind: "response" };
   const payload = {
     message: text,
     user_id: userId,
@@ -3441,13 +3609,14 @@ async function sendMessageLive(customText) {
         wsPending.reject(new Error("stopped_by_user"));
       }
       wsPending = null;
-      if (!aiDiv.innerText.trim()) aiDiv.innerText = (currentLang === "tr" ? "Yanıt durduruldu." : "Response stopped.");
+      if (!aiDiv.innerText.trim()) aiDiv.innerText = stoppedFallback();
       interruptedState = {
+        conversationId,
         mode: currentMode,
         userText: text,
         partialText: aiDiv.innerText || ""
       };
-      addMessageToHistory("assistant", aiDiv.innerText);
+      addMessageToHistoryForConversation(conversationId, "assistant", aiDiv.innerText);
       appendResumeButton(aiDiv);
       activeAiDiv = null;
     };
@@ -3463,21 +3632,23 @@ async function sendMessageLive(customText) {
       await writer.waitIdle();
     }
     if (stopStreamRequested) return;
-    if (!aiDiv.innerText.trim()) writer.setExact(responseText || "Bunu duydum.");
+    if (responseRunId !== runId) return;
+    if (!aiDiv.innerText.trim()) writer.setExact(responseText || heardFallback());
     if (currentLang !== "tr" && aiDiv.innerText.trim()) {
       const translated = await translateText(aiDiv.innerText, deeplTargetCode(currentLang));
       if (translated && translated.trim()) writer.setExact(translated);
     }
-    addMessageToHistory("assistant", aiDiv.innerText);
+    addMessageToHistoryForConversation(conversationId, "assistant", aiDiv.innerText);
     resetTypingSignals();
   } catch (_) {
     if (!stopStreamRequested) {
-      aiDiv.innerText = "Bağlantı kurulamadı. Sunucu çalışıyor mu kontrol et.";
-      addMessageToHistory("assistant", aiDiv.innerText);
+      aiDiv.innerText = connectionFallback();
+      addMessageToHistoryForConversation(conversationId, "assistant", aiDiv.innerText);
     }
   } finally {
     streamAbort = null;
     activeAiDiv = null;
+    if (activeGeneration && activeGeneration.runId === runId) activeGeneration = null;
     setResponseLock(false);
   }
 }
@@ -3496,6 +3667,9 @@ messageInput.addEventListener("keydown", e => {
     if (aiResponding) return;
     sendMessageLive();
   }
+});
+messageInput.addEventListener("input", () => {
+  if (interruptedState) clearInterruptedState(true);
 });
 
 function clearHighlights() {
@@ -3521,6 +3695,7 @@ function highlightMessages(q) {
 function openSearch() {
   if (topicSearchInput) topicSearchInput.blur();
   if (topicsOpen && window.innerWidth <= 720) closeTopics();
+  if (currentMode === "luxta") luxtaAcquire("search");
   searchCapsule.classList.add("open");
   setTimeout(() => searchInput.focus(), 80);
 }
@@ -3528,6 +3703,7 @@ function closeSearch() {
   searchInput.value = "";
   searchCapsule.classList.remove("open");
   clearHighlights();
+  if (currentMode === "luxta") luxtaRelease("search", 3000);
 }
 searchOpenBtn.onclick = openSearch;
 searchCloseBtn.onclick = closeSearch;
@@ -3632,6 +3808,10 @@ function setupNotesActions(notes) {
 
 document.querySelectorAll("[data-mode]").forEach(btn => {
   btn.onclick = () => {
+    if (aiResponding) {
+      showMiniToast(currentLang === "tr" ? "Önce yanıtı durdur." : "Stop current response first.");
+      return;
+    }
     const dict = getCurrentDict();
     const ui = getCurrentUi();
     const hello = `${pickGreetingPrefix(dict)}.`;
@@ -3645,10 +3825,14 @@ document.querySelectorAll("[data-mode]").forEach(btn => {
     clearChat();
     document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode", "luxta-top-visible");
     luxtaPanel.classList.remove("active");
+    luxtaTopState.locks.clear();
+    luxtaClearTimer();
+    luxtaSetVisible(false);
     stopRecording();
     if (currentMode === "luxta") {
       document.body.classList.add("luxta-mode");
       luxtaPanel.classList.add("active");
+      revealLuxtaTop(3000);
       appendMessage("ai", hello, false);
     } else if (currentMode === "luxeph") {
       document.body.classList.add("luxeph-mode");
@@ -3889,6 +4073,64 @@ document.querySelectorAll("[data-voice-tone]").forEach(btn => {
   };
 });
 
+const voiceInfra = {
+  pendingCommand: null,
+  commandLexicon: {
+    new_chat: ["yeni sohbet ac", "yeni sohbet", "new chat", "start new chat"],
+    send_message: ["mesaji gonder", "gonder", "send message", "send"],
+    stop_response: ["durdur", "yaniti durdur", "stop response", "stop"],
+    continue_response: ["devam et", "continue"],
+    open_menu: ["menuyu ac", "menu ac", "open menu"],
+    open_search: ["ara", "aramayi ac", "search", "open search"]
+  },
+  parseCommand(text) {
+    const normalized = normalizeHintKey(text).replace(/\s+/g, " ").trim();
+    if (!normalized) return null;
+    for (const [id, keys] of Object.entries(this.commandLexicon)) {
+      if (keys.includes(normalized)) return id;
+    }
+    return null;
+  },
+  executeCommand(commandId) {
+    if (!commandId) return false;
+    switch (commandId) {
+      case "new_chat":
+        startNewTopConversation();
+        return true;
+      case "send_message":
+        if (!aiResponding) sendMessageLive();
+        return true;
+      case "stop_response":
+        if (aiResponding) stopActiveResponse();
+        return true;
+      case "continue_response": {
+        const btn = document.querySelector(".resume-btn");
+        if (btn) btn.click();
+        return true;
+      }
+      case "open_menu":
+        if (sideMenu.classList.contains("open")) closeMenu();
+        else openMenu();
+        return true;
+      case "open_search":
+        if (searchCapsule.classList.contains("open")) closeSearch();
+        else openSearch();
+        return true;
+      default:
+        return false;
+    }
+  },
+  async ensurePermission() {
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        const st = await navigator.permissions.query({ name: "microphone" });
+        if (st && st.state === "denied") return false;
+      }
+    } catch (_) {}
+    return true;
+  }
+};
+
 function setupRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
@@ -3906,6 +4148,11 @@ function setupRecognition() {
       const phrase = (event.results[i][0]?.transcript || "").trim();
       if (!phrase) continue;
       if (event.results[i].isFinal) {
+        const cmd = voiceInfra.parseCommand(phrase);
+        if (cmd) {
+          voiceInfra.pendingCommand = cmd;
+          continue;
+        }
         recognitionCommittedText = [recognitionCommittedText, phrase]
           .filter(Boolean)
           .join(" ")
@@ -3962,6 +4209,12 @@ function speechLangCode() {
 
 async function startRecording() {
   if (currentMode === "luxeph" || recording) return;
+  const permitted = await voiceInfra.ensurePermission();
+  if (!permitted) {
+    recordTranscript.innerText = currentLang === "tr" ? "Mikrofon izni gerekiyor." : "Microphone permission is required.";
+    return;
+  }
+  voiceInfra.pendingCommand = null;
   recording = true;
   recordSeconds = 30;
   recordTranscriptText = "";
@@ -4015,6 +4268,17 @@ function stopRecording(autoSend = false) {
   try { recognition && recognition.stop(); } catch (_) {}
   if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
   if (eqAnimation) cancelAnimationFrame(eqAnimation);
+  if (voiceInfra.pendingCommand) {
+    const cmd = voiceInfra.pendingCommand;
+    voiceInfra.pendingCommand = null;
+    recordTranscriptText = "";
+    recognitionCommittedText = "";
+    recognitionFinalText = "";
+    recordTranscript.innerText = "";
+    messageInput.value = "";
+    voiceInfra.executeCommand(cmd);
+    return;
+  }
   const spokenDuration = Math.max(1, 30 - recordSeconds);
   const spokenWords = (recordTranscriptText || "").trim().split(/\s+/).filter(Boolean).length;
   lastSpeechRateWpm = spokenWords > 0 ? (spokenWords / (spokenDuration / 60)) : 0;
@@ -4158,13 +4422,33 @@ async function resolveHiddenLocation() {
     }, { enableHighAccuracy: false, timeout: 7000, maximumAge: 600000 });
   });
 }
+let lastGreetingText = "";
 function pickGreetingPrefix(dictArg = null) {
   const h = new Date().getHours();
   const d = dictArg || getCurrentDict();
-  if (h < 11) return d.greetMorning;
-  if (h < 18) return d.greetDay;
-  if (h < 23) return d.greetEvening;
-  return d.greetNight;
+  let base = h < 11 ? d.greetMorning : (h < 18 ? d.greetDay : (h < 23 ? d.greetEvening : d.greetNight));
+  const lang = (currentLang || "tr").toLowerCase();
+  if (lang === "tr") {
+    if (h < 11) base = "Günaydın";
+    else if (h < 18) base = "İyi günler";
+    else if (h < 23) base = "İyi akşamlar";
+    else base = "İyi geceler";
+    let pick = (Math.random() < 0.22) ? "Merhaba" : base;
+    if (pick === lastGreetingText && pick !== "Merhaba") pick = "Merhaba";
+    if (pick === lastGreetingText && pick === "Merhaba") pick = base;
+    lastGreetingText = pick;
+    return pick;
+  }
+  const candidates = [base, d.greetDay, "Hello"]
+    .map(x => String(x || "").trim())
+    .filter(Boolean)
+    .filter((x, i, arr) => arr.indexOf(x) === i);
+  let pick = candidates[Math.floor(Math.random() * candidates.length)] || base || "Hello";
+  if (pick === lastGreetingText && candidates.length > 1) {
+    pick = candidates.find(x => x !== lastGreetingText) || pick;
+  }
+  lastGreetingText = pick;
+  return pick;
 }
 async function buildGreeting() {
   return `${pickGreetingPrefix(getCurrentDict())}.`;
@@ -4258,11 +4542,15 @@ function loadEditorCanvas(sourceCanvas) {
   editorCtx.drawImage(sourceCanvas, 0, 0);
   resetEditorStickers();
   syncEditorStickerLayer();
-  editorHistory = [{ url: editorCanvas.toDataURL("image/png"), w: editorCanvas.width, h: editorCanvas.height }];
+  editorHistory = [{ url: editorCanvas.toDataURL("image/png"), w: editorCanvas.width, h: editorCanvas.height, stickers: [] }];
 }
 function pushEditorHistory() {
-  commitEditorStickers();
-  editorHistory.push({ url: editorCanvas.toDataURL("image/png"), w: editorCanvas.width, h: editorCanvas.height });
+  editorHistory.push({
+    url: editorCanvas.toDataURL("image/png"),
+    w: editorCanvas.width,
+    h: editorCanvas.height,
+    stickers: editorTextStickers.map(item => ({ ...item }))
+  });
   editorHistory = editorHistory.slice(-25);
 }
 function restoreFromDataUrl(entryOrUrl) {
@@ -4276,8 +4564,9 @@ function restoreFromDataUrl(entryOrUrl) {
       editorCanvas.height = entry.h || img.height;
       editorCtx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
       editorCtx.drawImage(img, 0, 0, editorCanvas.width, editorCanvas.height);
-      resetEditorStickers();
+      editorTextStickers = (entry.stickers || []).map(item => ({ ...item }));
       syncEditorStickerLayer();
+      renderEditorStickers();
       resolve();
     };
     img.src = entry.url;
@@ -4421,7 +4710,6 @@ function previewCropRect(a, b) {
   });
 }
 async function applyCrop(a, b) {
-  commitEditorStickers();
   const x = Math.min(a.x, b.x);
   const y = Math.min(a.y, b.y);
   const w = Math.abs(a.x - b.x);
@@ -4433,6 +4721,15 @@ async function applyCrop(a, b) {
   editorCanvas.width = w;
   editorCanvas.height = h;
   editorCtx.drawImage(tmp, 0, 0);
+  editorTextStickers = editorTextStickers
+    .map(item => ({ ...item, x: item.x - x, y: item.y - y }))
+    .filter(item => {
+      const withinX = item.x >= -20 && item.x <= (w + 20);
+      const withinY = item.y >= -20 && item.y <= (h + 20);
+      return withinX && withinY;
+    });
+  syncEditorStickerLayer();
+  renderEditorStickers();
 }
 
 editorCanvas.addEventListener("touchstart", e => {
@@ -4546,13 +4843,11 @@ document.getElementById("toolPen").onclick = () => setEditorMode("text");
 document.getElementById("toolCrop").onclick = () => setEditorMode("crop");
 document.getElementById("toolText").onclick = () => setEditorMode("pen");
 document.getElementById("toolUndo").onclick = async () => {
-  commitEditorStickers();
   if (editorHistory.length <= 1) return;
   editorHistory.pop();
   await restoreFromDataUrl(editorHistory[editorHistory.length - 1]);
 };
 document.getElementById("toolReset").onclick = async () => {
-  commitEditorStickers();
   if (!editorHistory.length) return;
   await restoreFromDataUrl(editorHistory[0]);
   editorHistory = [editorHistory[0]];
@@ -4577,7 +4872,6 @@ document.querySelectorAll(".tool-btn[data-size]").forEach(btn => {
 });
 
 function setEditorMode(mode) {
-  if (shareEditorMode === "text" && mode !== "text") commitEditorStickers();
   shareEditorMode = mode;
   document.getElementById("toolPen").classList.toggle("active", mode === "text");
   document.getElementById("toolCrop").classList.toggle("active", mode === "crop");
@@ -4592,6 +4886,7 @@ function applyEditorText() {
     return;
   }
   addEditorSticker(t);
+  pushEditorHistory();
   if (editorTextCapsule) editorTextCapsule.classList.remove("open");
 }
 if (editorTextApply) editorTextApply.onclick = applyEditorText;
@@ -4611,7 +4906,7 @@ function stampSignature() {
   editorCtx.fillStyle = "#A7A9AC";
   const sig = "LUXVIAI Light your way!";
   const w = editorCtx.measureText(sig).width;
-  editorCtx.fillText(sig, editorCanvas.width - w - (pad + 8), editorCanvas.height - (pad + 12));
+  editorCtx.fillText(sig, editorCanvas.width - w - (pad + 12), editorCanvas.height - (pad + 16));
   editorCtx.restore();
 }
 
@@ -4691,29 +4986,56 @@ document.addEventListener("keydown", e => {
   }
 });
 
+function luxtaSetVisible(visible) {
+  luxtaTopState.visible = !!visible;
+  document.body.classList.toggle("luxta-top-visible", !!visible);
+}
+function luxtaClearTimer() {
+  if (luxtaTopState.timer) {
+    clearTimeout(luxtaTopState.timer);
+    luxtaTopState.timer = null;
+  }
+}
+function luxtaScheduleHide(timeoutMs = 3000) {
+  luxtaClearTimer();
+  if (currentMode !== "luxta") return;
+  if (luxtaTopState.locks.size > 0) return;
+  luxtaTopState.timer = setTimeout(() => {
+    if (currentMode !== "luxta") return;
+    if (luxtaTopState.locks.size > 0) return;
+    luxtaSetVisible(false);
+  }, timeoutMs);
+}
+function luxtaAcquire(reason) {
+  if (currentMode !== "luxta") return;
+  luxtaTopState.locks.add(reason);
+  luxtaSetVisible(true);
+  luxtaClearTimer();
+}
+function luxtaRelease(reason, timeoutMs = 3000) {
+  luxtaTopState.locks.delete(reason);
+  luxtaScheduleHide(timeoutMs);
+}
 function revealLuxtaTop(timeoutMs = 3000) {
   if (currentMode !== "luxta") return;
-  document.body.classList.add("luxta-top-visible");
-  clearTimeout(luxTopTimer);
-  luxTopTimer = setTimeout(() => document.body.classList.remove("luxta-top-visible"), timeoutMs);
+  luxtaSetVisible(true);
+  luxtaScheduleHide(timeoutMs);
 }
 
 document.addEventListener("mousemove", e => {
   if (currentMode !== "luxta") return;
-  if (e.clientY < 90) {
-    revealLuxtaTop(3000);
-  }
+  if (e.clientY < 90) revealLuxtaTop(3000);
 });
 document.addEventListener("touchstart", e => {
   if (currentMode !== "luxta") return;
   const t = e.touches[0];
-  if (t && t.clientY < 120) {
+  if (t && t.clientY < 120) revealLuxtaTop(3000);
+}, { passive: true });
+document.addEventListener("pointerdown", e => {
+  if (currentMode !== "luxta") return;
+  if (e.target && (e.target.closest(".header") || e.target.closest(".header-tools") || e.target.closest(".header-tools-left"))) {
     revealLuxtaTop(3000);
   }
-}, { passive: true });
-document.addEventListener("pointerdown", () => {
-  if (currentMode !== "luxta") return;
-  revealLuxtaTop(3000);
 }, { passive: true });
 
 async function bootGreeting() {
