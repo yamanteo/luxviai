@@ -227,7 +227,7 @@ body {
   right: 6px;
   top: var(--chat-scroll-top, 112px);
   bottom: var(--chat-scroll-bottom, 122px);
-  width: 4px;
+  width: 2px;
   background: transparent;
   pointer-events: none;
   z-index: 11;
@@ -237,9 +237,9 @@ body {
   left: 0;
   top: 0;
   width: 100%;
-  height: 19px; /* ~0.5 cm */
+  height: 10px; /* ince ve kisa */
   border-radius: 999px;
-  background: var(--scroll-thumb);
+  background: #0f1115;
   opacity: .9;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
 }
@@ -558,10 +558,12 @@ body.luxdream-mode .light-line { display: block; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: none;
-  background: transparent;
+  border: 1px solid rgba(237,145,7,.24);
+  border-radius: 999px;
+  background: rgba(9,9,9,.86);
   text-align: left;
-  padding: 0;
+  padding: 6px 10px;
+  margin-top: 6px;
   cursor: pointer;
 }
 .sound-toggle-icon {
@@ -605,16 +607,22 @@ body.luxdream-mode .light-line { display: block; }
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 0;
+  padding: 6px 8px;
   color: #bcb5a9;
   font-family: "Plus Jakarta Sans", sans-serif;
   font-weight: 300;
   font-size: .74rem;
   letter-spacing: .2px;
   cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 10px;
 }
 .sound-item > span { flex: 1; text-align: left; }
-.sound-item.selected { color: var(--lux); }
+.sound-item.selected {
+  color: var(--lux);
+  border-color: rgba(237,145,7,.55);
+  background: rgba(237,145,7,.08);
+}
 .sound-info {
   width: 17px;
   height: 17px;
@@ -655,7 +663,7 @@ body.luxdream-mode .light-line { display: block; }
   right: 4px;
   top: var(--topic-scroll-top, 10px);
   bottom: var(--topic-scroll-bottom, 10px);
-  width: 4px;
+  width: 2px;
   background: transparent;
   pointer-events: none;
   z-index: 3;
@@ -665,9 +673,9 @@ body.luxdream-mode .light-line { display: block; }
   left: 0;
   top: 0;
   width: 100%;
-  height: 19px; /* ~0.5 cm */
+  height: 10px; /* ince ve kisa */
   border-radius: 999px;
-  background: var(--scroll-thumb);
+  background: #0f1115;
   opacity: .92;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
 }
@@ -767,6 +775,7 @@ body.luxdream-mode .light-line { display: block; }
   padding: 8px 10px;
   cursor: pointer;
   background: transparent;
+  position: relative;
 }
 .topic-item:hover {
   background: rgba(237,145,7,.06);
@@ -792,6 +801,79 @@ body.luxdream-mode .light-line { display: block; }
   font-size: .45rem;
   line-height: 1.32;
   text-transform: none;
+}
+.topic-actions {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.topic-item.active .topic-actions,
+.topic-item:hover .topic-actions {
+  display: inline-flex;
+}
+.topic-action-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(237,145,7,.38);
+  background: rgba(0,0,0,.82);
+  color: #CFA061;
+  font-size: .62rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.topic-action-btn:hover {
+  color: #ED9107;
+  border-color: rgba(237,145,7,.8);
+}
+.topic-confirm {
+  position: fixed;
+  right: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(31vw, 340px);
+  border: 1px solid rgba(237,145,7,.34);
+  border-radius: 14px;
+  background: rgba(7,7,7,.97);
+  padding: 12px;
+  z-index: 140;
+  display: none;
+}
+.topic-confirm.active { display: block; }
+.topic-confirm-title {
+  color: #ED9107;
+  font-size: .74rem;
+  letter-spacing: .35px;
+  margin-bottom: 8px;
+}
+.topic-confirm-text {
+  color: #CABEA6;
+  font-size: .72rem;
+  line-height: 1.45;
+}
+.topic-confirm-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.topic-confirm-btn {
+  border: 1px solid rgba(237,145,7,.35);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #0b0b0b;
+  color: #DBCDB4;
+  font-size: .72rem;
+  cursor: pointer;
+}
+.topic-confirm-btn.primary {
+  background: rgba(237,145,7,.92);
+  color: #000;
+  border-color: rgba(237,145,7,.92);
 }
 .insight-pane {
   border-top: 1px solid rgba(237,145,7,.18);
@@ -1165,6 +1247,10 @@ body.luxeph-mode .context-menu { display: none !important; }
   z-index: 25;
 }
 body.topics-open .topics-overlay { display: block; }
+body.topics-open .chat-box,
+body.topics-open .composer-wrap {
+  pointer-events: none;
+}
 @media print {
   body * { visibility: hidden !important; }
   body::before {
@@ -1252,12 +1338,17 @@ body.topics-open .topics-overlay { display: block; }
     position: fixed;
     left: 0;
     right: 0;
-    bottom: max(env(safe-area-inset-bottom), var(--mobile-nav-guard), 8px);
+    bottom: calc(max(env(safe-area-inset-bottom), var(--mobile-nav-guard), 8px) + var(--keyboard-lift, 0px));
     padding-bottom: calc(10px + max(env(safe-area-inset-bottom), 8px));
     z-index: 30;
   }
   .chat-box {
-    padding-bottom: calc(190px + max(env(safe-area-inset-bottom), var(--mobile-nav-guard), 0px));
+    padding-bottom: calc(190px + max(env(safe-area-inset-bottom), var(--mobile-nav-guard), 0px) + var(--keyboard-lift, 0px));
+  }
+  .topic-confirm {
+    right: 50%;
+    transform: translate(50%, -50%);
+    width: min(88vw, 320px);
   }
 }
 </style>
@@ -1409,6 +1500,14 @@ body.topics-open .topics-overlay { display: block; }
   <div id="popupTitle" class="popup-title"></div>
   <div id="popupContent" class="popup-content"></div>
 </div>
+<div id="topicConfirm" class="topic-confirm">
+  <div id="topicConfirmTitle" class="topic-confirm-title">Konuşma silinsin mi?</div>
+  <div id="topicConfirmText" class="topic-confirm-text">Bu konuşma başlığını ve içeriğini silmek istediğine emin misin?</div>
+  <div class="topic-confirm-actions">
+    <button id="topicConfirmNo" class="topic-confirm-btn">Hayır</button>
+    <button id="topicConfirmYes" class="topic-confirm-btn primary">Evet</button>
+  </div>
+</div>
 
 <div id="shareOverlay" class="share-overlay">
   <div class="share-shell">
@@ -1512,6 +1611,7 @@ let localizedSoundItems = [];
 let topicsOpen = false;
 let activeGeneration = null;
 let responseRunId = 0;
+let pendingDeleteConversationId = null;
 const soundLocaleCache = {};
 const scrollState = {
   autoFollow: true,
@@ -1566,6 +1666,11 @@ const popup = document.getElementById("popup");
 const popupTitle = document.getElementById("popupTitle");
 const popupContent = document.getElementById("popupContent");
 const popupClose = document.getElementById("popupClose");
+const topicConfirm = document.getElementById("topicConfirm");
+const topicConfirmTitle = document.getElementById("topicConfirmTitle");
+const topicConfirmText = document.getElementById("topicConfirmText");
+const topicConfirmNo = document.getElementById("topicConfirmNo");
+const topicConfirmYes = document.getElementById("topicConfirmYes");
 const screenShield = document.getElementById("screenShield");
 const floatingWhisper = document.getElementById("floatingWhisper");
 const toastMini = document.getElementById("toastMini");
@@ -1696,7 +1801,15 @@ const uiLocale = {
     soundOff: "SES KAPALI",
     luxchingPrompt: "Lütfen sorunuzu sorunuz.",
     luxdreamPrompt: "Lütfen rüyanızı anlatın!",
-    luxdreamGreeting: "Rüya analizi."
+    luxdreamGreeting: "Rüya analizi.",
+    topicDeleteTitle: "Konuşma silinsin mi?",
+    topicDeleteText: "Bu konuşma başlığını ve içeriğini silmek istediğine emin misin?",
+    topicDeleteYes: "Evet",
+    topicDeleteNo: "Hayır",
+    topicRenamePrompt: "Yeni konuşma başlığı",
+    topicDefaultTitle: "Konuşma",
+    topicSearchPlaceholder: "Sohbet içinde ara...",
+    todayLabel: "Bugün"
   },
   en: {
     drawerTitle: "TOPICS",
@@ -1719,7 +1832,15 @@ const uiLocale = {
     soundOff: "SOUND OFF",
     luxchingPrompt: "Please ask your question.",
     luxdreamPrompt: "Please describe your dream!",
-    luxdreamGreeting: "Dream analysis."
+    luxdreamGreeting: "Dream analysis.",
+    topicDeleteTitle: "Delete this conversation?",
+    topicDeleteText: "Are you sure you want to delete this conversation title and its content?",
+    topicDeleteYes: "Yes",
+    topicDeleteNo: "No",
+    topicRenamePrompt: "New conversation title",
+    topicDefaultTitle: "Conversation",
+    topicSearchPlaceholder: "Search in chats...",
+    todayLabel: "Today"
   },
   ru: {
     drawerTitle: "ТЕМЫ",
@@ -1742,7 +1863,15 @@ const uiLocale = {
     soundOff: "ЗВУК ВЫКЛ",
     luxchingPrompt: "Пожалуйста, задайте вопрос.",
     luxdreamPrompt: "Пожалуйста, расскажите ваш сон!",
-    luxdreamGreeting: "Анализ сна."
+    luxdreamGreeting: "Анализ сна.",
+    topicDeleteTitle: "Удалить разговор?",
+    topicDeleteText: "Вы уверены, что хотите удалить этот разговор и его содержимое?",
+    topicDeleteYes: "Да",
+    topicDeleteNo: "Нет",
+    topicRenamePrompt: "Новое название разговора",
+    topicDefaultTitle: "Разговор",
+    topicSearchPlaceholder: "Поиск в чатах...",
+    todayLabel: "Сегодня"
   }
 };
 
@@ -1860,7 +1989,15 @@ Object.assign(uiLocale, {
     ctxExplain: "Açıkla",
     ctxTranslate: "Çevir",
     ctxSaveNote: "Not al",
-    translateDisabled: "Çeviri yakında aktif olacak."
+    translateDisabled: "Çeviri yakında aktif olacak.",
+    topicDeleteTitle: "Konuşma silinsin mi?",
+    topicDeleteText: "Bu konuşma başlığını ve içeriğini silmek istediğine emin misin?",
+    topicDeleteYes: "Evet",
+    topicDeleteNo: "Hayır",
+    topicRenamePrompt: "Yeni konuşma başlığı",
+    topicDefaultTitle: "Konuşma",
+    topicSearchPlaceholder: "Sohbet içinde ara...",
+    todayLabel: "Bugün"
   },
   en: {
     drawerTitle: "TOPICS",
@@ -1908,7 +2045,15 @@ Object.assign(uiLocale, {
     ctxExplain: "Explain",
     ctxTranslate: "Translate",
     ctxSaveNote: "Save note",
-    translateDisabled: "Translation will be enabled soon."
+    translateDisabled: "Translation will be enabled soon.",
+    topicDeleteTitle: "Delete this conversation?",
+    topicDeleteText: "Are you sure you want to delete this conversation title and its content?",
+    topicDeleteYes: "Yes",
+    topicDeleteNo: "No",
+    topicRenamePrompt: "New conversation title",
+    topicDefaultTitle: "Conversation",
+    topicSearchPlaceholder: "Search in chats...",
+    todayLabel: "Today"
   },
   ru: {
     drawerTitle: "ТЕМЫ",
@@ -1956,7 +2101,15 @@ Object.assign(uiLocale, {
     ctxExplain: "Объяснить",
     ctxTranslate: "Перевести",
     ctxSaveNote: "Сохранить заметку",
-    translateDisabled: "Перевод скоро будет доступен."
+    translateDisabled: "Перевод скоро будет доступен.",
+    topicDeleteTitle: "Удалить разговор?",
+    topicDeleteText: "Вы уверены, что хотите удалить этот разговор и его содержимое?",
+    topicDeleteYes: "Да",
+    topicDeleteNo: "Нет",
+    topicRenamePrompt: "Новое название разговора",
+    topicDefaultTitle: "Разговор",
+    topicSearchPlaceholder: "Поиск в чатах...",
+    todayLabel: "Сегодня"
   }
 });
 
@@ -2600,6 +2753,7 @@ function setAppHeight() {
   document.documentElement.style.setProperty("--mobile-bottom-offset", `${occludedBottom}px`);
   document.documentElement.style.setProperty("--mobile-nav-guard", `${navGuard}px`);
   document.documentElement.style.setProperty("--keyboard-lift", `${keyboardLift}px`);
+  document.body.classList.toggle("keyboard-open", !!keyboardOpen);
 }
 function syncChatScrollbarBounds() {
   if (!chatScrollbar) return;
@@ -2617,7 +2771,7 @@ function syncChatScrollbarThumb() {
   const maxScroll = Math.max(0, chatBox.scrollHeight - chatBox.clientHeight);
   const track = chatScrollThumb.parentElement;
   if (!track) return;
-  const thumbH = 19;
+  const thumbH = 10;
   const trackH = Math.max(thumbH, track.clientHeight);
   const p = maxScroll > 0 ? (chatBox.scrollTop / maxScroll) : 0;
   const y = Math.round((trackH - thumbH) * p);
@@ -2750,6 +2904,7 @@ function addMessageToHistory(role, text) {
 function loadConversation(id) {
   const conv = userHistory.conversations.find(x => x.id === id);
   if (!conv) return;
+  closeDeleteTopicConfirm();
   activeConversationId = id;
   currentMode = conv.mode || currentMode;
   if (currentMode === "luxching" || currentMode === "luxdream") currentMode = "luxviai";
@@ -2781,6 +2936,52 @@ function loadConversation(id) {
   refreshTopActionButtons();
   if (window.innerWidth <= 720) closeTopics();
 }
+
+function deleteConversationById(id) {
+  if (!id) return;
+  const idx = userHistory.conversations.findIndex(c => c.id === id);
+  if (idx < 0) return;
+  userHistory.conversations.splice(idx, 1);
+  if (activeConversationId === id) {
+    const next = userHistory.conversations[0] || null;
+    activeConversationId = next ? next.id : null;
+  }
+  saveHistory();
+  if (activeConversationId) loadConversation(activeConversationId);
+  else startNewTopConversation();
+  renderTopicList();
+}
+
+function renameConversationById(id) {
+  const conv = userHistory.conversations.find(c => c.id === id);
+  if (!conv) return;
+  const ui = getCurrentUi();
+  const label = ui.topicRenamePrompt || "New conversation title";
+  const next = window.prompt(label, conv.title || "");
+  if (next === null) return;
+  const clean = String(next || "").trim();
+  if (!clean) return;
+  conv.title = clean.slice(0, 72);
+  conv.updatedAt = new Date().toISOString();
+  saveHistory();
+  renderTopicList();
+}
+
+function openDeleteTopicConfirm(conversationId) {
+  const ui = getCurrentUi();
+  pendingDeleteConversationId = conversationId;
+  if (topicConfirmTitle) topicConfirmTitle.innerText = ui.topicDeleteTitle || "Delete this conversation?";
+  if (topicConfirmText) topicConfirmText.innerText = ui.topicDeleteText || "Are you sure you want to delete this conversation?";
+  if (topicConfirmNo) topicConfirmNo.innerText = ui.topicDeleteNo || "No";
+  if (topicConfirmYes) topicConfirmYes.innerText = ui.topicDeleteYes || "Yes";
+  if (topicConfirm) topicConfirm.classList.add("active");
+}
+
+function closeDeleteTopicConfirm() {
+  pendingDeleteConversationId = null;
+  if (topicConfirm) topicConfirm.classList.remove("active");
+}
+
 function topicBucketLabel(ts, lang) {
   const d = new Date(ts);
   const now = new Date();
@@ -2788,11 +2989,14 @@ function topicBucketLabel(ts, lang) {
     d.getFullYear() === now.getFullYear() &&
     d.getMonth() === now.getMonth() &&
     d.getDate() === now.getDate();
-  if (isToday) return lang === "tr" ? "Bugün" : "Today";
-
-  const monthsTr = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-  const monthsEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  return (lang === "tr" ? monthsTr : monthsEn)[d.getMonth()];
+  if (isToday) return String(getUiLabel("todayLabel", lang === "tr" ? "Bugün" : "Today"));
+  try {
+    const locale = currentLang === "tr" ? "tr-TR" : `${currentLang}-${currentLang.toUpperCase()}`;
+    return new Intl.DateTimeFormat(locale, { month: "long" }).format(d);
+  } catch (_) {
+    const monthsEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    return monthsEn[d.getMonth()];
+  }
 }
 
 function syncTopicScrollbarBounds() {
@@ -2814,7 +3018,7 @@ function syncTopicScrollbarThumb() {
   const maxScroll = Math.max(0, topicRailScroll.scrollHeight - topicRailScroll.clientHeight);
   const track = topicRailThumb.parentElement;
   if (!track) return;
-  const thumbH = 19;
+  const thumbH = 10;
   const trackH = Math.max(thumbH, track.clientHeight);
   const p = maxScroll > 0 ? (topicRailScroll.scrollTop / maxScroll) : 0;
   const y = Math.round((trackH - thumbH) * p);
@@ -2825,6 +3029,7 @@ function syncTopicScrollbarThumb() {
 function renderTopicList() {
   const targets = [topicListRail].filter(Boolean);
   const q = (topicSearchInput?.value || "").trim().toLowerCase();
+  const ui = getCurrentUi();
   targets.forEach(t => { t.innerHTML = ""; });
 
   const rows = userHistory.conversations
@@ -2843,7 +3048,7 @@ function renderTopicList() {
   const map = {};
   rows.forEach(c => {
     const ts = new Date(c.updatedAt || c.createdAt || Date.now()).getTime();
-    const key = topicBucketLabel(ts, currentLang === "tr" ? "tr" : "en");
+    const key = topicBucketLabel(ts, currentLang);
     if (!map[key]) {
       map[key] = [];
       sections.push(key);
@@ -2856,7 +3061,7 @@ function renderTopicList() {
       const empty = document.createElement("div");
       empty.className = "topic-meta";
       empty.style.padding = "8px 6px";
-      empty.innerText = currentLang === "tr" ? "Sonuç bulunamadı." : "No result found.";
+      empty.innerText = ui.noData || "No result found.";
       target.appendChild(empty);
       return;
     }
@@ -2870,12 +3075,26 @@ function renderTopicList() {
         const item = document.createElement("div");
         item.className = "topic-item" + (c.id === activeConversationId ? " active" : "");
         const modeLabel = (c.mode || "luxviai").toUpperCase();
-        const topicLabel = c.title || "Konuşma";
+        const topicLabel = c.title || ui.topicDefaultTitle || "Conversation";
         item.innerHTML = `
           <div class="topic-title">${escapeHtml(modeLabel)}</div>
           <div class="topic-meta">${escapeHtml(topicLabel)}</div>
+          <div class="topic-actions">
+            <button class="topic-action-btn" data-action="delete" title="Delete">×</button>
+            <button class="topic-action-btn" data-action="rename" title="Rename">✎</button>
+          </div>
         `;
-        item.onclick = () => loadConversation(c.id);
+        item.onclick = e => {
+          const actionBtn = e.target && e.target.closest(".topic-action-btn");
+          if (actionBtn) {
+            e.stopPropagation();
+            const action = actionBtn.getAttribute("data-action");
+            if (action === "delete") openDeleteTopicConfirm(c.id);
+            if (action === "rename") renameConversationById(c.id);
+            return;
+          }
+          loadConversation(c.id);
+        };
         target.appendChild(item);
       });
     });
@@ -2927,6 +3146,7 @@ function refreshTopActionButtons() {
 
 function startNewTopConversation() {
   if (aiResponding) return;
+  closeDeleteTopicConfirm();
   const dict = getCurrentDict();
   const hello = `${pickGreetingPrefix(dict)}.`;
   setResponseLock(false);
@@ -3093,6 +3313,19 @@ function closePopup() {
   popup.classList.remove("notes-anchored");
 }
 popupClose.onclick = closePopup;
+if (topicConfirmNo) topicConfirmNo.onclick = () => closeDeleteTopicConfirm();
+if (topicConfirmYes) {
+  topicConfirmYes.onclick = () => {
+    const id = pendingDeleteConversationId;
+    closeDeleteTopicConfirm();
+    if (id) deleteConversationById(id);
+  };
+}
+document.addEventListener("click", e => {
+  if (!topicConfirm || !topicConfirm.classList.contains("active")) return;
+  if (e.target.closest(".topic-confirm") || e.target.closest(".topic-action-btn")) return;
+  closeDeleteTopicConfirm();
+});
 
 function positionNotesPopup() {
   if (!popup || !popup.classList.contains("notes-anchored")) return;
@@ -3129,6 +3362,24 @@ function setLanguageSelectors(lang) {
   languageSelect.value = "tr";
 }
 
+function looksUntranslatedPack(pack) {
+  if (!pack || !pack.dict || !pack.ui) return true;
+  const trDict = textMap.tr || {};
+  const trUi = uiLocale.tr || {};
+  const checks = [
+    [pack.dict.greetDay, trDict.greetDay],
+    [pack.dict.greetMorning, trDict.greetMorning],
+    [pack.dict.placeholder, trDict.placeholder],
+    [pack.ui.fark, trUi.fark],
+    [pack.ui.summary, trUi.summary],
+    [pack.ui.notes, trUi.notes],
+    [pack.ui.sound, trUi.sound],
+    [pack.ui.language, trUi.language]
+  ];
+  const sameCount = checks.filter(([a, b]) => String(a || "").trim() === String(b || "").trim()).length;
+  return sameCount >= 6;
+}
+
 async function buildDynamicLanguagePack(lang) {
   if (dynamicLanguageCache[lang]) return dynamicLanguageCache[lang];
   const target = deeplTargetCode(lang);
@@ -3150,7 +3401,8 @@ async function buildDynamicLanguagePack(lang) {
     female, male, podcast, night, soundOn, soundOff, luxchingPrompt, luxdreamPrompt, luxdreamGreeting,
     noData, noSummary, noMemory, noNotes, notesSelectAll, notesDelete, notesSaved,
     awarenessEmotion, awarenessTheme, awarenessGrowth, awarenessOpenThemes, memoryThemes, memorySymbols, memoryRecords,
-    ctxCopy, ctxPaste, ctxReadAloud, ctxSendCard, ctxSearch, ctxExplain, ctxTranslate, ctxSaveNote, translateDisabled
+    ctxCopy, ctxPaste, ctxReadAloud, ctxSendCard, ctxSearch, ctxExplain, ctxTranslate, ctxSaveNote, translateDisabled,
+    topicDeleteTitle, topicDeleteText, topicDeleteYes, topicDeleteNo, topicRenamePrompt, topicDefaultTitle, topicSearchPlaceholder, todayLabel
   ] = await Promise.all([
     tr(baseDict.tagline), tr(baseDict.placeholder), tr(baseDict.greetMorning), tr(baseDict.greetDay), tr(baseDict.greetEvening), tr(baseDict.greetNight),
     tr(baseUi.drawerTitle), tr(baseUi.drawerSub), tr(baseUi.insightDefault), tr(baseUi.insightTitle), tr(baseUi.searchPlaceholder), tr(baseUi.searchTitle), tr(baseUi.searchMatches),
@@ -3160,7 +3412,8 @@ async function buildDynamicLanguagePack(lang) {
     tr(baseUi.noData), tr(baseUi.noSummary), tr(baseUi.noMemory), tr(baseUi.noNotes), tr(baseUi.notesSelectAll), tr(baseUi.notesDelete), tr(baseUi.notesSaved),
     tr(baseUi.awarenessEmotion), tr(baseUi.awarenessTheme), tr(baseUi.awarenessGrowth), tr(baseUi.awarenessOpenThemes),
     tr(baseUi.memoryThemes), tr(baseUi.memorySymbols), tr(baseUi.memoryRecords),
-    tr(baseUi.ctxCopy), tr(baseUi.ctxPaste), tr(baseUi.ctxReadAloud), tr(baseUi.ctxSendCard), tr(baseUi.ctxSearch), tr(baseUi.ctxExplain), tr(baseUi.ctxTranslate), tr(baseUi.ctxSaveNote), tr(baseUi.translateDisabled)
+    tr(baseUi.ctxCopy), tr(baseUi.ctxPaste), tr(baseUi.ctxReadAloud), tr(baseUi.ctxSendCard), tr(baseUi.ctxSearch), tr(baseUi.ctxExplain), tr(baseUi.ctxTranslate), tr(baseUi.ctxSaveNote), tr(baseUi.translateDisabled),
+    tr(baseUi.topicDeleteTitle), tr(baseUi.topicDeleteText), tr(baseUi.topicDeleteYes), tr(baseUi.topicDeleteNo), tr(baseUi.topicRenamePrompt), tr(baseUi.topicDefaultTitle), tr(baseUi.topicSearchPlaceholder), tr(baseUi.todayLabel)
   ]);
 
   const pack = {
@@ -3171,7 +3424,8 @@ async function buildDynamicLanguagePack(lang) {
       female, male, podcast, night, soundOn, soundOff, luxchingPrompt, luxdreamPrompt, luxdreamGreeting,
       noData, noSummary, noMemory, noNotes, notesSelectAll, notesDelete, notesSaved,
       awarenessEmotion, awarenessTheme, awarenessGrowth, awarenessOpenThemes, memoryThemes, memorySymbols, memoryRecords,
-      ctxCopy, ctxPaste, ctxReadAloud, ctxSendCard, ctxSearch, ctxExplain, ctxTranslate, ctxSaveNote, translateDisabled
+      ctxCopy, ctxPaste, ctxReadAloud, ctxSendCard, ctxSearch, ctxExplain, ctxTranslate, ctxSaveNote, translateDisabled,
+      topicDeleteTitle, topicDeleteText, topicDeleteYes, topicDeleteNo, topicRenamePrompt, topicDefaultTitle, topicSearchPlaceholder, todayLabel
     }
   };
   dynamicLanguageCache[lang] = pack;
@@ -3235,20 +3489,27 @@ async function applyLanguage(lang) {
   localStorage.setItem("lux_lang", currentLang);
   setLanguageSelectors(currentLang);
 
-  let dict = textMap[currentLang];
-  let ui = uiLocale[currentLang];
+  let dict = textMap[currentLang] || null;
+  let ui = uiLocale[currentLang] || null;
+  let pack = null;
   if (!dict || !ui) {
-    const pack = await buildDynamicLanguagePack(currentLang);
+    pack = await buildDynamicLanguagePack(currentLang);
     if (seq !== languageApplySeq) return;
-    dict = dict || pack.dict;
-    ui = ui || pack.ui;
+    if (!looksUntranslatedPack(pack)) {
+      dict = { ...(dict || {}), ...(pack.dict || {}) };
+      ui = { ...(ui || {}), ...(pack.ui || {}) };
+    }
   }
-  const missingContextKeys = !ui?.ctxCopy || !ui?.ctxPaste || !ui?.ctxTranslate || !ui?.translateDisabled;
+  if (!dict) dict = { ...(textMap.en || textMap.tr) };
+  if (!ui) ui = { ...(uiLocale.en || uiLocale.tr) };
+  const missingContextKeys = !ui?.ctxCopy || !ui?.ctxPaste || !ui?.ctxTranslate || !ui?.translateDisabled || !ui?.topicDefaultTitle || !ui?.topicDeleteTitle;
   if (missingContextKeys) {
-    const pack = await buildDynamicLanguagePack(currentLang);
+    pack = pack || await buildDynamicLanguagePack(currentLang);
     if (seq !== languageApplySeq) return;
-    ui = { ...(ui || {}), ...(pack?.ui || {}) };
-    dict = { ...(dict || {}), ...(pack?.dict || {}) };
+    if (!looksUntranslatedPack(pack)) {
+      ui = { ...(ui || {}), ...(pack?.ui || {}) };
+      dict = { ...(dict || {}), ...(pack?.dict || {}) };
+    }
   }
   activeDict = dict;
   activeUi = ui;
@@ -3257,6 +3518,7 @@ async function applyLanguage(lang) {
 
   document.getElementById("tagline").innerText = "Light your way!";
   searchInput.placeholder = ui.searchPlaceholder;
+  if (topicSearchInput) topicSearchInput.placeholder = ui.topicSearchPlaceholder || ui.searchPlaceholder;
   if (chatNewIndicator) chatNewIndicator.innerText = currentLang === "tr" ? "Yeni mesajlar" : "New messages";
   const drawerTitle = document.querySelector(".drawer-head b");
   const drawerSub = document.querySelector(".drawer-sub");
@@ -3272,6 +3534,10 @@ async function applyLanguage(lang) {
   if (menuModesTitle) menuModesTitle.innerText = ui.modes;
   if (soundSectionLabel) soundSectionLabel.innerText = ui.sound;
   if (menuLanguageTitle) menuLanguageTitle.innerText = ui.language;
+  if (topicConfirmTitle) topicConfirmTitle.innerText = ui.topicDeleteTitle || "Delete this conversation?";
+  if (topicConfirmText) topicConfirmText.innerText = ui.topicDeleteText || "Are you sure you want to delete this conversation?";
+  if (topicConfirmNo) topicConfirmNo.innerText = ui.topicDeleteNo || "No";
+  if (topicConfirmYes) topicConfirmYes.innerText = ui.topicDeleteYes || "Yes";
   const genderButtons = document.querySelectorAll("[data-voice-gender]");
   if (genderButtons[0]) genderButtons[0].innerText = ui.female;
   if (genderButtons[1]) genderButtons[1].innerText = ui.male;
@@ -3284,6 +3550,7 @@ async function applyLanguage(lang) {
     messageInput.placeholder = dict.placeholder;
   }
   refreshModeIntro(dict, ui);
+  renderTopicList();
 }
 
 function populateLanguages() {
@@ -3381,6 +3648,23 @@ document.addEventListener("click", e => {
 function ensureAudioContext() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
+}
+function playMicCue(type = "start") {
+  try {
+    const ctx = ensureAudioContext();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.value = type === "start" ? 640 : 480;
+    const now = ctx.currentTime;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(0.0085, now + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start(now);
+    o.stop(now + 0.09);
+  } catch (_) {}
 }
 function stopSound() {
   if (currentAudio) { currentAudio.pause(); currentAudio = null; }
@@ -4355,7 +4639,7 @@ function setupRecognition() {
     }
     if (code === "no-speech") return;
   };
-  rec.onend = () => { if (recording) { try { rec.start(); } catch (_) {} } };
+  rec.onend = () => {};
   return rec;
 }
 recognition = setupRecognition();
@@ -4399,6 +4683,7 @@ async function startRecording() {
   recordProgress.style.width = "0%";
   voiceButton.classList.add("recording");
   recorderPanel.classList.add("active");
+  playMicCue("start");
   messageInput.parentElement.style.display = "none";
   sendButton.style.display = "none";
   try {
@@ -4435,6 +4720,7 @@ function stopRecording(autoSend = false) {
   recording = false;
   voiceButton.classList.remove("recording");
   recorderPanel.classList.remove("active");
+  playMicCue("stop");
   messageInput.parentElement.style.display = "";
   sendButton.style.display = "";
   clearInterval(recordInterval);
