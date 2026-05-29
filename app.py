@@ -14,6 +14,7 @@ from threading import Lock
 from typing import Any, Dict, List, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -77,6 +78,11 @@ logging.info(f".env path: {BASE_DIR / '.env'}")
 logging.info(f"DEEPSEEK_API_KEY mask: {mask_key(API_KEY)} len={len(API_KEY or '')}")
 
 client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com") if API_KEY else None
+
+try:
+    ISTANBUL_TZ = ZoneInfo("Europe/Istanbul")
+except ZoneInfoNotFoundError:
+    ISTANBUL_TZ = timezone(timedelta(hours=3))
 
 app = FastAPI(title="Luxviai — Luxsarısı OS")
 
@@ -1565,7 +1571,7 @@ def heuristic_analysis(
         "needs_silence": needs_silence,
         "contradiction_marker": contradiction,
         "narrative_marker": narrative,
-        "night_signal": True if datetime.now(timezone.utc).hour >= 22 or datetime.now(timezone.utc).hour <= 6 else False,
+        "night_signal": True if istanbul_now().hour >= 22 or istanbul_now().hour <= 6 else False,
     }
     deep = build_background_layers(message, base, profile, session, location, ghost_hesitation, client_signals)
     base.update(deep)
@@ -2104,12 +2110,29 @@ def build_layer_prompt_summary(analysis: Dict[str, Any], digest: Dict[str, Any])
     ])
 
 
+def istanbul_now() -> datetime:
+    return datetime.now(ISTANBUL_TZ)
+
+
+def location_for_prompt(raw_location: str) -> str:
+    loc = str(raw_location or "").strip()
+    if not loc:
+        return "Konum paylaşılmadı"
+    low = loc.lower()
+    if low in {"istanbul", "i̇stanbul"}:
+        return "Türkiye İstanbul"
+    if "konum paylaşılmadı" in low or "paylasilmadi" in low or "bilinmiyor" in low:
+        return "Konum paylaşılmadı"
+    return loc
+
+
 def build_system_prompt(
     profile: Dict[str, Any],
     analysis: Dict[str, Any],
     mode: str,
     memory_snippets: List[str],
     digest: Dict[str, Any],
+    location: str = "Konum paylaşılmadı",
 ) -> str:
     memory_block = "\n".join(f"- {s}" for s in memory_snippets[:5]) if memory_snippets else "- Belirgin geri çağırma yok."
     layer_block = build_layer_prompt_summary(analysis, digest)
@@ -2134,8 +2157,10 @@ def build_system_prompt(
         )
     )
 
-    current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    current_hour = datetime.now().hour
+    now_local = istanbul_now()
+    current_datetime = now_local.strftime("%d.%m.%Y saat : %H:%M")
+    current_hour = now_local.hour
+    location_line = location_for_prompt(location)
 
     if 5 <= current_hour < 11:
         time_context = "Sabah. Günaydın."
@@ -2147,7 +2172,8 @@ def build_system_prompt(
         time_context = "Gece. Gece modu aktif."
 
     base = f"""
-Şu an: {current_datetime} ({time_context})
+Bugün ({current_datetime}) / {time_context}
+Konum : {location_line}
 
 Sen Luxviai'sin. Luxviai — Light your way! / Yolunu aydınlat!
 Sen bir yapay zekâsın; bunu saklamazsın.
@@ -2157,6 +2183,9 @@ Merkez her zaman insandır.
 DİL:
 Kullanıcı hangi dilde yazarsa o dilde cevap ver.
 Türkçe yazım hatalarını veya tekrarları yabancı dil sanma.
+- Saat/tarih gerektiğinde şu şık formatı kullan: Bugün (29.05.2026 saat : 11:15)
+- Konum gerekiyorsa şu formatı kullan: Konum : Türkiye İstanbul
+- Saat/tarih/konum satırlarında kalın yazı, markdown yıldızı (**) veya emoji kullanma.
 
 KARAKTER:
 - düşük enerji ama güçlü
@@ -2392,7 +2421,17 @@ Yöntem:
 """
     return call_model(
         [
-            {"role": "system", "content": build_system_prompt(profile, analysis, "luxdream", [dream_text[:250]], profile.get("weekly_report", {}))},
+            {
+                "role": "system",
+                "content": build_system_prompt(
+                    profile,
+                    analysis,
+                    "luxdream",
+                    [dream_text[:250]],
+                    profile.get("weekly_report", {}),
+                    symbolic_location(profile),
+                ),
+            },
             {"role": "user", "content": dream_prompt},
         ],
         model="deepseek-chat",
@@ -2612,8 +2651,21 @@ def check_luxching_limit(profile: Dict[str, Any]) -> tuple[bool, str]:
     return True, ""
 
 
-def should_offer_luxching_background(profile: Dict[str, Any], analysis: Dict[str, Any], mode: str) -> bool:
+def should_offer_luxching_background(
+    profile: Dict[str, Any],
+    analysis: Dict[str, Any],
+    message: str,
+    mode: str,
+    session: Optional[Dict[str, Any]] = None,
+) -> bool:
     if mode in {"luxta", "luxeph", "luxdream"}:
+        return False
+
+    # İlk karşılama / ilk birkaç mesajda otomatik LUXCHING hatırlatması yapma.
+    user_msg_count = 0
+    if session:
+        user_msg_count = sum(1 for m in safe_list(session.get("messages")) if m.get("role") == "user")
+    if user_msg_count <= 3:
         return False
 
     last_used = profile.get("luxching_background_last_suggested_at")
@@ -2630,27 +2682,28 @@ def should_offer_luxching_background(profile: Dict[str, Any], analysis: Dict[str
         except Exception:
             pass
 
-    emotion = str(analysis.get("primary_emotion", "nötr"))
-    theme = str(analysis.get("theme", "belirsiz"))
-    contradiction = str(analysis.get("contradiction_marker", "yok"))
-    narrative = str(analysis.get("narrative_marker", "yok"))
-    intensity = clamp_int(analysis.get("intensity", 5), 1, 10, 5)
+    low = (message or "").lower()
+    explicit_ching_words = [
+        "i ching", "iching", "ı ching", "ching", "yi jing", "yijing",
+        "hexagram", "yin", "yang", "tao", "taocu",
+    ]
+    if any(w in low for w in explicit_ching_words):
+        return True
 
-    if emotion in {"kararsızlık", "kaygı", "yalnızlık", "kırgınlık"}:
+    # Kullanıcı "hayat/yaşam/yol" gibi başlıklarda yorum/bakış isterse uygun.
+    life_words = ["hayat", "yaşam", "yasam", "yol", "yön", "yon", "anlam", "dönüm", "donum", "karar"]
+    interpretation_words = ["yorum", "yoruml", "bakış", "bakis", "perspektif", "felsefe", "ne dersin", "nasıl gör"]
+    if any(w in low for w in life_words) and any(w in low for w in interpretation_words):
         return True
-    if theme in {"belirsizlik", "yön kaybı", "çatışma", "özlem"}:
-        return True
-    if contradiction == "var" or narrative in {"anlatı", "savunma"}:
-        return True
-    if intensity >= 8:
-        return True
+
+    # Bunun dışındaki durumlarda otomatik hatırlatma yapma.
     return False
 
 
 def luxching_background_suggestion_text() -> str:
     return (
         "İstersen I Ching felsefesini bu konuya LUXCHING lensiyle de yorumlayabilirim; "
-        "istersen bakabiliriz."
+        "istersen bakabilirim."
     )
 
 
@@ -2767,7 +2820,7 @@ def prepare_luxeph_plan(
         }
 
     digest = build_weekly_digest(profile, session, [])
-    prompt = build_system_prompt(profile, analysis, "luxeph", [], digest)
+    prompt = build_system_prompt(profile, analysis, "luxeph", [], digest, location)
     model, temp, max_tokens = choose_generation_params("luxeph", analysis)
     return {
         "kind": "model",
@@ -2839,7 +2892,7 @@ def prepare_chat_plan(
     analysis = enrich_analysis_with_human_policy(message, analysis, profile, session, client_signals)
     luxching_nudge = ""
     luxdream_nudge = ""
-    if should_offer_luxching_background(profile, analysis, mode):
+    if should_offer_luxching_background(profile, analysis, message, mode, session):
         luxching_nudge = luxching_background_suggestion_text()
     if should_offer_luxdream_background(profile, analysis, message, mode):
         luxdream_nudge = luxdream_background_suggestion_text()
@@ -2877,7 +2930,7 @@ def prepare_chat_plan(
     profile["last_mode"] = mode
 
     memory_snippets = retrieve_memory_snippets(message, session, notes, garden, profile, limit=5)
-    prompt = build_system_prompt(profile, analysis, mode, memory_snippets, digest)
+    prompt = build_system_prompt(profile, analysis, mode, memory_snippets, digest, location)
     openai_messages = build_openai_messages(session, prompt)
     model, temp, max_tokens = choose_generation_params(mode, analysis)
 

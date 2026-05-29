@@ -20,11 +20,13 @@
   --fg: #E8E5DF;
   --muted: #9AA3A6;
   --platinum: #A7A9AC;
+  --scroll-thumb: #15181D;
   --rail-top: 72px;
   --rail-bottom: 18px;
   --app-height: 100dvh;
   --mobile-bottom-offset: 0px;
   --mobile-nav-guard: 0px;
+  --keyboard-lift: 0px;
 }
 html {
   height: 100%;
@@ -152,13 +154,13 @@ body {
   cursor: pointer;
 }
 .new-chat-btn {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: 1px solid rgba(237,145,7,0.52);
   background: rgba(0,0,0,0.72);
   color: #F0C16A;
-  font-size: 1.05rem;
+  font-size: .95rem;
   line-height: 1;
   display: inline-flex;
   align-items: center;
@@ -218,7 +220,7 @@ body {
   width: 100%;
   height: 19px; /* ~0.5 cm */
   border-radius: 999px;
-  background: #15181d;
+  background: var(--scroll-thumb);
   opacity: .9;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
 }
@@ -599,7 +601,7 @@ body.luxdream-mode .light-line { display: block; }
   width: 100%;
   height: 19px; /* ~0.5 cm */
   border-radius: 999px;
-  background: #15181d;
+  background: var(--scroll-thumb);
   opacity: .92;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
 }
@@ -1112,11 +1114,12 @@ body.topics-open .topics-overlay { display: block; }
     position: fixed;
     left: 0;
     right: 0;
-    bottom: calc(max(env(safe-area-inset-bottom), var(--mobile-bottom-offset), var(--mobile-nav-guard), 14px));
-    padding-bottom: calc(12px + max(env(safe-area-inset-bottom), var(--mobile-bottom-offset), var(--mobile-nav-guard), 8px));
+    bottom: calc(var(--keyboard-lift) + max(env(safe-area-inset-bottom), var(--mobile-nav-guard), 8px));
+    padding-bottom: calc(12px + max(env(safe-area-inset-bottom), 8px));
+    z-index: 30;
   }
   .chat-box {
-    padding-bottom: calc(300px + max(env(safe-area-inset-bottom), var(--mobile-bottom-offset), var(--mobile-nav-guard), 0px));
+    padding-bottom: calc(300px + max(env(safe-area-inset-bottom), var(--mobile-nav-guard), 0px));
   }
 }
 </style>
@@ -1340,7 +1343,7 @@ let longPressTimer = null;
 let luxTopTimer = null;
 let currentLang = localStorage.getItem("lux_lang") || "tr";
 let languageApplySeq = 0;
-let hiddenLocationCity = null;
+let hiddenLocationLabel = null;
 let shareEditorMode = "pen";
 let shareDrawColor = "#ED9107";
 let shareLineSize = 4;
@@ -1360,6 +1363,7 @@ let aiResponding = false;
 let stopStreamRequested = false;
 let streamAbort = null;
 let activeAiDiv = null;
+let micPressActive = false;
 let interruptedState = null;
 let soundEnabled = true;
 let activeDict = null;
@@ -2349,18 +2353,30 @@ function escapeHtml(str) {
 function escapeRegExp(str) { return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function setAppHeight() {
   const vv = window.visualViewport;
-  const h = Math.round(vv ? vv.height : window.innerHeight);
-  const offset = vv
-    ? Math.max(0, Math.round(window.innerHeight - (vv.height + vv.offsetTop)))
-    : 0;
+  const layoutHeight = Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
+  const visualHeight = Math.round(vv ? vv.height : layoutHeight);
+  const visualTop = Math.round(vv ? vv.offsetTop : 0);
+  const visualBottom = visualTop + visualHeight;
+  const occludedBottom = Math.max(0, layoutHeight - visualBottom);
   const isMobile = window.matchMedia("(max-width: 720px)").matches;
   const ua = (navigator.userAgent || "").toLowerCase();
   const isAndroid = ua.includes("android");
   const isIOS = /iphone|ipad|ipod/.test(ua);
-  const navGuard = isMobile ? (isAndroid ? 56 : (isIOS ? 18 : 22)) : 0;
-  document.documentElement.style.setProperty("--app-height", `${h}px`);
-  document.documentElement.style.setProperty("--mobile-bottom-offset", `${offset}px`);
+
+  const focusedEl = document.activeElement;
+  const inputFocused = !!focusedEl && (focusedEl === messageInput || focusedEl === topicSearchInput || focusedEl === searchInput);
+  const keyboardThreshold = Math.max(90, Math.round(layoutHeight * 0.14));
+  const keyboardOpen = isMobile && (occludedBottom > keyboardThreshold || (inputFocused && occludedBottom > 24));
+
+  const keyboardLift = keyboardOpen ? occludedBottom : 0;
+  const navGuardBase = isMobile ? (isAndroid ? 10 : (isIOS ? 8 : 10)) : 0;
+  const navGuard = keyboardOpen ? 0 : navGuardBase;
+  const stableHeight = vv ? Math.max(layoutHeight, visualHeight + visualTop) : layoutHeight;
+
+  document.documentElement.style.setProperty("--app-height", `${stableHeight}px`);
+  document.documentElement.style.setProperty("--mobile-bottom-offset", `${occludedBottom}px`);
   document.documentElement.style.setProperty("--mobile-nav-guard", `${navGuard}px`);
+  document.documentElement.style.setProperty("--keyboard-lift", `${keyboardLift}px`);
 }
 function syncChatScrollbarBounds() {
   if (!chatScrollbar) return;
@@ -2703,6 +2719,18 @@ if (window.visualViewport) {
     syncChatScrollbarBounds();
     syncChatScrollbarThumb();
   });
+  window.visualViewport.addEventListener("scroll", () => {
+    setAppHeight();
+    syncTopicScrollbarBounds();
+    syncTopicScrollbarThumb();
+    syncChatScrollbarBounds();
+    syncChatScrollbarThumb();
+  });
+}
+
+if (messageInput) {
+  messageInput.addEventListener("focus", () => setTimeout(setAppHeight, 40));
+  messageInput.addEventListener("blur", () => setTimeout(setAppHeight, 120));
 }
 
 let touchStartX = null;
@@ -3117,7 +3145,7 @@ async function sendMessage(customText) {
         user_id: userId,
         mode: currentMode,
         ghost_hesitation: false,
-        location: hiddenLocationCity || "Istanbul",
+        location: hiddenLocationLabel || "Konum paylaşılmadı",
         client_signals: collectClientSignals()
       })
     });
@@ -3167,7 +3195,7 @@ function setResponseLock(locked) {
   sendButton.style.background = locked ? "rgba(155,58,35,.92)" : "rgba(237,145,7,0.9)";
 }
 
-function createPacedWriter(targetEl, speedFactor = 0.7) {
+function createPacedWriter(targetEl, speedFactor = 0.8) {
   const queue = [];
   const baseDelay = 50;
   const delay = Math.max(22, Math.round(baseDelay / Math.max(0.2, speedFactor)));
@@ -3273,14 +3301,14 @@ async function continueInterruptedResponse(targetAiEl) {
   const bridgeMessage = `${continuePromptText()}\n\nKullanıcı mesajı: ${state.userText}\nKaldığın metin: ${state.partialText}`;
   stopStreamRequested = false;
   setResponseLock(true);
-  const writer = createPacedWriter(targetAiEl, 0.9);
+  const writer = createPacedWriter(targetAiEl, 0.8);
   writer.setExact(state.partialText || targetAiEl.innerText || "");
   const payload = {
     message: bridgeMessage,
     user_id: userId,
     mode: currentMode,
     ghost_hesitation: false,
-    location: hiddenLocationCity || "Istanbul",
+    location: hiddenLocationLabel || "Konum paylaşılmadı",
     client_signals: collectClientSignals()
   };
   try {
@@ -3373,13 +3401,13 @@ async function sendMessageLive(customText) {
 
   const aiDiv = appendMessage("ai", "", false);
   activeAiDiv = aiDiv;
-  const writer = createPacedWriter(aiDiv, 0.9);
+  const writer = createPacedWriter(aiDiv, 0.8);
   const payload = {
     message: text,
     user_id: userId,
     mode: currentMode,
     ghost_hesitation: false,
-    location: hiddenLocationCity || "Istanbul",
+    location: hiddenLocationLabel || "Konum paylaşılmadı",
     client_signals: collectClientSignals()
   };
 
@@ -4006,12 +4034,47 @@ function drawEqualizer() {
   }
   draw();
 }
-voiceButton.addEventListener("click", e => {
-  e.preventDefault();
-  if (currentMode === "luxeph") return;
-  if (recording) stopRecording(false);
-  else startRecording();
-});
+function handleMicPressStart(e) {
+  if (currentMode === "luxeph" || micPressActive) return;
+  if (e && typeof e.preventDefault === "function") e.preventDefault();
+  if (e && e.pointerId !== undefined && voiceButton.setPointerCapture) {
+    try { voiceButton.setPointerCapture(e.pointerId); } catch (_) {}
+  }
+  micPressActive = true;
+  startRecording();
+}
+
+function handleMicPressEnd(e) {
+  if (!micPressActive) return;
+  if (e && typeof e.preventDefault === "function") e.preventDefault();
+  if (e && e.pointerId !== undefined && voiceButton.releasePointerCapture) {
+    try { voiceButton.releasePointerCapture(e.pointerId); } catch (_) {}
+  }
+  micPressActive = false;
+  stopRecording(false);
+}
+
+if (window.PointerEvent) {
+  voiceButton.addEventListener("pointerdown", handleMicPressStart);
+  voiceButton.addEventListener("pointerup", handleMicPressEnd);
+  voiceButton.addEventListener("pointercancel", handleMicPressEnd);
+  voiceButton.addEventListener("pointerleave", e => {
+    if (recording) handleMicPressEnd(e);
+  });
+  document.addEventListener("pointerup", e => {
+    if (recording) handleMicPressEnd(e);
+  }, { passive: false });
+}
+else {
+  voiceButton.addEventListener("touchstart", handleMicPressStart, { passive: false });
+  voiceButton.addEventListener("touchend", handleMicPressEnd, { passive: false });
+  voiceButton.addEventListener("touchcancel", handleMicPressEnd, { passive: false });
+  voiceButton.addEventListener("mousedown", handleMicPressStart);
+  voiceButton.addEventListener("mouseup", handleMicPressEnd);
+  voiceButton.addEventListener("mouseleave", e => {
+    if (recording) handleMicPressEnd(e);
+  });
+}
 
 function drawGlyphStrip() {
   const canvas = document.getElementById("glyphCanvas");
@@ -4025,23 +4088,44 @@ function drawGlyphStrip() {
 setInterval(drawGlyphStrip, 1600);
 window.addEventListener("resize", drawGlyphStrip);
 
+function compactLocationLabel(raw) {
+  const r = raw || {};
+  const parts = [r.country, r.admin1, r.admin2, r.name]
+    .map(x => String(x || "").trim())
+    .filter(Boolean);
+  const uniq = [];
+  const seen = new Set();
+  for (const p of parts) {
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniq.push(p);
+  }
+  if (!uniq.length) return null;
+  return uniq.slice(0, 4).join(" ");
+}
+
 async function resolveHiddenLocation() {
-  if (!navigator.geolocation) return;
+  if (!navigator.geolocation) {
+    hiddenLocationLabel = null;
+    return null;
+  }
   return new Promise(resolve => {
     navigator.geolocation.getCurrentPosition(async pos => {
       try {
         const { latitude, longitude } = pos.coords;
         const rev = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&count=1&language=${currentLang}`);
         const revJson = await rev.json();
-        hiddenLocationCity = revJson?.results?.[0]?.name || "Istanbul";
-        resolve(hiddenLocationCity);
+        const loc = compactLocationLabel(revJson?.results?.[0]) || `Enlem ${latitude.toFixed(3)}, Boylam ${longitude.toFixed(3)}`;
+        hiddenLocationLabel = loc;
+        resolve(hiddenLocationLabel);
       } catch (_) {
-        hiddenLocationCity = "Istanbul";
-        resolve(hiddenLocationCity);
+        hiddenLocationLabel = null;
+        resolve(hiddenLocationLabel);
       }
     }, () => {
-      hiddenLocationCity = "Istanbul";
-      resolve(hiddenLocationCity);
+      hiddenLocationLabel = null;
+      resolve(hiddenLocationLabel);
     }, { enableHighAccuracy: false, timeout: 7000, maximumAge: 600000 });
   });
 }
