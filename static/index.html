@@ -23,6 +23,13 @@
   --rail-top: 72px;
   --rail-bottom: 18px;
   --app-height: 100dvh;
+  --mobile-bottom-offset: 0px;
+  --mobile-nav-guard: 0px;
+}
+html {
+  height: 100%;
+  min-height: 100svh;
+  min-height: var(--app-height);
 }
 body {
   background: var(--bg);
@@ -80,6 +87,16 @@ body {
   gap: 14px;
   padding-bottom: 4px;
 }
+.header-tools-left {
+  position: absolute;
+  left: 18px; /* ~0.5 cm */
+  bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 4px;
+  z-index: 2;
+}
 .header-tools::after {
   display: none;
 }
@@ -134,6 +151,24 @@ body {
   font-size: 26px;
   cursor: pointer;
 }
+.new-chat-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(237,145,7,0.52);
+  background: rgba(0,0,0,0.72);
+  color: #F0C16A;
+  font-size: 1.05rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.new-chat-btn.inactive {
+  opacity: .32;
+  pointer-events: none;
+}
 
 .glyph-strip {
   width: 100%;
@@ -173,7 +208,7 @@ body {
   bottom: var(--chat-scroll-bottom, 122px);
   width: 4px;
   background: transparent;
-  pointer-events: auto;
+  pointer-events: none;
   z-index: 11;
 }
 .chat-scroll-thumb {
@@ -269,8 +304,29 @@ body.luxta-mode .msg.ai { color: #F2EBDD; }
   color: #E6D6B4;
   font-size: .72rem;
   cursor: pointer;
+  width: auto;
+  max-width: max-content;
+  white-space: nowrap;
 }
 .resume-btn:hover { color: #ED9107; border-color: #ED9107; }
+.toast-mini {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + max(env(safe-area-inset-bottom), 10px));
+  transform: translateX(-50%);
+  z-index: 250;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(237,145,7,.34);
+  background: rgba(8,8,8,.9);
+  color: #D9CBAF;
+  font-size: .7rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity .12s ease;
+  pointer-events: none;
+}
+.toast-mini.show { opacity: 1; }
 .floating-whisper {
   position: fixed;
   z-index: 220;
@@ -438,7 +494,8 @@ body.luxdream-mode .light-line { display: block; }
   top: 0;
   right: -320px;
   width: 300px;
-  height: 100vh;
+  height: var(--app-height);
+  min-height: 100svh;
   background: rgba(0,0,0,0.95);
   backdrop-filter: blur(10px);
   border-left: 1px solid rgba(237,145,7,0.3);
@@ -520,7 +577,7 @@ body.luxdream-mode .light-line { display: block; }
   left: 0;
   top: 0;
   bottom: 0;
-  width: 300px;
+  width: 180px; /* daraltildi */
   z-index: 26;
   background: rgba(8,8,8,0.98);
   border-right: none;
@@ -582,7 +639,7 @@ body.luxdream-mode .light-line { display: block; }
 }
 .left-drawer {
   position: fixed;
-  left: 300px;
+  left: 180px;
   top: 0;
   bottom: 0;
   width: 0;
@@ -592,7 +649,7 @@ body.luxdream-mode .light-line { display: block; }
   z-index: 34;
   overflow: hidden;
 }
-.left-drawer.open { width: min(40vw, 360px); }
+.left-drawer.open { width: min(30vw, 270px); }
 .drawer-scroll {
   height: 100%;
   overflow-y: auto;
@@ -781,6 +838,14 @@ body.luxdream-mode .light-line { display: block; }
   display: none;
 }
 .popup.active { display: block; }
+.popup.notes-anchored {
+  left: auto;
+  top: 76px;
+  right: 312px;
+  transform: none;
+  width: min(38vw, 420px);
+  max-height: 66vh;
+}
 .popup-title { color: var(--lux); letter-spacing: 1px; font-size: .86rem; margin-bottom: 12px; }
 .popup-content { color: #B8B1A3; font-size: .86rem; line-height: 1.5; }
 .popup-close {
@@ -838,6 +903,10 @@ body.luxdream-mode .light-line { display: block; }
   width: 1px;
   height: 24px;
   background: rgba(237,145,7,.18);
+}
+.tool-break {
+  flex-basis: 100%;
+  height: 0;
 }
 .tool-btn {
   border: 1px solid rgba(237,145,7,.33);
@@ -928,25 +997,42 @@ body.luxdream-mode .light-line { display: block; }
 }
 
 body.luxta-mode .header { opacity: 0; transition: opacity .2s; }
-body.luxta-mode .header-tools { opacity: .28; transition: opacity .2s; }
+body.luxta-mode .header-tools,
+body.luxta-mode .header-tools-left { opacity: .58; transition: opacity .2s; }
 body.luxta-mode .header:hover,
 body.luxta-mode .header-tools:hover,
+body.luxta-mode .header-tools-left:hover,
 body.luxta-mode.luxta-top-visible .header,
-body.luxta-mode.luxta-top-visible .header-tools {
-  opacity: .48;
+body.luxta-mode.luxta-top-visible .header-tools,
+body.luxta-mode.luxta-top-visible .header-tools-left {
+  opacity: .74;
 }
 body.luxta-mode .side-menu.open { opacity: .84; }
-body.luxta-mode #searchOpenBtn {
+body.luxta-mode .side-menu {
+  background: rgba(0,0,0,.88);
+}
+body.luxta-mode .side-menu .menu-item,
+body.luxta-mode .side-menu .menu-title,
+body.luxta-mode .side-menu .sound-item {
   opacity: .86;
+}
+body.luxta-mode #searchOpenBtn {
+  opacity: 1;
   color: #F3C26A;
-  border-color: rgba(237,145,7,.72);
+  border-color: rgba(237,145,7,.78);
 }
 body.luxta-mode #menuButton {
-  opacity: .78;
+  opacity: .98;
   color: #E7AA4A;
 }
+body.luxta-mode #newChatBtn {
+  opacity: .98;
+  background: rgba(0,0,0,.72);
+  border-color: rgba(237,145,7,.78);
+  color: #F3C26A;
+}
 body.luxta-mode .side-menu.open ~ .app .header-tools {
-  opacity: .44;
+  opacity: .6;
 }
 body.luxta-mode .composer-wrap { opacity: .7; }
 body.luxta-mode .msg.ai { color: #F2EBDD; }
@@ -994,7 +1080,7 @@ body.topics-open .topics-overlay { display: block; }
   .search-capsule.open { width: 56vw; }
   .glyph-strip { height: 72px; }
   .topic-rail {
-    width: min(84vw, 360px);
+    width: min(52vw, 220px);
     transform: translateX(-104%);
     transition: transform .22s ease;
     z-index: 32;
@@ -1004,22 +1090,41 @@ body.topics-open .topics-overlay { display: block; }
     left: 0;
     transform: translateX(-104%);
     transition: transform .22s ease;
-    width: min(86vw, 380px);
+    width: min(52vw, 220px);
   }
   .left-drawer.open {
     transform: translateX(0);
-    width: min(86vw, 380px);
+    width: min(52vw, 220px);
+  }
+  .popup.notes-anchored {
+    left: 50%;
+    right: auto;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(92vw, 520px);
+    max-height: 76vh;
   }
   .topic-title { font-size: .66rem; }
   .topic-meta { font-size: .45rem; }
   .composer { gap: 8px; }
   #messageInput { max-height: 190px; }
+  .composer-wrap {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(max(env(safe-area-inset-bottom), var(--mobile-bottom-offset), var(--mobile-nav-guard), 14px));
+    padding-bottom: calc(12px + max(env(safe-area-inset-bottom), var(--mobile-bottom-offset), var(--mobile-nav-guard), 8px));
+  }
+  .chat-box {
+    padding-bottom: calc(300px + max(env(safe-area-inset-bottom), var(--mobile-bottom-offset), var(--mobile-nav-guard), 0px));
+  }
 }
 </style>
 </head>
 <body>
 <div id="screenShield" class="screen-shield"></div>
 <div id="floatingWhisper" class="floating-whisper"></div>
+<div id="toastMini" class="toast-mini"></div>
 <div id="topicsOverlay" class="topics-overlay"></div>
 
 <div id="leftEdge" class="left-edge"></div>
@@ -1061,12 +1166,15 @@ body.topics-open .topics-overlay { display: block; }
   <div class="header">
     <div class="logo">LUXVIAI</div>
     <div id="tagline" class="tagline">Light your way!</div>
-    <div class="header-tools">
+    <div class="header-tools-left">
       <button id="searchOpenBtn" class="icon-btn" aria-label="Ara">⌕</button>
       <div id="searchCapsule" class="search-capsule">
         <input id="searchInput" type="text" placeholder="Ara...">
         <button id="searchCloseBtn" aria-label="Kapat">×</button>
       </div>
+    </div>
+    <div class="header-tools">
+      <button id="newChatBtn" class="new-chat-btn" aria-label="Yeni sohbet">+</button>
       <button id="menuButton" class="menu-btn" aria-label="Menu">☰</button>
     </div>
   </div>
@@ -1168,12 +1276,12 @@ body.topics-open .topics-overlay { display: block; }
       </div>
       <span class="tool-sep"></span>
       <div class="tool-group">
-        <button class="tool-btn" data-color="#000000">Siyah</button>
+        <button class="tool-btn active" data-color="#ED9107">Lux Sarısı</button>
         <button class="tool-btn" data-color="#FFFFFF">Beyaz</button>
         <button class="tool-btn" data-color="#D34242">Kırmızı</button>
-        <button class="tool-btn active" data-color="#ED9107">Lux Sarısı</button>
+        <button class="tool-btn" data-color="#000000">Siyah</button>
       </div>
-      <span class="tool-sep"></span>
+      <span class="tool-break"></span>
       <div class="tool-group">
         <button class="tool-btn" data-size="2">İnce</button>
         <button class="tool-btn active" data-size="4">Orta</button>
@@ -1231,6 +1339,7 @@ let lastContextTarget = null;
 let longPressTimer = null;
 let luxTopTimer = null;
 let currentLang = localStorage.getItem("lux_lang") || "tr";
+let languageApplySeq = 0;
 let hiddenLocationCity = null;
 let shareEditorMode = "pen";
 let shareDrawColor = "#ED9107";
@@ -1251,6 +1360,7 @@ let aiResponding = false;
 let stopStreamRequested = false;
 let streamAbort = null;
 let activeAiDiv = null;
+let interruptedState = null;
 let soundEnabled = true;
 let activeDict = null;
 let activeUi = null;
@@ -1270,6 +1380,7 @@ const chatScrollbar = document.getElementById("chatScrollbar");
 const chatScrollThumb = document.getElementById("chatScrollThumb");
 const messageInput = document.getElementById("messageInput");
 const sendButton = document.getElementById("sendButton");
+const newChatBtn = document.getElementById("newChatBtn");
 const menuButton = document.getElementById("menuButton");
 const sideMenu = document.getElementById("sideMenu");
 const menuOverlay = document.getElementById("menuOverlay");
@@ -1294,6 +1405,7 @@ const popupContent = document.getElementById("popupContent");
 const popupClose = document.getElementById("popupClose");
 const screenShield = document.getElementById("screenShield");
 const floatingWhisper = document.getElementById("floatingWhisper");
+const toastMini = document.getElementById("toastMini");
 const searchOpenBtn = document.getElementById("searchOpenBtn");
 const searchCapsule = document.getElementById("searchCapsule");
 const searchInput = document.getElementById("searchInput");
@@ -1330,7 +1442,20 @@ const topicsOverlay = document.getElementById("topicsOverlay");
 const userId = localStorage.getItem("lux_uid") || "user_" + Math.random().toString(36).slice(2);
 localStorage.setItem("lux_uid", userId);
 
-const HISTORY_KEY = "lux_history_v2";
+const HISTORY_KEY = "lux_history_v3";
+const CLIENT_STATE_VERSION_KEY = "lux_client_state_version";
+const CLIENT_STATE_VERSION = "2026-05-28-ui-b2";
+
+function ensureClientStateVersion() {
+  try {
+    const prev = localStorage.getItem(CLIENT_STATE_VERSION_KEY);
+    if (prev === CLIENT_STATE_VERSION) return;
+    ["lux_history_v1", "lux_history_v2", "lux_history_v3"].forEach(k => localStorage.removeItem(k));
+    localStorage.setItem(CLIENT_STATE_VERSION_KEY, CLIENT_STATE_VERSION);
+  } catch (_) {}
+}
+
+ensureClientStateVersion();
 const userHistory = loadHistory();
 let activeConversationId = userHistory.activeId || null;
 
@@ -2225,7 +2350,17 @@ function escapeRegExp(str) { return String(str).replace(/[.*+?^${}()|[\]\\]/g, "
 function setAppHeight() {
   const vv = window.visualViewport;
   const h = Math.round(vv ? vv.height : window.innerHeight);
+  const offset = vv
+    ? Math.max(0, Math.round(window.innerHeight - (vv.height + vv.offsetTop)))
+    : 0;
+  const isMobile = window.matchMedia("(max-width: 720px)").matches;
+  const ua = (navigator.userAgent || "").toLowerCase();
+  const isAndroid = ua.includes("android");
+  const isIOS = /iphone|ipad|ipod/.test(ua);
+  const navGuard = isMobile ? (isAndroid ? 56 : (isIOS ? 18 : 22)) : 0;
   document.documentElement.style.setProperty("--app-height", `${h}px`);
+  document.documentElement.style.setProperty("--mobile-bottom-offset", `${offset}px`);
+  document.documentElement.style.setProperty("--mobile-nav-guard", `${navGuard}px`);
 }
 function syncChatScrollbarBounds() {
   if (!chatScrollbar) return;
@@ -2358,6 +2493,7 @@ function loadConversation(id) {
   drawGlyphStrip();
   saveHistory();
   renderTopicList();
+  refreshTopActionButtons();
   if (window.innerWidth <= 720) closeTopics();
 }
 function topicBucketLabel(ts, lang) {
@@ -2484,6 +2620,33 @@ function trimLuxephMessages() {
   }
 }
 
+function refreshTopActionButtons() {
+  if (!newChatBtn) return;
+  newChatBtn.classList.remove("inactive");
+  newChatBtn.disabled = aiResponding;
+}
+
+function startNewTopConversation() {
+  if (aiResponding) return;
+  const dict = getCurrentDict();
+  const hello = `${pickGreetingPrefix(dict)}.`;
+  setResponseLock(false);
+  activeConversationId = null;
+  clearChat();
+  document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode", "luxta-top-visible");
+  luxtaPanel.classList.remove("active");
+  stopRecording();
+  messageInput.placeholder = dict.placeholder;
+  appendMessage("ai", hello, false);
+  drawGlyphStrip();
+  closeMenu();
+  closeSearch();
+  closeInsightPanel();
+  renderTopicList();
+  if (window.innerWidth <= 720) closeTopics();
+  refreshTopActionButtons();
+}
+
 function openMenu() {
   if (currentMode === "luxta") revealLuxtaTop(3000);
   sideMenu.classList.add("open");
@@ -2492,6 +2655,19 @@ function openMenu() {
 function closeMenu() { sideMenu.classList.remove("open"); menuOverlay.classList.remove("active"); }
 menuButton.onclick = openMenu;
 menuOverlay.onclick = closeMenu;
+if (newChatBtn) newChatBtn.onclick = startNewTopConversation;
+
+function bindFastTap(el, handler) {
+  if (!el || !handler) return;
+  let lastTapAt = 0;
+  el.addEventListener("touchend", e => {
+    e.preventDefault();
+    const now = Date.now();
+    if (now - lastTapAt < 280) return;
+    lastTapAt = now;
+    handler();
+  }, { passive: false });
+}
 
 function openDrawer() { leftDrawer.classList.add("open"); }
 function closeDrawer() { leftDrawer.classList.remove("open"); }
@@ -2512,6 +2688,7 @@ if (topicRailScroll) topicRailScroll.addEventListener("scroll", syncTopicScrollb
 if (chatBox) chatBox.addEventListener("scroll", syncChatScrollbarThumb, { passive: true });
 window.addEventListener("resize", () => {
   setAppHeight();
+  positionNotesPopup();
   syncTopicScrollbarBounds();
   syncTopicScrollbarThumb();
   syncChatScrollbarBounds();
@@ -2520,6 +2697,7 @@ window.addEventListener("resize", () => {
 if (window.visualViewport) {
   window.visualViewport.addEventListener("resize", () => {
     setAppHeight();
+    positionNotesPopup();
     syncTopicScrollbarBounds();
     syncTopicScrollbarThumb();
     syncChatScrollbarBounds();
@@ -2547,13 +2725,28 @@ document.addEventListener("touchend", () => {
   touchStartY = null;
 }, { passive: true });
 
-function showPopup(title, html) {
+function showPopup(title, html, variant = "default") {
+  popup.classList.remove("notes-anchored");
+  if (variant === "notes") popup.classList.add("notes-anchored");
   popupTitle.innerText = title;
   popupContent.innerHTML = html;
   popup.classList.add("active");
+  if (variant === "notes") positionNotesPopup();
 }
-function closePopup() { popup.classList.remove("active"); }
+function closePopup() {
+  popup.classList.remove("active");
+  popup.classList.remove("notes-anchored");
+}
 popupClose.onclick = closePopup;
+
+function positionNotesPopup() {
+  if (!popup || !popup.classList.contains("notes-anchored")) return;
+  if (window.innerWidth <= 720) return;
+  const headerEl = document.querySelector(".header");
+  const headerBottom = headerEl ? Math.round(headerEl.getBoundingClientRect().bottom) : 76;
+  popup.style.top = `${headerBottom + 1}px`;
+  popup.style.right = sideMenu.classList.contains("open") ? "306px" : "74px";
+}
 
 function openInsight(title, content) {
   if (window.innerWidth <= 720) openTopics();
@@ -2686,6 +2879,7 @@ function refreshModeIntro(dict, ui) {
 }
 
 async function applyLanguage(lang) {
+  const seq = ++languageApplySeq;
   currentLang = lang;
   localStorage.setItem("lux_lang", currentLang);
   setLanguageSelectors(currentLang);
@@ -2694,6 +2888,7 @@ async function applyLanguage(lang) {
   let ui = uiLocale[currentLang];
   if (!dict || !ui) {
     const pack = await buildDynamicLanguagePack(currentLang);
+    if (seq !== languageApplySeq) return;
     const untranslated = pack &&
       pack.ui &&
       pack.dict &&
@@ -2711,6 +2906,7 @@ async function applyLanguage(lang) {
   activeDict = dict;
   activeUi = ui;
   await localizeSoundItems(currentLang);
+  if (seq !== languageApplySeq) return;
 
   document.getElementById("tagline").innerText = "Light your way!";
   searchInput.placeholder = ui.searchPlaceholder;
@@ -2964,8 +3160,9 @@ function ensureSocket() {
 function setResponseLock(locked) {
   aiResponding = locked;
   messageInput.readOnly = false;
-  voiceButton.disabled = locked;
-  voiceButton.style.opacity = locked ? "0.46" : "";
+  voiceButton.disabled = (currentMode === "luxeph");
+  voiceButton.style.opacity = voiceButton.disabled ? "0.46" : "";
+  if (newChatBtn) newChatBtn.disabled = locked;
   sendButton.innerText = locked ? (currentLang === "tr" ? "DURDUR" : "STOP") : currentMode.toUpperCase();
   sendButton.style.background = locked ? "rgba(155,58,35,.92)" : "rgba(237,145,7,0.9)";
 }
@@ -3042,7 +3239,16 @@ function stopActiveResponse() {
 }
 
 function continuePromptText() {
-  return currentLang === "tr" ? "Kaldığın yerden devam et." : "Please continue from where you stopped.";
+  return currentLang === "tr"
+    ? "Önceki yanıtını aynı bağlamdan, kaldığın kelimeden devam ettir. Yeni soru gibi davranma."
+    : "Continue your previous answer from the exact point you stopped, not as a new question.";
+}
+
+function showMiniToast(text) {
+  if (!toastMini) return;
+  toastMini.innerText = text || "";
+  toastMini.classList.add("show");
+  setTimeout(() => toastMini.classList.remove("show"), 1000);
 }
 
 function appendResumeButton(afterMsgEl) {
@@ -3054,10 +3260,47 @@ function appendResumeButton(afterMsgEl) {
   btn.innerText = currentLang === "tr" ? "Devam et" : "Continue";
   btn.onclick = () => {
     btn.remove();
-    if (aiResponding) return;
-    sendMessageLive(continuePromptText());
+    if (aiResponding || !interruptedState || !afterMsgEl) return;
+    continueInterruptedResponse(afterMsgEl);
   };
   afterMsgEl.insertAdjacentElement("afterend", btn);
+}
+
+async function continueInterruptedResponse(targetAiEl) {
+  const state = interruptedState;
+  if (!state || !targetAiEl) return;
+  if (currentMode !== state.mode) currentMode = state.mode;
+  const bridgeMessage = `${continuePromptText()}\n\nKullanıcı mesajı: ${state.userText}\nKaldığın metin: ${state.partialText}`;
+  stopStreamRequested = false;
+  setResponseLock(true);
+  const writer = createPacedWriter(targetAiEl, 0.9);
+  writer.setExact(state.partialText || targetAiEl.innerText || "");
+  const payload = {
+    message: bridgeMessage,
+    user_id: userId,
+    mode: currentMode,
+    ghost_hesitation: false,
+    location: hiddenLocationCity || "Istanbul",
+    client_signals: collectClientSignals()
+  };
+  try {
+    let responseText = "";
+    try {
+      responseText = await sendMessageViaSocket(payload, chunk => writer.push(chunk));
+      await writer.waitIdle();
+    } catch (_) {
+      responseText = await sendMessageViaHttp(payload);
+      writer.push(responseText);
+      await writer.waitIdle();
+    }
+    addMessageToHistory("assistant", targetAiEl.innerText || responseText);
+    interruptedState = null;
+    resetTypingSignals();
+  } catch (_) {
+    // no-op
+  } finally {
+    setResponseLock(false);
+  }
 }
 
 function sendMessageViaSocket(payload, onChunk) {
@@ -3124,6 +3367,7 @@ async function sendMessageLive(customText) {
   stopStreamRequested = false;
   setResponseLock(true);
   appendMessage("user", text);
+  interruptedState = null;
   messageInput.value = "";
   triggerDreamLight();
 
@@ -3147,6 +3391,11 @@ async function sendMessageLive(customText) {
       }
       wsPending = null;
       if (!aiDiv.innerText.trim()) aiDiv.innerText = (currentLang === "tr" ? "Yanıt durduruldu." : "Response stopped.");
+      interruptedState = {
+        mode: currentMode,
+        userText: text,
+        partialText: aiDiv.innerText || ""
+      };
       addMessageToHistory("assistant", aiDiv.innerText);
       appendResumeButton(aiDiv);
       activeAiDiv = null;
@@ -3159,7 +3408,8 @@ async function sendMessageLive(customText) {
     } catch (socketErr) {
       if (stopStreamRequested) return;
       responseText = await sendMessageViaHttp(payload);
-      writer.setExact(responseText);
+      writer.push(responseText);
+      await writer.waitIdle();
     }
     if (stopStreamRequested) return;
     if (!aiDiv.innerText.trim()) writer.setExact(responseText || "Bunu duydum.");
@@ -3257,6 +3507,7 @@ farkBtn.onclick = async () => {
   } catch (_) { openInsight(ui.fark || "FARKINDALIK", ui.noData || "Veri alınamadı."); }
   closeMenu();
 };
+bindFastTap(farkBtn, () => farkBtn.onclick && farkBtn.onclick());
 summaryBtn.onclick = async () => {
   const ui = getCurrentUi();
   try {
@@ -3265,6 +3516,7 @@ summaryBtn.onclick = async () => {
   } catch (_) { openInsight(ui.summary || "ÖZET", ui.noData || "Veri alınamadı."); }
   closeMenu();
 };
+bindFastTap(summaryBtn, () => summaryBtn.onclick && summaryBtn.onclick());
 memoryBtn.onclick = async () => {
   const ui = getCurrentUi();
   try {
@@ -3280,6 +3532,7 @@ memoryBtn.onclick = async () => {
   } catch (_) { openInsight(ui.memory || "MEMORY", ui.noData || "Veri alınamadı."); }
   closeMenu();
 };
+bindFastTap(memoryBtn, () => memoryBtn.onclick && memoryBtn.onclick());
 
 async function openNotesPopup() {
   const ui = getCurrentUi();
@@ -3299,13 +3552,14 @@ async function openNotesPopup() {
         </div>
       `).join("") : `<p>${escapeHtml(ui.noNotes || "Henüz not yok.")}</p>`}
     `;
-    showPopup(ui.notes || "NOTLAR", html);
+    showPopup(ui.notes || "NOTLAR", html, "notes");
     setTimeout(() => setupNotesActions(notes), 0);
   } catch (_) {
-    showPopup(ui.notes || "NOTLAR", ui.noData || "Veri alınamadı.");
+    showPopup(ui.notes || "NOTLAR", ui.noData || "Veri alınamadı.", "notes");
   }
 }
-notesBtn.onclick = () => { openNotesPopup(); closeMenu(); };
+notesBtn.onclick = () => { closeMenu(); setTimeout(() => openNotesPopup(), 30); };
+bindFastTap(notesBtn, () => { closeMenu(); setTimeout(() => openNotesPopup(), 30); });
 
 function setupNotesActions(notes) {
   document.querySelectorAll(".note-dot").forEach(dot => {
@@ -3334,8 +3588,9 @@ document.querySelectorAll("[data-mode]").forEach(btn => {
     btn.classList.add("active");
     currentMode = btn.dataset.mode;
     if (currentMode === "luxching" || currentMode === "luxdream") currentMode = "luxviai";
+    refreshTopActionButtons();
     setResponseLock(false);
-    createConversation(currentMode);
+    activeConversationId = null;
     clearChat();
     document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode", "luxta-top-visible");
     luxtaPanel.classList.remove("active");
@@ -3343,16 +3598,18 @@ document.querySelectorAll("[data-mode]").forEach(btn => {
     if (currentMode === "luxta") {
       document.body.classList.add("luxta-mode");
       luxtaPanel.classList.add("active");
-      appendMessage("ai", hello);
+      appendMessage("ai", hello, false);
     } else if (currentMode === "luxeph") {
       document.body.classList.add("luxeph-mode");
       messageInput.placeholder = dict.placeholder;
-      appendMessage("ai", hello);
+      appendMessage("ai", hello, false);
     } else {
       messageInput.placeholder = dict.placeholder;
-      appendMessage("ai", hello);
+      appendMessage("ai", hello, false);
     }
     drawGlyphStrip();
+    refreshTopActionButtons();
+    renderTopicList();
     closeMenu();
   };
 });
@@ -3544,7 +3801,7 @@ async function saveNote(text) {
     body: JSON.stringify({ user_id: userId, text })
   });
   const ui = getCurrentUi();
-  showInlineWhisper(ui.notesSaved || "Not alındı.", lastContextTarget || chatBox.lastElementChild);
+  showMiniToast(ui.notesSaved || "Not alındı.");
 }
 
 function speakText(text) {
@@ -3607,6 +3864,7 @@ function setupRecognition() {
       .replace(/\s+/g, " ")
       .trim();
     recordTranscript.innerText = recordTranscriptText;
+    messageInput.value = recordTranscriptText;
   };
   rec.onerror = event => {
     const code = event?.error || "";
@@ -3665,6 +3923,7 @@ async function startRecording() {
     const source = ctx.createMediaStreamSource(mediaStream);
     analyser = ctx.createAnalyser();
     analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.78;
     source.connect(analyser);
   } catch (_) {
     analyser = null;
@@ -3714,18 +3973,31 @@ function stopRecording(autoSend = false) {
 function drawEqualizer() {
   const w = eqCanvas.width;
   const h = eqCanvas.height;
-  const bars = 70;
+  const bars = 56;
   const data = new Uint8Array(analyser ? analyser.frequencyBinCount : bars);
+  const smooth = new Float32Array(bars);
+  let lastTs = 0;
   function draw() {
+    const now = performance.now();
+    if ((now - lastTs) < 42) {
+      if (recording) eqAnimation = requestAnimationFrame(draw);
+      return;
+    }
+    lastTs = now;
     eqCtx.clearRect(0, 0, w, h);
     if (analyser) analyser.getByteFrequencyData(data);
     let energySum = 0;
     for (let i = 0; i < bars; i++) {
-      const value = analyser ? data[i] : Math.abs(Math.sin(Date.now() / 130 + i)) * 170;
+      const srcIdx = analyser ? Math.min(data.length - 1, Math.floor(i * (data.length / bars))) : i;
+      const raw = analyser
+        ? data[srcIdx]
+        : (56 + ((Math.sin((now / 620) + (i * 0.45)) + 1) * 0.5 * 150));
+      smooth[i] = (smooth[i] * 0.8) + (raw * 0.2);
+      const value = smooth[i];
       energySum += value;
-      const bh = Math.max(4, (value / 255) * h);
+      const bh = Math.max(4, (value / 255) * (h * 0.92));
       const x = Math.floor(i * (w / bars));
-      const bw = Math.max(3, Math.floor(w / bars) - 2);
+      const bw = Math.max(4, Math.floor(w / bars) - 3);
       eqCtx.fillStyle = i % 3 === 0 ? "#ED9107" : i % 3 === 1 ? "#F5D68A" : "#B85C5A";
       eqCtx.fillRect(x, h - bh, bw, bh);
     }
@@ -3734,11 +4006,12 @@ function drawEqualizer() {
   }
   draw();
 }
-voiceButton.addEventListener("mousedown", startRecording);
-voiceButton.addEventListener("mouseup", () => stopRecording(false));
-voiceButton.addEventListener("mouseleave", () => stopRecording(false));
-voiceButton.addEventListener("touchstart", e => { e.preventDefault(); startRecording(); }, { passive: false });
-voiceButton.addEventListener("touchend", e => { e.preventDefault(); stopRecording(false); }, { passive: false });
+voiceButton.addEventListener("click", e => {
+  e.preventDefault();
+  if (currentMode === "luxeph") return;
+  if (recording) stopRecording(false);
+  else startRecording();
+});
 
 function drawGlyphStrip() {
   const canvas = document.getElementById("glyphCanvas");
@@ -3824,8 +4097,8 @@ async function openCardFromText(text, sourceEl = null) {
 }
 
 function drawCardFrame(ctx, width, height) {
-  const pad = Math.max(16, Math.round(Math.min(width, height) * 0.026));
-  const lw = Math.max(2, Math.round(Math.min(width, height) * 0.0032));
+  const pad = Math.max(16, Math.round(Math.min(width, height) * 0.024));
+  const lw = 3;
   ctx.save();
   ctx.strokeStyle = "#ED9107";
   ctx.lineWidth = lw;
@@ -4217,12 +4490,13 @@ if (editorTextInput) {
 }
 
 function stampSignature() {
+  const pad = Math.max(16, Math.round(Math.min(editorCanvas.width, editorCanvas.height) * 0.024));
   editorCtx.save();
   editorCtx.font = "16px Inter";
   editorCtx.fillStyle = "#A7A9AC";
   const sig = "LUXVIAI Light your way!";
   const w = editorCtx.measureText(sig).width;
-  editorCtx.fillText(sig, editorCanvas.width - w - 18, editorCanvas.height - 16);
+  editorCtx.fillText(sig, editorCanvas.width - w - (pad + 4), editorCanvas.height - (pad + 8));
   editorCtx.restore();
 }
 
@@ -4246,17 +4520,20 @@ document.querySelectorAll(".share-btn").forEach(btn => {
   btn.onclick = async () => {
     const platform = btn.dataset.share;
     if (!platform) return;
+    commitEditorStickers();
+    drawCardFrame(editorCtx, editorCanvas.width, editorCanvas.height);
     stampSignature();
     const blob = await canvasToBlob(editorCanvas);
     if (!blob) return;
     const file = new File([blob], "luxviai-card.png", { type: "image/png" });
-    const shareText = editorActiveText || "LUXVIAI Light your way!";
+    const shareText = "";
     if (platform === "download") {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = "luxviai-card.png";
       a.click();
       URL.revokeObjectURL(a.href);
+      shareOverlay.classList.remove("active");
       return;
     }
     if (platform === "native") {
@@ -4269,6 +4546,7 @@ document.querySelectorAll(".share-btn").forEach(btn => {
       } else {
         openShareUrl("whatsapp", shareText);
       }
+      shareOverlay.classList.remove("active");
       return;
     }
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -4281,6 +4559,7 @@ document.querySelectorAll(".share-btn").forEach(btn => {
       setTimeout(() => URL.revokeObjectURL(a.href), 1200);
       openShareUrl(platform, shareText);
     }
+    shareOverlay.classList.remove("active");
   };
 });
 
@@ -4317,17 +4596,14 @@ document.addEventListener("touchstart", e => {
     revealLuxtaTop(3000);
   }
 }, { passive: true });
+document.addEventListener("pointerdown", () => {
+  if (currentMode !== "luxta") return;
+  revealLuxtaTop(3000);
+}, { passive: true });
 
 async function bootGreeting() {
   const instant = `${pickGreetingPrefix(getCurrentDict())}.`;
-  const first = appendMessage("ai", instant || "Merhaba.");
-  const detailed = await buildGreeting();
-  if (detailed && detailed !== instant) {
-    first.innerText = detailed;
-    const conv = getActiveConversation();
-    if (conv.messages.length) conv.messages[conv.messages.length - 1].text = detailed;
-    saveHistory();
-  }
+  appendMessage("ai", instant || "Merhaba.", false);
 }
 
 async function initApp() {
@@ -4346,10 +4622,10 @@ async function initApp() {
   resolveHiddenLocation();
 
   if (!activeConversationId || !userHistory.conversations.find(c => c.id === activeConversationId)) {
-    createConversation(currentMode);
     renderTopicList();
     setEditorMode("pen");
     await bootGreeting();
+    refreshTopActionButtons();
     syncTopicScrollbarBounds();
     syncTopicScrollbarThumb();
     syncChatScrollbarBounds();
@@ -4360,6 +4636,7 @@ async function initApp() {
   loadConversation(activeConversationId);
   renderTopicList();
   setEditorMode("pen");
+  refreshTopActionButtons();
   syncTopicScrollbarBounds();
   syncTopicScrollbarThumb();
   syncChatScrollbarBounds();

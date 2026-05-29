@@ -8,7 +8,7 @@ import random
 import re
 import uuid
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Lock
 from typing import Any, Dict, List, Optional
@@ -316,7 +316,12 @@ THEORY_LENSES = {
 # HELPERS
 # =========================================================
 def now_iso() -> str:
-    return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def safe_user_id(raw: str) -> str:
@@ -387,13 +392,14 @@ def cleanup_old_sessions(user_id: str, days: int = 7):
         return
 
     index = load_json(index_path, [])
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     new_index = []
 
     for sess in index:
         try:
             created_at = parse_iso(sess.get("created_at", now_iso()))
-            if created_at.replace(tzinfo=None) > cutoff:
+            created_at_utc = created_at.astimezone(timezone.utc) if created_at.tzinfo else created_at.replace(tzinfo=timezone.utc)
+            if created_at_utc > cutoff:
                 new_index.append(sess)
             else:
                 old_path = session_file_path(user_id, sess["session_id"])
@@ -817,7 +823,7 @@ def ensure_profile_shape(profile: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def default_session(mode: str = "luxviai") -> Dict[str, Any]:
-    sid = f"{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+    sid = f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
     return {
         "session_id": sid,
         "mode": mode,
@@ -870,7 +876,8 @@ def load_or_create_session(user_id: str, mode: str) -> tuple[Dict[str, Any], Dic
 
     try:
         last_seen = parse_iso(active.get("last_seen", active.get("created_at", now_iso())))
-        if datetime.utcnow() - last_seen.replace(tzinfo=None) > timedelta(hours=12):
+        last_seen_utc = last_seen.astimezone(timezone.utc) if last_seen.tzinfo else last_seen.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) - last_seen_utc > timedelta(hours=12):
             return create_new_session(user_id, mode)
     except Exception:
         return create_new_session(user_id, mode)
@@ -1558,7 +1565,7 @@ def heuristic_analysis(
         "needs_silence": needs_silence,
         "contradiction_marker": contradiction,
         "narrative_marker": narrative,
-        "night_signal": True if datetime.utcnow().hour >= 22 or datetime.utcnow().hour <= 6 else False,
+        "night_signal": True if datetime.now(timezone.utc).hour >= 22 or datetime.now(timezone.utc).hour <= 6 else False,
     }
     deep = build_background_layers(message, base, profile, session, location, ghost_hesitation, client_signals)
     base.update(deep)
@@ -3024,6 +3031,33 @@ def looks_foreign_word(text: str) -> bool:
     return False
 
 
+LOCAL_TRANSLATION_TR = {
+    "hello": "merhaba",
+    "hi": "selam",
+    "how are you": "nasılsın",
+    "good morning": "günaydın",
+    "good night": "iyi geceler",
+    "thank you": "teşekkür ederim",
+    "thanks": "teşekkürler",
+    "love": "sevgi",
+    "dream": "rüya",
+    "memory": "hafıza",
+    "anxiety": "kaygı",
+    "fear": "korku",
+    "sadness": "üzüntü",
+}
+
+
+def local_phrase_translate(text: str, target_lang: str) -> Optional[str]:
+    clean = fold_turkish_ascii((text or "").strip())
+    if not clean:
+        return None
+    tgt = (target_lang or "").upper()
+    if tgt.startswith("TR"):
+        return LOCAL_TRANSLATION_TR.get(clean)
+    return None
+
+
 def explain_with_model_tr(text: str) -> str:
     if not client:
         return ""
@@ -3031,7 +3065,9 @@ def explain_with_model_tr(text: str) -> str:
         "Kısa Türkçe sözlük açıklaması üret. "
         "Tek cümle, en fazla 18 kelime. "
         "Tıbbi/felsefi terimse sade anlat. "
-        "Tanı, tedavi, kesin hüküm verme."
+        "Tanı, tedavi, kesin hüküm verme. "
+        "Kullanıcı cümlesine sohbet cevabı verme. "
+        "Soruya cevap verme, sadece kelime/ifade anlamı açıkla."
     )
     try:
         out = call_model(
@@ -3176,9 +3212,16 @@ async def search(user_id: str = "default_user", q: str = Query("", max_length=20
 async def translate(payload: TranslateRequest, auth: Optional[str] = Header(None)):
     check_auth(auth)
     result = deepl_translate_text(payload.text, payload.target_lang, payload.source_lang)
+    translated = str(result.get("translated_text", payload.text) or payload.text).strip()
+    if translated.lower() == (payload.text or "").strip().lower():
+        local_hit = local_phrase_translate(payload.text, payload.target_lang)
+        if local_hit:
+            translated = local_hit
+            result["ok"] = True
+            result["detected_source_language"] = result.get("detected_source_language") or "EN"
     return {
         "ok": result.get("ok", False),
-        "translated_text": result.get("translated_text", payload.text),
+        "translated_text": translated,
         "detected_source_language": result.get("detected_source_language"),
         "error": result.get("error"),
     }
@@ -3196,11 +3239,24 @@ async def explain(payload: ExplainRequest, auth: Optional[str] = Header(None)):
     if direct:
         return {"ok": True, "text": direct, "kind": "definition"}
 
-    if payload.force_translate or looks_foreign_word(text):
+    foreign_text = payload.force_translate or looks_foreign_word(text)
+    if foreign_text:
+        local_hit = local_phrase_translate(text, "TR")
+        if local_hit:
+            return {"ok": True, "text": local_hit, "kind": "translation"}
         tr = deepl_translate_text(text, "TR")
         translated = str(tr.get("translated_text", text)).strip()
         if translated and translated.lower() != text.lower():
             return {"ok": True, "text": translated, "kind": "translation"}
+        # Yabancı metinlerde modelden "sohbet cevabı" dönmemesi için
+        # çeviri başarısızsa kısa fallback ver, model açıklamasına düşme.
+        fallback_tr = f"“{text}” için çeviri bulunamadı."
+        fallback_en = f"No translation found for “{text}”."
+        return {
+            "ok": False,
+            "text": fallback_tr if (payload.user_lang or "tr").lower().startswith("tr") else fallback_en,
+            "kind": "fallback",
+        }
 
     model_exp = explain_with_model_tr(text)
     if model_exp:
