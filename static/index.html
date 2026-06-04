@@ -3885,7 +3885,7 @@ function setResponseLock(locked) {
   sendButton.style.background = locked ? "rgba(155,58,35,.92)" : "rgba(237,145,7,0.9)";
 }
 
-function createPacedWriter(targetEl, speedFactor = 0.9) {
+function createPacedWriter(targetEl, speedFactor = 1.35) {
   const queue = [];
   const baseDelay = 50;
   const delay = Math.max(22, Math.round(baseDelay / Math.max(0.2, speedFactor)));
@@ -3928,10 +3928,14 @@ function createPacedWriter(targetEl, speedFactor = 0.9) {
       if (stopped) return;
       queue.length = 0;
       current = text || "";
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
       targetEl.innerText = current;
       if (scrollState.autoFollow) scrollBottom();
       else notifyIncomingWhileReading();
-      if (!timer) resolveIdle();
+      resolveIdle();
     },
     waitIdle() {
       if (!timer && !queue.length) return Promise.resolve();
@@ -3947,6 +3951,19 @@ function createPacedWriter(targetEl, speedFactor = 0.9) {
       resolveIdle();
     }
   };
+}
+
+function forceFinalVisibleText(writer, targetEl, finalText) {
+  const text = String(finalText || "").trim();
+  if (!text || !targetEl) return;
+  if (writer && typeof writer.setExact === "function") {
+    writer.setExact(text);
+  }
+  if (targetEl.innerText !== text) {
+    targetEl.innerText = text;
+    if (scrollState.autoFollow) scrollBottom();
+    else notifyIncomingWhileReading();
+  }
 }
 
 function stopActiveResponse() {
@@ -4036,7 +4053,7 @@ async function continueInterruptedResponse(targetAiEl) {
   const bridgeMessage = `${continuePromptText()}\n\nKullanıcı mesajı: ${state.userText}\nKaldığın metin: ${baseText}`;
   stopStreamRequested = false;
   setResponseLock(true);
-  const writer = createPacedWriter(targetAiEl, 0.9);
+  const writer = createPacedWriter(targetAiEl, 1.35);
   writer.setExact(baseText);
   activeGeneration = { runId: continueRunId, conversationId, messageEl: targetAiEl, writer, kind: "continue" };
   setPendingState({ conversationId, runId: continueRunId, kind: "continue" });
@@ -4060,13 +4077,13 @@ async function continueInterruptedResponse(targetAiEl) {
       responseText = await sendMessageViaSocket(
         payload,
         chunk => applyContinueChunk(chunk),
-        finalText => writer.setExact(mergeContinuationText(baseText, finalText))
+        finalText => forceFinalVisibleText(writer, targetAiEl, mergeContinuationText(baseText, finalText))
       );
       await writer.waitIdle();
     } catch (_) {
       responseText = await sendMessageViaHttp(payload);
       const merged = mergeContinuationText(baseText, responseText);
-      writer.setExact(merged);
+      forceFinalVisibleText(writer, targetAiEl, merged);
       await writer.waitIdle();
     }
     if (responseRunId !== continueRunId) {
@@ -4160,7 +4177,7 @@ async function sendMessageLive(customText) {
 
   const aiDiv = appendMessage("ai", "", false);
   activeAiDiv = aiDiv;
-  const writer = createPacedWriter(aiDiv, 0.9);
+  const writer = createPacedWriter(aiDiv, 1.35);
   activeGeneration = { runId, conversationId, messageEl: aiDiv, writer, kind: "response" };
   setPendingState({ conversationId, runId, kind: "response" });
   const payload = {
@@ -4196,13 +4213,13 @@ async function sendMessageLive(customText) {
       responseText = await sendMessageViaSocket(
         payload,
         chunk => writer.push(chunk),
-        finalText => writer.setExact(finalText)
+        finalText => forceFinalVisibleText(writer, aiDiv, finalText)
       );
       await writer.waitIdle();
     } catch (socketErr) {
       if (stopStreamRequested) return;
       responseText = await sendMessageViaHttp(payload);
-      writer.push(responseText);
+      forceFinalVisibleText(writer, aiDiv, responseText);
       await writer.waitIdle();
     }
     if (stopStreamRequested) return;
@@ -4210,7 +4227,7 @@ async function sendMessageLive(customText) {
       setPendingState(null);
       return;
     }
-    if ((responseText || "").trim() && aiDiv.innerText !== responseText) writer.setExact(responseText);
+    if ((responseText || "").trim() && aiDiv.innerText !== responseText) forceFinalVisibleText(writer, aiDiv, responseText);
     if (!aiDiv.innerText.trim()) writer.setExact(responseText || heardFallback());
     if (currentLang !== "tr" && aiDiv.innerText.trim()) {
       const translated = await translateText(aiDiv.innerText, deeplTargetCode(currentLang));
