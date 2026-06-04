@@ -333,7 +333,10 @@ body.luxta-mode .msg.ai { color: #F2EBDD; }
 .resume-btn {
   display: inline-flex;
   align-items: center;
-  margin: 6px 0 14px 0;
+  position: sticky;
+  bottom: 110px;
+  z-index: 12;
+  margin: 8px 0 18px 0;
   padding: 6px 12px;
   border: 1px solid rgba(237,145,7,.44);
   border-radius: 999px;
@@ -346,6 +349,9 @@ body.luxta-mode .msg.ai { color: #F2EBDD; }
   white-space: nowrap;
 }
 .resume-btn:hover { color: #ED9107; border-color: #ED9107; }
+@media (min-width: 721px) {
+  .resume-btn { margin-left: 200px; }
+}
 .toast-mini {
   position: fixed;
   left: 50%;
@@ -1715,6 +1721,8 @@ localStorage.setItem("lux_uid", userId);
 
 const HISTORY_KEY = "lux_history_v3";
 const SAFE_CLIENT_STATE_KEY = "luxviai_chat_state_v2";
+const PAGE_SESSION_KEY = "luxviai_page_session_v1";
+const PAGE_ACTIVE_CONVERSATION_KEY = "luxviai_page_active_conversation_v1";
 const CLIENT_STATE_VERSION_KEY = "lux_client_state_version";
 const CLIENT_STATE_VERSION = "2026-06-04-local-state-safety";
 const DRAFT_MAX_CHARS = 4000;
@@ -1731,9 +1739,29 @@ function ensureClientStateVersion() {
 }
 
 ensureClientStateVersion();
+let hasActivePageSession = false;
+try {
+  const navEntry = performance.getEntriesByType && performance.getEntriesByType("navigation")[0];
+  const navType = navEntry && navEntry.type ? navEntry.type : "navigate";
+  const samePageNavigation = navType === "reload" || navType === "back_forward";
+  hasActivePageSession = sessionStorage.getItem(PAGE_SESSION_KEY) === "open" && samePageNavigation;
+  sessionStorage.setItem(PAGE_SESSION_KEY, "open");
+} catch (_) {
+  hasActivePageSession = false;
+}
 const userHistory = loadHistory();
 let safeClientState = loadSafeClientState();
-let activeConversationId = userHistory.activeId || safeClientState.activeConversationId || null;
+if (!hasActivePageSession) {
+  safeClientState = { ...safeClientState, activeConversationId: null, draft: null, pending: null, updatedAt: Date.now() };
+  try { localStorage.setItem(SAFE_CLIENT_STATE_KEY, JSON.stringify(safeClientState)); } catch (_) {}
+}
+let pageActiveConversationId = null;
+try {
+  pageActiveConversationId = hasActivePageSession ? sessionStorage.getItem(PAGE_ACTIVE_CONVERSATION_KEY) : null;
+} catch (_) {}
+let activeConversationId = hasActivePageSession
+  ? (pageActiveConversationId || safeClientState.activeConversationId || userHistory.activeId || null)
+  : null;
 
 const popularLanguages = [
   ["tr","Turkce"], ["en","English"], ["de","Deutsch"], ["fr","Francais"], ["es","Espanol"],
@@ -2888,6 +2916,10 @@ function loadHistory() {
 function saveHistory() {
   userHistory.activeId = activeConversationId;
   localStorage.setItem(HISTORY_KEY, JSON.stringify(userHistory));
+  try {
+    if (activeConversationId) sessionStorage.setItem(PAGE_ACTIVE_CONVERSATION_KEY, activeConversationId);
+    else sessionStorage.removeItem(PAGE_ACTIVE_CONVERSATION_KEY);
+  } catch (_) {}
   saveSafeClientState({ activeConversationId, pending: null });
 }
 function loadSafeClientState() {
@@ -2925,6 +2957,10 @@ function saveSafeClientState(patch = {}) {
     };
     localStorage.setItem(SAFE_CLIENT_STATE_KEY, JSON.stringify(safeClientState));
   } catch (_) {}
+}
+function clearPageConversationState() {
+  try { sessionStorage.removeItem(PAGE_ACTIVE_CONVERSATION_KEY); } catch (_) {}
+  saveSafeClientState({ activeConversationId: null, draft: null, pending: null });
 }
 function saveDraftState(text) {
   const value = String(text || "");
@@ -3252,6 +3288,7 @@ function startNewTopConversation() {
   messageInput.value = "";
   setResponseLock(false);
   activeConversationId = null;
+  clearPageConversationState();
   clearChat();
   document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode", "luxta-top-visible", "luxta-topic-visible");
   luxtaPanel.classList.remove("active");
@@ -3885,7 +3922,7 @@ function setResponseLock(locked) {
   sendButton.style.background = locked ? "rgba(155,58,35,.92)" : "rgba(237,145,7,0.9)";
 }
 
-function createPacedWriter(targetEl, speedFactor = 1.35) {
+function createPacedWriter(targetEl, speedFactor = 0.9) {
   const queue = [];
   const baseDelay = 50;
   const delay = Math.max(22, Math.round(baseDelay / Math.max(0.2, speedFactor)));
@@ -3941,6 +3978,9 @@ function createPacedWriter(targetEl, speedFactor = 1.35) {
       if (!timer && !queue.length) return Promise.resolve();
       return new Promise(resolve => idleResolvers.push(resolve));
     },
+    expectedText() {
+      return current + queue.join("");
+    },
     stop() {
       stopped = true;
       queue.length = 0;
@@ -3981,6 +4021,51 @@ function continuePromptText() {
     : "Continue your previous answer from the exact point you stopped. Do not repeat earlier text.";
 }
 
+function normalizeContinuationText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[“”"']/g, "")
+    .trim();
+}
+
+function appendMergedText(base, addition) {
+  if (!addition) return base;
+  if (!base) return addition;
+  return /\s$/.test(base) || /^\s|^[.,;:!?)]/.test(addition) ? base + addition : base + " " + addition;
+}
+
+function trimRepeatedContinuationStart(baseText, incomingText) {
+  const base = String(baseText || "");
+  const incoming = String(incomingText || "");
+  if (!base || !incoming) return incoming;
+
+  const sentences = base
+    .split(/(?<=[.!?…])\s+|\n+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  for (let count = Math.min(2, sentences.length); count >= 1; count--) {
+    const tail = sentences.slice(-count).join(" ");
+    if (tail.length >= 12 && normalizeContinuationText(incoming).startsWith(normalizeContinuationText(tail))) {
+      return incoming.slice(tail.length).replace(/^\s+/, "");
+    }
+  }
+
+  const baseWords = [...base.matchAll(/\S+/g)];
+  const incomingWords = [...incoming.matchAll(/\S+/g)];
+  const maxWords = Math.min(28, baseWords.length, incomingWords.length);
+  for (let count = maxWords; count >= 2; count--) {
+    const left = baseWords.slice(-count).map(m => normalizeContinuationText(m[0])).join(" ");
+    const right = incomingWords.slice(0, count).map(m => normalizeContinuationText(m[0])).join(" ");
+    if (left && left === right) {
+      const lastWord = incomingWords[count - 1];
+      return incoming.slice(lastWord.index + lastWord[0].length).replace(/^\s+/, "");
+    }
+  }
+
+  return incoming;
+}
+
 function mergeContinuationText(baseText, incomingFullText) {
   const base = String(baseText || "");
   const incoming = String(incomingFullText || "");
@@ -3990,8 +4075,10 @@ function mergeContinuationText(baseText, incomingFullText) {
 
   const maxOverlap = Math.min(base.length, incoming.length);
   for (let size = maxOverlap; size >= 4; size--) {
-    if (base.slice(-size) === incoming.slice(0, size)) {
-      return base + incoming.slice(size);
+    const left = base.slice(-size);
+    const right = incoming.slice(0, size);
+    if (left === right) {
+      return appendMergedText(base, incoming.slice(size));
     }
   }
 
@@ -4000,7 +4087,13 @@ function mergeContinuationText(baseText, incomingFullText) {
     return incoming.length >= base.length ? incoming : base;
   }
 
-  return base + incoming;
+  const baseStartWords = [...base.matchAll(/\S+/g)].slice(0, 2).map(m => normalizeContinuationText(m[0])).join(" ");
+  const incomingStartWords = [...incoming.matchAll(/\S+/g)].slice(0, 2).map(m => normalizeContinuationText(m[0])).join(" ");
+  if (base.length <= 80 && baseStartWords && baseStartWords === incomingStartWords && incoming.length > base.length) {
+    return incoming;
+  }
+
+  return appendMergedText(base, trimRepeatedContinuationStart(base, incoming));
 }
 
 function showMiniToast(text) {
@@ -4037,10 +4130,12 @@ function appendResumeButton(afterMsgEl) {
   btn.innerText = currentLang === "tr" ? "Devam et" : "Continue";
   btn.onclick = () => {
     btn.remove();
-    if (aiResponding || !interruptedState || !afterMsgEl) return;
+    if (aiResponding) setResponseLock(false);
+    if (!interruptedState || !afterMsgEl) return;
     continueInterruptedResponse(afterMsgEl);
   };
   afterMsgEl.insertAdjacentElement("afterend", btn);
+  scrollBottom(true);
 }
 
 async function continueInterruptedResponse(targetAiEl) {
@@ -4053,7 +4148,7 @@ async function continueInterruptedResponse(targetAiEl) {
   const bridgeMessage = `${continuePromptText()}\n\nKullanıcı mesajı: ${state.userText}\nKaldığın metin: ${baseText}`;
   stopStreamRequested = false;
   setResponseLock(true);
-  const writer = createPacedWriter(targetAiEl, 1.35);
+  const writer = createPacedWriter(targetAiEl, 0.9);
   writer.setExact(baseText);
   activeGeneration = { runId: continueRunId, conversationId, messageEl: targetAiEl, writer, kind: "continue" };
   setPendingState({ conversationId, runId: continueRunId, kind: "continue" });
@@ -4061,7 +4156,13 @@ async function continueInterruptedResponse(targetAiEl) {
   const applyContinueChunk = (chunk) => {
     if (!chunk) return;
     continuedRawText += chunk;
-    writer.setExact(mergeContinuationText(baseText, continuedRawText));
+    const merged = mergeContinuationText(baseText, continuedRawText);
+    const expected = typeof writer.expectedText === "function" ? writer.expectedText() : (targetAiEl.innerText || "");
+    if (merged.startsWith(expected)) {
+      writer.push(merged.slice(expected.length));
+    } else {
+      forceFinalVisibleText(writer, targetAiEl, merged);
+    }
   };
   const payload = {
     message: bridgeMessage,
@@ -4077,18 +4178,21 @@ async function continueInterruptedResponse(targetAiEl) {
       responseText = await sendMessageViaSocket(
         payload,
         chunk => applyContinueChunk(chunk),
-        finalText => forceFinalVisibleText(writer, targetAiEl, mergeContinuationText(baseText, finalText))
+        null
       );
       await writer.waitIdle();
     } catch (_) {
       responseText = await sendMessageViaHttp(payload);
-      const merged = mergeContinuationText(baseText, responseText);
-      forceFinalVisibleText(writer, targetAiEl, merged);
+      applyContinueChunk(responseText);
       await writer.waitIdle();
     }
     if (responseRunId !== continueRunId) {
       setPendingState(null);
       return;
+    }
+    const finalMerged = mergeContinuationText(baseText, responseText);
+    if ((finalMerged || "").trim() && targetAiEl.innerText !== finalMerged) {
+      forceFinalVisibleText(writer, targetAiEl, finalMerged);
     }
     addMessageToHistoryForConversation(conversationId, "assistant", targetAiEl.innerText || responseText);
     setPendingState(null);
@@ -4177,7 +4281,7 @@ async function sendMessageLive(customText) {
 
   const aiDiv = appendMessage("ai", "", false);
   activeAiDiv = aiDiv;
-  const writer = createPacedWriter(aiDiv, 1.35);
+  const writer = createPacedWriter(aiDiv, 0.9);
   activeGeneration = { runId, conversationId, messageEl: aiDiv, writer, kind: "response" };
   setPendingState({ conversationId, runId, kind: "response" });
   const payload = {
@@ -4213,13 +4317,13 @@ async function sendMessageLive(customText) {
       responseText = await sendMessageViaSocket(
         payload,
         chunk => writer.push(chunk),
-        finalText => forceFinalVisibleText(writer, aiDiv, finalText)
+        null
       );
       await writer.waitIdle();
     } catch (socketErr) {
       if (stopStreamRequested) return;
       responseText = await sendMessageViaHttp(payload);
-      forceFinalVisibleText(writer, aiDiv, responseText);
+      writer.push(responseText);
       await writer.waitIdle();
     }
     if (stopStreamRequested) return;
@@ -4420,6 +4524,7 @@ document.querySelectorAll("[data-mode]").forEach(btn => {
     refreshTopActionButtons();
     setResponseLock(false);
     activeConversationId = null;
+    clearPageConversationState();
     clearChat();
     document.body.classList.remove("luxta-mode", "luxdream-mode", "luxeph-mode", "luxta-top-visible", "luxta-topic-visible");
     luxtaPanel.classList.remove("active");
