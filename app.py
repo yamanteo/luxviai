@@ -3049,7 +3049,7 @@ def safe_efficiency_dry_run(
 ) -> Dict[str, Any]:
     try:
         learning_context = safe_dict(plan.get("learning_context"))
-        return efficiency_router.dry_run(
+        decision = efficiency_router.dry_run(
             message=str(plan.get("message", "")),
             mode=mode or str(plan.get("mode", "luxviai")),
             analysis=safe_dict(plan.get("analysis")),
@@ -3062,7 +3062,10 @@ def safe_efficiency_dry_run(
             history_chars=history_chars,
             context_item_count=len(safe_list(learning_context.get("context_items"))),
             selected_layer_count=selected_layer_count(learning_context),
-        ).to_safe_dict()
+        )
+        data = decision.to_safe_dict()
+        data.update(decision.shadow_compare(context_chars))
+        return data
     except Exception:
         return {
             "efficiency_dry_run_route": "full_current_path",
@@ -3079,6 +3082,22 @@ def safe_efficiency_dry_run(
             "efficiency_dry_run_confidence": 0.0,
             "route_reason": "efficiency_router_fallback",
             "mandatory_guards_kept": "safety,identity,count,basic_command,cost_logging",
+            "shadow_compare_enabled": False,
+            "shadow_compare_route": "full_current_path",
+            "shadow_compare_summary": {
+                "route": "full_current_path",
+                "would_keep": ["safety", "identity_guard", "count_guard", "basic_command_intent"],
+                "would_limit_history_to": 18,
+                "would_skip": [],
+                "estimated_saved_chars": 0,
+                "confidence": 0.0,
+            },
+            "current_context_chars": context_chars,
+            "proposed_context_chars": context_chars,
+            "estimated_saved_chars": 0,
+            "proposed_history_limit": 18,
+            "proposed_skipped_layers": [],
+            "reason_tags": ["full_current_path", "efficiency_router_fallback"],
             "context_injected": False,
             "active": False,
             "version": "efficiency_router_fallback",
@@ -3167,6 +3186,15 @@ def record_cost_event(
         estimated_context_savings_chars=clamp_int(efficiency.get("estimated_context_savings_chars"), 0, 1000000, 0),
         estimated_layer_savings_count=clamp_int(efficiency.get("estimated_layer_savings_count"), 0, 100, 0),
         mandatory_guards_kept=str(efficiency.get("mandatory_guards_kept", "")),
+        shadow_compare_enabled=bool(efficiency.get("shadow_compare_enabled", False)),
+        shadow_compare_route=str(efficiency.get("shadow_compare_route", "")),
+        shadow_compare_summary=efficiency.get("shadow_compare_summary", {}),
+        current_context_chars=clamp_int(efficiency.get("current_context_chars"), 0, 1000000, 0),
+        proposed_context_chars=clamp_int(efficiency.get("proposed_context_chars"), 0, 1000000, 0),
+        estimated_saved_chars=clamp_int(efficiency.get("estimated_saved_chars"), 0, 1000000, 0),
+        proposed_history_limit=clamp_int(efficiency.get("proposed_history_limit"), 0, 100, 18),
+        proposed_skipped_layers=safe_list(efficiency.get("proposed_skipped_layers")),
+        reason_tags=safe_list(efficiency.get("reason_tags")),
         success=success,
         error_type=error_type,
     )

@@ -171,11 +171,61 @@ class EfficiencyDryRunDecision:
     active: bool = False
     version: str = "efficiency_router_dry_run_v1"
 
+    def proposed_skipped_layers(self) -> list[str]:
+        layers: list[str] = []
+        if self.would_skip_group3:
+            layers.append("group3_deep")
+        if self.would_skip_group4:
+            layers.append("group4_deep")
+        if self.would_skip_long_memory:
+            layers.append("long_memory")
+        return layers
+
+    def reason_tags(self) -> list[str]:
+        tags = [self.efficiency_dry_run_route, self.route_reason]
+        if self.would_use_short_context:
+            tags.append("short_context_candidate")
+        else:
+            tags.append("full_context_needed")
+        return [str(x)[:60] for x in tags if str(x).strip()][:6]
+
+    def shadow_compare(self, current_context_chars: int = 0) -> dict[str, Any]:
+        current = max(0, _safe_int(current_context_chars, 0))
+        saved = max(0, _safe_int(self.estimated_context_savings_chars, 0))
+        enabled = bool(
+            self.efficiency_dry_run_route == "short_technical_candidate"
+            and self.would_use_short_context
+            and _clamp_float(self.router_confidence) >= 0.70
+        )
+        proposed_context = max(0, current - min(current, saved))
+        skipped = self.proposed_skipped_layers()
+        keep = ["safety", "identity_guard", "count_guard", "basic_command_intent"]
+        summary = {
+            "route": self.efficiency_dry_run_route,
+            "would_keep": keep,
+            "would_limit_history_to": 3 if enabled else self.would_limit_history_to_last_n,
+            "would_skip": skipped if enabled else [],
+            "estimated_saved_chars": saved if enabled else 0,
+            "confidence": round(_clamp_float(self.router_confidence), 4),
+        }
+        return {
+            "shadow_compare_enabled": enabled,
+            "shadow_compare_route": self.efficiency_dry_run_route,
+            "shadow_compare_summary": summary,
+            "current_context_chars": current,
+            "proposed_context_chars": proposed_context if enabled else current,
+            "estimated_saved_chars": saved if enabled else 0,
+            "proposed_history_limit": 3 if enabled else self.would_limit_history_to_last_n,
+            "proposed_skipped_layers": skipped if enabled else [],
+            "mandatory_guards_kept": self.mandatory_guards_kept,
+            "reason_tags": self.reason_tags(),
+        }
+
     def to_safe_dict(self) -> dict[str, Any]:
         route = self.efficiency_dry_run_route
         if route not in DRY_RUN_ROUTES:
             route = "full_current_path"
-        return {
+        data = {
             "efficiency_dry_run_route": route,
             "would_use_short_context": bool(self.would_use_short_context),
             "would_limit_history_to_last_n": max(0, _safe_int(self.would_limit_history_to_last_n, 18)),
@@ -194,6 +244,8 @@ class EfficiencyDryRunDecision:
             "active": False,
             "version": self.version,
         }
+        data.update(self.shadow_compare())
+        return data
 
 
 @dataclass
