@@ -27,6 +27,8 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 from learning.dashboard_engine import LearningDashboardEngine
 from learning.pipeline import LearningPipeline
+from learning.cost_logger import CostLogger, estimate_tokens
+from learning.token_budget_policy import TokenBudgetPolicy
 
 try:
     from dotenv import load_dotenv
@@ -118,6 +120,8 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 # Learning Lab foundation (Aşama-1: hafif entegrasyon)
 learning_pipeline = LearningPipeline(BASE_DIR)
 learning_dashboard_engine = LearningDashboardEngine(BASE_DIR)
+token_budget_policy = TokenBudgetPolicy()
+cost_logger = CostLogger(BASE_DIR)
 
 # Aşama-1 Learning Lab dosya temeli (boşsa oluştur)
 try:
@@ -1114,6 +1118,7 @@ def enforce_count_guard(plan: Dict[str, Any], response_text: str) -> str:
     if not client or plan.get("kind") != "model":
         return repaired
     try:
+        plan["count_repair_call_count"] = clamp_int(plan.get("count_repair_call_count"), 0, 10, 0) + 1
         model_repair = call_model(
             build_count_repair_messages(plan, repaired, constraints),
             model=str(plan.get("model") or "deepseek-chat"),
@@ -2938,6 +2943,172 @@ def build_openai_messages(session: Dict[str, Any], prompt: str) -> List[Dict[str
     return messages
 
 
+def safe_token_budget_decision(
+    message: str,
+    mode: str,
+    analysis: Optional[Dict[str, Any]] = None,
+    count_constraints: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    try:
+        return token_budget_policy.classify(
+            message=message or "",
+            mode=mode or "luxviai",
+            analysis=analysis or {},
+            count_constraints=count_constraints or [],
+        ).to_safe_dict()
+    except Exception:
+        return {
+            "budget_class": "normal_chat",
+            "observe_only": True,
+            "active": False,
+            "route_reason": "policy_fallback",
+            "task_type": "chat",
+            "safety_level": "normal",
+            "count_constraint_present": bool(count_constraints),
+            "cache_hint": "none",
+            "version": "token_budget_policy_fallback",
+        }
+
+
+def history_metrics_from_messages(messages: List[Dict[str, str]]) -> tuple[int, int]:
+    history = [m for m in safe_list(messages)[1:] if isinstance(m, dict)]
+    return (
+        len(history),
+        sum(len(str(m.get("content", ""))) for m in history),
+    )
+
+
+def count_low_conf_suppressed(value: Any) -> int:
+    if isinstance(value, dict):
+        count = 0
+        for key, item in value.items():
+            key_text = str(key).lower()
+            if isinstance(item, dict):
+                summary = str(item.get("safe_summary", "")).lower()
+                reason = str(item.get("suppression_reason", "")).lower()
+                if "low_conf" in summary or reason == "low_confidence" or bool(item.get("low_confidence_suppressed")):
+                    count += 1
+                count += count_low_conf_suppressed(item)
+            elif isinstance(item, list):
+                count += count_low_conf_suppressed(item)
+            elif "low_conf" in key_text and bool(item):
+                count += 1
+        return count
+    if isinstance(value, list):
+        return sum(count_low_conf_suppressed(x) for x in value)
+    return 0
+
+
+def practical_support_candidate_count(learning_context: Dict[str, Any]) -> int:
+    practical = safe_dict(learning_context.get("practical_support_meta"))
+    if practical:
+        return clamp_int(practical.get("candidate_count"), 0, 100, 0)
+    return 0
+
+
+def selected_layer_count(learning_context: Dict[str, Any]) -> int:
+    count = 0
+    for key in [
+        "group1_layer_signals",
+        "group2_layer_signals",
+        "group3_bundle",
+        "group4_bundle",
+        "micro_human_bridge_meta",
+        "lux_language_sense_meta",
+        "practical_support_meta",
+        "human_risk",
+    ]:
+        value = learning_context.get(key)
+        if isinstance(value, dict) and value:
+            count += 1
+    return count
+
+
+def safety_level_from_plan(plan: Dict[str, Any]) -> str:
+    budget = safe_dict(plan.get("token_budget"))
+    if budget.get("safety_level"):
+        return str(budget.get("safety_level"))
+    safety = safe_dict(safe_dict(plan.get("analysis")).get("safety_layer"))
+    if safe_dict(plan.get("analysis")).get("crisis_risk") or safety.get("route_to_emergency"):
+        return "crisis"
+    if safety.get("needs_gentle_check") or safety.get("has_crisis_keyword"):
+        return "sensitive"
+    return str(safety.get("crisis_level", "normal") or "normal")
+
+
+def record_cost_event(
+    *,
+    endpoint: str,
+    route: str,
+    plan: Optional[Dict[str, Any]] = None,
+    mode: str = "luxviai",
+    model: str = "",
+    prompt_chars: int = 0,
+    context_chars: int = 0,
+    history_message_count: int = 0,
+    history_chars: int = 0,
+    max_tokens: int = 0,
+    finish_reason: str = "",
+    auto_continue_parts: int = 0,
+    model_ms: int = 0,
+    first_chunk_ms: Optional[int] = None,
+    total_ms: int = 0,
+    response_text: str = "",
+    success: bool = True,
+    error_type: str = "",
+) -> None:
+    plan = plan or {}
+    learning_context = safe_dict(plan.get("learning_context"))
+    budget = safe_dict(plan.get("token_budget")) or safe_token_budget_decision(
+        str(plan.get("message", "")),
+        mode,
+        safe_dict(plan.get("analysis")),
+        safe_list(plan.get("count_constraints")),
+    )
+    context_items = safe_list(learning_context.get("context_items"))
+    estimated_output_tokens = estimate_tokens(len(str(response_text or "")))
+    cost_logger.record(
+        route=route,
+        endpoint=endpoint,
+        mode=mode or str(plan.get("mode", "luxviai")),
+        model=model or str(plan.get("model", "")),
+        budget_class=str(budget.get("budget_class", "normal_chat")),
+        observe_only=bool(budget.get("observe_only", True)),
+        policy_active=bool(budget.get("active", False)),
+        prompt_chars=prompt_chars,
+        context_chars=context_chars,
+        history_chars=history_chars,
+        system_template_version="lux_system_prompt_v1",
+        history_message_count=history_message_count,
+        context_item_count=len(context_items),
+        selected_layer_count=selected_layer_count(learning_context),
+        low_conf_suppressed_count=count_low_conf_suppressed(learning_context),
+        max_tokens=max_tokens,
+        finish_reason=finish_reason,
+        auto_continue_parts=auto_continue_parts,
+        model_ms=model_ms,
+        first_chunk_ms=first_chunk_ms,
+        total_ms=total_ms,
+        repair_call_count=clamp_int(plan.get("count_repair_call_count"), 0, 10, 0),
+        count_guard_active=bool(safe_list(plan.get("count_constraints"))),
+        safety_suppressed=safety_level_from_plan(plan) in {"sensitive", "high_risk", "crisis"},
+        route_reason=str(budget.get("route_reason", "")),
+        intent_bucket=str(budget.get("budget_class", "normal_chat")),
+        task_type=str(budget.get("task_type", "")),
+        count_constraint_present=bool(budget.get("count_constraint_present", False)),
+        safety_level=safety_level_from_plan(plan),
+        memory_recall_bucket="present" if safe_list(plan.get("memory_preview")) else "none",
+        project_topic_hash="none",
+        prompt_char_count=prompt_chars,
+        practical_support_candidate_count=practical_support_candidate_count(learning_context),
+        estimated_output_tokens=estimated_output_tokens,
+        cache_hint=str(budget.get("cache_hint", "none")),
+        cache_status="unavailable",
+        success=success,
+        error_type=error_type,
+    )
+
+
 def choose_generation_params(mode: str, analysis: Dict[str, Any]) -> tuple[str, float, int]:
     intensity = clamp_int(analysis.get("intensity", 5), 1, 10, 5)
     policy = safe_dict(analysis.get("response_policy"))
@@ -3899,6 +4070,7 @@ def prepare_luxeph_plan(
     count_hint = count_guard_hint(count_constraints)
     if count_hint:
         runtime_hints.append(count_hint)
+    token_budget = safe_token_budget_decision(message, "luxeph", analysis, count_constraints)
     prompt = build_system_prompt(profile, analysis, "luxeph", [], digest, location, runtime_hints=runtime_hints)
     model, temp, max_tokens = choose_generation_params("luxeph", analysis)
     return {
@@ -3921,6 +4093,7 @@ def prepare_luxeph_plan(
         "mode": "luxeph",
         "message": message,
         "count_constraints": count_constraints,
+        "token_budget": token_budget,
         "meta": {"mode": "luxeph", "session_id": None, "ephemeral": True},
     }
 
@@ -4033,6 +4206,7 @@ def prepare_chat_plan(
     count_hint = count_guard_hint(count_constraints)
     if count_hint:
         runtime_hints.append(count_hint)
+    token_budget = safe_token_budget_decision(message, mode, analysis, count_constraints)
     if identity_boundary == "correction":
         runtime_hints.append("Kullanıcı isim düzeltmesi yaptı: yanlış hitabı kısa kabul et ve o adı tekrar kullanma.")
     elif identity_boundary == "identity":
@@ -4087,6 +4261,7 @@ def prepare_chat_plan(
             },
             "weekly_report": digest,
             "memory_preview": retrieve_memory_snippets(message, session, notes, garden, profile, limit=5),
+            "token_budget": token_budget,
         }
 
     add_analysis(session, analysis)
@@ -4161,6 +4336,7 @@ def prepare_chat_plan(
         "learning_context": learning_context,
         "identity_boundary": identity_boundary,
         "count_constraints": count_constraints,
+        "token_budget": token_budget,
         "user_id": user_id,
         "mode": mode,
         "message": message,
@@ -5418,12 +5594,26 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
     plan_ms = ms_since(plan_start)
 
     if plan["kind"] == "command":
+        command_budget = safe_token_budget_decision(msg, plan.get("mode", request.mode), {}, extract_count_constraints(msg))
         log_latency(
             "chat_command",
             total_ms=ms_since(request_start),
             plan_ms=plan_ms,
             message_chars=len(msg),
             mode=plan.get("mode", request.mode),
+        )
+        record_cost_event(
+            endpoint="/chat",
+            route="command",
+            plan={
+                "message": msg,
+                "mode": plan.get("mode", request.mode),
+                "token_budget": command_budget,
+                "count_constraints": extract_count_constraints(msg),
+            },
+            mode=plan.get("mode", request.mode),
+            total_ms=ms_since(request_start),
+            success=True,
         )
         return {
             "response": plan["response"],
@@ -5438,6 +5628,14 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
             message_chars=len(msg),
             mode=plan.get("mode", request.mode),
         )
+        record_cost_event(
+            endpoint="/chat",
+            route="crisis",
+            plan=plan,
+            mode=plan.get("mode", request.mode),
+            total_ms=ms_since(request_start),
+            success=True,
+        )
         return {
             "response": plan["response"],
             "weekly_report": plan.get("weekly_report", {}),
@@ -5448,6 +5646,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
     model_start = perf_counter()
     finish_reason = ""
     auto_parts = 0
+    model_error_type = ""
     try:
         response_text, finish_reason = call_model_with_finish(
             plan["openai_messages"],
@@ -5461,6 +5660,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
             response_text, finish_reason, auto_parts = auto_continue_text(plan, response_text, finish_reason)
     except Exception as e:
         logging.warning(f"Model error fallback used: {e}")
+        model_error_type = type(e).__name__
         if is_model_auth_error(e):
             response_text = auth_error_response()
         else:
@@ -5475,6 +5675,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
     digest_data = finalize_chat(plan, response_text)
     finalize_ms = ms_since(finalize_start)
     live_ctx_text = str(safe_dict(plan.get("learning_context")).get("context_text", "")).strip()
+    history_count, history_chars = history_metrics_from_messages(safe_list(plan.get("openai_messages")))
     log_latency(
         "chat_model",
         total_ms=ms_since(request_start),
@@ -5488,6 +5689,25 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
         max_tokens=plan.get("max_tokens"),
         finish_reason=finish_reason,
         auto_continue_parts=auto_parts,
+    )
+    record_cost_event(
+        endpoint="/chat",
+        route="model" if not model_error_type else "model_fallback",
+        plan=plan,
+        mode=plan.get("mode", request.mode),
+        model=plan.get("model", ""),
+        prompt_chars=len(str(plan.get("prompt", ""))),
+        context_chars=len(live_ctx_text),
+        history_message_count=history_count,
+        history_chars=history_chars,
+        max_tokens=clamp_int(plan.get("max_tokens"), 0, 100000, 0),
+        finish_reason=finish_reason,
+        auto_continue_parts=auto_parts,
+        model_ms=model_ms,
+        total_ms=ms_since(request_start),
+        response_text=response_text,
+        success=not bool(model_error_type),
+        error_type=model_error_type,
     )
     if plan.get("kind") == "model" and not plan.get("skip_save"):
         background_tasks.add_task(
@@ -5564,6 +5784,7 @@ async def ws_chat(websocket: WebSocket):
             plan_ms = ms_since(plan_start)
 
             if plan["kind"] == "command":
+                command_budget = safe_token_budget_decision(msg, plan.get("mode", request.mode), {}, extract_count_constraints(msg))
                 log_latency(
                     "ws_command",
                     total_ms=ms_since(turn_start),
@@ -5571,6 +5792,19 @@ async def ws_chat(websocket: WebSocket):
                     typing_ms=typing_ms,
                     message_chars=len(msg),
                     mode=plan.get("mode", request.mode),
+                )
+                record_cost_event(
+                    endpoint="/ws/chat",
+                    route="command",
+                    plan={
+                        "message": msg,
+                        "mode": plan.get("mode", request.mode),
+                        "token_budget": command_budget,
+                        "count_constraints": extract_count_constraints(msg),
+                    },
+                    mode=plan.get("mode", request.mode),
+                    total_ms=ms_since(turn_start),
+                    success=True,
                 )
                 await websocket.send_json({
                     "type": "done",
@@ -5587,6 +5821,14 @@ async def ws_chat(websocket: WebSocket):
                     typing_ms=typing_ms,
                     message_chars=len(msg),
                     mode=plan.get("mode", request.mode),
+                )
+                record_cost_event(
+                    endpoint="/ws/chat",
+                    route="crisis",
+                    plan=plan,
+                    mode=plan.get("mode", request.mode),
+                    total_ms=ms_since(turn_start),
+                    success=True,
                 )
                 await websocket.send_json({
                     "type": "done",
@@ -5687,6 +5929,7 @@ async def ws_chat(websocket: WebSocket):
                 digest_data = finalize_chat(plan, response_text)
                 finalize_ms = ms_since(finalize_start)
                 live_ctx_text = str(safe_dict(plan.get("learning_context")).get("context_text", "")).strip()
+                history_count, history_chars = history_metrics_from_messages(safe_list(plan.get("openai_messages")))
                 log_latency(
                     "ws_model",
                     total_ms=ms_since(turn_start),
@@ -5702,6 +5945,25 @@ async def ws_chat(websocket: WebSocket):
                     max_tokens=plan.get("max_tokens"),
                     finish_reason=finish_reason,
                     auto_continue_parts=auto_parts,
+                )
+                record_cost_event(
+                    endpoint="/ws/chat",
+                    route="model",
+                    plan=plan,
+                    mode=plan.get("mode", request.mode),
+                    model=plan.get("model", ""),
+                    prompt_chars=len(str(plan.get("prompt", ""))),
+                    context_chars=len(live_ctx_text),
+                    history_message_count=history_count,
+                    history_chars=history_chars,
+                    max_tokens=clamp_int(plan.get("max_tokens"), 0, 100000, 0),
+                    finish_reason=finish_reason,
+                    auto_continue_parts=auto_parts,
+                    model_ms=stream_ms,
+                    first_chunk_ms=first_chunk_ms,
+                    total_ms=ms_since(turn_start),
+                    response_text=response_text,
+                    success=True,
                 )
 
                 await websocket.send_json({
@@ -5734,6 +5996,8 @@ async def ws_chat(websocket: WebSocket):
                 finalize_start = perf_counter()
                 digest_data = finalize_chat(plan, response_text)
                 finalize_ms = ms_since(finalize_start)
+                live_ctx_text = str(safe_dict(plan.get("learning_context")).get("context_text", "")).strip()
+                history_count, history_chars = history_metrics_from_messages(safe_list(plan.get("openai_messages")))
                 log_latency(
                     "ws_fallback",
                     total_ms=ms_since(turn_start),
@@ -5744,6 +6008,26 @@ async def ws_chat(websocket: WebSocket):
                     finalize_ms=finalize_ms,
                     message_chars=len(msg),
                     mode=plan.get("mode", request.mode),
+                )
+                record_cost_event(
+                    endpoint="/ws/chat",
+                    route="model_fallback",
+                    plan=plan,
+                    mode=plan.get("mode", request.mode),
+                    model=plan.get("model", ""),
+                    prompt_chars=len(str(plan.get("prompt", ""))),
+                    context_chars=len(live_ctx_text),
+                    history_message_count=history_count,
+                    history_chars=history_chars,
+                    max_tokens=clamp_int(plan.get("max_tokens"), 0, 100000, 0),
+                    finish_reason=finish_reason,
+                    auto_continue_parts=auto_parts,
+                    model_ms=stream_ms,
+                    first_chunk_ms=first_chunk_ms,
+                    total_ms=ms_since(turn_start),
+                    response_text=response_text,
+                    success=False,
+                    error_type=type(e).__name__,
                 )
                 await websocket.send_json({
                     "type": "done",
