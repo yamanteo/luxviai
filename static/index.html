@@ -4006,6 +4006,20 @@ function forceFinalVisibleText(writer, targetEl, finalText) {
   }
 }
 
+function reconcileFinalText(writer, targetEl, finalText) {
+  const text = String(finalText || "").trim();
+  if (!text || !targetEl) return;
+  const expected = writer && typeof writer.expectedText === "function"
+    ? writer.expectedText()
+    : (targetEl.innerText || "");
+  if (text === expected || text === targetEl.innerText) return;
+  if (writer && typeof writer.push === "function" && text.startsWith(expected)) {
+    writer.push(text.slice(expected.length));
+    return;
+  }
+  forceFinalVisibleText(writer, targetEl, text);
+}
+
 function stopActiveResponse() {
   stopStreamRequested = true;
   if (typeof streamAbort === "function") {
@@ -4178,7 +4192,7 @@ async function continueInterruptedResponse(targetAiEl) {
       responseText = await sendMessageViaSocket(
         payload,
         chunk => applyContinueChunk(chunk),
-        null
+        finalText => reconcileFinalText(writer, targetAiEl, mergeContinuationText(baseText, finalText))
       );
       await writer.waitIdle();
     } catch (_) {
@@ -4317,7 +4331,7 @@ async function sendMessageLive(customText) {
       responseText = await sendMessageViaSocket(
         payload,
         chunk => writer.push(chunk),
-        null
+        finalText => reconcileFinalText(writer, aiDiv, finalText)
       );
       await writer.waitIdle();
     } catch (socketErr) {

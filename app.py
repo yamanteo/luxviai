@@ -2430,7 +2430,126 @@ def choose_generation_params(mode: str, analysis: Dict[str, Any]) -> tuple[str, 
     return ("deepseek-chat", clamp_float(0.52 + temp_shift, 0.42, 0.64, 0.55), tokens)
 
 
+def requested_long_answer_token_floor(message: str) -> int:
+    low = (message or "").lower()
+    long_form_words = ["madde", "başlık", "baslik", "item", "section", "bölüm", "bolum", "liste"]
+    counts = [int(x) for x in re.findall(r"\d{1,3}", low)] if any(w in low for w in long_form_words) else []
+    if not counts and any(k in low for k in ["kısa", "kisa", "özet", "ozet", "tek cümle", "tek cumle"]):
+        return 0
+    if not counts:
+        return 0
+    requested = max(counts)
+    if requested >= 50:
+        return 2600
+    if requested >= 20:
+        return 1800
+    if requested >= 10:
+        return 1300
+    return 0
+
+
+def normalize_overlap_text(text: str) -> str:
+    return re.sub(r"\s+", " ", str(text or "").lower()).replace('"', "").replace("'", "").strip()
+
+
+def append_merged_text(base: str, addition: str) -> str:
+    if not addition:
+        return base
+    if not base:
+        return addition
+    if base[-1:].isspace() or addition[:1].isspace() or addition[:1] in ".,;:!?)]":
+        return base + addition
+    return base + " " + addition
+
+
+def trim_repeated_continuation_start(base_text: str, incoming_text: str) -> str:
+    base = str(base_text or "")
+    incoming = str(incoming_text or "")
+    if not base or not incoming:
+        return incoming
+
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?…])\s+|\n+", base) if s.strip()]
+    for count in range(min(2, len(sentences)), 0, -1):
+        tail = " ".join(sentences[-count:])
+        if len(tail) >= 12 and normalize_overlap_text(incoming).startswith(normalize_overlap_text(tail)):
+            return incoming[len(tail):].lstrip()
+
+    base_words = list(re.finditer(r"\S+", base))
+    incoming_words = list(re.finditer(r"\S+", incoming))
+    for count in range(min(28, len(base_words), len(incoming_words)), 1, -1):
+        left = " ".join(normalize_overlap_text(m.group(0)) for m in base_words[-count:])
+        right = " ".join(normalize_overlap_text(m.group(0)) for m in incoming_words[:count])
+        if left and left == right:
+            return incoming[incoming_words[count - 1].end():].lstrip()
+    return incoming
+
+
+def merge_continuation_text(base_text: str, incoming_text: str) -> str:
+    base = str(base_text or "")
+    incoming = str(incoming_text or "")
+    if not incoming:
+        return base
+    if not base:
+        return incoming
+    if incoming.startswith(base):
+        return incoming
+
+    for size in range(min(len(base), len(incoming)), 3, -1):
+        if base[-size:] == incoming[:size]:
+            return append_merged_text(base, incoming[size:])
+
+    probe = min(20, len(base), len(incoming))
+    if probe >= 8 and base[:probe].lower() == incoming[:probe].lower():
+        return incoming if len(incoming) >= len(base) else base
+
+    base_words = [normalize_overlap_text(x.group(0)) for x in re.finditer(r"\S+", base)]
+    incoming_words = [normalize_overlap_text(x.group(0)) for x in re.finditer(r"\S+", incoming)]
+    if len(base) <= 80 and base_words[:2] and base_words[:2] == incoming_words[:2] and len(incoming) > len(base):
+        return incoming
+    return append_merged_text(base, trim_repeated_continuation_start(base, incoming))
+
+
+def looks_incomplete_response(text: str) -> bool:
+    stripped = (text or "").strip()
+    if not stripped:
+        return True
+    return stripped[-1] not in ".!?…):]»”\"'"
+
+
+def build_continuation_messages(messages: List[Dict[str, str]], partial_text: str) -> List[Dict[str, str]]:
+    return messages + [
+        {"role": "assistant", "content": partial_text},
+        {
+            "role": "user",
+            "content": (
+                "Devam et. Önceki metni tekrar etme; kaldığın yerden sürdür. "
+                "Başlığı veya son cümleyi yeniden yazma. Cevabı doğal şekilde tamamla."
+            ),
+        },
+    ]
+
+
+def should_auto_continue_response(finish_reason: str, response_text: str, plan: Dict[str, Any]) -> bool:
+    if plan.get("kind") != "model" or plan.get("skip_save"):
+        return False
+    if (plan.get("mode") or "") in {"luxta", "luxeph"}:
+        return False
+    message = str(plan.get("message", "")).lower()
+    if not requested_long_answer_token_floor(message) and any(k in message for k in ["kısa", "kisa", "özet", "ozet", "tek cümle", "tek cumle"]):
+        return False
+    if finish_reason == "length":
+        return True
+    if requested_long_answer_token_floor(message) and looks_incomplete_response(response_text):
+        return True
+    return False
+
+
 def call_model(messages: List[Dict[str, str]], model: str, temperature: float, max_tokens: int) -> str:
+    text, _ = call_model_with_finish(messages, model, temperature, max_tokens)
+    return text
+
+
+def call_model_with_finish(messages: List[Dict[str, str]], model: str, temperature: float, max_tokens: int) -> tuple[str, str]:
     if not client:
         raise RuntimeError("DeepSeek API key missing")
 
@@ -2443,7 +2562,8 @@ def call_model(messages: List[Dict[str, str]], model: str, temperature: float, m
             temperature=temperature,
             max_tokens=max_tokens,
         )
-        return (response.choices[0].message.content or "").strip()
+        choice = response.choices[0]
+        return (choice.message.content or "").strip(), str(getattr(choice, "finish_reason", "") or "")
     finally:
         log_latency(
             "model_call",
@@ -2472,11 +2592,15 @@ def stream_model(messages: List[Dict[str, str]], model: str, temperature: float,
         )
         for part in stream:
             try:
-                chunk = part.choices[0].delta.content or ""
+                choice = part.choices[0]
+                chunk = choice.delta.content or ""
                 if chunk:
                     if first_chunk_ms is None:
                         first_chunk_ms = ms_since(api_start)
-                    yield chunk
+                    yield {"text": chunk, "finish_reason": ""}
+                finish_reason = str(getattr(choice, "finish_reason", "") or "")
+                if finish_reason:
+                    yield {"text": "", "finish_reason": finish_reason}
             except Exception:
                 continue
     finally:
@@ -3409,6 +3533,9 @@ def prepare_chat_plan(
         prompt += "\n- " + "\n- ".join(hint_lines[:3])
     openai_messages = build_openai_messages(session, prompt)
     model, temp, max_tokens = choose_generation_params(mode, analysis)
+    token_floor = requested_long_answer_token_floor(message)
+    if token_floor:
+        max_tokens = max(max_tokens, token_floor)
     prompt_ms = ms_since(prompt_start)
     log_latency(
         "prepare_model_plan",
@@ -3478,6 +3605,31 @@ def finalize_chat(plan: Dict[str, Any], response_text: str):
 
 def chat_fallback_response(plan: Dict[str, Any]) -> str:
     return fallback_reply(plan["mode"], plan["analysis"])
+
+
+def auto_continue_text(plan: Dict[str, Any], response_text: str, finish_reason: str, max_parts: int = 2) -> tuple[str, str, int]:
+    merged = (response_text or "").strip()
+    reason = finish_reason or ""
+    parts = 0
+    while parts < max_parts and should_auto_continue_response(reason, merged, plan):
+        parts += 1
+        try:
+            continuation, reason = call_model_with_finish(
+                build_continuation_messages(plan["openai_messages"], merged),
+                model=plan["model"],
+                temperature=plan["temperature"],
+                max_tokens=min(max(int(plan.get("max_tokens") or 840), 700), 1200),
+            )
+        except Exception as e:
+            logging.warning(f"Auto continuation stopped: {e}")
+            break
+        if not continuation:
+            break
+        next_merged = merge_continuation_text(merged, continuation)
+        if next_merged == merged:
+            break
+        merged = next_merged.strip()
+    return merged, reason, parts
 
 
 def auth_error_response() -> str:
@@ -4704,8 +4856,10 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
         }
 
     model_start = perf_counter()
+    finish_reason = ""
+    auto_parts = 0
     try:
-        response_text = call_model(
+        response_text, finish_reason = call_model_with_finish(
             plan["openai_messages"],
             model=plan["model"],
             temperature=plan["temperature"],
@@ -4713,6 +4867,8 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
         )
         if not response_text:
             response_text = chat_fallback_response(plan)
+        else:
+            response_text, finish_reason, auto_parts = auto_continue_text(plan, response_text, finish_reason)
     except Exception as e:
         logging.warning(f"Model error fallback used: {e}")
         if is_model_auth_error(e):
@@ -4737,6 +4893,8 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
         context_chars=len(live_ctx_text),
         mode=plan.get("mode", request.mode),
         max_tokens=plan.get("max_tokens"),
+        finish_reason=finish_reason,
+        auto_continue_parts=auto_parts,
     )
     if plan.get("kind") == "model" and not plan.get("skip_save"):
         background_tasks.add_task(
@@ -4850,6 +5008,8 @@ async def ws_chat(websocket: WebSocket):
             first_chunk_ms = None
             stream_ms = 0
             finalize_ms = 0
+            finish_reason = ""
+            auto_parts = 0
             try:
                 if not typing_sent:
                     await websocket.send_json({
@@ -4864,21 +5024,53 @@ async def ws_chat(websocket: WebSocket):
 
                 if client:
                     stream_start = perf_counter()
-                    for chunk in stream_model(
+                    for event in stream_model(
                         plan["openai_messages"],
                         model=plan["model"],
                         temperature=plan["temperature"],
                         max_tokens=plan["max_tokens"],
                     ):
-                        if first_chunk_ms is None:
-                            first_chunk_ms = ms_since(turn_start)
-                        full.append(chunk)
-                        await websocket.send_json({"type": "chunk", "text": chunk})
-                        if STREAM_CHUNK_DELAY > 0:
-                            await asyncio.sleep(STREAM_CHUNK_DELAY)
+                        chunk = str(safe_dict(event).get("text", ""))
+                        event_finish = str(safe_dict(event).get("finish_reason", "") or "")
+                        if event_finish:
+                            finish_reason = event_finish
+                        if chunk:
+                            if first_chunk_ms is None:
+                                first_chunk_ms = ms_since(turn_start)
+                            full.append(chunk)
+                            await websocket.send_json({"type": "chunk", "text": chunk})
+                            if STREAM_CHUNK_DELAY > 0:
+                                await asyncio.sleep(STREAM_CHUNK_DELAY)
                     stream_ms = ms_since(stream_start)
 
                     response_text = "".join(full).strip() or chat_fallback_response(plan)
+                    while auto_parts < 2 and should_auto_continue_response(finish_reason, response_text, plan):
+                        auto_parts += 1
+                        continuation_full = []
+                        continuation_reason = ""
+                        for event in stream_model(
+                            build_continuation_messages(plan["openai_messages"], response_text),
+                            model=plan["model"],
+                            temperature=plan["temperature"],
+                            max_tokens=min(max(int(plan.get("max_tokens") or 840), 700), 1200),
+                        ):
+                            chunk = str(safe_dict(event).get("text", ""))
+                            event_finish = str(safe_dict(event).get("finish_reason", "") or "")
+                            if event_finish:
+                                continuation_reason = event_finish
+                            if chunk:
+                                continuation_full.append(chunk)
+                        continuation_text = "".join(continuation_full).strip()
+                        if not continuation_text:
+                            break
+                        merged = merge_continuation_text(response_text, continuation_text)
+                        suffix = merged[len(response_text):] if merged.startswith(response_text) else merged
+                        if not suffix or merged == response_text:
+                            break
+                        response_text = merged.strip()
+                        full.append(suffix)
+                        await websocket.send_json({"type": "chunk", "text": suffix})
+                        finish_reason = continuation_reason
                 else:
                     response_text = chat_fallback_response(plan)
 
@@ -4906,6 +5098,8 @@ async def ws_chat(websocket: WebSocket):
                     context_chars=len(live_ctx_text),
                     mode=plan.get("mode", request.mode),
                     max_tokens=plan.get("max_tokens"),
+                    finish_reason=finish_reason,
+                    auto_continue_parts=auto_parts,
                 )
 
                 await websocket.send_json({
@@ -4921,6 +5115,8 @@ async def ws_chat(websocket: WebSocket):
                         "cognitive_load": plan["analysis"].get("cognitive_load"),
                         "crisis_context": safe_dict(plan["analysis"].get("safety_layer")).get("crisis_context"),
                         "ephemeral": bool(plan.get("skip_save")),
+                        "finish_reason": finish_reason,
+                        "auto_continue_parts": auto_parts,
                     },
                 })
             except Exception as e:
