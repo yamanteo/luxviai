@@ -645,6 +645,224 @@ def compact_text(text: str, limit: int = 160) -> str:
     return text[:limit] + ("..." if len(text) > limit else "")
 
 
+def fold_identity_text(text: str) -> str:
+    folded = (text or "").strip().lower()
+    replacements = {
+        "ı": "i",
+        "İ": "i",
+        "ğ": "g",
+        "ü": "u",
+        "ş": "s",
+        "ö": "o",
+        "ç": "c",
+    }
+    for src, dst in replacements.items():
+        folded = folded.replace(src, dst)
+    return re.sub(r"\s+", " ", folded)
+
+
+def normalize_identity_name(name: str) -> str:
+    raw = re.sub(r"[^\wÇĞİÖŞÜçğıöşü\s-]", "", name or "", flags=re.UNICODE)
+    parts = [p for p in re.split(r"\s+", raw.strip()) if p]
+    parts = parts[:2]
+    cleaned = " ".join(part[:1].upper() + part[1:] for part in parts)
+    return cleaned[:48].strip()
+
+
+def identity_name_key(name: str) -> str:
+    return fold_identity_text(normalize_identity_name(name))
+
+
+def default_identity_memory() -> Dict[str, Any]:
+    return {
+        "preferred_name": "",
+        "source": "",
+        "confidence": "none",
+        "updated_at": None,
+        "rejected_names": [],
+    }
+
+
+IDENTITY_NAME_PATTERN = r"([A-Za-zÇĞİÖŞÜçğıöşü][A-Za-zÇĞİÖŞÜçğıöşü-]{1,24}(?:\s+[A-Za-zÇĞİÖŞÜçğıöşü][A-Za-zÇĞİÖŞÜçğıöşü-]{1,24})?)"
+
+
+def detect_identity_directive(message: str) -> Dict[str, Any]:
+    text = re.sub(r"\s+", " ", (message or "").strip())
+    if not text:
+        return {"kind": "none"}
+    folded = fold_identity_text(text)
+
+    reject_patterns = [
+        rf"\bben\s+{IDENTITY_NAME_PATTERN}\s+degilim\b",
+        rf"\bbana\s+{IDENTITY_NAME_PATTERN}\s+deme\b",
+        rf"\badim\s+{IDENTITY_NAME_PATTERN}\s+degil\b",
+        rf"\b{IDENTITY_NAME_PATTERN}\s+benim\s+adim\s+degil\b",
+    ]
+    for pattern in reject_patterns:
+        match = re.search(pattern, folded, flags=re.IGNORECASE)
+        if match:
+            return {"kind": "correction", "name": normalize_identity_name(match.group(1))}
+    if any(x in folded for x in ("yanlis isim soyledin", "yanlis isim kullandin", "ismimi yanlis soyledin")):
+        return {"kind": "correction", "name": ""}
+
+    accept_patterns = [
+        rf"^(?:benim\s+)?(?:adim|ismim|isimim)\s+{IDENTITY_NAME_PATTERN}\b",
+        rf"^bana\s+{IDENTITY_NAME_PATTERN}\s+(?:de|diye\s+hitap\s+et)\b",
+        rf"^bundan\s+sonra\s+bana\s+{IDENTITY_NAME_PATTERN}\s+diye\s+hitap\s+et\b",
+    ]
+    for pattern in accept_patterns:
+        match = re.search(pattern, folded, flags=re.IGNORECASE)
+        if match:
+            name = normalize_identity_name(match.group(1))
+            if name and not re.search(r"\b(ornek|referans|karakter|adli|hakkinda|geldi|mesaj|cv)\b", folded):
+                return {"kind": "identity", "name": name}
+
+    return {"kind": "none"}
+
+
+def apply_identity_guard(profile: Dict[str, Any], message: str) -> Dict[str, Any]:
+    profile = ensure_profile_shape(profile)
+    identity = safe_dict(profile.get("identity_memory"))
+    rejected = [normalize_identity_name(x) for x in safe_list(identity.get("rejected_names")) if normalize_identity_name(str(x))]
+    rejected_keys = {identity_name_key(x) for x in rejected}
+    directive = detect_identity_directive(message)
+    changed = False
+
+    if directive.get("kind") == "correction":
+        rejected_name = normalize_identity_name(str(directive.get("name", "")))
+        current_name = normalize_identity_name(str(identity.get("preferred_name", "")))
+        if rejected_name:
+            key = identity_name_key(rejected_name)
+            if key and key not in rejected_keys:
+                rejected.append(rejected_name)
+                rejected_keys.add(key)
+                changed = True
+            if current_name and identity_name_key(current_name) == key:
+                identity["preferred_name"] = ""
+                identity["source"] = "user_correction"
+                identity["confidence"] = "none"
+                changed = True
+        else:
+            if current_name:
+                key = identity_name_key(current_name)
+                if key and key not in rejected_keys:
+                    rejected.append(current_name)
+                    changed = True
+            identity["preferred_name"] = ""
+            identity["source"] = "user_correction"
+            identity["confidence"] = "none"
+            changed = True
+
+    elif directive.get("kind") == "identity":
+        name = normalize_identity_name(str(directive.get("name", "")))
+        key = identity_name_key(name)
+        if name and key and key not in rejected_keys:
+            if identity.get("preferred_name") != name or identity.get("confidence") != "explicit":
+                identity["preferred_name"] = name
+                identity["source"] = "explicit_user_statement"
+                identity["confidence"] = "explicit"
+                changed = True
+
+    identity["rejected_names"] = rejected[-20:]
+    if changed:
+        identity["updated_at"] = now_iso()
+    identity["last_directive"] = directive.get("kind", "none")
+    profile["identity_memory"] = identity
+    return profile
+
+
+def classify_identity_command_boundary(message: str) -> str:
+    directive = detect_identity_directive(message)
+    if directive.get("kind") == "identity":
+        return "identity"
+    if directive.get("kind") == "correction":
+        return "correction"
+    folded = fold_identity_text(message)
+    if re.search(r"\bcv(?:'|`|de|da|\s+de|\s+da)?\b", folded) and any(x in folded for x in ("referans", "olsun", "ekle")):
+        return "content"
+    if re.search(r"\b(hazirla|yaz|olustur|duzenle|gonder|mesaj yaz)\b", folded):
+        return "command"
+    return "chat"
+
+
+def extract_capitalized_name_candidates(text: str) -> List[str]:
+    candidates: List[str] = []
+    for match in re.finditer(r"\b([A-ZÇĞİÖŞÜ][A-Za-zÇĞİÖŞÜçğıöşü-]{1,24})(?:\s+([A-ZÇĞİÖŞÜ][A-Za-zÇĞİÖŞÜçğıöşü-]{1,24}))?", text or ""):
+        name = normalize_identity_name(" ".join(x for x in match.groups() if x))
+        if name and identity_name_key(name) not in {"selam", "merhaba"}:
+            candidates.append(name)
+            first = normalize_identity_name(name.split()[0])
+            if first and first != name:
+                candidates.append(first)
+    folded = fold_identity_text(text)
+    lower_patterns = [
+        r"^(?:selam|merhaba)\s+([a-z]{2,24})(?:\s+([a-z]{2,24}))?\b",
+        r"^([a-z]{2,24})\s+geldi\b",
+        r"^([a-z]{2,24})(?:'|`|e|a)?\s+mesaj\s+yaz\b",
+        r"\bornek\s+olarak\s+([a-z]{2,24})\s+diyelim\b",
+        r"\bcv(?:'|`|de|da|\s+de|\s+da)?\s+referans[:\s]+([a-z]{2,24})\b",
+    ]
+    ignored = {"ben", "sen", "biz", "siz", "selam", "merhaba", "ornek", "olarak", "cv"}
+    for pattern in lower_patterns:
+        match = re.search(pattern, folded)
+        if not match:
+            continue
+        tokens = [x for x in match.groups() if x and x not in ignored]
+        if not tokens:
+            continue
+        name = normalize_identity_name(" ".join(tokens[:2]))
+        if name:
+            candidates.append(name)
+            first = normalize_identity_name(tokens[0])
+            if first and first != name:
+                candidates.append(first)
+    return list(dict.fromkeys(candidates))[:8]
+
+
+def sanitize_false_addressing(response: str, plan: Dict[str, Any]) -> str:
+    text = response or ""
+    if not text.strip():
+        return text
+    profile = safe_dict(plan.get("profile"))
+    identity = safe_dict(profile.get("identity_memory"))
+    preferred = normalize_identity_name(str(identity.get("preferred_name", "")))
+    preferred_key = identity_name_key(preferred) if identity.get("confidence") == "explicit" else ""
+    names = [
+        normalize_identity_name(str(x))
+        for x in safe_list(identity.get("rejected_names"))
+        if normalize_identity_name(str(x))
+    ]
+    if plan.get("identity_boundary") != "identity":
+        names.extend(extract_capitalized_name_candidates(str(plan.get("message", ""))))
+
+    forbidden = []
+    seen = set()
+    for name in names:
+        key = identity_name_key(name)
+        if key and key != preferred_key and key not in seen:
+            seen.add(key)
+            forbidden.append(name)
+
+    cleaned = text
+    for name in forbidden:
+        escaped = re.escape(name)
+        first = re.escape(name.split()[0])
+        name_pattern = f"(?:{escaped}|{first})"
+        cleaned = re.sub(
+            rf"^(\s*(?:Selam|Merhaba|Hoş geldin|Hos geldin))\s+{name_pattern}([.!?])",
+            r"\1\2",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+        cleaned = re.sub(
+            rf"^(\s*Tamam),\s+{name_pattern}([.!?])",
+            r"\1\2",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+    return cleaned
+
+
 def safe_list(value: Any) -> List[Any]:
     return value if isinstance(value, list) else []
 
@@ -748,6 +966,7 @@ def default_profile() -> Dict[str, Any]:
             "unresolved_themes": [],
             "constellation_summary": "Düğümler taranıyor...",
         },
+        "identity_memory": default_identity_memory(),
         "last_mode": "luxviai",
         "updated_at": now_iso(),
     }
@@ -863,6 +1082,22 @@ def ensure_profile_shape(profile: Dict[str, Any]) -> Dict[str, Any]:
         **default["weekly_report"],
         **safe_dict(profile.get("weekly_report")),
     }
+    identity_default = default_identity_memory()
+    identity_current = safe_dict(profile.get("identity_memory"))
+    profile["identity_memory"] = {
+        **identity_default,
+        **identity_current,
+    }
+    profile["identity_memory"]["preferred_name"] = normalize_identity_name(
+        str(profile["identity_memory"].get("preferred_name", ""))
+    )
+    profile["identity_memory"]["rejected_names"] = [
+        normalize_identity_name(str(x))
+        for x in safe_list(profile["identity_memory"].get("rejected_names"))
+        if normalize_identity_name(str(x))
+    ][-20:]
+    if profile["identity_memory"].get("confidence") != "explicit":
+        profile["identity_memory"]["preferred_name"] = ""
     return profile
 
 
@@ -2235,6 +2470,30 @@ def build_system_prompt(
 ) -> str:
     memory_block = "\n".join(f"- {s}" for s in memory_snippets[:5]) if memory_snippets else "- Belirgin geri çağırma yok."
     layer_block = build_layer_prompt_summary(analysis, digest)
+    identity_memory = safe_dict(profile.get("identity_memory"))
+    preferred_name = normalize_identity_name(str(identity_memory.get("preferred_name", "")))
+    identity_confidence = str(identity_memory.get("confidence", "none")).strip().lower()
+    rejected_names = [
+        normalize_identity_name(str(x))
+        for x in safe_list(identity_memory.get("rejected_names"))
+        if normalize_identity_name(str(x))
+    ]
+    if preferred_name and identity_confidence == "explicit":
+        identity_block = (
+            "KİMLİK / HİTAP GÜVENLİĞİ:\n"
+            f"- Kullanıcı açıkça şu hitabı verdi: {preferred_name}\n"
+            "- Bu isim yalnızca doğal gelirse kullanılabilir; her cevapta tekrar etme.\n"
+        )
+    else:
+        identity_block = (
+            "KİMLİK / HİTAP GÜVENLİĞİ:\n"
+            "- Kullanıcının adı veya nickname'i açıkça verilmiş değil.\n"
+            "- Belirsiz isimleri, üçüncü kişi adlarını, sanatçı/arkadaş/örnek/referans isimlerini kullanıcı adı sayma.\n"
+            "- Örnek: 'selam burak kut', 'Burak geldi', 'Mehmet'e mesaj yaz', 'CV'de Burak referans olsun' kullanıcı adı değildir.\n"
+            "- Emin değilsen kullanıcıya isimle hitap etme.\n"
+        )
+    if rejected_names:
+        identity_block += "- Reddedilmiş hitaplar kullanıcı adı değildir; bu adlarla kullanıcıya seslenme.\n"
     policy = safe_dict(analysis.get("response_policy"))
     mix = safe_dict(policy.get("cultural_mix"))
     policy_block = (
@@ -2340,6 +2599,8 @@ BİÇİM:
 
 HAFIZA İPUÇLARI:
 {memory_block}
+
+{identity_block}
 
 ARKA PLAN ANALİZİ:
 Bu bölüm kullanıcıya doğrudan gösterilmez; sadece tonu, ritmi, soru derinliğini ve hafıza çağrışımını ayarlar.
@@ -3383,6 +3644,10 @@ def prepare_chat_plan(
 
     profile, notes, garden = load_user_state(user_id)
     profile = ensure_profile_shape(profile)
+    profile = apply_identity_guard(profile, message)
+    identity_boundary = classify_identity_command_boundary(message)
+    if identity_boundary in {"identity", "correction"}:
+        save_user_state(user_id, profile, notes, garden)
 
     # Contextual explicit lens commands: keep background lenses available
     # without forcing random suggestions in normal chat flow.
@@ -3451,6 +3716,15 @@ def prepare_chat_plan(
 
     runtime_hints: List[str] = []
     runtime_hints.append("Natural Half-Step kullan: her cevabı soruyla bitirmek zorunda değilsin.")
+    runtime_hints.append(
+        "Kimlik güvenliği: sadece 'Adım/İsmim/Bana X de' gibi açık ifadeleri kullanıcı adı say; üçüncü kişi, referans, sanatçı veya örnek isimlerden hitap çıkarma."
+    )
+    if identity_boundary == "correction":
+        runtime_hints.append("Kullanıcı isim düzeltmesi yaptı: yanlış hitabı kısa kabul et ve o adı tekrar kullanma.")
+    elif identity_boundary == "identity":
+        runtime_hints.append("Kullanıcı açık hitap/isim verdi; doğal gelirse kullan, tekrar tekrar vurgulama.")
+    elif identity_boundary in {"content", "command"}:
+        runtime_hints.append("Bu mesajdaki kişi adlarını içerik/komut nesnesi olarak ele al; kullanıcı kimliği sayma.")
     if technical_context:
         runtime_hints.extend([
             "Bu mesaj teknik/utility niyetinde: metaforik veya terapötik yorum yapma.",
@@ -3571,6 +3845,7 @@ def prepare_chat_plan(
         "luxching_nudge": luxching_nudge,
         "luxdream_nudge": luxdream_nudge,
         "learning_context": learning_context,
+        "identity_boundary": identity_boundary,
         "user_id": user_id,
         "mode": mode,
         "message": message,
@@ -4877,6 +5152,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
             response_text = chat_fallback_response(plan)
     model_ms = ms_since(model_start)
 
+    response_text = sanitize_false_addressing(response_text, plan)
     response_text = apply_background_nudges(plan, response_text)
     finalize_start = perf_counter()
     digest_data = finalize_chat(plan, response_text)
@@ -5075,6 +5351,7 @@ async def ws_chat(websocket: WebSocket):
                     response_text = chat_fallback_response(plan)
 
                 streamed_response_text = response_text
+                response_text = sanitize_false_addressing(response_text, plan)
                 response_text = apply_background_nudges(plan, response_text)
                 if response_text != streamed_response_text and response_text.startswith(streamed_response_text):
                     suffix = response_text[len(streamed_response_text):]
@@ -5125,6 +5402,7 @@ async def ws_chat(websocket: WebSocket):
                     response_text = auth_error_response()
                 else:
                     response_text = chat_fallback_response(plan)
+                response_text = sanitize_false_addressing(response_text, plan)
                 response_text = apply_background_nudges(plan, response_text)
                 finalize_start = perf_counter()
                 digest_data = finalize_chat(plan, response_text)
