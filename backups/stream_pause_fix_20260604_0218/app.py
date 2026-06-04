@@ -2420,13 +2420,13 @@ def choose_generation_params(mode: str, analysis: Dict[str, Any]) -> tuple[str, 
     temp_shift = (spontaneity - 0.45) * 0.2
 
     if mode == "luxta":
-        return ("deepseek-chat", clamp_float(0.22 + temp_shift * 0.3, 0.15, 0.35, 0.25), 180)
+        return ("deepseek-chat", clamp_float(0.22 + temp_shift * 0.3, 0.15, 0.35, 0.25), 120)
     if mode == "luxeph":
-        return ("deepseek-chat", clamp_float(0.42 + temp_shift * 0.4, 0.3, 0.58, 0.45), 520)
+        return ("deepseek-chat", clamp_float(0.42 + temp_shift * 0.4, 0.3, 0.58, 0.45), 320)
     if mode in {"luxdream", "luxching"} or intensity >= 8:
-        tokens = 1050 if pacing == "akışkan" else 950
+        tokens = 760 if pacing == "akışkan" else 700
         return ("deepseek-chat", clamp_float(0.62 + temp_shift, 0.5, 0.75, 0.65), tokens)
-    tokens = 760 if pacing == "yavaş" else 920 if pacing == "akışkan" else 840
+    tokens = 420 if pacing == "yavaş" else 500 if pacing == "akışkan" else 450
     return ("deepseek-chat", clamp_float(0.52 + temp_shift, 0.42, 0.64, 0.55), tokens)
 
 
@@ -4882,13 +4882,7 @@ async def ws_chat(websocket: WebSocket):
                 else:
                     response_text = chat_fallback_response(plan)
 
-                streamed_response_text = response_text
                 response_text = apply_background_nudges(plan, response_text)
-                if response_text != streamed_response_text and response_text.startswith(streamed_response_text):
-                    suffix = response_text[len(streamed_response_text):]
-                    if suffix:
-                        full.append(suffix)
-                        await websocket.send_json({"type": "chunk", "text": suffix})
                 finalize_start = perf_counter()
                 digest_data = finalize_chat(plan, response_text)
                 finalize_ms = ms_since(finalize_start)

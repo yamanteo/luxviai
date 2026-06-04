@@ -1714,26 +1714,21 @@ const userId = localStorage.getItem("lux_uid") || "user_" + Math.random().toStri
 localStorage.setItem("lux_uid", userId);
 
 const HISTORY_KEY = "lux_history_v3";
-const SAFE_CLIENT_STATE_KEY = "luxviai_chat_state_v2";
 const CLIENT_STATE_VERSION_KEY = "lux_client_state_version";
-const CLIENT_STATE_VERSION = "2026-06-04-local-state-safety";
-const DRAFT_MAX_CHARS = 4000;
-const DRAFT_TTL_MS = 6 * 60 * 60 * 1000;
-const COMPLETED_MESSAGE_MAX_CHARS = 24000;
+const CLIENT_STATE_VERSION = "2026-05-28-ui-b2";
 
 function ensureClientStateVersion() {
   try {
     const prev = localStorage.getItem(CLIENT_STATE_VERSION_KEY);
     if (prev === CLIENT_STATE_VERSION) return;
-    ["lux_history_v1", "lux_history_v2"].forEach(k => localStorage.removeItem(k));
+    ["lux_history_v1", "lux_history_v2", "lux_history_v3"].forEach(k => localStorage.removeItem(k));
     localStorage.setItem(CLIENT_STATE_VERSION_KEY, CLIENT_STATE_VERSION);
   } catch (_) {}
 }
 
 ensureClientStateVersion();
 const userHistory = loadHistory();
-let safeClientState = loadSafeClientState();
-let activeConversationId = userHistory.activeId || safeClientState.activeConversationId || null;
+let activeConversationId = userHistory.activeId || null;
 
 const popularLanguages = [
   ["tr","Turkce"], ["en","English"], ["de","Deutsch"], ["fr","Francais"], ["es","Espanol"],
@@ -2855,31 +2850,9 @@ function collectClientSignals() {
 function loadHistory() {
   try {
     const raw = JSON.parse(localStorage.getItem(HISTORY_KEY) || "{}");
-    if (!raw || typeof raw !== "object" || !Array.isArray(raw.conversations)) {
-      return { conversations: [], activeId: null };
-    }
+    if (!raw.conversations) raw.conversations = [];
     const cutoff = Date.now() - (14 * 24 * 60 * 60 * 1000);
-    raw.conversations = raw.conversations
-      .filter(c => c && typeof c === "object")
-      .map(c => ({
-        id: String(c.id || ""),
-        mode: String(c.mode || "luxviai"),
-        title: String(c.title || "LUXVIAI").slice(0, 80),
-        createdAt: c.createdAt || new Date().toISOString(),
-        updatedAt: c.updatedAt || c.createdAt || new Date().toISOString(),
-        messages: Array.isArray(c.messages)
-          ? c.messages
-              .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.text === "string")
-              .map(m => ({
-                role: m.role,
-                text: m.text.slice(0, COMPLETED_MESSAGE_MAX_CHARS),
-                ts: m.ts || new Date().toISOString()
-              }))
-              .slice(-120)
-          : []
-      }))
-      .filter(c => c.id && new Date(c.updatedAt || c.createdAt || Date.now()).getTime() >= cutoff);
-    raw.activeId = raw.conversations.some(c => c.id === raw.activeId) ? raw.activeId : (raw.conversations[0]?.id || null);
+    raw.conversations = raw.conversations.filter(c => new Date(c.updatedAt || c.createdAt || Date.now()).getTime() >= cutoff);
     return raw;
   } catch (_) {
     return { conversations: [], activeId: null };
@@ -2888,71 +2861,6 @@ function loadHistory() {
 function saveHistory() {
   userHistory.activeId = activeConversationId;
   localStorage.setItem(HISTORY_KEY, JSON.stringify(userHistory));
-  saveSafeClientState({ activeConversationId, pending: null });
-}
-function loadSafeClientState() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(SAFE_CLIENT_STATE_KEY) || "{}");
-    if (!raw || typeof raw !== "object" || raw.version !== 2) return { version: 2, activeConversationId: null, draft: null, pending: null, updatedAt: Date.now() };
-    const now = Date.now();
-    const draft = raw.draft && typeof raw.draft.text === "string"
-      && raw.draft.text.length <= DRAFT_MAX_CHARS
-      && now - Number(raw.draft.updatedAt || 0) <= DRAFT_TTL_MS
-        ? { text: raw.draft.text, updatedAt: Number(raw.draft.updatedAt || now) }
-        : null;
-    return {
-      version: 2,
-      activeConversationId: typeof raw.activeConversationId === "string" ? raw.activeConversationId : null,
-      draft,
-      pending: null,
-      updatedAt: Number(raw.updatedAt || now)
-    };
-  } catch (_) {
-    try { localStorage.removeItem(SAFE_CLIENT_STATE_KEY); } catch (__) {}
-    return { version: 2, activeConversationId: null, draft: null, pending: null, updatedAt: Date.now() };
-  }
-}
-function saveSafeClientState(patch = {}) {
-  try {
-    safeClientState = {
-      ...safeClientState,
-      version: 2,
-      activeConversationId,
-      draft: null,
-      pending: null,
-      updatedAt: Date.now(),
-      ...patch
-    };
-    localStorage.setItem(SAFE_CLIENT_STATE_KEY, JSON.stringify(safeClientState));
-  } catch (_) {}
-}
-function saveDraftState(text) {
-  const value = String(text || "");
-  const draft = value && value.length <= DRAFT_MAX_CHARS ? { text: value, updatedAt: Date.now() } : null;
-  saveSafeClientState({ draft, pending: safeClientState?.pending || null });
-}
-function clearDraftState() {
-  saveSafeClientState({ draft: null });
-}
-function restoreDraftState() {
-  const draft = safeClientState?.draft;
-  if (draft && typeof draft.text === "string" && draft.text.length <= DRAFT_MAX_CHARS) {
-    messageInput.value = draft.text;
-  }
-}
-function setPendingState(meta) {
-  if (!meta) {
-    saveSafeClientState({ pending: null });
-    return;
-  }
-  saveSafeClientState({
-    pending: {
-      conversationId: meta.conversationId || activeConversationId || null,
-      runId: meta.runId || null,
-      kind: meta.kind || "response",
-      startedAt: Date.now()
-    }
-  });
 }
 function createConversation(mode) {
   const id = "conv_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
@@ -2974,19 +2882,13 @@ function getActiveConversation() {
   return conv;
 }
 function addMessageToHistoryForConversation(conversationId, role, text) {
-  const cleanText = String(text || "").slice(0, COMPLETED_MESSAGE_MAX_CHARS);
-  if (!cleanText.trim()) return userHistory.conversations.find(x => x.id === conversationId) || getActiveConversation();
   let conv = userHistory.conversations.find(x => x.id === conversationId);
   if (!conv) {
     conv = getActiveConversation();
     conversationId = conv.id;
   }
   if (!conversationId) conversationId = conv.id;
-  const last = conv.messages[conv.messages.length - 1];
-  if (last && last.role === role && String(last.text || "") === cleanText) {
-    return conv;
-  }
-  conv.messages.push({ role, text: cleanText, ts: new Date().toISOString() });
+  conv.messages.push({ role, text, ts: new Date().toISOString() });
   conv.messages = conv.messages.slice(-120);
   conv.updatedAt = new Date().toISOString();
   const firstUser = conv.messages.find(m => m.role === "user");
@@ -3248,8 +3150,6 @@ function startNewTopConversation() {
   closeDeleteTopicConfirm();
   const dict = getCurrentDict();
   const hello = `${pickGreetingPrefix(dict)}.`;
-  clearDraftState();
-  messageInput.value = "";
   setResponseLock(false);
   activeConversationId = null;
   clearChat();
@@ -4039,7 +3939,6 @@ async function continueInterruptedResponse(targetAiEl) {
   const writer = createPacedWriter(targetAiEl, 0.9);
   writer.setExact(baseText);
   activeGeneration = { runId: continueRunId, conversationId, messageEl: targetAiEl, writer, kind: "continue" };
-  setPendingState({ conversationId, runId: continueRunId, kind: "continue" });
   let continuedRawText = "";
   const applyContinueChunk = (chunk) => {
     if (!chunk) return;
@@ -4057,11 +3956,7 @@ async function continueInterruptedResponse(targetAiEl) {
   try {
     let responseText = "";
     try {
-      responseText = await sendMessageViaSocket(
-        payload,
-        chunk => applyContinueChunk(chunk),
-        finalText => writer.setExact(mergeContinuationText(baseText, finalText))
-      );
+      responseText = await sendMessageViaSocket(payload, chunk => applyContinueChunk(chunk));
       await writer.waitIdle();
     } catch (_) {
       responseText = await sendMessageViaHttp(payload);
@@ -4069,16 +3964,11 @@ async function continueInterruptedResponse(targetAiEl) {
       writer.setExact(merged);
       await writer.waitIdle();
     }
-    if (responseRunId !== continueRunId) {
-      setPendingState(null);
-      return;
-    }
+    if (responseRunId !== continueRunId) return;
     addMessageToHistoryForConversation(conversationId, "assistant", targetAiEl.innerText || responseText);
-    setPendingState(null);
     clearInterruptedState(true);
     resetTypingSignals();
   } catch (_) {
-    setPendingState(null);
     // no-op
   } finally {
     if (activeGeneration && activeGeneration.runId === continueRunId) activeGeneration = null;
@@ -4086,7 +3976,7 @@ async function continueInterruptedResponse(targetAiEl) {
   }
 }
 
-function sendMessageViaSocket(payload, onChunk, onFinal) {
+function sendMessageViaSocket(payload, onChunk) {
   return new Promise((resolve, reject) => {
     if (wsPending) {
       reject(new Error("socket_busy"));
@@ -4110,7 +4000,6 @@ function sendMessageViaSocket(payload, onChunk, onFinal) {
             }
             if (data.type === "done") {
               const finalText = (data.response || streamed || heardFallback()).trim();
-              if (typeof onFinal === "function") onFinal(finalText);
               wsPending = null;
               resolve(finalText);
             }
@@ -4154,7 +4043,6 @@ async function sendMessageLive(customText) {
   clearInterruptedState(true);
   appendMessage("user", text);
   messageInput.value = "";
-  clearDraftState();
   triggerDreamLight();
   const conversationId = activeConversationId || getActiveConversation().id;
 
@@ -4162,7 +4050,6 @@ async function sendMessageLive(customText) {
   activeAiDiv = aiDiv;
   const writer = createPacedWriter(aiDiv, 0.9);
   activeGeneration = { runId, conversationId, messageEl: aiDiv, writer, kind: "response" };
-  setPendingState({ conversationId, runId, kind: "response" });
   const payload = {
     message: text,
     user_id: userId,
@@ -4186,18 +4073,14 @@ async function sendMessageLive(customText) {
         userText: text,
         partialText: aiDiv.innerText || ""
       };
-      setPendingState(null);
+      addMessageToHistoryForConversation(conversationId, "assistant", aiDiv.innerText);
       appendResumeButton(aiDiv);
       activeAiDiv = null;
     };
 
     let responseText = "";
     try {
-      responseText = await sendMessageViaSocket(
-        payload,
-        chunk => writer.push(chunk),
-        finalText => writer.setExact(finalText)
-      );
+      responseText = await sendMessageViaSocket(payload, chunk => writer.push(chunk));
       await writer.waitIdle();
     } catch (socketErr) {
       if (stopStreamRequested) return;
@@ -4206,21 +4089,15 @@ async function sendMessageLive(customText) {
       await writer.waitIdle();
     }
     if (stopStreamRequested) return;
-    if (responseRunId !== runId) {
-      setPendingState(null);
-      return;
-    }
-    if ((responseText || "").trim() && aiDiv.innerText !== responseText) writer.setExact(responseText);
+    if (responseRunId !== runId) return;
     if (!aiDiv.innerText.trim()) writer.setExact(responseText || heardFallback());
     if (currentLang !== "tr" && aiDiv.innerText.trim()) {
       const translated = await translateText(aiDiv.innerText, deeplTargetCode(currentLang));
       if (translated && translated.trim()) writer.setExact(translated);
     }
     addMessageToHistoryForConversation(conversationId, "assistant", aiDiv.innerText);
-    setPendingState(null);
     resetTypingSignals();
   } catch (_) {
-    setPendingState(null);
     if (!stopStreamRequested) {
       aiDiv.innerText = connectionFallback();
       addMessageToHistoryForConversation(conversationId, "assistant", aiDiv.innerText);
@@ -4250,7 +4127,6 @@ messageInput.addEventListener("keydown", e => {
 });
 messageInput.addEventListener("input", () => {
   if (interruptedState) clearInterruptedState(true);
-  saveDraftState(messageInput.value);
 });
 
 function clearHighlights() {
@@ -5766,7 +5642,6 @@ async function initApp() {
     renderTopicList();
     setEditorMode("pen");
     await bootGreeting();
-    restoreDraftState();
     refreshTopActionButtons();
     syncTopicScrollbarBounds();
     syncTopicScrollbarThumb();
@@ -5776,7 +5651,6 @@ async function initApp() {
   }
 
   loadConversation(activeConversationId);
-  restoreDraftState();
   renderTopicList();
   setEditorMode("pen");
   refreshTopActionButtons();
