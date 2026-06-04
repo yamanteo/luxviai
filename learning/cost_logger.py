@@ -48,6 +48,12 @@ SAFE_FIELD_DEFAULTS: dict[str, Any] = {
     "estimated_cost": None,
     "cache_hint": "",
     "cache_status": "",
+    "efficiency_dry_run_route": "",
+    "efficiency_dry_run_confidence": 0.0,
+    "would_use_short_context": False,
+    "estimated_context_savings_chars": 0,
+    "estimated_layer_savings_count": 0,
+    "mandatory_guards_kept": "",
     "success": True,
     "error_type": "",
 }
@@ -69,6 +75,8 @@ INT_FIELDS = {
     "practical_support_candidate_count",
     "estimated_input_tokens",
     "estimated_output_tokens",
+    "estimated_context_savings_chars",
+    "estimated_layer_savings_count",
 }
 OPTIONAL_INT_FIELDS = {"first_chunk_ms"}
 BOOL_FIELDS = {
@@ -77,9 +85,10 @@ BOOL_FIELDS = {
     "count_guard_active",
     "safety_suppressed",
     "count_constraint_present",
+    "would_use_short_context",
     "success",
 }
-FLOAT_FIELDS = {"estimated_cost"}
+FLOAT_FIELDS = {"estimated_cost", "efficiency_dry_run_confidence"}
 STRING_FIELDS = set(SAFE_FIELD_DEFAULTS) - INT_FIELDS - OPTIONAL_INT_FIELDS - BOOL_FIELDS - FLOAT_FIELDS
 
 

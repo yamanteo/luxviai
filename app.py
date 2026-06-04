@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from learning.dashboard_engine import LearningDashboardEngine
 from learning.pipeline import LearningPipeline
 from learning.cost_logger import CostLogger, estimate_tokens
+from learning.efficiency_router import EfficiencyRouter
 from learning.token_budget_policy import TokenBudgetPolicy
 
 try:
@@ -121,6 +122,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 learning_pipeline = LearningPipeline(BASE_DIR)
 learning_dashboard_engine = LearningDashboardEngine(BASE_DIR)
 token_budget_policy = TokenBudgetPolicy()
+efficiency_router = EfficiencyRouter()
 cost_logger = CostLogger(BASE_DIR)
 
 # Aşama-1 Learning Lab dosya temeli (boşsa oluştur)
@@ -3036,6 +3038,53 @@ def safety_level_from_plan(plan: Dict[str, Any]) -> str:
     return str(safety.get("crisis_level", "normal") or "normal")
 
 
+def safe_efficiency_dry_run(
+    plan: Dict[str, Any],
+    *,
+    mode: str = "luxviai",
+    prompt_chars: int = 0,
+    context_chars: int = 0,
+    history_message_count: int = 0,
+    history_chars: int = 0,
+) -> Dict[str, Any]:
+    try:
+        learning_context = safe_dict(plan.get("learning_context"))
+        return efficiency_router.dry_run(
+            message=str(plan.get("message", "")),
+            mode=mode or str(plan.get("mode", "luxviai")),
+            analysis=safe_dict(plan.get("analysis")),
+            token_budget=safe_dict(plan.get("token_budget")),
+            count_constraints=safe_list(plan.get("count_constraints")),
+            identity_boundary=str(plan.get("identity_boundary", "")),
+            prompt_chars=prompt_chars,
+            context_chars=context_chars,
+            history_message_count=history_message_count,
+            history_chars=history_chars,
+            context_item_count=len(safe_list(learning_context.get("context_items"))),
+            selected_layer_count=selected_layer_count(learning_context),
+        ).to_safe_dict()
+    except Exception:
+        return {
+            "efficiency_dry_run_route": "full_current_path",
+            "would_use_short_context": False,
+            "would_limit_history_to_last_n": 18,
+            "would_skip_group3": False,
+            "would_skip_group4": False,
+            "would_skip_long_memory": False,
+            "would_keep_safety": True,
+            "would_keep_identity_guard": True,
+            "would_keep_count_guard": True,
+            "estimated_context_savings_chars": 0,
+            "estimated_layer_savings_count": 0,
+            "efficiency_dry_run_confidence": 0.0,
+            "route_reason": "efficiency_router_fallback",
+            "mandatory_guards_kept": "safety,identity,count,basic_command,cost_logging",
+            "context_injected": False,
+            "active": False,
+            "version": "efficiency_router_fallback",
+        }
+
+
 def record_cost_event(
     *,
     endpoint: str,
@@ -3067,6 +3116,14 @@ def record_cost_event(
     )
     context_items = safe_list(learning_context.get("context_items"))
     estimated_output_tokens = estimate_tokens(len(str(response_text or "")))
+    efficiency = safe_efficiency_dry_run(
+        plan,
+        mode=mode or str(plan.get("mode", "luxviai")),
+        prompt_chars=prompt_chars,
+        context_chars=context_chars,
+        history_message_count=history_message_count,
+        history_chars=history_chars,
+    )
     cost_logger.record(
         route=route,
         endpoint=endpoint,
@@ -3104,6 +3161,12 @@ def record_cost_event(
         estimated_output_tokens=estimated_output_tokens,
         cache_hint=str(budget.get("cache_hint", "none")),
         cache_status="unavailable",
+        efficiency_dry_run_route=str(efficiency.get("efficiency_dry_run_route", "full_current_path")),
+        efficiency_dry_run_confidence=efficiency.get("efficiency_dry_run_confidence", 0.0),
+        would_use_short_context=bool(efficiency.get("would_use_short_context", False)),
+        estimated_context_savings_chars=clamp_int(efficiency.get("estimated_context_savings_chars"), 0, 1000000, 0),
+        estimated_layer_savings_count=clamp_int(efficiency.get("estimated_layer_savings_count"), 0, 100, 0),
+        mandatory_guards_kept=str(efficiency.get("mandatory_guards_kept", "")),
         success=success,
         error_type=error_type,
     )
