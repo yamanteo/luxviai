@@ -863,6 +863,271 @@ def sanitize_false_addressing(response: str, plan: Dict[str, Any]) -> str:
     return cleaned
 
 
+COUNT_NUMBER_WORDS = {
+    "tek": 1,
+    "bir": 1,
+    "iki": 2,
+    "uc": 3,
+    "dort": 4,
+    "bes": 5,
+    "alti": 6,
+    "yedi": 7,
+    "sekiz": 8,
+    "dokuz": 9,
+    "on": 10,
+    "yirmi": 20,
+    "otuz": 30,
+    "kirk": 40,
+    "elli": 50,
+    "altmis": 60,
+    "yetmis": 70,
+    "seksen": 80,
+    "doksan": 90,
+    "yuz": 100,
+}
+COUNT_NUMBER_PATTERN = (
+    r"\d{1,3}|tek|bir|iki|uc|dort|bes|alti|yedi|sekiz|dokuz|on|yirmi|otuz|"
+    r"kirk|elli|altmis|yetmis|seksen|doksan|yuz"
+)
+COUNT_UNIT_LABELS = {
+    "paragraph": "paragraf",
+    "bullet": "madde",
+    "heading": "başlık",
+    "subheading": "alt başlık",
+    "slide": "slayt",
+    "option": "seçenek",
+    "sentence": "cümle",
+    "word": "kelime",
+}
+COUNT_KEYWORD_PATTERNS = [
+    ("subheading", r"\balt\s+baslik\w*|\bsubheading\w*"),
+    ("paragraph", r"\bparagraf\w*|\bparagraphs?\b"),
+    ("bullet", r"\bmadde\w*|\bitems?\b|\bbullets?\b"),
+    ("heading", r"\bbaslik\w*|\bheadings?\b|\btitles?\b"),
+    ("slide", r"\bslayt\w*|\bslides?\b"),
+    ("option", r"\bsecenek\w*|\bopsiyon\w*|\boptions?\b"),
+    ("sentence", r"\bcumle\w*|\bsentences?\b"),
+    ("word", r"\bkelime\w*|\bwords?\b"),
+]
+
+
+def parse_count_number(raw: str) -> Optional[int]:
+    text = fold_turkish_ascii(str(raw or ""))
+    text = re.sub(r"[^\w\s]", " ", text).strip()
+    if not text:
+        return None
+    digit = re.search(r"\d{1,3}", text)
+    if digit:
+        value = int(digit.group(0))
+        return value if 0 < value <= 300 else None
+    total = 0
+    for token in text.split():
+        value = COUNT_NUMBER_WORDS.get(token)
+        if value is None:
+            continue
+        if value == 100 and total:
+            total *= value
+        else:
+            total += value
+    return total if 0 < total <= 300 else None
+
+
+def _nearest_count_before(text: str, start: int) -> Optional[int]:
+    prefix = text[max(0, start - 55):start]
+    matches = list(re.finditer(rf"\b((?:{COUNT_NUMBER_PATTERN})(?:\s+(?:{COUNT_NUMBER_PATTERN}))?)\b", prefix))
+    for match in reversed(matches):
+        tail = prefix[match.end():].strip()
+        if not tail or re.fullmatch(r"(?:tane|adet|kadar|yaklasik|civarinda|rastgele|random|kisa|uzun|farkli|ayri|\s)+", tail):
+            return parse_count_number(match.group(1))
+    return None
+
+
+def _nearest_count_after(text: str, end: int) -> Optional[int]:
+    suffix = text[end:end + 45]
+    match = re.search(rf"\b(?:sayisi|sayida|adet|tane|count|limit)?\s*((?:{COUNT_NUMBER_PATTERN})(?:\s+(?:{COUNT_NUMBER_PATTERN}))?)\b", suffix)
+    if not match:
+        return None
+    return parse_count_number(match.group(1))
+
+
+def extract_count_constraints(message: str) -> List[Dict[str, Any]]:
+    folded = fold_turkish_ascii(message or "")
+    if not folded:
+        return []
+    constraints: List[Dict[str, Any]] = []
+    seen: set[str] = set()
+
+    for kind, pattern in COUNT_KEYWORD_PATTERNS:
+        for match in re.finditer(pattern, folded):
+            if kind == "heading" and folded[max(0, match.start() - 4):match.start()] == "alt ":
+                continue
+            target = _nearest_count_before(folded, match.start()) or _nearest_count_after(folded, match.end())
+            if not target:
+                continue
+            limit = "max" if kind == "word" and any(x in folded for x in ("en fazla", "maksimum", "max ", "limit")) else "exact"
+            if kind not in seen:
+                constraints.append({"kind": kind, "target": target, "limit": limit})
+                seen.add(kind)
+            break
+
+    return constraints[:3]
+
+
+def count_guard_hint(constraints: List[Dict[str, Any]]) -> str:
+    if not constraints:
+        return ""
+    parts = []
+    for c in constraints:
+        kind = str(c.get("kind", ""))
+        target = clamp_int(c.get("target"), 1, 300, 1)
+        label = COUNT_UNIT_LABELS.get(kind, kind)
+        if kind == "word":
+            if c.get("limit") == "max":
+                parts.append(f"en fazla {target} {label}")
+            else:
+                parts.append(f"{target} {label}ye mümkün olduğunca yakın")
+        else:
+            parts.append(f"tam {target} {label}")
+    return (
+        "Sayı/format uyumu: Kullanıcı açık sayı verdi; "
+        + ", ".join(parts)
+        + " üret. Giriş, kapanış, ekstra açıklama veya fazladan birim ekleme. "
+        "Kısa/uzun/rastgele gibi stil istekleri bu sayıyı değiştirmez."
+    )
+
+
+def split_paragraph_units(text: str) -> List[str]:
+    blocks = [p.strip() for p in re.split(r"\n\s*\n+", str(text or "").strip()) if p.strip()]
+    if len(blocks) <= 1:
+        lines = [ln.strip() for ln in str(text or "").splitlines() if ln.strip()]
+        if len(lines) > 1:
+            return lines
+    return blocks
+
+
+def split_sentence_units(text: str) -> List[str]:
+    return [s.strip() for s in re.findall(r"[^.!?…]+[.!?…]?", str(text or ""), flags=re.MULTILINE) if s.strip()]
+
+
+def count_words(text: str) -> int:
+    return len(re.findall(r"\b[\wçğıöşüÇĞİÖŞÜ'-]+\b", str(text or "")))
+
+
+def is_counted_line(kind: str, line: str) -> bool:
+    stripped = line.strip()
+    folded = fold_turkish_ascii(stripped)
+    if not stripped:
+        return False
+    if kind == "slide":
+        return bool(re.match(r"^(?:#{1,6}\s*)?(?:slayt|slide)\s*\d+|\d+[\.)]\s+", folded))
+    if kind in {"bullet", "heading", "subheading", "option"}:
+        return bool(re.match(r"^(?:[-*•]\s+|\d+[\.)]\s+|#{1,6}\s+)", stripped))
+    return True
+
+
+def line_units_for_constraint(text: str, kind: str) -> List[tuple[int, str]]:
+    lines = str(text or "").splitlines()
+    indexed = [(i, ln) for i, ln in enumerate(lines) if ln.strip()]
+    marked = [(i, ln) for i, ln in indexed if is_counted_line(kind, ln)]
+    return marked or indexed
+
+
+def count_constraint_units(text: str, constraint: Dict[str, Any]) -> int:
+    kind = str(constraint.get("kind", ""))
+    if kind == "paragraph":
+        return len(split_paragraph_units(text))
+    if kind == "sentence":
+        return len(split_sentence_units(text))
+    if kind == "word":
+        return count_words(text)
+    if kind in {"bullet", "heading", "subheading", "slide", "option"}:
+        return len(line_units_for_constraint(text, kind))
+    return 0
+
+
+def count_constraints_satisfied(text: str, constraints: List[Dict[str, Any]]) -> bool:
+    for constraint in constraints:
+        kind = str(constraint.get("kind", ""))
+        target = clamp_int(constraint.get("target"), 1, 300, 1)
+        actual = count_constraint_units(text, constraint)
+        if kind == "word":
+            if constraint.get("limit") == "max":
+                if actual > target:
+                    return False
+            elif actual > max(target + 10, int(target * 1.2)):
+                return False
+            continue
+        if actual != target:
+            return False
+    return True
+
+
+def deterministic_count_trim(text: str, constraints: List[Dict[str, Any]]) -> str:
+    repaired = str(text or "").strip()
+    for constraint in constraints:
+        kind = str(constraint.get("kind", ""))
+        target = clamp_int(constraint.get("target"), 1, 300, 1)
+        actual = count_constraint_units(repaired, constraint)
+        if actual <= target:
+            continue
+        if kind == "paragraph":
+            repaired = "\n\n".join(split_paragraph_units(repaired)[:target]).strip()
+        elif kind == "sentence":
+            repaired = " ".join(split_sentence_units(repaired)[:target]).strip()
+        elif kind == "word":
+            words = list(re.finditer(r"\b[\wçğıöşüÇĞİÖŞÜ'-]+\b", repaired))
+            if len(words) > target:
+                repaired = repaired[:words[target - 1].end()].rstrip()
+        elif kind in {"bullet", "heading", "subheading", "slide", "option"}:
+            units = line_units_for_constraint(repaired, kind)
+            if len(units) >= target:
+                first = units[0][0]
+                last = units[target][0] - 1 if len(units) > target else len(repaired.splitlines()) - 1
+                repaired = "\n".join(repaired.splitlines()[first:last + 1]).strip()
+    return repaired
+
+
+def build_count_repair_messages(plan: Dict[str, Any], response_text: str, constraints: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    hint = count_guard_hint(constraints)
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Rewrite the assistant answer so it obeys the explicit count/format instruction exactly. "
+                "Preserve the user's language and the useful content. Do not add explanations about the repair. "
+                f"{hint}"
+            ),
+        },
+        {"role": "user", "content": str(plan.get("message", ""))},
+        {"role": "assistant", "content": str(response_text or "")},
+        {"role": "user", "content": "Sadece düzeltilmiş nihai cevabı ver."},
+    ]
+
+
+def enforce_count_guard(plan: Dict[str, Any], response_text: str) -> str:
+    constraints = safe_list(plan.get("count_constraints"))
+    if not constraints:
+        return response_text
+    repaired = deterministic_count_trim(response_text, constraints)
+    if count_constraints_satisfied(repaired, constraints):
+        return repaired
+    if not client or plan.get("kind") != "model":
+        return repaired
+    try:
+        model_repair = call_model(
+            build_count_repair_messages(plan, repaired, constraints),
+            model=str(plan.get("model") or "deepseek-chat"),
+            temperature=0.15,
+            max_tokens=max(240, min(int(plan.get("max_tokens") or 840), 2600)),
+        )
+        model_repair = deterministic_count_trim(model_repair, constraints)
+        if count_constraints_satisfied(model_repair, constraints):
+            return model_repair
+    except Exception as e:
+        logging.warning(f"Count guard repair skipped: {e}")
+    return repaired
+
+
 def safe_list(value: Any) -> List[Any]:
     return value if isinstance(value, list) else []
 
@@ -2693,7 +2958,11 @@ def choose_generation_params(mode: str, analysis: Dict[str, Any]) -> tuple[str, 
 
 def requested_long_answer_token_floor(message: str) -> int:
     low = (message or "").lower()
-    long_form_words = ["madde", "başlık", "baslik", "item", "section", "bölüm", "bolum", "liste"]
+    long_form_words = [
+        "madde", "başlık", "baslik", "item", "section", "bölüm", "bolum", "liste",
+        "paragraf", "paragraph", "slayt", "slide", "seçenek", "secenek", "option",
+        "cümle", "cumle", "sentence",
+    ]
     counts = [int(x) for x in re.findall(r"\d{1,3}", low)] if any(w in low for w in long_form_words) else []
     if not counts and any(k in low for k in ["kısa", "kisa", "özet", "ozet", "tek cümle", "tek cumle"]):
         return 0
@@ -2790,11 +3059,46 @@ def build_continuation_messages(messages: List[Dict[str, str]], partial_text: st
     ]
 
 
+def build_guarded_continuation_messages(
+    messages: List[Dict[str, str]],
+    partial_text: str,
+    constraints: List[Dict[str, Any]],
+) -> List[Dict[str, str]]:
+    prompt = (
+        "Devam et. Önceki metni tekrar etme; kaldığın yerden sürdür. "
+        "Başlığı veya son cümleyi yeniden yazma. Cevabı doğal şekilde tamamla."
+    )
+    if constraints:
+        status = []
+        for constraint in constraints:
+            kind = str(constraint.get("kind", ""))
+            target = clamp_int(constraint.get("target"), 1, 300, 1)
+            actual = count_constraint_units(partial_text, constraint)
+            label = COUNT_UNIT_LABELS.get(kind, kind)
+            status.append(f"{actual}/{target} {label}")
+        prompt += (
+            " Sayı/format guard aktif: mevcut taslak "
+            + ", ".join(status)
+            + ". Sadece eksik birimleri tamamla; hedefe ulaşıldıysa veya hedef geçildiyse yeni metin ekleme."
+        )
+    return messages + [
+        {"role": "assistant", "content": partial_text},
+        {"role": "user", "content": prompt},
+    ]
+
+
 def should_auto_continue_response(finish_reason: str, response_text: str, plan: Dict[str, Any]) -> bool:
     if plan.get("kind") != "model" or plan.get("skip_save"):
         return False
     if (plan.get("mode") or "") in {"luxta", "luxeph"}:
         return False
+    constraints = safe_list(plan.get("count_constraints"))
+    if constraints:
+        exact_constraints = [c for c in constraints if c.get("kind") != "word"]
+        for constraint in exact_constraints:
+            target = clamp_int(constraint.get("target"), 1, 300, 1)
+            if count_constraint_units(response_text, constraint) >= target:
+                return False
     message = str(plan.get("message", "")).lower()
     if not requested_long_answer_token_floor(message) and any(k in message for k in ["kısa", "kisa", "özet", "ozet", "tek cümle", "tek cumle"]):
         return False
@@ -3590,7 +3894,12 @@ def prepare_luxeph_plan(
         }
 
     digest = build_weekly_digest(profile, session, [])
-    prompt = build_system_prompt(profile, analysis, "luxeph", [], digest, location)
+    count_constraints = extract_count_constraints(message)
+    runtime_hints = []
+    count_hint = count_guard_hint(count_constraints)
+    if count_hint:
+        runtime_hints.append(count_hint)
+    prompt = build_system_prompt(profile, analysis, "luxeph", [], digest, location, runtime_hints=runtime_hints)
     model, temp, max_tokens = choose_generation_params("luxeph", analysis)
     return {
         "kind": "model",
@@ -3611,6 +3920,7 @@ def prepare_luxeph_plan(
         "user_id": user_id,
         "mode": "luxeph",
         "message": message,
+        "count_constraints": count_constraints,
         "meta": {"mode": "luxeph", "session_id": None, "ephemeral": True},
     }
 
@@ -3719,6 +4029,10 @@ def prepare_chat_plan(
     runtime_hints.append(
         "Kimlik güvenliği: sadece 'Adım/İsmim/Bana X de' gibi açık ifadeleri kullanıcı adı say; üçüncü kişi, referans, sanatçı veya örnek isimlerden hitap çıkarma."
     )
+    count_constraints = extract_count_constraints(message)
+    count_hint = count_guard_hint(count_constraints)
+    if count_hint:
+        runtime_hints.append(count_hint)
     if identity_boundary == "correction":
         runtime_hints.append("Kullanıcı isim düzeltmesi yaptı: yanlış hitabı kısa kabul et ve o adı tekrar kullanma.")
     elif identity_boundary == "identity":
@@ -3740,9 +4054,9 @@ def prepare_chat_plan(
     luxching_nudge = ""
     luxdream_nudge = ""
     luxmirror_nudge = ""
-    dream_offer = should_offer_luxdream_background(profile, analysis, message, mode)
-    ching_offer = should_offer_luxching_background(profile, analysis, message, mode, session)
-    mirror_offer = should_offer_luxmirror_background(message, mode, session)
+    dream_offer = False if count_constraints else should_offer_luxdream_background(profile, analysis, message, mode)
+    ching_offer = False if count_constraints else should_offer_luxching_background(profile, analysis, message, mode, session)
+    mirror_offer = False if count_constraints else should_offer_luxmirror_background(message, mode, session)
     if dream_offer:
         luxdream_nudge = luxdream_background_suggestion_text()
     elif mirror_offer:
@@ -3846,6 +4160,7 @@ def prepare_chat_plan(
         "luxdream_nudge": luxdream_nudge,
         "learning_context": learning_context,
         "identity_boundary": identity_boundary,
+        "count_constraints": count_constraints,
         "user_id": user_id,
         "mode": mode,
         "message": message,
@@ -3890,7 +4205,7 @@ def auto_continue_text(plan: Dict[str, Any], response_text: str, finish_reason: 
         parts += 1
         try:
             continuation, reason = call_model_with_finish(
-                build_continuation_messages(plan["openai_messages"], merged),
+                build_guarded_continuation_messages(plan["openai_messages"], merged, safe_list(plan.get("count_constraints"))),
                 model=plan["model"],
                 temperature=plan["temperature"],
                 max_tokens=min(max(int(plan.get("max_tokens") or 840), 700), 1200),
@@ -5153,7 +5468,9 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
     model_ms = ms_since(model_start)
 
     response_text = sanitize_false_addressing(response_text, plan)
-    response_text = apply_background_nudges(plan, response_text)
+    response_text = enforce_count_guard(plan, response_text)
+    if not plan.get("count_constraints"):
+        response_text = apply_background_nudges(plan, response_text)
     finalize_start = perf_counter()
     digest_data = finalize_chat(plan, response_text)
     finalize_ms = ms_since(finalize_start)
@@ -5286,6 +5603,7 @@ async def ws_chat(websocket: WebSocket):
             finalize_ms = 0
             finish_reason = ""
             auto_parts = 0
+            count_guarded = False
             try:
                 if not typing_sent:
                     await websocket.send_json({
@@ -5298,6 +5616,7 @@ async def ws_chat(websocket: WebSocket):
                     })
                     typing_ms = ms_since(turn_start)
 
+                count_guarded = bool(safe_list(plan.get("count_constraints")))
                 if client:
                     stream_start = perf_counter()
                     for event in stream_model(
@@ -5314,8 +5633,9 @@ async def ws_chat(websocket: WebSocket):
                             if first_chunk_ms is None:
                                 first_chunk_ms = ms_since(turn_start)
                             full.append(chunk)
-                            await websocket.send_json({"type": "chunk", "text": chunk})
-                            if STREAM_CHUNK_DELAY > 0:
+                            if not count_guarded:
+                                await websocket.send_json({"type": "chunk", "text": chunk})
+                            if not count_guarded and STREAM_CHUNK_DELAY > 0:
                                 await asyncio.sleep(STREAM_CHUNK_DELAY)
                     stream_ms = ms_since(stream_start)
 
@@ -5325,7 +5645,7 @@ async def ws_chat(websocket: WebSocket):
                         continuation_full = []
                         continuation_reason = ""
                         for event in stream_model(
-                            build_continuation_messages(plan["openai_messages"], response_text),
+                            build_guarded_continuation_messages(plan["openai_messages"], response_text, safe_list(plan.get("count_constraints"))),
                             model=plan["model"],
                             temperature=plan["temperature"],
                             max_tokens=min(max(int(plan.get("max_tokens") or 840), 700), 1200),
@@ -5345,15 +5665,20 @@ async def ws_chat(websocket: WebSocket):
                             break
                         response_text = merged.strip()
                         full.append(suffix)
-                        await websocket.send_json({"type": "chunk", "text": suffix})
+                        if not count_guarded:
+                            await websocket.send_json({"type": "chunk", "text": suffix})
                         finish_reason = continuation_reason
                 else:
                     response_text = chat_fallback_response(plan)
 
                 streamed_response_text = response_text
                 response_text = sanitize_false_addressing(response_text, plan)
-                response_text = apply_background_nudges(plan, response_text)
-                if response_text != streamed_response_text and response_text.startswith(streamed_response_text):
+                response_text = enforce_count_guard(plan, response_text)
+                if not count_guarded:
+                    response_text = apply_background_nudges(plan, response_text)
+                if count_guarded:
+                    await websocket.send_json({"type": "chunk", "text": response_text})
+                elif response_text != streamed_response_text and response_text.startswith(streamed_response_text):
                     suffix = response_text[len(streamed_response_text):]
                     if suffix:
                         full.append(suffix)
@@ -5403,7 +5728,9 @@ async def ws_chat(websocket: WebSocket):
                 else:
                     response_text = chat_fallback_response(plan)
                 response_text = sanitize_false_addressing(response_text, plan)
-                response_text = apply_background_nudges(plan, response_text)
+                response_text = enforce_count_guard(plan, response_text)
+                if not plan.get("count_constraints"):
+                    response_text = apply_background_nudges(plan, response_text)
                 finalize_start = perf_counter()
                 digest_data = finalize_chat(plan, response_text)
                 finalize_ms = ms_since(finalize_start)

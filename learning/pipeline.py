@@ -52,6 +52,17 @@ except Exception:  # pragma: no cover - optional Step-1 hook must never break ch
     LuxLanguageSenseBundle = None  # type: ignore[assignment]
     neutral_lux_language_sense_bundle = None  # type: ignore[assignment]
 
+try:
+    from .practical_support_layers import (
+        PracticalSupportBundle,
+        build_practical_support_bundle,
+        neutral_practical_support_bundle,
+    )
+except Exception:  # pragma: no cover - optional passive scaffold must never break chat.
+    PracticalSupportBundle = None  # type: ignore[assignment]
+    build_practical_support_bundle = None  # type: ignore[assignment]
+    neutral_practical_support_bundle = None  # type: ignore[assignment]
+
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -400,6 +411,46 @@ class LearningPipeline:
             "version": "13_step1_optional_hook",
         }
 
+    def _build_practical_support_bundle(
+        self,
+        message: str = "",
+        analysis: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if build_practical_support_bundle is not None:
+            try:
+                return build_practical_support_bundle(message or "", analysis=analysis or {}, context=context or {}).to_safe_dict()
+            except Exception:
+                pass
+        if neutral_practical_support_bundle is not None:
+            try:
+                return neutral_practical_support_bundle().to_safe_dict()
+            except Exception:
+                pass
+        if PracticalSupportBundle is not None:
+            try:
+                return PracticalSupportBundle.neutral().to_safe_dict()
+            except Exception:
+                pass
+        return {
+            "active": False,
+            "context_injected": False,
+            "behavior_started": False,
+            "safe_summary": "practical_support_neutral_unavailable",
+            "version": "practical_support_scaffold_unavailable",
+            "candidate_count": 0,
+            "safety_suppressed_count": 0,
+            "context_injection_count": 0,
+            "signals": {},
+            "telemetry": {
+                "practical_support_presence_count": 1,
+                "practical_support_candidate_count": 0,
+                "practical_support_context_injection_count": 0,
+                "practical_support_active_behavior_count": 0,
+                "practical_support_safety_suppressed_count": 0,
+            },
+        }
+
     def ensure_foundation(self, user_id: str) -> None:
         self.personal.ensure_user_files(user_id)
         self.global_store.ensure_global_files()
@@ -529,6 +580,11 @@ class LearningPipeline:
                 user_message,
                 context={"mode": mode, "session": session or {}},
             )
+            practical_support_bundle = self._build_practical_support_bundle(
+                user_message,
+                analysis=analysis,
+                context={"mode": mode, "session": session or {}, "human_risk": risk_preview},
+            )
             live = self.context_builder.build_live_context(
                 user_id=user_id,
                 message=user_message,
@@ -644,6 +700,7 @@ class LearningPipeline:
                 "group4_bundle": group4_bundle.to_safe_dict(),
                 "micro_human_bridge_meta": micro_human_bundle,
                 "lux_language_sense_meta": lux_language_sense_meta,
+                "practical_support_meta": practical_support_bundle,
                 "micro_behavior_hint": (
                     dict(micro_human_bundle.get("repair_clarity_hint", {}))
                     if isinstance(micro_human_bundle, dict) and isinstance(micro_human_bundle.get("repair_clarity_hint"), dict)
@@ -700,6 +757,11 @@ class LearningPipeline:
                     "low_confidence_suppressed": False,
                     "safe_summary": "lux_language_sense_fallback_not_used",
                 },
+                "practical_support_meta": self._build_practical_support_bundle(
+                    user_message,
+                    analysis=analysis,
+                    context={"mode": mode, "fallback": True},
+                ),
                 "micro_behavior_hint": {},
                 "human_risk": {},
                 "mode": mode,
@@ -1454,6 +1516,16 @@ class LearningPipeline:
                 )
             }
         )
+        practical_support_meta = (
+            learning_context.get("practical_support_meta", {})
+            if isinstance(learning_context.get("practical_support_meta"), dict)
+            else {}
+        )
+        practical_support_counts = (
+            practical_support_meta.get("telemetry", {})
+            if isinstance(practical_support_meta.get("telemetry"), dict)
+            else {}
+        )
 
         perf_row = {
             "ts": now_iso(),
@@ -1559,6 +1631,11 @@ class LearningPipeline:
                 "truncation_repair_hint_count": int(micro_behavior_counts.get("truncation_repair_hint_count", 0)),
                 "low_confidence_behavior_suppressed_count": int(micro_behavior_counts.get("low_confidence_behavior_suppressed_count", 0)),
                 "safety_behavior_suppressed_count": int(micro_behavior_counts.get("safety_behavior_suppressed_count", 0)),
+                "practical_support_presence_count": int(practical_support_counts.get("practical_support_presence_count", 0)),
+                "practical_support_candidate_count": int(practical_support_counts.get("practical_support_candidate_count", 0)),
+                "practical_support_context_injection_count": int(practical_support_counts.get("practical_support_context_injection_count", 0)),
+                "practical_support_active_behavior_count": int(practical_support_counts.get("practical_support_active_behavior_count", 0)),
+                "practical_support_safety_suppressed_count": int(practical_support_counts.get("practical_support_safety_suppressed_count", 0)),
                 "time_ecology_confidence": safe_float(group4_time_ecology.confidence, 0.0),
                 "cultural_epistemic_confidence": safe_float(group4_cultural_epistemic.confidence, 0.0),
                 "cultural_epistemic_signal_presence_count": 1 if cultural_conf > 0.0 else 0,
