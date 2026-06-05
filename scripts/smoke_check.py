@@ -1,0 +1,452 @@
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import uuid
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable
+from urllib.error import URLError
+from urllib.request import urlopen
+
+
+ROOT = Path(__file__).resolve().parents[1]
+DEBUG_USER_ID = "debug_smoke"
+
+
+@dataclass
+class CheckResult:
+    status: str
+    name: str
+    detail: str = ""
+
+
+class SmokeRunner:
+    def __init__(self) -> None:
+        self.results: list[CheckResult] = []
+        self.temp_dirs: list[Path] = []
+        self.app_module: Any | None = None
+        self.temp_root: Path | None = None
+        self.raw_phrase = "SMOKE_RAW_" + uuid.uuid4().hex
+
+    def add(self, status: str, name: str, detail: str = "") -> None:
+        self.results.append(CheckResult(status=status, name=name, detail=detail))
+        suffix = f" - {detail}" if detail else ""
+        print(f"{status} {name}{suffix}")
+
+    def pass_(self, name: str, detail: str = "") -> None:
+        self.add("PASS", name, detail)
+
+    def fail(self, name: str, detail: str = "") -> None:
+        self.add("FAIL", name, detail)
+
+    def skip(self, name: str, detail: str = "") -> None:
+        self.add("SKIP", name, detail)
+
+    def check(self, name: str, fn: Callable[[], str | None]) -> None:
+        try:
+            detail = fn() or ""
+            self.pass_(name, detail)
+        except SkipCheck as exc:
+            self.skip(name, str(exc))
+        except Exception as exc:
+            self.fail(name, f"{type(exc).__name__}: {exc}")
+
+    def make_temp_dir(self, prefix: str) -> Path:
+        path = Path(tempfile.mkdtemp(prefix=prefix))
+        self.temp_dirs.append(path)
+        return path
+
+    def cleanup(self) -> None:
+        for path in reversed(self.temp_dirs):
+            shutil.rmtree(path, ignore_errors=True)
+
+    def run_subprocess(self, args: list[str], *, name: str) -> str:
+        cache = self.make_temp_dir(f"lux_smoke_{name}_pycache_")
+        env = os.environ.copy()
+        env["PYTHONPYCACHEPREFIX"] = str(cache)
+        proc = subprocess.run(
+            args,
+            cwd=ROOT,
+            env=env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=90,
+        )
+        if proc.returncode != 0:
+            out = (proc.stdout + proc.stderr).strip()
+            raise AssertionError(out[-1000:] or f"exit={proc.returncode}")
+        return "ok"
+
+    def import_app(self) -> Any:
+        if self.app_module is not None:
+            return self.app_module
+        sys.dont_write_bytecode = True
+        sys.path.insert(0, str(ROOT))
+        import app as luxapp
+
+        self.temp_root = self.make_temp_dir("lux_smoke_app_")
+        luxapp.USERS_DIR = self.temp_root / "users"
+        luxapp.USERS_DIR.mkdir(parents=True, exist_ok=True)
+        luxapp.cost_logger = luxapp.CostLogger(self.temp_root)
+        luxapp.STREAM_CHUNK_DELAY = 0
+        self.app_module = luxapp
+        return luxapp
+
+    def check_py_compile_app(self) -> str:
+        return self.run_subprocess([sys.executable, "-m", "py_compile", "app.py"], name="app")
+
+    def check_compileall_learning(self) -> str:
+        return self.run_subprocess([sys.executable, "-m", "compileall", "-q", "learning"], name="learning")
+
+    def check_health_shape(self) -> str:
+        luxapp = self.import_app()
+        assert len(luxapp.ANALYSIS_LAYER_NAMES) == 16
+        return "16 layers"
+
+    def check_count_guard(self) -> str:
+        luxapp = self.import_app()
+        cases = [
+            (
+                "5 tane rastgele paragraf yaz",
+                "Bir.\n\nIki.\n\nUc.\n\nDort.\n\nBes.\n\nAlti.",
+                "paragraph",
+                5,
+            ),
+            (
+                "3 madde yaz",
+                "- Bir\n- Iki\n- Uc\n- Dort",
+                "bullet",
+                3,
+            ),
+            (
+                "tek cumle cevap ver",
+                "Birinci cumle. Ikinci cumle.",
+                "sentence",
+                1,
+            ),
+        ]
+        for message, response, kind, target in cases:
+            constraints = luxapp.extract_count_constraints(message)
+            assert constraints, message
+            assert constraints[0]["kind"] == kind, constraints
+            repaired = luxapp.enforce_count_guard({"kind": "command", "count_constraints": constraints}, response)
+            actual = luxapp.count_constraint_units(repaired, constraints[0])
+            assert actual == target, (message, actual, repaired)
+            assert luxapp.count_constraints_satisfied(repaired, constraints), (message, repaired)
+        return "paragraph/bullet/sentence"
+
+    def check_identity_guard(self) -> str:
+        luxapp = self.import_app()
+        profile = luxapp.default_profile()
+        profile = luxapp.apply_identity_guard(profile, "selam burak kut")
+        identity = profile["identity_memory"]
+        assert identity.get("preferred_name") == "", identity
+
+        profile = luxapp.default_profile()
+        profile = luxapp.apply_identity_guard(profile, "Burak Kut'u sever misin?")
+        identity = profile["identity_memory"]
+        assert identity.get("preferred_name") == "", identity
+
+        profile = luxapp.default_profile()
+        profile = luxapp.apply_identity_guard(profile, "ben Burak degilim")
+        rejected = [luxapp.identity_name_key(x) for x in profile["identity_memory"].get("rejected_names", [])]
+        assert "burak" in rejected, rejected
+
+        cleaned = luxapp.sanitize_false_addressing(
+            "Selam Burak. Hazirim.",
+            {"message": "selam burak kut", "identity_boundary": "chat", "profile": luxapp.default_profile()},
+        )
+        assert "Burak" not in cleaned, cleaned
+        return "no nickname inference"
+
+    def check_cost_logger_privacy(self) -> str:
+        from learning.cost_logger import CostLogger, build_safe_cost_row
+
+        base = self.make_temp_dir("lux_smoke_cost_")
+        logger = CostLogger(base)
+        logger.record(
+            endpoint="/chat",
+            route="model",
+            user_message=self.raw_phrase,
+            assistant_response=self.raw_phrase,
+            shadow_compare_enabled=True,
+            shadow_compare_route="short_technical_candidate",
+            shadow_compare_summary={
+                "route": "short_technical_candidate",
+                "would_keep": ["safety", "identity_guard", self.raw_phrase],
+                "would_limit_history_to": 3,
+                "would_skip": ["group3_deep", "group4_deep", "long_memory", self.raw_phrase],
+                "estimated_saved_chars": 1200,
+                "confidence": 0.82,
+                "raw": self.raw_phrase,
+            },
+            proposed_skipped_layers=["group3_deep", self.raw_phrase],
+            reason_tags=["short_technical_candidate", self.raw_phrase],
+            prompt_chars=400,
+            history_chars=80,
+        )
+        text = logger.path.read_text(encoding="utf-8")
+        assert self.raw_phrase not in text
+        row = json.loads(text.strip())
+        assert set(row).issubset(set(build_safe_cost_row().keys()))
+        assert row["shadow_compare_enabled"] is True
+        assert row["shadow_compare_summary"]["would_skip"] == ["group3_deep", "group4_deep", "long_memory"]
+        return "raw-free safe fields"
+
+    def check_practical_support(self) -> str:
+        from learning.practical_support_layers import build_practical_support_bundle, neutral_practical_support_bundle
+
+        neutral = neutral_practical_support_bundle().to_safe_dict()
+        assert neutral["active"] is False
+        assert neutral["context_injected"] is False
+        assert neutral["context_injection_count"] == 0
+        bundle = build_practical_support_bundle("Kafam karisti proje para CV hepsi ust uste geldi").to_safe_dict()
+        assert bundle["active"] is False
+        assert bundle["context_injected"] is False
+        assert bundle["context_injection_count"] == 0
+        return "passive"
+
+    def check_token_budget(self) -> str:
+        from learning.token_budget_policy import TokenBudgetPolicy
+
+        decision = TokenBudgetPolicy().classify(message="git status sonucu bu").to_safe_dict()
+        assert decision["observe_only"] is True
+        assert decision["active"] is False
+        assert decision["budget_class"] in {"short_technical", "normal_chat"}
+        count_decision = TokenBudgetPolicy().classify(
+            message="5 paragraf yaz",
+            count_constraints=[{"kind": "paragraph", "target": 5}],
+        ).to_safe_dict()
+        assert count_decision["count_constraint_present"] is True
+        assert count_decision["active"] is False
+        return "observe_only"
+
+    def check_efficiency_and_shadow(self) -> str:
+        from learning.efficiency_router import EfficiencyRouter
+
+        router = EfficiencyRouter()
+        base = {
+            "mode": "luxviai",
+            "prompt_chars": 9000,
+            "context_chars": 5000,
+            "history_message_count": 18,
+            "history_chars": 7200,
+            "context_item_count": 16,
+            "selected_layer_count": 16,
+        }
+        short = router.dry_run(message="git status sonucu bu", **base).shadow_compare(5000)
+        assert short["shadow_compare_enabled"] is True, short
+        assert short["shadow_compare_route"] == "short_technical_candidate", short
+        assert short["shadow_compare_summary"]["would_skip"] == ["group3_deep", "group4_deep", "long_memory"], short
+
+        disabled = [
+            router.dry_run(message="cok kotu hissediyorum", analysis={"needs_presence": True, "intensity": 8}, **base),
+            router.dry_run(message="ruyamda kapi gordum", **base),
+            router.dry_run(message="5 paragraf yaz", count_constraints=[{"kind": "paragraph", "target": 5}], **base),
+            router.dry_run(message="ben Burak degilim", identity_boundary="identity", **base),
+            router.dry_run(message="debug safety", analysis={"crisis_risk": True}, **base),
+            router.dry_run(message="git status sonucu bu", mode="luxeph", **{k: v for k, v in base.items() if k != "mode"}),
+        ]
+        for decision in disabled:
+            shadow = decision.shadow_compare(5000)
+            assert shadow["shadow_compare_enabled"] is False, shadow
+            assert shadow["proposed_context_chars"] == shadow["current_context_chars"], shadow
+        assert router.observe_only is True
+        return "dry-run only"
+
+    def check_auto_continuation(self) -> str:
+        luxapp = self.import_app()
+        plan = {"kind": "model", "skip_save": False, "mode": "luxviai", "message": "uzun rapor yaz", "count_constraints": []}
+        assert luxapp.should_auto_continue_response("length", "Bitmemis cevap", plan) is True
+        bullets = "\n".join(f"- Madde {i}" for i in range(1, 21))
+        count_plan = {
+            "kind": "model",
+            "skip_save": False,
+            "mode": "luxviai",
+            "message": "20 madde yaz",
+            "count_constraints": [{"kind": "bullet", "target": 20, "limit": "exact"}],
+        }
+        assert luxapp.should_auto_continue_response("length", bullets, count_plan) is False
+        return "length simulation/count stop"
+
+    def patch_app_for_api(self) -> Any:
+        luxapp = self.import_app()
+        luxapp.client = object()
+        luxapp.STREAM_CHUNK_DELAY = 0
+        luxapp.cost_logger = luxapp.CostLogger(self.temp_root or self.make_temp_dir("lux_smoke_api_"))
+        return luxapp
+
+    def check_api_schema(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        health = client.get("/health")
+        assert health.status_code == 200, health.text
+        health_json = health.json()
+        assert len(health_json.get("analysis_layers", [])) == 16, health_json
+
+        chat = client.post("/chat", json={"message": "!cmd:yardim", "mode": "luxviai", "user_id": DEBUG_USER_ID})
+        assert chat.status_code == 200, chat.text
+        chat_json = chat.json()
+        assert "response" in chat_json and "meta" in chat_json, chat_json
+        return "/health /chat"
+
+    def check_ws_stream_schema(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        original_prepare = luxapp.prepare_chat_plan
+        original_stream = luxapp.stream_model
+        original_finalize = luxapp.finalize_chat
+        original_background = luxapp.apply_background_nudges
+        original_sanitize = luxapp.sanitize_false_addressing
+        original_enforce = luxapp.enforce_count_guard
+        try:
+            def fake_plan(user_id: str, message: str, mode: str, *args: Any, **kwargs: Any) -> dict[str, Any]:
+                session = luxapp.default_session("luxviai")
+                return {
+                    "kind": "model",
+                    "skip_save": True,
+                    "active": None,
+                    "session": session,
+                    "profile": luxapp.default_profile(),
+                    "notes": [],
+                    "garden": [],
+                    "analysis": {"primary_emotion": "neutral", "theme": "debug", "cognitive_load": "low"},
+                    "prompt": "debug smoke prompt",
+                    "openai_messages": [{"role": "system", "content": "debug"}],
+                    "model": "debug-model",
+                    "temperature": 0.1,
+                    "max_tokens": 120,
+                    "weekly_report": {},
+                    "memory_preview": [],
+                    "learning_context": {"context_text": "", "context_items": []},
+                    "identity_boundary": "chat",
+                    "count_constraints": [],
+                    "token_budget": {"budget_class": "short_technical", "observe_only": True, "active": False},
+                    "user_id": DEBUG_USER_ID,
+                    "mode": "luxviai",
+                    "message": "debug stream smoke",
+                }
+
+            def fake_stream(*args: Any, **kwargs: Any):
+                yield {"text": "alpha ", "finish_reason": ""}
+                yield {"text": "beta", "finish_reason": "stop"}
+
+            luxapp.prepare_chat_plan = fake_plan
+            luxapp.stream_model = fake_stream
+            luxapp.finalize_chat = lambda plan, response_text: {}
+            luxapp.apply_background_nudges = lambda plan, response_text: response_text
+            luxapp.sanitize_false_addressing = lambda response_text, plan: response_text
+            luxapp.enforce_count_guard = lambda plan, response_text: response_text
+
+            client = TestClient(luxapp.app)
+            with client.websocket_connect("/ws/chat") as ws:
+                ws.send_json({"message": "debug stream smoke", "mode": "luxviai", "user_id": DEBUG_USER_ID})
+                seen: list[str] = []
+                chunks: list[str] = []
+                done: dict[str, Any] | None = None
+                for _ in range(10):
+                    msg = ws.receive_json()
+                    seen.append(str(msg.get("type")))
+                    if msg.get("type") == "chunk":
+                        chunks.append(str(msg.get("text", "")))
+                    if msg.get("type") == "done":
+                        done = msg
+                        break
+                assert seen[0] == "typing", seen
+                assert "chunk" in seen and "done" in seen, seen
+                assert done is not None and "response" in done and "meta" in done, done
+                assert done["response"] == "".join(chunks), (done, chunks)
+        finally:
+            luxapp.prepare_chat_plan = original_prepare
+            luxapp.stream_model = original_stream
+            luxapp.finalize_chat = original_finalize
+            luxapp.apply_background_nudges = original_background
+            luxapp.sanitize_false_addressing = original_sanitize
+            luxapp.enforce_count_guard = original_enforce
+        return "typing/chunk/done"
+
+    def check_live_server_health(self) -> str:
+        base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+        try:
+            with urlopen(base_url + "/health", timeout=1.0) as resp:
+                assert resp.status == 200, resp.status
+        except (URLError, OSError, TimeoutError) as exc:
+            raise SkipCheck(f"no live server at {base_url}: {type(exc).__name__}")
+        return base_url
+
+    def check_local_privacy_scan(self) -> str:
+        scan_roots = [
+            ROOT / "data",
+            ROOT / "data" / "global",
+            ROOT / "data" / "fine-tune",
+            ROOT / "data" / "fine_tune",
+        ]
+        hits: list[str] = []
+        for root in scan_roots:
+            if not root.exists():
+                continue
+            if root.is_file():
+                paths = [root]
+            else:
+                paths = [p for p in root.rglob("*") if p.is_file()]
+            for path in paths:
+                try:
+                    if self.raw_phrase in path.read_text(encoding="utf-8", errors="ignore"):
+                        hits.append(str(path.relative_to(ROOT)))
+                except Exception:
+                    continue
+        assert not hits, hits
+        return "raw phrase absent"
+
+    def run(self) -> int:
+        print(f"ROOT {ROOT}")
+        checks: list[tuple[str, Callable[[], str | None]]] = [
+            ("py_compile_app", self.check_py_compile_app),
+            ("compileall_learning", self.check_compileall_learning),
+            ("health_shape_16_layers", self.check_health_shape),
+            ("count_guard", self.check_count_guard),
+            ("identity_guard", self.check_identity_guard),
+            ("cost_logger_privacy", self.check_cost_logger_privacy),
+            ("practical_support_passive", self.check_practical_support),
+            ("token_budget_observe_only", self.check_token_budget),
+            ("efficiency_router_shadow", self.check_efficiency_and_shadow),
+            ("auto_continuation", self.check_auto_continuation),
+            ("api_schema_in_process", self.check_api_schema),
+            ("ws_stream_schema_in_process", self.check_ws_stream_schema),
+            ("live_server_health", self.check_live_server_health),
+            ("local_privacy_scan", self.check_local_privacy_scan),
+        ]
+        try:
+            for name, fn in checks:
+                self.check(name, fn)
+        finally:
+            self.cleanup()
+
+        counts = {"PASS": 0, "FAIL": 0, "SKIP": 0}
+        for result in self.results:
+            counts[result.status] = counts.get(result.status, 0) + 1
+        print(f"SUMMARY PASS={counts['PASS']} FAIL={counts['FAIL']} SKIP={counts['SKIP']}")
+        return 1 if counts["FAIL"] else 0
+
+
+class SkipCheck(Exception):
+    pass
+
+
+if __name__ == "__main__":
+    raise SystemExit(SmokeRunner().run())
