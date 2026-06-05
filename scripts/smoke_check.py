@@ -130,6 +130,12 @@ class SmokeRunner:
                 "sentence",
                 1,
             ),
+            (
+                "Tam sayfa satir uzunlugunda bes satir yaz.",
+                "Bir\nIki\nUc\nDort\nBes\nAlti",
+                "line",
+                5,
+            ),
         ]
         for message, response, kind, target in cases:
             constraints = luxapp.extract_count_constraints(message)
@@ -174,9 +180,29 @@ class SmokeRunner:
                 "\n\n".join(f"Paragraf {i} yeterince uzun bir test metni olarak burada duruyor." for i in range(1, 31)),
                 30,
                 5,
+                False,
+            ),
+            (
+                "Her paragraf tam sayfa uzunlugunda ve toplam 5 satir olsun. 2 paragraf yaz.",
+                "Birinci paragraf kisa bir test metni.\n\nIkinci paragraf kisa bir test metni.",
+                2,
+                5,
+                True,
+            ),
+            (
+                "Her biri 5 uzun satir olan 3 paragraf yaz.",
+                "Birinci paragraf kisa bir test metni.\n\nIkinci paragraf kisa bir test metni.\n\nUcuncu paragraf kisa bir test metni.",
+                3,
+                5,
+                True,
             ),
         ]
-        for message, response, paragraph_target, line_target in cases:
+        for case in cases:
+            if len(case) == 4:
+                message, response, paragraph_target, line_target = case
+                expect_long = False
+            else:
+                message, response, paragraph_target, line_target, expect_long = case
             count_constraints = luxapp.extract_count_constraints(message)
             line_constraints = luxapp.extract_line_format_constraints(message)
             assert count_constraints and count_constraints[0]["target"] == paragraph_target, (message, count_constraints)
@@ -189,7 +215,24 @@ class SmokeRunner:
             blocks = self.formatted_paragraph_blocks(repaired)
             assert len(blocks) == paragraph_target, (message, len(blocks), repaired)
             assert all(len(block) == line_target for block in blocks), (message, blocks[:2], repaired)
-        return "paragraph lines exact"
+            if expect_long:
+                for block in blocks:
+                    for line in block:
+                        assert luxapp.count_words(line) >= 18 and len(line) >= 120, (message, line, repaired)
+
+        line_message = "Tam sayfa satir uzunlugunda bes satir yaz."
+        line_constraints = luxapp.extract_line_format_constraints(line_message)
+        count_constraints = luxapp.extract_count_constraints(line_message)
+        assert count_constraints and count_constraints[0]["kind"] == "line" and count_constraints[0]["target"] == 5, count_constraints
+        repaired = luxapp.enforce_line_format_guard(
+            {"count_constraints": count_constraints, "line_format_constraints": line_constraints},
+            "Kisa test metni.",
+        )
+        lines = [ln for ln in repaired.splitlines() if ln.strip()]
+        assert len(lines) == 5, repaired
+        assert all(luxapp.count_words(line) >= 18 and len(line) >= 120 for line in lines), repaired
+        assert "---" not in repaired, repaired
+        return "paragraph/long-line exact"
 
     def check_identity_guard(self) -> str:
         luxapp = self.import_app()
@@ -264,7 +307,16 @@ class SmokeRunner:
         assert "resumeUnavailableFallback" in html
         assert "Yalnızca bu son bölümün doğal devamını yaz" in html
         assert "interruptedState && isContinueCommand(text)" in html
-        return "safe resume context"
+        assert '"devam et ama yeni konu' not in html
+        assert '"kaldığın yerden devam et"' in html
+        assert '"sürdür"' in html
+        assert "function hardCancelActiveTransport" in html
+        assert "responseRunId += 1" in html
+        assert "isRunActive(runId)" in html
+        assert "activeFetchController.abort" in html
+        assert 'dataset.streamState = "cancelled"' in html
+        assert "if (interruptedState && !isContinueCommand(messageInput.value))" in html
+        return "safe resume/hard-stop context"
 
     def check_cost_logger_privacy(self) -> str:
         from learning.cost_logger import CostLogger, build_safe_cost_row

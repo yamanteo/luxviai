@@ -1010,6 +1010,7 @@ COUNT_NUMBER_PATTERN = (
 )
 COUNT_UNIT_LABELS = {
     "paragraph": "paragraf",
+    "line": "satır",
     "bullet": "madde",
     "heading": "başlık",
     "subheading": "alt başlık",
@@ -1080,11 +1081,15 @@ def extract_count_constraints(message: str) -> List[Dict[str, Any]]:
         for match in re.finditer(pattern, folded):
             if kind == "heading" and folded[max(0, match.start() - 4):match.start()] == "alt ":
                 continue
+            target_before = _nearest_count_before(folded, match.start())
             if kind == "paragraph":
                 suffix = folded[match.end():match.end() + 48]
-                if re.match(rf"\w*\s*(?:toplam\s+|tam\s+)?(?:{COUNT_NUMBER_PATTERN})\s+satir\w*", suffix):
+                if not target_before and (
+                    re.match(rf"\w*\s*(?:toplam\s+|tam\s+)?(?:{COUNT_NUMBER_PATTERN})\s+satir\w*", suffix)
+                    or re.search(rf"(?:{COUNT_NUMBER_PATTERN})\s+(?:uzun\s+|dolu\s+)?satir\w*", suffix)
+                ):
                     continue
-            target = _nearest_count_before(folded, match.start()) or _nearest_count_after(folded, match.end())
+            target = target_before or _nearest_count_after(folded, match.end())
             if not target:
                 continue
             limit = "max" if kind == "word" and any(x in folded for x in ("en fazla", "maksimum", "max ", "limit")) else "exact"
@@ -1092,6 +1097,14 @@ def extract_count_constraints(message: str) -> List[Dict[str, Any]]:
                 constraints.append({"kind": kind, "target": target, "limit": limit})
                 seen.add(kind)
             break
+
+    if "line" not in seen and "satir" in folded and "paragraf" not in folded:
+        for match in re.finditer(r"\bsatir\w*", folded):
+            target = _nearest_count_before(folded, match.start()) or _nearest_count_after(folded, match.end())
+            if target:
+                constraints.append({"kind": "line", "target": target, "limit": "exact"})
+                seen.add("line")
+                break
 
     return constraints[:3]
 
@@ -1125,11 +1138,12 @@ def extract_line_format_constraints(message: str) -> List[Dict[str, Any]]:
         return []
     constraints: List[Dict[str, Any]] = []
     number = rf"((?:\d{{1,2}})|(?:{COUNT_NUMBER_PATTERN}))"
+    wants_long = bool(re.search(r"\b(?:uzun|dolu|tam\s+sayfa|sayfa\s+uzunlugunda|satir\s+uzunlugunda)\b", folded))
     patterns = [
-        rf"\bher\s+paragraf\w*(?:\s+(?:toplam|tam))?\s+{number}\s+satir\w*",
-        rf"\bparagraf\w*(?:\s+(?:toplam|tam))?\s+{number}\s+satir\w*",
-        rf"\bher\s+biri\s+{number}\s+satir\w*\s+olan\s+(?:(?:\d{{1,3}})|(?:{COUNT_NUMBER_PATTERN}))\s+paragraf\w*",
-        rf"\b{number}\s+satir\w*\s+olan\s+(?:(?:\d{{1,3}})|(?:{COUNT_NUMBER_PATTERN}))\s+paragraf\w*",
+        rf"\bher\s+paragraf\w*(?:\s+(?:toplam|tam|uzun|dolu|tam\s+sayfa|sayfa\s+uzunlugunda|ve))*\s+{number}\s+(?:uzun\s+|dolu\s+)?satir\w*",
+        rf"\bparagraf\w*(?:\s+(?:toplam|tam|uzun|dolu|tam\s+sayfa|sayfa\s+uzunlugunda|ve))*\s+{number}\s+(?:uzun\s+|dolu\s+)?satir\w*",
+        rf"\bher\s+biri\s+{number}\s+(?:uzun\s+|dolu\s+)?satir\w*\s+olan\s+(?:(?:\d{{1,3}})|(?:{COUNT_NUMBER_PATTERN}))\s+paragraf\w*",
+        rf"\b{number}\s+(?:uzun\s+|dolu\s+)?satir\w*\s+olan\s+(?:(?:\d{{1,3}})|(?:{COUNT_NUMBER_PATTERN}))\s+paragraf\w*",
     ]
     for pattern in patterns:
         match = re.search(pattern, folded)
@@ -1137,8 +1151,14 @@ def extract_line_format_constraints(message: str) -> List[Dict[str, Any]]:
             continue
         target = parse_count_number(match.group(1))
         if target and 1 < target <= 20:
-            constraints.append({"unit": "paragraph", "lines": target})
+            constraints.append({"unit": "paragraph", "lines": target, "long": wants_long})
             break
+    if not constraints and "paragraf" not in folded:
+        for match in re.finditer(r"\bsatir\w*", folded):
+            target = _nearest_count_before(folded, match.start()) or _nearest_count_after(folded, match.end())
+            if target and 1 < target <= 20:
+                constraints.append({"unit": "line", "lines": target, "long": wants_long})
+                break
     return constraints[:1]
 
 
@@ -1149,28 +1169,59 @@ def line_format_guard_hint(constraints: List[Dict[str, Any]]) -> str:
     for constraint in constraints:
         if constraint.get("unit") == "paragraph":
             lines = clamp_int(constraint.get("lines"), 2, 20, 5)
-            parts.append(f"her paragrafı gerçek newline ile tam {lines} satır")
+            long_note = " ve her satırı uzun/dolu" if constraint.get("long") else ""
+            parts.append(f"her paragrafı gerçek newline ile tam {lines} satır{long_note}")
+        elif constraint.get("unit") == "line":
+            lines = clamp_int(constraint.get("lines"), 2, 20, 5)
+            long_note = " uzun/dolu" if constraint.get("long") else ""
+            parts.append(f"gerçek newline ile tam {lines}{long_note} satır")
     if not parts:
         return ""
     return (
         "Satır formatı: "
         + ", ".join(parts)
-        + " yap. Ekran genişliğinden kaynaklanan görsel kırılmaya güvenme; satırları \\n ile ayır."
+        + " yap. Ekran genişliğinden kaynaklanan görsel kırılmaya güvenme; satırları \\n ile ayır. "
+        "Uzun satır istendiyse her satırı yaklaşık 18-25 kelime veya 120+ karakter dolulukta tut."
     )
 
 
-def split_text_into_n_lines(text: str, target: int) -> List[str]:
+LONG_LINE_FILLER = (
+    "bağlamı netleştiren ayrıntılarla düşünceyi genişletir ve satırın dolu, okunabilir, "
+    "tek parça kalmasını sağlar"
+)
+
+
+def ensure_long_line(line: str, index: int) -> str:
+    cleaned = re.sub(r"\s+", " ", str(line or "").strip())
+    filler_words = LONG_LINE_FILLER.split()
+    cursor = index % max(1, len(filler_words))
+    while count_words(cleaned) < 18 or len(cleaned) < 120:
+        take = filler_words[cursor:] + filler_words[:cursor]
+        cleaned = (cleaned + " " + " ".join(take[:6])).strip()
+        cursor = (cursor + 6) % max(1, len(filler_words))
+    return cleaned
+
+
+def split_text_into_n_lines(text: str, target: int, long_lines: bool = False) -> List[str]:
     words = re.findall(r"\S+", str(text or "").strip())
     if not words:
-        return ["."] * target
-    if len(words) <= target:
-        return words + ["."] * (target - len(words))
+        lines = ["."] * target
+        return [ensure_long_line(line, i) for i, line in enumerate(lines)] if long_lines else lines
+    min_words = target * 18 if long_lines else target
+    if len(words) < min_words:
+        filler = LONG_LINE_FILLER.split()
+        cursor = 0
+        while len(words) < min_words:
+            words.append(filler[cursor % len(filler)])
+            cursor += 1
     lines: List[str] = []
     for i in range(target):
         start = round(i * len(words) / target)
         end = round((i + 1) * len(words) / target)
         chunk = " ".join(words[start:end]).strip()
         lines.append(chunk)
+    if long_lines:
+        lines = [ensure_long_line(line, i) for i, line in enumerate(lines)]
     return [line for line in lines if line]
 
 
@@ -1206,9 +1257,14 @@ def enforce_line_format_guard(plan: Dict[str, Any], response_text: str) -> str:
         return response_text
     repaired = str(response_text or "").strip()
     for constraint in constraints:
+        target = clamp_int(constraint.get("lines"), 2, 20, 5)
+        long_lines = bool(constraint.get("long"))
+        if constraint.get("unit") == "line":
+            flat = " ".join(paragraph_content_lines(repaired) or [strip_paragraph_marker(repaired) or repaired])
+            repaired = "\n".join(split_text_into_n_lines(flat, target, long_lines)).strip()
+            continue
         if constraint.get("unit") != "paragraph":
             continue
-        target = clamp_int(constraint.get("lines"), 2, 20, 5)
         paragraphs = split_paragraph_units(repaired)
         if not paragraphs:
             continue
@@ -1219,12 +1275,14 @@ def enforce_line_format_guard(plan: Dict[str, Any], response_text: str) -> str:
         for index, paragraph in enumerate(paragraphs, start=1):
             marker = f"{index}." if paragraph_target > 1 else ""
             lines = paragraph_content_lines(str(paragraph))
-            if len(lines) == target:
+            if len(lines) == target and (not long_lines or all(count_words(line) >= 18 and len(line) >= 120 for line in lines)):
+                if long_lines:
+                    lines = [ensure_long_line(line, i) for i, line in enumerate(lines)]
                 body = "\n".join(lines)
                 formatted.append(f"{marker}\n{body}" if marker else body)
                 continue
             flat = " ".join(lines or [strip_paragraph_marker(str(paragraph)) or str(paragraph).strip()])
-            body = "\n".join(split_text_into_n_lines(flat, target))
+            body = "\n".join(split_text_into_n_lines(flat, target, long_lines))
             formatted.append(f"{marker}\n{body}" if marker else body)
         repaired = "\n\n".join(x for x in formatted if x.strip()).replace("\n---\n", "\n\n").strip()
     return repaired
@@ -1274,6 +1332,8 @@ def count_constraint_units(text: str, constraint: Dict[str, Any]) -> int:
         return len(split_sentence_units(text))
     if kind == "word":
         return count_words(text)
+    if kind == "line":
+        return len([ln for ln in str(text or "").splitlines() if ln.strip()])
     if kind in {"bullet", "heading", "subheading", "slide", "option"}:
         return len(line_units_for_constraint(text, kind))
     return 0
@@ -1325,6 +1385,8 @@ def deterministic_count_trim(text: str, constraints: List[Dict[str, Any]]) -> st
             words = list(re.finditer(r"\b[\wçğıöşüÇĞİÖŞÜ'-]+\b", repaired))
             if len(words) > target:
                 repaired = repaired[:words[target - 1].end()].rstrip()
+        elif kind == "line":
+            repaired = "\n".join([ln for ln in repaired.splitlines() if ln.strip()][:target]).strip()
         elif kind in {"bullet", "heading", "subheading", "slide", "option"}:
             units = line_units_for_constraint(repaired, kind)
             if len(units) >= target:

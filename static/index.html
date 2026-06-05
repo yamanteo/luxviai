@@ -1607,6 +1607,7 @@ let wsPending = null;
 let aiResponding = false;
 let stopStreamRequested = false;
 let streamAbort = null;
+let activeFetchController = null;
 let activeAiDiv = null;
 let micPressActive = false;
 let interruptedState = null;
@@ -3989,11 +3990,19 @@ function createPacedWriter(targetEl, speedFactor = 0.9) {
         timer = null;
       }
       resolveIdle();
+    },
+    isStopped() {
+      return stopped;
     }
   };
 }
 
-function forceFinalVisibleText(writer, targetEl, finalText) {
+function isRunActive(runId) {
+  return Boolean(activeGeneration && activeGeneration.runId === runId && responseRunId === runId && !stopStreamRequested);
+}
+
+function forceFinalVisibleText(writer, targetEl, finalText, runId = null) {
+  if (runId !== null && !isRunActive(runId)) return;
   const text = String(finalText || "").trim();
   if (!text || !targetEl) return;
   if (writer && typeof writer.setExact === "function") {
@@ -4006,7 +4015,8 @@ function forceFinalVisibleText(writer, targetEl, finalText) {
   }
 }
 
-function reconcileFinalText(writer, targetEl, finalText) {
+function reconcileFinalText(writer, targetEl, finalText, runId = null) {
+  if (runId !== null && !isRunActive(runId)) return;
   const text = String(finalText || "").trim();
   if (!text || !targetEl) return;
   const expected = writer && typeof writer.expectedText === "function"
@@ -4020,12 +4030,33 @@ function reconcileFinalText(writer, targetEl, finalText) {
   forceFinalVisibleText(writer, targetEl, text);
 }
 
+function hardCancelActiveTransport() {
+  if (activeFetchController && typeof activeFetchController.abort === "function") {
+    try { activeFetchController.abort(); } catch (_) {}
+  }
+  activeFetchController = null;
+  if (wsPending && typeof wsPending.reject === "function") {
+    try { wsPending.reject(new Error("stopped_by_user")); } catch (_) {}
+  }
+  wsPending = null;
+}
+
 function stopActiveResponse() {
   stopStreamRequested = true;
+  responseRunId += 1;
   if (typeof streamAbort === "function") {
     try { streamAbort(); } catch (_) {}
   }
+  hardCancelActiveTransport();
+  if (activeGeneration && activeGeneration.writer && typeof activeGeneration.writer.stop === "function") {
+    try { activeGeneration.writer.stop(); } catch (_) {}
+  }
+  if (activeGeneration && activeGeneration.messageEl) {
+    activeGeneration.messageEl.dataset.streamState = "cancelled";
+  }
+  activeGeneration = null;
   streamAbort = null;
+  setPendingState(null);
   setResponseLock(false);
 }
 
@@ -4132,7 +4163,7 @@ function resumeUnavailableFallback() {
 }
 function isContinueCommand(text) {
   const low = String(text || "").trim().toLowerCase();
-  return ["devam et", "devam", "continue"].includes(low);
+  return ["devam et", "devam", "kaldığın yerden devam et", "kaldigin yerden devam et", "sürdür", "surdur", "continue"].includes(low);
 }
 function connectionFallback() {
   return currentLang === "tr"
@@ -4188,6 +4219,7 @@ async function continueInterruptedResponse(targetAiEl) {
   setPendingState({ conversationId, runId: continueRunId, kind: "continue" });
   let continuedRawText = "";
   const applyContinueChunk = (chunk) => {
+    if (!isRunActive(continueRunId)) return;
     if (!chunk) return;
     continuedRawText += chunk;
     const merged = mergeContinuationText(cleanBaseText, continuedRawText);
@@ -4195,7 +4227,7 @@ async function continueInterruptedResponse(targetAiEl) {
     if (merged.startsWith(expected)) {
       writer.push(merged.slice(expected.length));
     } else {
-      forceFinalVisibleText(writer, targetAiEl, merged);
+      forceFinalVisibleText(writer, targetAiEl, merged, continueRunId);
     }
   };
   const payload = {
@@ -4212,21 +4244,23 @@ async function continueInterruptedResponse(targetAiEl) {
       responseText = await sendMessageViaSocket(
         payload,
         chunk => applyContinueChunk(chunk),
-        finalText => reconcileFinalText(writer, targetAiEl, mergeContinuationText(cleanBaseText, finalText))
+        finalText => reconcileFinalText(writer, targetAiEl, mergeContinuationText(cleanBaseText, finalText), continueRunId),
+        continueRunId
       );
       await writer.waitIdle();
     } catch (_) {
-      responseText = await sendMessageViaHttp(payload);
+      if (!isRunActive(continueRunId)) return;
+      responseText = await sendMessageViaHttp(payload, continueRunId);
       applyContinueChunk(responseText);
       await writer.waitIdle();
     }
-    if (responseRunId !== continueRunId) {
+    if (!isRunActive(continueRunId)) {
       setPendingState(null);
       return;
     }
     const finalMerged = mergeContinuationText(cleanBaseText, responseText);
     if ((finalMerged || "").trim() && targetAiEl.innerText !== finalMerged) {
-      forceFinalVisibleText(writer, targetAiEl, finalMerged);
+      forceFinalVisibleText(writer, targetAiEl, finalMerged, continueRunId);
     }
     addMessageToHistoryForConversation(conversationId, "assistant", targetAiEl.innerText || responseText);
     setPendingState(null);
@@ -4236,12 +4270,14 @@ async function continueInterruptedResponse(targetAiEl) {
     setPendingState(null);
     // no-op
   } finally {
-    if (activeGeneration && activeGeneration.runId === continueRunId) activeGeneration = null;
-    setResponseLock(false);
+    if (activeGeneration && activeGeneration.runId === continueRunId) {
+      activeGeneration = null;
+      setResponseLock(false);
+    }
   }
 }
 
-function sendMessageViaSocket(payload, onChunk, onFinal) {
+function sendMessageViaSocket(payload, onChunk, onFinal, runId = null) {
   return new Promise((resolve, reject) => {
     if (wsPending) {
       reject(new Error("socket_busy"));
@@ -4255,6 +4291,7 @@ function sendMessageViaSocket(payload, onChunk, onFinal) {
         let streamed = "";
         wsPending = {
           onMessage(data) {
+            if (runId !== null && !isRunActive(runId)) return;
             if (data.type === "chunk") {
               const chunk = data.text || "";
               if (chunk) {
@@ -4271,9 +4308,10 @@ function sendMessageViaSocket(payload, onChunk, onFinal) {
             }
           },
           reject(err) {
-            wsPending = null;
+            if (!runId || !wsPending || wsPending.runId === runId) wsPending = null;
             reject(err);
-          }
+          },
+          runId
         };
         ws.send(JSON.stringify(payload));
         return;
@@ -4288,20 +4326,35 @@ function sendMessageViaSocket(payload, onChunk, onFinal) {
   });
 }
 
-async function sendMessageViaHttp(payload) {
-  const res = await fetch("/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-  const data = await res.json();
-  return (data.response || heardFallback()).trim();
+async function sendMessageViaHttp(payload, runId = null) {
+  if (runId !== null && !isRunActive(runId)) throw new Error("stale_run");
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  if (controller) activeFetchController = controller;
+  try {
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller ? controller.signal : undefined
+    });
+    if (runId !== null && !isRunActive(runId)) throw new Error("stale_run");
+    const data = await res.json();
+    if (runId !== null && !isRunActive(runId)) throw new Error("stale_run");
+    return (data.response || heardFallback()).trim();
+  } finally {
+    if (controller && activeFetchController === controller) activeFetchController = null;
+  }
 }
 
 async function sendMessageLive(customText) {
   if (aiResponding) return;
   const text = (customText || messageInput.value).trim();
   if (!text) return;
+  if (activeGeneration && !aiResponding) {
+    hardCancelActiveTransport();
+    activeGeneration = null;
+    setPendingState(null);
+  }
   if (interruptedState && isContinueCommand(text)) {
     const targetAiEl = interruptedState.messageEl || Array.from(chatBox.querySelectorAll(".msg.ai")).pop();
     messageInput.value = "";
@@ -4310,6 +4363,9 @@ async function sendMessageLive(customText) {
       continueInterruptedResponse(targetAiEl);
       return;
     }
+  } else if (interruptedState) {
+    clearInterruptedState(true);
+    hardCancelActiveTransport();
   }
   const runId = ++responseRunId;
 
@@ -4338,16 +4394,15 @@ async function sendMessageLive(customText) {
 
   try {
     streamAbort = () => {
+      if (!activeGeneration || activeGeneration.runId !== runId) return;
       const partialText = (writer && typeof writer.expectedText === "function")
         ? writer.expectedText()
         : (aiDiv.innerText || "");
       writer.stop();
-      if (wsPending && typeof wsPending.reject === "function") {
-        wsPending.reject(new Error("stopped_by_user"));
-      }
-      wsPending = null;
+      hardCancelActiveTransport();
       if (partialText.trim()) aiDiv.innerText = partialText;
       else if (!aiDiv.innerText.trim()) aiDiv.innerText = stoppedFallback();
+      aiDiv.dataset.streamState = "cancelled";
       interruptedState = {
         conversationId,
         mode: currentMode,
@@ -4364,22 +4419,22 @@ async function sendMessageLive(customText) {
     try {
       responseText = await sendMessageViaSocket(
         payload,
-        chunk => writer.push(chunk),
-        finalText => reconcileFinalText(writer, aiDiv, finalText)
+        chunk => { if (isRunActive(runId)) writer.push(chunk); },
+        finalText => reconcileFinalText(writer, aiDiv, finalText, runId),
+        runId
       );
       await writer.waitIdle();
     } catch (socketErr) {
-      if (stopStreamRequested) return;
-      responseText = await sendMessageViaHttp(payload);
-      writer.push(responseText);
+      if (!isRunActive(runId)) return;
+      responseText = await sendMessageViaHttp(payload, runId);
+      if (isRunActive(runId)) writer.push(responseText);
       await writer.waitIdle();
     }
-    if (stopStreamRequested) return;
-    if (responseRunId !== runId) {
+    if (!isRunActive(runId)) {
       setPendingState(null);
       return;
     }
-    if ((responseText || "").trim() && aiDiv.innerText !== responseText) forceFinalVisibleText(writer, aiDiv, responseText);
+    if ((responseText || "").trim() && aiDiv.innerText !== responseText) forceFinalVisibleText(writer, aiDiv, responseText, runId);
     if (!aiDiv.innerText.trim()) writer.setExact(responseText || heardFallback());
     if (currentLang !== "tr" && aiDiv.innerText.trim()) {
       const translated = await translateText(aiDiv.innerText, deeplTargetCode(currentLang));
@@ -4397,8 +4452,10 @@ async function sendMessageLive(customText) {
   } finally {
     streamAbort = null;
     activeAiDiv = null;
-    if (activeGeneration && activeGeneration.runId === runId) activeGeneration = null;
-    setResponseLock(false);
+    if (activeGeneration && activeGeneration.runId === runId) {
+      activeGeneration = null;
+      setResponseLock(false);
+    }
   }
 }
 
@@ -4418,7 +4475,11 @@ messageInput.addEventListener("keydown", e => {
   }
 });
 messageInput.addEventListener("input", () => {
-  if (interruptedState && !isContinueCommand(messageInput.value)) clearInterruptedState(true);
+  if (interruptedState && !isContinueCommand(messageInput.value)) {
+    clearInterruptedState(true);
+    setPendingState(null);
+    hardCancelActiveTransport();
+  }
   saveDraftState(messageInput.value);
 });
 
