@@ -4046,6 +4046,9 @@ function normalizeContinuationText(text) {
 function appendMergedText(base, addition) {
   if (!addition) return base;
   if (!base) return addition;
+  if (/^\s*(?:[-*•]|\d+[\.)])\s+/.test(addition) && /(?:^|\n)\s*(?:[-*•]|\d+[\.)])\s+/.test(base)) {
+    return base.replace(/\s+$/, "") + "\n" + addition.replace(/^\s+/, "");
+  }
   return /\s$/.test(base) || /^\s|^[.,;:!?)]/.test(addition) ? base + addition : base + " " + addition;
 }
 
@@ -4121,6 +4124,10 @@ function heardFallback() {
 }
 function stoppedFallback() {
   return currentLang === "tr" ? "Yanıt durduruldu." : "Response stopped.";
+}
+function isContinueCommand(text) {
+  const low = String(text || "").trim().toLowerCase();
+  return ["devam et", "devam", "continue"].includes(low);
 }
 function connectionFallback() {
   return currentLang === "tr"
@@ -4282,6 +4289,15 @@ async function sendMessageLive(customText) {
   if (aiResponding) return;
   const text = (customText || messageInput.value).trim();
   if (!text) return;
+  if (interruptedState && isContinueCommand(text)) {
+    const targetAiEl = interruptedState.messageEl || Array.from(chatBox.querySelectorAll(".msg.ai")).pop();
+    messageInput.value = "";
+    clearDraftState();
+    if (targetAiEl) {
+      continueInterruptedResponse(targetAiEl);
+      return;
+    }
+  }
   const runId = ++responseRunId;
 
   stopStreamRequested = false;
@@ -4309,17 +4325,22 @@ async function sendMessageLive(customText) {
 
   try {
     streamAbort = () => {
+      const partialText = (writer && typeof writer.expectedText === "function")
+        ? writer.expectedText()
+        : (aiDiv.innerText || "");
       writer.stop();
       if (wsPending && typeof wsPending.reject === "function") {
         wsPending.reject(new Error("stopped_by_user"));
       }
       wsPending = null;
-      if (!aiDiv.innerText.trim()) aiDiv.innerText = stoppedFallback();
+      if (partialText.trim()) aiDiv.innerText = partialText;
+      else if (!aiDiv.innerText.trim()) aiDiv.innerText = stoppedFallback();
       interruptedState = {
         conversationId,
         mode: currentMode,
         userText: text,
-        partialText: aiDiv.innerText || ""
+        partialText: aiDiv.innerText || "",
+        messageEl: aiDiv
       };
       setPendingState(null);
       appendResumeButton(aiDiv);
@@ -4384,7 +4405,7 @@ messageInput.addEventListener("keydown", e => {
   }
 });
 messageInput.addEventListener("input", () => {
-  if (interruptedState) clearInterruptedState(true);
+  if (interruptedState && !isContinueCommand(messageInput.value)) clearInterruptedState(true);
   saveDraftState(messageInput.value);
 });
 
