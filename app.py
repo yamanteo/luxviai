@@ -1181,7 +1181,7 @@ def line_format_guard_hint(constraints: List[Dict[str, Any]]) -> str:
         "Satır formatı: "
         + ", ".join(parts)
         + " yap. Ekran genişliğinden kaynaklanan görsel kırılmaya güvenme; satırları \\n ile ayır. "
-        "Uzun satır istendiyse her satırı yaklaşık 25-40 kelime veya 160+ karakter dolulukta tut."
+        "Uzun satır istendiyse her satırı yaklaşık 18-35 kelime veya 110-220 karakter dolulukta, cümlesi tamamlanmış biçimde tut."
     )
 
 
@@ -1190,38 +1190,82 @@ LONG_LINE_FILLER = (
     "tek parça kalmasını sağlar"
 )
 
+LONG_LINE_CLAUSES = [
+    "bu yüzden düşünce kendi içinde tamamlanmış, sakin ve okunabilir bir anlam kazanır",
+    "böylece satır, yalnızca uzatılmış bir parça değil, doğal biçimde biten bir ifade olur",
+    "bu ayrıntı metnin ritmini korurken okurun zihninde kesik değil, bütünlüklü bir iz bırakır",
+    "sonunda anlatım hem uzun kalır hem de yarıda bölünmüş gibi hissettirmeden tamamlanır",
+]
+
+BROKEN_LINE_ENDINGS = {
+    "ve", "veya", "ya", "yada", "ya da", "çünkü", "cunku", "ama", "fakat",
+    "ile", "için", "icin", "gibi", "olan", "olarak", "ki", "de", "da",
+}
+
 
 def ensure_long_line(line: str, index: int) -> str:
     cleaned = re.sub(r"\s+", " ", str(line or "").strip())
-    filler_words = LONG_LINE_FILLER.split()
-    cursor = index % max(1, len(filler_words))
-    while count_words(cleaned) < 25 or len(cleaned) < 160:
-        take = filler_words[cursor:] + filler_words[:cursor]
-        cleaned = (cleaned + " " + " ".join(take[:6])).strip()
-        cursor = (cursor + 6) % max(1, len(filler_words))
+    cleaned = re.sub(r"\s*(?:[-–—]|\.{3})\s*$", "", cleaned).strip()
+    cleaned = cleaned.rstrip(",;:")
+    if not cleaned:
+        cleaned = "Bu satır, kullanıcının istediği uzun ve dolu biçimi koruyan tamamlanmış bir düşünce olarak kurulur"
+    clause_index = index
+    while count_words(cleaned) < 18 or len(cleaned) < 110:
+        clause = LONG_LINE_CLAUSES[clause_index % len(LONG_LINE_CLAUSES)]
+        cleaned = f"{cleaned}, {clause}".strip()
+        clause_index += 1
+    words = cleaned.split()
+    while words and fold_turkish_ascii(words[-1].strip(".,;:!?")) in BROKEN_LINE_ENDINGS:
+        words.pop()
+    cleaned = " ".join(words).rstrip(",;:")
+    if not re.search(r"[.!?…]$", cleaned):
+        cleaned += "."
     return cleaned
 
 
+def is_complete_long_line(line: str) -> bool:
+    cleaned = re.sub(r"\s+", " ", str(line or "").strip())
+    if count_words(cleaned) < 18 or len(cleaned) < 110:
+        return False
+    if not re.search(r"[.!?…]$", cleaned):
+        return False
+    words = cleaned.split()
+    if not words:
+        return False
+    last = fold_turkish_ascii(words[-1].strip(".,;:!?"))
+    if last in BROKEN_LINE_ENDINGS:
+        return False
+    return True
+
+
 def split_text_into_n_lines(text: str, target: int, long_lines: bool = False) -> List[str]:
+    if long_lines:
+        sentences = split_sentence_units(text)
+        if not sentences:
+            sentences = [str(text or "").strip()]
+        source_words = re.findall(r"\S+", str(text or "").strip())
+        lines: List[str] = []
+        for i in range(target):
+            if i < len(sentences):
+                base = sentences[i]
+            elif source_words:
+                start = round(i * len(source_words) / target)
+                end = round((i + 1) * len(source_words) / target)
+                base = " ".join(source_words[start:end]).strip() or sentences[i % len(sentences)]
+            else:
+                base = sentences[i % len(sentences)]
+            lines.append(ensure_long_line(base, i))
+        return lines
     words = re.findall(r"\S+", str(text or "").strip())
     if not words:
         lines = ["."] * target
-        return [ensure_long_line(line, i) for i, line in enumerate(lines)] if long_lines else lines
-    min_words = target * 25 if long_lines else target
-    if len(words) < min_words:
-        filler = LONG_LINE_FILLER.split()
-        cursor = 0
-        while len(words) < min_words:
-            words.append(filler[cursor % len(filler)])
-            cursor += 1
+        return lines
     lines: List[str] = []
     for i in range(target):
         start = round(i * len(words) / target)
         end = round((i + 1) * len(words) / target)
         chunk = " ".join(words[start:end]).strip()
         lines.append(chunk)
-    if long_lines:
-        lines = [ensure_long_line(line, i) for i, line in enumerate(lines)]
     return [line for line in lines if line]
 
 
@@ -1275,7 +1319,7 @@ def enforce_line_format_guard(plan: Dict[str, Any], response_text: str) -> str:
         for index, paragraph in enumerate(paragraphs, start=1):
             marker = f"{index}." if paragraph_target > 1 else ""
             lines = paragraph_content_lines(str(paragraph))
-            if len(lines) == target and (not long_lines or all(count_words(line) >= 25 and len(line) >= 160 for line in lines)):
+            if len(lines) == target and (not long_lines or all(is_complete_long_line(line) for line in lines)):
                 if long_lines:
                     lines = [ensure_long_line(line, i) for i, line in enumerate(lines)]
                 body = "\n".join(lines)

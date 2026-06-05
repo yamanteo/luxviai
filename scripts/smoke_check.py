@@ -157,6 +157,15 @@ class SmokeRunner:
                 blocks.append(lines)
         return blocks
 
+    def assert_complete_long_lines(self, luxapp: Any, lines: list[str], context: str) -> None:
+        broken = {"ve", "veya", "ya", "ya da", "cunku", "çünkü", "ama", "ile", "icin", "için", "gibi", "olan"}
+        assert lines, context
+        for line in lines:
+            folded_last = luxapp.fold_turkish_ascii(line.split()[-1].strip(".,;:!?"))
+            assert luxapp.count_words(line) >= 18 and len(line) >= 110, (context, line)
+            assert line.strip()[-1] in ".!?", (context, line)
+            assert folded_last not in broken, (context, line)
+
     def check_line_format_guard(self) -> str:
         luxapp = self.import_app()
         cases = [
@@ -217,8 +226,7 @@ class SmokeRunner:
             assert all(len(block) == line_target for block in blocks), (message, blocks[:2], repaired)
             if expect_long:
                 for block in blocks:
-                    for line in block:
-                        assert luxapp.count_words(line) >= 25 and len(line) >= 160, (message, line, repaired)
+                    self.assert_complete_long_lines(luxapp, block, message)
 
         line_message = "Tam sayfa uzunluk bes satir yazi yaz."
         line_constraints = luxapp.extract_line_format_constraints(line_message)
@@ -230,7 +238,7 @@ class SmokeRunner:
         )
         lines = [ln for ln in repaired.splitlines() if ln.strip()]
         assert len(lines) == 5, repaired
-        assert all(luxapp.count_words(line) >= 25 and len(line) >= 160 for line in lines), repaired
+        self.assert_complete_long_lines(luxapp, lines, line_message)
         assert "---" not in repaired, repaired
         return "paragraph/long-line exact"
 
@@ -317,6 +325,8 @@ class SmokeRunner:
         assert "function isRunStopped" in html
         assert "wsPending.socket === socket" in html
         assert 'socket.close(1000, "stopped_by_user")' in html
+        assert "if (!streamed && typeof onFinal === \"function\") onFinal(finalText)" in html
+        assert "isBubbleForRun(targetEl, runId)" in html
         assert "responseRunId += 1" in html
         assert "isRunActive(runId)" in html
         assert "activeFetchController.abort" in html

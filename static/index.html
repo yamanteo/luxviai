@@ -4031,8 +4031,14 @@ function isRunActive(runId) {
   );
 }
 
+function isBubbleForRun(targetEl, runId) {
+  if (!targetEl || runId === null || runId === undefined) return true;
+  return String(targetEl.dataset.runId || "") === String(runId);
+}
+
 function forceFinalVisibleText(writer, targetEl, finalText, runId = null) {
   if (runId !== null && !isRunActive(runId)) return;
+  if (runId !== null && !isBubbleForRun(targetEl, runId)) return;
   const text = String(finalText || "").trim();
   if (!text || !targetEl) return;
   if (writer && typeof writer.setExact === "function") {
@@ -4047,6 +4053,7 @@ function forceFinalVisibleText(writer, targetEl, finalText, runId = null) {
 
 function reconcileFinalText(writer, targetEl, finalText, runId = null) {
   if (runId !== null && !isRunActive(runId)) return;
+  if (runId !== null && !isBubbleForRun(targetEl, runId)) return;
   const text = String(finalText || "").trim();
   if (!text || !targetEl) return;
   const expected = writer && typeof writer.expectedText === "function"
@@ -4254,6 +4261,7 @@ async function continueInterruptedResponse(targetAiEl) {
   stopStreamRequested = false;
   setResponseLock(true);
   const writer = createPacedWriter(targetAiEl, 0.9);
+  targetAiEl.dataset.runId = String(continueRunId);
   writer.setExact(cleanBaseText);
   activeGeneration = { runId: continueRunId, conversationId, messageEl: targetAiEl, writer, kind: "continue" };
   setPendingState({ conversationId, runId: continueRunId, kind: "continue" });
@@ -4343,11 +4351,15 @@ function sendMessageViaSocket(payload, onChunk, onFinal, runId = null) {
               return;
             }
             if (data.type === "done") {
-              if (runId !== null && !isRunActive(runId)) return;
+              if (runId !== null && !isRunActive(runId)) {
+                if (wsPending && wsPending.runId === runId) wsPending = null;
+                reject(new Error("stale_run"));
+                return;
+              }
               const finalText = (data.response || streamed || heardFallback()).trim();
-              if (typeof onFinal === "function") onFinal(finalText);
+              if (!streamed && typeof onFinal === "function") onFinal(finalText);
               if (wsPending && wsPending.runId === runId) wsPending = null;
-              resolve(finalText);
+              resolve((streamed || finalText).trim());
             }
           },
           reject(err) {
@@ -4426,6 +4438,7 @@ async function sendMessageLive(customText) {
   const aiDiv = appendMessage("ai", "", false);
   activeAiDiv = aiDiv;
   const writer = createPacedWriter(aiDiv, 0.9);
+  aiDiv.dataset.runId = String(runId);
   activeGeneration = { runId, conversationId, messageEl: aiDiv, writer, kind: "response" };
   setPendingState({ conversationId, runId, kind: "response" });
   const payload = {
