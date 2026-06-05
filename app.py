@@ -1138,7 +1138,7 @@ def extract_line_format_constraints(message: str) -> List[Dict[str, Any]]:
         return []
     constraints: List[Dict[str, Any]] = []
     number = rf"((?:\d{{1,2}})|(?:{COUNT_NUMBER_PATTERN}))"
-    wants_long = bool(re.search(r"\b(?:uzun|dolu|tam\s+sayfa|sayfa\s+uzunlugunda|satir\s+uzunlugunda)\b", folded))
+    wants_long = bool(re.search(r"\b(?:uzun|dolu|tam\s+sayfa|sayfa\s+uzunluk|sayfa\s+uzunlugunda|sayfa\s+genisligi|satir\s+uzunlugunda)\b", folded))
     patterns = [
         rf"\bher\s+paragraf\w*(?:\s+(?:toplam|tam|uzun|dolu|tam\s+sayfa|sayfa\s+uzunlugunda|ve))*\s+{number}\s+(?:uzun\s+|dolu\s+)?satir\w*",
         rf"\bparagraf\w*(?:\s+(?:toplam|tam|uzun|dolu|tam\s+sayfa|sayfa\s+uzunlugunda|ve))*\s+{number}\s+(?:uzun\s+|dolu\s+)?satir\w*",
@@ -1181,7 +1181,7 @@ def line_format_guard_hint(constraints: List[Dict[str, Any]]) -> str:
         "Satır formatı: "
         + ", ".join(parts)
         + " yap. Ekran genişliğinden kaynaklanan görsel kırılmaya güvenme; satırları \\n ile ayır. "
-        "Uzun satır istendiyse her satırı yaklaşık 18-25 kelime veya 120+ karakter dolulukta tut."
+        "Uzun satır istendiyse her satırı yaklaşık 25-40 kelime veya 160+ karakter dolulukta tut."
     )
 
 
@@ -1195,7 +1195,7 @@ def ensure_long_line(line: str, index: int) -> str:
     cleaned = re.sub(r"\s+", " ", str(line or "").strip())
     filler_words = LONG_LINE_FILLER.split()
     cursor = index % max(1, len(filler_words))
-    while count_words(cleaned) < 18 or len(cleaned) < 120:
+    while count_words(cleaned) < 25 or len(cleaned) < 160:
         take = filler_words[cursor:] + filler_words[:cursor]
         cleaned = (cleaned + " " + " ".join(take[:6])).strip()
         cursor = (cursor + 6) % max(1, len(filler_words))
@@ -1207,7 +1207,7 @@ def split_text_into_n_lines(text: str, target: int, long_lines: bool = False) ->
     if not words:
         lines = ["."] * target
         return [ensure_long_line(line, i) for i, line in enumerate(lines)] if long_lines else lines
-    min_words = target * 18 if long_lines else target
+    min_words = target * 25 if long_lines else target
     if len(words) < min_words:
         filler = LONG_LINE_FILLER.split()
         cursor = 0
@@ -1275,7 +1275,7 @@ def enforce_line_format_guard(plan: Dict[str, Any], response_text: str) -> str:
         for index, paragraph in enumerate(paragraphs, start=1):
             marker = f"{index}." if paragraph_target > 1 else ""
             lines = paragraph_content_lines(str(paragraph))
-            if len(lines) == target and (not long_lines or all(count_words(line) >= 18 and len(line) >= 120 for line in lines)):
+            if len(lines) == target and (not long_lines or all(count_words(line) >= 25 and len(line) >= 160 for line in lines)):
                 if long_lines:
                     lines = [ensure_long_line(line, i) for i, line in enumerate(lines)]
                 body = "\n".join(lines)

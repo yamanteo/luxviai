@@ -218,9 +218,9 @@ class SmokeRunner:
             if expect_long:
                 for block in blocks:
                     for line in block:
-                        assert luxapp.count_words(line) >= 18 and len(line) >= 120, (message, line, repaired)
+                        assert luxapp.count_words(line) >= 25 and len(line) >= 160, (message, line, repaired)
 
-        line_message = "Tam sayfa satir uzunlugunda bes satir yaz."
+        line_message = "Tam sayfa uzunluk bes satir yazi yaz."
         line_constraints = luxapp.extract_line_format_constraints(line_message)
         count_constraints = luxapp.extract_count_constraints(line_message)
         assert count_constraints and count_constraints[0]["kind"] == "line" and count_constraints[0]["target"] == 5, count_constraints
@@ -230,7 +230,7 @@ class SmokeRunner:
         )
         lines = [ln for ln in repaired.splitlines() if ln.strip()]
         assert len(lines) == 5, repaired
-        assert all(luxapp.count_words(line) >= 18 and len(line) >= 120 for line in lines), repaired
+        assert all(luxapp.count_words(line) >= 25 and len(line) >= 160 for line in lines), repaired
         assert "---" not in repaired, repaired
         return "paragraph/long-line exact"
 
@@ -311,6 +311,12 @@ class SmokeRunner:
         assert '"kaldığın yerden devam et"' in html
         assert '"sürdür"' in html
         assert "function hardCancelActiveTransport" in html
+        assert "let activeRunId = null" in html
+        assert "const stoppedRunIds = new Set()" in html
+        assert "function markRunStarted" in html
+        assert "function isRunStopped" in html
+        assert "wsPending.socket === socket" in html
+        assert 'socket.close(1000, "stopped_by_user")' in html
         assert "responseRunId += 1" in html
         assert "isRunActive(runId)" in html
         assert "activeFetchController.abort" in html

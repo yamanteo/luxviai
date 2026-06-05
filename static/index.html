@@ -1618,6 +1618,8 @@ let localizedSoundItems = [];
 let topicsOpen = false;
 let activeGeneration = null;
 let responseRunId = 0;
+let activeRunId = null;
+const stoppedRunIds = new Set();
 let pendingDeleteConversationId = null;
 const soundLocaleCache = {};
 const scrollState = {
@@ -3893,20 +3895,25 @@ async function sendMessage(customText) {
 function ensureSocket() {
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  ws = new WebSocket(`${proto}//${location.host}/ws/chat`);
-  ws.onopen = () => { wsReady = true; };
-  ws.onerror = () => { wsReady = false; };
-  ws.onclose = () => {
-    wsReady = false;
-    ws = null;
-    if (wsPending && typeof wsPending.reject === "function") {
+  const socket = new WebSocket(`${proto}//${location.host}/ws/chat`);
+  ws = socket;
+  socket.onopen = () => { if (ws === socket) wsReady = true; };
+  socket.onerror = () => { if (ws === socket) wsReady = false; };
+  socket.onclose = () => {
+    if (ws === socket) {
+      wsReady = false;
+      ws = null;
+    }
+    if (wsPending && wsPending.socket === socket && typeof wsPending.reject === "function") {
       wsPending.reject(new Error("socket_closed"));
       wsPending = null;
     }
-    setTimeout(() => ensureSocket(), 900);
+    setTimeout(() => {
+      if (!aiResponding && !ws) ensureSocket();
+    }, 900);
   };
-  ws.onmessage = evt => {
-    if (!wsPending || typeof wsPending.onMessage !== "function") return;
+  socket.onmessage = evt => {
+    if (!wsPending || wsPending.socket !== socket || typeof wsPending.onMessage !== "function") return;
     let data = null;
     try { data = JSON.parse(evt.data || "{}"); } catch (_) { return; }
     wsPending.onMessage(data);
@@ -3997,8 +4004,31 @@ function createPacedWriter(targetEl, speedFactor = 0.9) {
   };
 }
 
+function isRunStopped(runId) {
+  return runId === null || runId === undefined || stoppedRunIds.has(runId);
+}
+
+function markRunStarted(runId) {
+  activeRunId = runId;
+  stoppedRunIds.delete(runId);
+  if (stoppedRunIds.size > 80) {
+    const keep = Array.from(stoppedRunIds).slice(-40);
+    stoppedRunIds.clear();
+    keep.forEach(id => stoppedRunIds.add(id));
+  }
+}
+
 function isRunActive(runId) {
-  return Boolean(activeGeneration && activeGeneration.runId === runId && responseRunId === runId && !stopStreamRequested);
+  return Boolean(
+    runId !== null &&
+    runId !== undefined &&
+    activeRunId === runId &&
+    activeGeneration &&
+    activeGeneration.runId === runId &&
+    responseRunId === runId &&
+    !stopStreamRequested &&
+    !stoppedRunIds.has(runId)
+  );
 }
 
 function forceFinalVisibleText(writer, targetEl, finalText, runId = null) {
@@ -4030,24 +4060,33 @@ function reconcileFinalText(writer, targetEl, finalText, runId = null) {
   forceFinalVisibleText(writer, targetEl, text);
 }
 
-function hardCancelActiveTransport() {
+function hardCancelActiveTransport(runId = null, closeSocket = false) {
   if (activeFetchController && typeof activeFetchController.abort === "function") {
     try { activeFetchController.abort(); } catch (_) {}
   }
   activeFetchController = null;
-  if (wsPending && typeof wsPending.reject === "function") {
+  if (wsPending && (runId === null || wsPending.runId === runId) && typeof wsPending.reject === "function") {
     try { wsPending.reject(new Error("stopped_by_user")); } catch (_) {}
   }
-  wsPending = null;
+  if (!runId || (wsPending && wsPending.runId === runId)) wsPending = null;
+  if (closeSocket && ws) {
+    const socket = ws;
+    ws = null;
+    wsReady = false;
+    try { socket.close(1000, "stopped_by_user"); } catch (_) {}
+  }
 }
 
 function stopActiveResponse() {
+  const stoppedRunId = activeGeneration ? activeGeneration.runId : activeRunId;
   stopStreamRequested = true;
+  if (stoppedRunId !== null && stoppedRunId !== undefined) stoppedRunIds.add(stoppedRunId);
+  activeRunId = null;
   responseRunId += 1;
   if (typeof streamAbort === "function") {
     try { streamAbort(); } catch (_) {}
   }
-  hardCancelActiveTransport();
+  hardCancelActiveTransport(stoppedRunId, true);
   if (activeGeneration && activeGeneration.writer && typeof activeGeneration.writer.stop === "function") {
     try { activeGeneration.writer.stop(); } catch (_) {}
   }
@@ -4209,6 +4248,7 @@ async function continueInterruptedResponse(targetAiEl) {
     clearInterruptedState(true);
     return;
   }
+  markRunStarted(continueRunId);
   const resumeContext = cleanBaseText.slice(-1200);
   const bridgeMessage = `${continuePromptText()}\n\nKullanıcının önceki isteği: ${state.userText || ""}\nKaldığın son güvenli bölüm: ${resumeContext}\n\nYalnızca bu son bölümün doğal devamını yaz. Baştan alma, aynı maddeyi/başlığı/cümleyi tekrar etme.`;
   stopStreamRequested = false;
@@ -4272,6 +4312,7 @@ async function continueInterruptedResponse(targetAiEl) {
   } finally {
     if (activeGeneration && activeGeneration.runId === continueRunId) {
       activeGeneration = null;
+      if (activeRunId === continueRunId) activeRunId = null;
       setResponseLock(false);
     }
   }
@@ -4288,6 +4329,7 @@ function sendMessageViaSocket(payload, onChunk, onFinal, runId = null) {
     const waitForOpen = () => {
       attempts += 1;
       if (ws && ws.readyState === WebSocket.OPEN) {
+        const socket = ws;
         let streamed = "";
         wsPending = {
           onMessage(data) {
@@ -4301,9 +4343,10 @@ function sendMessageViaSocket(payload, onChunk, onFinal, runId = null) {
               return;
             }
             if (data.type === "done") {
+              if (runId !== null && !isRunActive(runId)) return;
               const finalText = (data.response || streamed || heardFallback()).trim();
               if (typeof onFinal === "function") onFinal(finalText);
-              wsPending = null;
+              if (wsPending && wsPending.runId === runId) wsPending = null;
               resolve(finalText);
             }
           },
@@ -4311,9 +4354,10 @@ function sendMessageViaSocket(payload, onChunk, onFinal, runId = null) {
             if (!runId || !wsPending || wsPending.runId === runId) wsPending = null;
             reject(err);
           },
-          runId
+          runId,
+          socket
         };
-        ws.send(JSON.stringify(payload));
+        socket.send(JSON.stringify(payload));
         return;
       }
       if (attempts > 40) {
@@ -4351,7 +4395,7 @@ async function sendMessageLive(customText) {
   const text = (customText || messageInput.value).trim();
   if (!text) return;
   if (activeGeneration && !aiResponding) {
-    hardCancelActiveTransport();
+    hardCancelActiveTransport(null, true);
     activeGeneration = null;
     setPendingState(null);
   }
@@ -4365,9 +4409,10 @@ async function sendMessageLive(customText) {
     }
   } else if (interruptedState) {
     clearInterruptedState(true);
-    hardCancelActiveTransport();
+    hardCancelActiveTransport(null, true);
   }
   const runId = ++responseRunId;
+  markRunStarted(runId);
 
   stopStreamRequested = false;
   setResponseLock(true);
@@ -4399,7 +4444,7 @@ async function sendMessageLive(customText) {
         ? writer.expectedText()
         : (aiDiv.innerText || "");
       writer.stop();
-      hardCancelActiveTransport();
+      hardCancelActiveTransport(runId, true);
       if (partialText.trim()) aiDiv.innerText = partialText;
       else if (!aiDiv.innerText.trim()) aiDiv.innerText = stoppedFallback();
       aiDiv.dataset.streamState = "cancelled";
@@ -4454,6 +4499,7 @@ async function sendMessageLive(customText) {
     activeAiDiv = null;
     if (activeGeneration && activeGeneration.runId === runId) {
       activeGeneration = null;
+      if (activeRunId === runId) activeRunId = null;
       setResponseLock(false);
     }
   }
@@ -4478,7 +4524,7 @@ messageInput.addEventListener("input", () => {
   if (interruptedState && !isContinueCommand(messageInput.value)) {
     clearInterruptedState(true);
     setPendingState(null);
-    hardCancelActiveTransport();
+    hardCancelActiveTransport(null, true);
   }
   saveDraftState(messageInput.value);
 });
