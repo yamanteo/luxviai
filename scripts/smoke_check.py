@@ -141,6 +141,56 @@ class SmokeRunner:
             assert luxapp.count_constraints_satisfied(repaired, constraints), (message, repaired)
         return "paragraph/bullet/sentence"
 
+    def formatted_paragraph_blocks(self, text: str) -> list[list[str]]:
+        blocks: list[list[str]] = []
+        for block in str(text or "").split("\n\n"):
+            lines = [ln.strip() for ln in block.splitlines() if ln.strip()]
+            if lines and lines[0].rstrip(".").isdigit():
+                lines = lines[1:]
+            if lines:
+                blocks.append(lines)
+        return blocks
+
+    def check_line_format_guard(self) -> str:
+        luxapp = self.import_app()
+        cases = [
+            (
+                "Her paragraf 5 satir olsun. 2 paragraf yaz.",
+                "Birinci paragraf yeterince uzun bir test metni olarak burada duruyor.\n\n"
+                "Ikinci paragraf da yeterince uzun bir test metni olarak burada duruyor.",
+                2,
+                5,
+            ),
+            (
+                "Her biri 5 satir olan 3 paragraf yaz.",
+                "Birinci paragraf yeterince uzun bir test metni olarak burada duruyor.\n\n"
+                "Ikinci paragraf da yeterince uzun bir test metni olarak burada duruyor.\n\n"
+                "Ucuncu paragraf da yeterince uzun bir test metni olarak burada duruyor.",
+                3,
+                5,
+            ),
+            (
+                "Toplam 30 paragraf yaz, her paragraf tam 5 satir olsun.",
+                "\n\n".join(f"Paragraf {i} yeterince uzun bir test metni olarak burada duruyor." for i in range(1, 31)),
+                30,
+                5,
+            ),
+        ]
+        for message, response, paragraph_target, line_target in cases:
+            count_constraints = luxapp.extract_count_constraints(message)
+            line_constraints = luxapp.extract_line_format_constraints(message)
+            assert count_constraints and count_constraints[0]["target"] == paragraph_target, (message, count_constraints)
+            assert line_constraints and line_constraints[0]["lines"] == line_target, (message, line_constraints)
+            repaired = luxapp.enforce_line_format_guard(
+                {"count_constraints": count_constraints, "line_format_constraints": line_constraints},
+                response,
+            )
+            assert "---" not in repaired, repaired
+            blocks = self.formatted_paragraph_blocks(repaired)
+            assert len(blocks) == paragraph_target, (message, len(blocks), repaired)
+            assert all(len(block) == line_target for block in blocks), (message, blocks[:2], repaired)
+        return "paragraph lines exact"
+
     def check_identity_guard(self) -> str:
         luxapp = self.import_app()
         profile = luxapp.default_profile()
@@ -153,6 +203,17 @@ class SmokeRunner:
             profile = luxapp.apply_identity_guard(profile, phrase)
             identity = profile["identity_memory"]
             assert identity.get("preferred_name") == "", (phrase, identity)
+            rejected = [luxapp.identity_name_key(x) for x in identity.get("rejected_names", [])]
+            assert any(x in rejected for x in ("ibrahim", "poncik", "burak")), (phrase, rejected)
+
+        profile = luxapp.default_profile()
+        profile = luxapp.apply_identity_guard(profile, "sana ibrahim diyorum")
+        identity = profile["identity_memory"]
+        assert identity.get("preferred_name") == "", identity
+        assert "ibrahim" in [luxapp.identity_name_key(x) for x in identity.get("rejected_names", [])], identity
+
+        profile = luxapp.apply_identity_guard(profile, "sana diyorum sana boyle sesleniyorum")
+        assert profile["identity_memory"].get("preferred_name") == "", profile["identity_memory"]
 
         profile = luxapp.default_profile()
         profile = luxapp.apply_identity_guard(profile, "Burak Kut'u sever misin?")
@@ -173,11 +234,37 @@ class SmokeRunner:
             "Tamam, Burak diye seslenecegim.",
             {"message": "ben sana Burak dedim", "identity_boundary": "chat", "profile": luxapp.default_profile()},
         )
-        assert "Burak diye" not in cleaned and "nasıl hitap" in cleaned.lower(), cleaned
+        assert "Burak diye" not in cleaned and "hitap" in cleaned.lower(), cleaned
 
         explicit = luxapp.apply_identity_guard(luxapp.default_profile(), "bana Atlas de")
         assert explicit["identity_memory"].get("preferred_name") == "Atlas", explicit["identity_memory"]
+        explicit = luxapp.apply_identity_guard(luxapp.default_profile(), "benim adim Teoman")
+        assert explicit["identity_memory"].get("preferred_name") == "Teoman", explicit["identity_memory"]
+        profile = luxapp.apply_identity_guard(profile, "bana Ibrahim de")
+        assert profile["identity_memory"].get("preferred_name") == "Ibrahim", profile["identity_memory"]
         return "no nickname inference"
+
+    def check_double_response_trim(self) -> str:
+        luxapp = self.import_app()
+        text = (
+            "Bana nasil hitap etmemi istersin? Yoksa direkt konuya girelim mi? "
+            "Anladim, direkt konuya girelim o zaman. Ilk adim sudur."
+        )
+        trimmed = luxapp.trim_self_answer_after_question(text)
+        assert trimmed.endswith("mi?"), trimmed
+        assert "Anladim" not in trimmed and "Ilk adim" not in trimmed, trimmed
+        normal = "Hazir misin? Istersen iki secenek sunayim."
+        assert luxapp.trim_self_answer_after_question(normal) == normal
+        return "question self-answer trimmed"
+
+    def check_frontend_resume_scaffold(self) -> str:
+        html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+        assert "function isContinueCommand" in html
+        assert "cleanBaseText.slice(-1200)" in html
+        assert "resumeUnavailableFallback" in html
+        assert "Yalnızca bu son bölümün doğal devamını yaz" in html
+        assert "interruptedState && isContinueCommand(text)" in html
+        return "safe resume context"
 
     def check_cost_logger_privacy(self) -> str:
         from learning.cost_logger import CostLogger, build_safe_cost_row
@@ -434,7 +521,10 @@ class SmokeRunner:
             ("compileall_learning", self.check_compileall_learning),
             ("health_shape_16_layers", self.check_health_shape),
             ("count_guard", self.check_count_guard),
+            ("line_format_guard", self.check_line_format_guard),
             ("identity_guard", self.check_identity_guard),
+            ("double_response_trim", self.check_double_response_trim),
+            ("frontend_resume_scaffold", self.check_frontend_resume_scaffold),
             ("cost_logger_privacy", self.check_cost_logger_privacy),
             ("practical_support_passive", self.check_practical_support),
             ("token_budget_observe_only", self.check_token_budget),

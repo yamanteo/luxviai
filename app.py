@@ -713,14 +713,21 @@ def detect_identity_directive(message: str) -> Dict[str, Any]:
 
     accept_patterns = [
         rf"^(?:benim\s+)?(?:adim|ismim|isimim)\s+{IDENTITY_NAME_PATTERN}\b",
-        rf"^bana\s+{IDENTITY_NAME_PATTERN}\s+(?:de|diye\s+hitap\s+et)\b",
+        rf"^ben\s+{IDENTITY_NAME_PATTERN}\s*$",
+        rf"^bana\s+{IDENTITY_NAME_PATTERN}\s+(?:de|diye\s+hitap\s+et|olarak\s+seslen)\b",
+        rf"^benimle\s+konusurken\s+bana\s+{IDENTITY_NAME_PATTERN}\s+de\b",
         rf"^bundan\s+sonra\s+bana\s+{IDENTITY_NAME_PATTERN}\s+diye\s+hitap\s+et\b",
     ]
     for pattern in accept_patterns:
         match = re.search(pattern, folded, flags=re.IGNORECASE)
         if match:
             name = normalize_identity_name(match.group(1))
-            if name and not re.search(r"\b(ornek|referans|karakter|adli|hakkinda|geldi|mesaj|cv)\b", folded):
+            key = identity_name_key(name)
+            blocked = {
+                "sana", "size", "sen", "ben", "bana", "bunu", "böyle", "boyle",
+                "ornek", "referans", "karakter", "adli", "hakkinda", "geldi", "mesaj", "cv",
+            }
+            if name and key not in blocked and not re.search(r"\b(ornek|referans|karakter|adli|hakkinda|geldi|mesaj|cv)\b", folded):
                 return {"kind": "identity", "name": name}
 
     return {"kind": "none"}
@@ -762,11 +769,22 @@ def apply_identity_guard(profile: Dict[str, Any], message: str) -> Dict[str, Any
     elif directive.get("kind") == "identity":
         name = normalize_identity_name(str(directive.get("name", "")))
         key = identity_name_key(name)
-        if name and key and key not in rejected_keys:
+        if name and key:
+            if key in rejected_keys:
+                rejected = [x for x in rejected if identity_name_key(x) != key]
+                rejected_keys.discard(key)
+                changed = True
             if identity.get("preferred_name") != name or identity.get("confidence") != "explicit":
                 identity["preferred_name"] = name
                 identity["source"] = "explicit_user_statement"
                 identity["confidence"] = "explicit"
+                changed = True
+    else:
+        for ambiguous_name in ambiguous_identity_rejection_candidates(message):
+            key = identity_name_key(ambiguous_name)
+            if key and key not in rejected_keys:
+                rejected.append(ambiguous_name)
+                rejected_keys.add(key)
                 changed = True
 
     identity["rejected_names"] = rejected[-20:]
@@ -802,13 +820,17 @@ def extract_capitalized_name_candidates(text: str) -> List[str]:
                 candidates.append(first)
     folded = fold_identity_text(text)
     lower_patterns = [
-        r"^(?:selam|merhaba)\s+([a-z]{2,24})(?:\s+([a-z]{2,24}))?\b",
+        r"^(?:selam|merhaba|hey)\s+([a-z]{2,24})(?:\s+([a-z]{2,24}))?\b",
+        r"^(?:ben\s+)?sana\s+([a-z]{2,24})(?:\s+([a-z]{2,24}))?\s+diyorum\b",
+        r"^(?:ben\s+)?sana\s+([a-z]{2,24})(?:\s+([a-z]{2,24}))?\s+diye\s+sesleniyorum\b",
+        r"^([a-z]{2,24})(?:\s+([a-z]{2,24}))?\s+misin\b",
+        r"\bsenin\s+adin\s+([a-z]{2,24})(?:\s+([a-z]{2,24}))?\s+mi\b",
         r"^([a-z]{2,24})\s+geldi\b",
         r"^([a-z]{2,24})(?:'|`|e|a)?\s+mesaj\s+yaz\b",
         r"\bornek\s+olarak\s+([a-z]{2,24})\s+diyelim\b",
         r"\bcv(?:'|`|de|da|\s+de|\s+da)?\s+referans[:\s]+([a-z]{2,24})\b",
     ]
-    ignored = {"ben", "sen", "biz", "siz", "selam", "merhaba", "ornek", "olarak", "cv"}
+    ignored = {"ben", "sen", "biz", "siz", "sana", "bana", "size", "selam", "merhaba", "hey", "ornek", "olarak", "cv"}
     for pattern in lower_patterns:
         match = re.search(pattern, folded)
         if not match:
@@ -823,6 +845,34 @@ def extract_capitalized_name_candidates(text: str) -> List[str]:
             if first and first != name:
                 candidates.append(first)
     return list(dict.fromkeys(candidates))[:8]
+
+
+def ambiguous_identity_rejection_candidates(message: str) -> List[str]:
+    folded = fold_identity_text(message)
+    ignored = {
+        "ben", "sen", "biz", "siz", "sana", "bana", "size", "selam",
+        "merhaba", "hey", "ornek", "olarak", "boyle", "diyorum",
+    }
+    patterns = [
+        r"^(?:selam|merhaba|hey)\s+([a-z]{2,24})(?:\s+([a-z]{2,24}))?\b",
+        r"^(?:ben\s+)?sana\s+([a-z]{2,24})(?:\s+([a-z]{2,24}))?\s+diyorum\b",
+        r"^(?:ben\s+)?sana\s+([a-z]{2,24})(?:\s+([a-z]{2,24}))?\s+diye\s+sesleniyorum\b",
+    ]
+    candidates: List[str] = []
+    for pattern in patterns:
+        match = re.search(pattern, folded)
+        if not match:
+            continue
+        tokens = [x for x in match.groups() if x and x not in ignored]
+        if not tokens:
+            continue
+        name = normalize_identity_name(" ".join(tokens[:2]))
+        if name:
+            candidates.append(name)
+            first = normalize_identity_name(tokens[0])
+            if first and first != name:
+                candidates.append(first)
+    return list(dict.fromkeys(candidates))[:4]
 
 
 def ambiguous_addressing_candidates(message: str, identity_boundary: str = "") -> List[str]:
@@ -915,6 +965,21 @@ def sanitize_false_addressing(response: str, plan: Dict[str, Any]) -> str:
             flags=re.IGNORECASE,
         )
     return cleaned
+
+
+def trim_self_answer_after_question(response: str) -> str:
+    text = str(response or "")
+    if "?" not in text:
+        return text
+    starter = (
+        r"(?:anlad[ıi]m|tamam|peki|o\s+zaman|öyleyse|oyle\s+ise|g[üu]zel|"
+        r"harika|s[üu]per|tabii|tabi|elbette)"
+    )
+    for match in re.finditer(r"\?", text):
+        remainder = text[match.end():].lstrip()
+        if re.match(rf"^{starter}\b", remainder, flags=re.IGNORECASE):
+            return text[:match.end()].strip()
+    return text
 
 
 COUNT_NUMBER_WORDS = {
@@ -1015,6 +1080,10 @@ def extract_count_constraints(message: str) -> List[Dict[str, Any]]:
         for match in re.finditer(pattern, folded):
             if kind == "heading" and folded[max(0, match.start() - 4):match.start()] == "alt ":
                 continue
+            if kind == "paragraph":
+                suffix = folded[match.end():match.end() + 48]
+                if re.match(rf"\w*\s*(?:toplam\s+|tam\s+)?(?:{COUNT_NUMBER_PATTERN})\s+satir\w*", suffix):
+                    continue
             target = _nearest_count_before(folded, match.start()) or _nearest_count_after(folded, match.end())
             if not target:
                 continue
@@ -1055,9 +1124,12 @@ def extract_line_format_constraints(message: str) -> List[Dict[str, Any]]:
     if not folded or "satir" not in folded:
         return []
     constraints: List[Dict[str, Any]] = []
+    number = rf"((?:\d{{1,2}})|(?:{COUNT_NUMBER_PATTERN}))"
     patterns = [
-        r"\bher\s+paragraf\w*\s+((?:\d{1,2})|(?:%s))\s+satir\w*" % COUNT_NUMBER_PATTERN,
-        r"\bparagraf\w*\s+((?:\d{1,2})|(?:%s))\s+satir\w*" % COUNT_NUMBER_PATTERN,
+        rf"\bher\s+paragraf\w*(?:\s+(?:toplam|tam))?\s+{number}\s+satir\w*",
+        rf"\bparagraf\w*(?:\s+(?:toplam|tam))?\s+{number}\s+satir\w*",
+        rf"\bher\s+biri\s+{number}\s+satir\w*\s+olan\s+(?:(?:\d{{1,3}})|(?:{COUNT_NUMBER_PATTERN}))\s+paragraf\w*",
+        rf"\b{number}\s+satir\w*\s+olan\s+(?:(?:\d{{1,3}})|(?:{COUNT_NUMBER_PATTERN}))\s+paragraf\w*",
     ]
     for pattern in patterns:
         match = re.search(pattern, folded)
@@ -1090,9 +1162,9 @@ def line_format_guard_hint(constraints: List[Dict[str, Any]]) -> str:
 def split_text_into_n_lines(text: str, target: int) -> List[str]:
     words = re.findall(r"\S+", str(text or "").strip())
     if not words:
-        return []
+        return ["."] * target
     if len(words) <= target:
-        return words + [""] * (target - len(words))
+        return words + ["."] * (target - len(words))
     lines: List[str] = []
     for i in range(target):
         start = round(i * len(words) / target)
@@ -1100,6 +1172,32 @@ def split_text_into_n_lines(text: str, target: int) -> List[str]:
         chunk = " ".join(words[start:end]).strip()
         lines.append(chunk)
     return [line for line in lines if line]
+
+
+def paragraph_count_target(plan: Dict[str, Any]) -> int:
+    for constraint in safe_list(plan.get("count_constraints")):
+        if str(constraint.get("kind", "")) == "paragraph":
+            return clamp_int(constraint.get("target"), 0, 300, 0)
+    return 0
+
+
+def strip_paragraph_marker(block: str) -> str:
+    lines = [ln.strip() for ln in str(block or "").splitlines() if ln.strip()]
+    if lines and re.match(r"^\d+[\.)]\s*$", lines[0]):
+        lines = lines[1:]
+    elif lines:
+        lines[0] = re.sub(r"^\d+[\.)]\s+", "", lines[0]).strip()
+    return " ".join(lines).strip()
+
+
+def paragraph_content_lines(block: str) -> List[str]:
+    lines = [ln.strip() for ln in str(block or "").splitlines() if ln.strip()]
+    if lines and re.match(r"^\d+[\.)]\s*$", lines[0]):
+        lines = lines[1:]
+    elif lines:
+        lines[0] = re.sub(r"^\d+[\.)]\s+", "", lines[0]).strip()
+        lines = [ln for ln in lines if ln]
+    return lines
 
 
 def enforce_line_format_guard(plan: Dict[str, Any], response_text: str) -> str:
@@ -1114,15 +1212,21 @@ def enforce_line_format_guard(plan: Dict[str, Any], response_text: str) -> str:
         paragraphs = split_paragraph_units(repaired)
         if not paragraphs:
             continue
+        paragraph_target = paragraph_count_target(plan)
+        if paragraph_target:
+            paragraphs = paragraphs[:paragraph_target]
         formatted: List[str] = []
-        for paragraph in paragraphs:
-            lines = [ln.strip() for ln in str(paragraph).splitlines() if ln.strip()]
+        for index, paragraph in enumerate(paragraphs, start=1):
+            marker = f"{index}." if paragraph_target > 1 else ""
+            lines = paragraph_content_lines(str(paragraph))
             if len(lines) == target:
-                formatted.append("\n".join(lines))
+                body = "\n".join(lines)
+                formatted.append(f"{marker}\n{body}" if marker else body)
                 continue
-            flat = " ".join(lines or [str(paragraph).strip()])
-            formatted.append("\n".join(split_text_into_n_lines(flat, target)))
-        repaired = "\n\n".join(x for x in formatted if x.strip()).strip()
+            flat = " ".join(lines or [strip_paragraph_marker(str(paragraph)) or str(paragraph).strip()])
+            body = "\n".join(split_text_into_n_lines(flat, target))
+            formatted.append(f"{marker}\n{body}" if marker else body)
+        repaired = "\n\n".join(x for x in formatted if x.strip()).replace("\n---\n", "\n\n").strip()
     return repaired
 
 
@@ -5956,6 +6060,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
     model_ms = ms_since(model_start)
 
     response_text = sanitize_false_addressing(response_text, plan)
+    response_text = trim_self_answer_after_question(response_text)
     response_text = enforce_count_guard(plan, response_text)
     response_text = enforce_line_format_guard(plan, response_text)
     if not plan.get("count_constraints"):
@@ -6205,6 +6310,7 @@ async def ws_chat(websocket: WebSocket):
 
                 streamed_response_text = response_text
                 response_text = sanitize_false_addressing(response_text, plan)
+                response_text = trim_self_answer_after_question(response_text)
                 response_text = enforce_count_guard(plan, response_text)
                 response_text = enforce_line_format_guard(plan, response_text)
                 if not count_guarded:
@@ -6281,6 +6387,7 @@ async def ws_chat(websocket: WebSocket):
                 else:
                     response_text = chat_fallback_response(plan)
                 response_text = sanitize_false_addressing(response_text, plan)
+                response_text = trim_self_answer_after_question(response_text)
                 response_text = enforce_count_guard(plan, response_text)
                 response_text = enforce_line_format_guard(plan, response_text)
                 if not plan.get("count_constraints"):

@@ -4125,6 +4125,11 @@ function heardFallback() {
 function stoppedFallback() {
   return currentLang === "tr" ? "Yanıt durduruldu." : "Response stopped.";
 }
+function resumeUnavailableFallback() {
+  return currentLang === "tr"
+    ? "Devam etmek için güvenli bir yarım yanıt bulamadım. İstersen isteğini yeniden yaz, temiz şekilde sürdüreyim."
+    : "I couldn't find a safe partial answer to continue from. Send the request again and I'll continue cleanly.";
+}
 function isContinueCommand(text) {
   const low = String(text || "").trim().toLowerCase();
   return ["devam et", "devam", "continue"].includes(low);
@@ -4166,18 +4171,26 @@ async function continueInterruptedResponse(targetAiEl) {
   const conversationId = state.conversationId || activeConversationId || getActiveConversation().id;
   if (currentMode !== state.mode) currentMode = state.mode;
   const baseText = state.partialText || targetAiEl.innerText || "";
-  const bridgeMessage = `${continuePromptText()}\n\nKullanıcı mesajı: ${state.userText}\nKaldığın metin: ${baseText}`;
+  const cleanBaseText = String(baseText || "").trim();
+  const stoppedText = stoppedFallback();
+  if (!cleanBaseText || cleanBaseText === stoppedText) {
+    targetAiEl.innerText = resumeUnavailableFallback();
+    clearInterruptedState(true);
+    return;
+  }
+  const resumeContext = cleanBaseText.slice(-1200);
+  const bridgeMessage = `${continuePromptText()}\n\nKullanıcının önceki isteği: ${state.userText || ""}\nKaldığın son güvenli bölüm: ${resumeContext}\n\nYalnızca bu son bölümün doğal devamını yaz. Baştan alma, aynı maddeyi/başlığı/cümleyi tekrar etme.`;
   stopStreamRequested = false;
   setResponseLock(true);
   const writer = createPacedWriter(targetAiEl, 0.9);
-  writer.setExact(baseText);
+  writer.setExact(cleanBaseText);
   activeGeneration = { runId: continueRunId, conversationId, messageEl: targetAiEl, writer, kind: "continue" };
   setPendingState({ conversationId, runId: continueRunId, kind: "continue" });
   let continuedRawText = "";
   const applyContinueChunk = (chunk) => {
     if (!chunk) return;
     continuedRawText += chunk;
-    const merged = mergeContinuationText(baseText, continuedRawText);
+    const merged = mergeContinuationText(cleanBaseText, continuedRawText);
     const expected = typeof writer.expectedText === "function" ? writer.expectedText() : (targetAiEl.innerText || "");
     if (merged.startsWith(expected)) {
       writer.push(merged.slice(expected.length));
@@ -4199,7 +4212,7 @@ async function continueInterruptedResponse(targetAiEl) {
       responseText = await sendMessageViaSocket(
         payload,
         chunk => applyContinueChunk(chunk),
-        finalText => reconcileFinalText(writer, targetAiEl, mergeContinuationText(baseText, finalText))
+        finalText => reconcileFinalText(writer, targetAiEl, mergeContinuationText(cleanBaseText, finalText))
       );
       await writer.waitIdle();
     } catch (_) {
@@ -4211,7 +4224,7 @@ async function continueInterruptedResponse(targetAiEl) {
       setPendingState(null);
       return;
     }
-    const finalMerged = mergeContinuationText(baseText, responseText);
+    const finalMerged = mergeContinuationText(cleanBaseText, responseText);
     if ((finalMerged || "").trim() && targetAiEl.innerText !== finalMerged) {
       forceFinalVisibleText(writer, targetAiEl, finalMerged);
     }
