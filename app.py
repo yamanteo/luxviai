@@ -825,6 +825,29 @@ def extract_capitalized_name_candidates(text: str) -> List[str]:
     return list(dict.fromkeys(candidates))[:8]
 
 
+def ambiguous_addressing_candidates(message: str, identity_boundary: str = "") -> List[str]:
+    if identity_boundary == "identity":
+        return []
+    directive = detect_identity_directive(message)
+    if directive.get("kind") == "identity":
+        return []
+    names = extract_capitalized_name_candidates(message)
+    return [name for name in names if identity_name_key(name) not in {"selam", "merhaba"}][:6]
+
+
+def identity_runtime_hint(message: str, identity_boundary: str = "") -> str:
+    candidates = ambiguous_addressing_candidates(message, identity_boundary)
+    if not candidates:
+        return ""
+    labels = ", ".join(candidates[:4])
+    return (
+        "Bu mesajdaki olası isim/hitap adaylarını kullanıcı adı sayma: "
+        f"{labels}. Kullanıcı açıkça 'benim adım X', 'bana X de' veya "
+        "'bana X diye hitap et' demedikçe bu adlarla kullanıcıya seslenme. "
+        "Emin değilsen isimsiz cevap ver veya kısaca 'Size nasıl hitap etmemi istersiniz?' diye sor."
+    )
+
+
 def sanitize_false_addressing(response: str, plan: Dict[str, Any]) -> str:
     text = response or ""
     if not text.strip():
@@ -838,8 +861,9 @@ def sanitize_false_addressing(response: str, plan: Dict[str, Any]) -> str:
         for x in safe_list(identity.get("rejected_names"))
         if normalize_identity_name(str(x))
     ]
-    if plan.get("identity_boundary") != "identity":
-        names.extend(extract_capitalized_name_candidates(str(plan.get("message", ""))))
+    identity_boundary = str(plan.get("identity_boundary", ""))
+    if identity_boundary != "identity":
+        names.extend(ambiguous_addressing_candidates(str(plan.get("message", "")), identity_boundary))
 
     forbidden = []
     seen = set()
@@ -854,6 +878,12 @@ def sanitize_false_addressing(response: str, plan: Dict[str, Any]) -> str:
         escaped = re.escape(name)
         first = re.escape(name.split()[0])
         name_pattern = f"(?:{escaped}|{first})"
+        if re.search(
+            rf"\b(?:(?:sana|size|artik|bundan\s+sonra)\s+)?{name_pattern}\s+diye\s+(?:seslen|hitap|cagir|çağır)",
+            cleaned,
+            flags=re.IGNORECASE,
+        ):
+            return "Anladım, isim konusunda netleştirelim. Size nasıl hitap etmemi istersiniz?"
         cleaned = re.sub(
             rf"^(\s*(?:Selam|Merhaba|Hoş geldin|Hos geldin))\s+{name_pattern}([,!.?])",
             r"\1\2",
@@ -869,6 +899,18 @@ def sanitize_false_addressing(response: str, plan: Dict[str, Any]) -> str:
         cleaned = re.sub(
             rf"^(\s*(?:Selam|Merhaba))\s+{name_pattern},\s*(?:hoş geldin|hos geldin)\.?\s*",
             r"\1. ",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+        cleaned = re.sub(
+            rf"^(\s*(?:Anladım|Anladim|Peki|Tamam|Tabii|Tabi|Elbette))\s+{name_pattern}([,!.?])",
+            r"\1\2",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+        cleaned = re.sub(
+            rf"^\s*{name_pattern},\s+",
+            "",
             cleaned,
             flags=re.IGNORECASE,
         )
@@ -4292,9 +4334,13 @@ def prepare_luxeph_plan(
         }
 
     digest = build_weekly_digest(profile, session, [])
+    identity_boundary = classify_identity_command_boundary(message)
     count_constraints = extract_count_constraints(message)
     line_format_constraints = extract_line_format_constraints(message)
     runtime_hints = []
+    identity_hint = identity_runtime_hint(message, identity_boundary)
+    if identity_hint:
+        runtime_hints.append(identity_hint)
     count_hint = count_guard_hint(count_constraints)
     if count_hint:
         runtime_hints.append(count_hint)
@@ -4323,6 +4369,7 @@ def prepare_luxeph_plan(
         "user_id": user_id,
         "mode": "luxeph",
         "message": message,
+        "identity_boundary": identity_boundary,
         "count_constraints": count_constraints,
         "line_format_constraints": line_format_constraints,
         "token_budget": token_budget,
@@ -4434,6 +4481,9 @@ def prepare_chat_plan(
     runtime_hints.append(
         "Kimlik güvenliği: sadece 'Adım/İsmim/Bana X de' gibi açık ifadeleri kullanıcı adı say; üçüncü kişi, referans, sanatçı veya örnek isimlerden hitap çıkarma."
     )
+    identity_hint = identity_runtime_hint(message, identity_boundary)
+    if identity_hint:
+        runtime_hints.append(identity_hint)
     count_constraints = extract_count_constraints(message)
     line_format_constraints = extract_line_format_constraints(message)
     count_hint = count_guard_hint(count_constraints)

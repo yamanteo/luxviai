@@ -148,6 +148,12 @@ class SmokeRunner:
         identity = profile["identity_memory"]
         assert identity.get("preferred_name") == "", identity
 
+        for phrase in ["selam ibrahim", "merhaba poncik", "selam burak kut"]:
+            profile = luxapp.default_profile()
+            profile = luxapp.apply_identity_guard(profile, phrase)
+            identity = profile["identity_memory"]
+            assert identity.get("preferred_name") == "", (phrase, identity)
+
         profile = luxapp.default_profile()
         profile = luxapp.apply_identity_guard(profile, "Burak Kut'u sever misin?")
         identity = profile["identity_memory"]
@@ -163,6 +169,14 @@ class SmokeRunner:
             {"message": "selam burak kut", "identity_boundary": "chat", "profile": luxapp.default_profile()},
         )
         assert "Burak" not in cleaned, cleaned
+        cleaned = luxapp.sanitize_false_addressing(
+            "Tamam, Burak diye seslenecegim.",
+            {"message": "ben sana Burak dedim", "identity_boundary": "chat", "profile": luxapp.default_profile()},
+        )
+        assert "Burak diye" not in cleaned and "nasıl hitap" in cleaned.lower(), cleaned
+
+        explicit = luxapp.apply_identity_guard(luxapp.default_profile(), "bana Atlas de")
+        assert explicit["identity_memory"].get("preferred_name") == "Atlas", explicit["identity_memory"]
         return "no nickname inference"
 
     def check_cost_logger_privacy(self) -> str:
