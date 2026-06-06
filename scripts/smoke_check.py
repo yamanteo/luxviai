@@ -1193,6 +1193,19 @@ class SmokeRunner:
         assert "block_fields" in schema and "exportable" in schema.get("block_fields", []), schema
         assert schema.get("read_only") is True, schema
 
+        status_response = client.get("/debug/workspace-status")
+        assert status_response.status_code == 200, status_response.text
+        status_payload = status_response.json()
+        assert status_payload.get("layer") == "15", status_payload
+        assert status_payload.get("status") == "scaffold_ready", status_payload
+        assert status_payload.get("read_only") is True, status_payload
+        assert status_payload.get("real_editor_enabled") is False, status_payload
+        assert status_payload.get("real_export_enabled") is False, status_payload
+        assert status_payload.get("file_write_enabled") is False, status_payload
+        assert status_payload.get("memory_write_enabled") is False, status_payload
+        assert status_payload.get("chat_stream_touched") is False, status_payload
+        assert "/workspace/builder-preview" in status_payload.get("available_endpoints", []), status_payload
+
         sample_response = client.get("/debug/workspace/sample")
         assert sample_response.status_code == 200, sample_response.text
         sample = sample_response.json()

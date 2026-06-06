@@ -6259,6 +6259,48 @@ async def debug_layer14_status():
     return _layer14_status()
 
 
+def _workspace_status() -> Dict[str, Any]:
+    return {
+        "layer": "15",
+        "name": "LuxWorkspace scaffold",
+        "status": "scaffold_ready",
+        "read_only": True,
+        "real_editor_enabled": False,
+        "real_export_enabled": False,
+        "file_write_enabled": False,
+        "db_write_enabled": False,
+        "memory_write_enabled": False,
+        "chat_stream_touched": False,
+        "completed_parts": [
+            "15.1 schema + block model",
+            "15.2 command/content separation",
+            "15.3 command parser",
+            "15.4 export-clean preview",
+            "15.5 evaluator/context notes",
+            "15.6 builder preview",
+        ],
+        "available_endpoints": [
+            "/workspace/schema",
+            "/debug/workspace/sample",
+            "/workspace/preview",
+            "/workspace/separation-preview",
+            "/workspace/parse-command",
+            "/workspace/export-preview",
+            "/workspace/context-preview",
+            "/workspace/builder-preview",
+        ],
+        "next_recommended_step": "15.8 later real export/file integration or move to Layer 16 visual scaffold",
+        "backlog": [
+            "stop/durdur final block leak",
+        ],
+    }
+
+
+@app.get("/debug/workspace-status")
+async def debug_workspace_status():
+    return _workspace_status()
+
+
 @app.get("/workspace/schema")
 async def workspace_schema_endpoint():
     return workspace_schema()
@@ -6330,6 +6372,9 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/layer14-status">Layer 14 Status</button>
     </div>
     <h2>Workspace Preview</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/workspace-status">Workspace Status</button>
+    </div>
     <div class="bar">
       <button data-workspace-command="CV haz\u0131rla">CV haz\u0131rla</button>
       <button data-workspace-command="rapor yaz">rapor yaz</button>
