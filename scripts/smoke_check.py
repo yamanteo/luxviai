@@ -1029,6 +1029,7 @@ class SmokeRunner:
         assert "/router/safe-memory-policy" in html, html[:300]
         assert "/router/memory-retrieval-preview" in html, html[:300]
         assert "/router/simulation-preview" in html, html[:300]
+        assert "/debug/model-router-full-status" in html, html[:300]
         assert "/debug/model-router-status" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
@@ -2579,6 +2580,45 @@ class SmokeRunner:
         assert luxway.get("recommended_route", {}).get("provider") == "deepseek_primary", luxway
         return "routing simulation preview"
 
+    def check_model_router_full_status_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/debug/model-router-full-status")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload.get("layer") == "19", payload
+        assert payload.get("status") == "scaffold_ready", payload
+        assert payload.get("read_only") is True, payload
+        assert payload.get("routing_changed") is False, payload
+        assert payload.get("real_model_switch_performed") is False, payload
+        assert payload.get("real_api_call_performed") is False, payload
+        assert payload.get("raw_user_text_logged") is False, payload
+        assert payload.get("billing_write_performed") is False, payload
+        assert payload.get("memory_read_performed") is False, payload
+        assert payload.get("memory_write_performed") is False, payload
+        assert payload.get("db_write_performed") is False, payload
+        assert payload.get("file_write_performed") is False, payload
+        assert payload.get("chat_stream_touched") is False, payload
+        assert payload.get("typewriter_runtime_touched") is False, payload
+        distribution = payload.get("target_distribution", {})
+        assert distribution.get("deepseek_target_share") == 0.96, payload
+        assert distribution.get("mini_5_4_target_share") == 0.03, payload
+        assert distribution.get("gpt_5_5_target_share") == 0.01, payload
+        completed = " ".join(str(item) for item in payload.get("completed_parts", []))
+        assert "19.5" in completed, payload
+        rules = " ".join(str(item).lower() for item in payload.get("core_router_rules", []))
+        assert "raw user text is never logged" in rules, payload
+        assert "no billing write" in rules, payload
+        assert "luxeph no-memory rule" in rules, payload
+        endpoints = set(payload.get("available_endpoints", []))
+        assert "/router/simulation-preview" in endpoints, payload
+        return "model router full status"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2658,6 +2698,7 @@ class SmokeRunner:
             ("cost_privacy_policy_preview", self.check_cost_privacy_policy_preview),
             ("safe_memory_retrieval_preview", self.check_safe_memory_retrieval_preview),
             ("routing_simulation_preview", self.check_routing_simulation_preview),
+            ("model_router_full_status_snapshot", self.check_model_router_full_status_snapshot),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),

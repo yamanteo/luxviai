@@ -6722,6 +6722,72 @@ async def debug_model_router_status():
     return model_router_status()
 
 
+@app.get("/debug/model-router-full-status")
+async def debug_model_router_full_status():
+    return {
+        "layer": "19",
+        "name": "Model Router / Cost Efficiency scaffold",
+        "status": "scaffold_ready",
+        "read_only": True,
+        "routing_changed": False,
+        "real_model_switch_performed": False,
+        "real_api_call_performed": False,
+        "billing_write_performed": False,
+        "raw_user_text_logged": False,
+        "safe_derived_signals_only": True,
+        "memory_read_performed": False,
+        "memory_write_performed": False,
+        "db_write_performed": False,
+        "file_write_performed": False,
+        "chat_stream_touched": False,
+        "typewriter_runtime_touched": False,
+        "target_distribution": {
+            "deepseek_target_share": 0.96,
+            "mini_5_4_target_share": 0.03,
+            "gpt_5_5_target_share": 0.01,
+        },
+        "completed_parts": [
+            "19.1 model router config preview",
+            "19.2 router hint expansion preview",
+            "19.3 cost logger privacy hardening preview",
+            "19.4 safe memory retrieval preview",
+            "19.5 routing simulation preview",
+        ],
+        "available_endpoints": [
+            "/router/model-config",
+            "/router/model-preview",
+            "/debug/model-router-status",
+            "/router/hint-preview",
+            "/router/cost-privacy-policy",
+            "/router/cost-preview",
+            "/router/safe-memory-policy",
+            "/router/memory-retrieval-preview",
+            "/router/simulation-preview",
+        ],
+        "core_router_rules": [
+            "DeepSeek is default main brain with target share 0.96",
+            "Mini 5.4 is helper/multimodal support with target share 0.03",
+            "GPT-5.5 is rare premium fallback with target share 0.01",
+            "Image API is future metadata only",
+            "routing is invisible to user",
+            "raw user text is never logged",
+            "only safe derived metadata can be previewed",
+            "no billing write",
+            "Luxeph no-memory rule is respected",
+            "safety/privacy tasks prioritize safety over cost",
+        ],
+        "next_recommended_step": "Layer 20 Polish / Production Hardening scaffold or selected backlog planning",
+        "later_step": "19.6 real routing integration later",
+        "backlog": [
+            "stop/durdur final block leak",
+            "real routing/API integration later",
+            "real image API later",
+            "real voice integration later",
+            "real Luxway platform integration later",
+        ],
+    }
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -7044,6 +7110,7 @@ async def debug_agent_panel():
     </div>
     <h2>Model Router Preview</h2>
     <div class="bar">
+      <button data-endpoint="/debug/model-router-full-status">Model Router Full Status</button>
       <button data-endpoint="/debug/model-router-status">Model Router Status</button>
       <button data-endpoint="/router/model-config">Model Router Config</button>
       <button data-endpoint="/router/cost-privacy-policy">Cost Privacy Policy</button>
