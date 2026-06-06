@@ -1529,6 +1529,89 @@ class SmokeRunner:
         assert prompt_preview.get("lux_signature_note"), prompt_preview
         assert "prompt_sections" in prompt_preview, prompt_preview
         assert "boat" in prompt_preview.get("final_prompt_preview", ""), prompt_preview
+
+        prompt_examples = [
+            (
+                "Dreamcore Surrealism soft neon amber",
+                {"dreamcore_surrealism", "soft_neon", "lux_amber_accent"},
+                None,
+            ),
+            (
+                "Ambrosia i\u00e7imde k\u0131r\u0131lgan umut",
+                {"lux_ambrosia"},
+                "ambrosia",
+            ),
+            (
+                "sahneyi koru sa\u011f tarafa k\u00fc\u00e7\u00fck kap\u0131 ekle",
+                {"scene_lock"},
+                "scene_lock",
+            ),
+            (
+                "%40 ya\u011fl\u0131 boya %20 pixel amber \u0131\u015f\u0131k",
+                {"oil_paint", "pixel", "lux_amber_accent"},
+                None,
+            ),
+            (
+                "Siyah kadife, platin glyph, d\u00fc\u015f\u00fck \u00e7izgi",
+                {"black_velvet", "silent_glyph", "low_line_density"},
+                None,
+            ),
+        ]
+        for prompt_text, expected_styles, expected_mode in prompt_examples:
+            response = client.post(
+                "/visual/prompt-preview",
+                json={
+                    "prompt": prompt_text,
+                    "mode": "",
+                    "style_ratios": {"ratio_text": prompt_text},
+                    "scene_state": {"locked_elements": ["door_anchor"]} if "sahneyi koru" in prompt_text else {},
+                    "ambrosia_state": {},
+                    "locked_elements": ["door_anchor"] if "sahneyi koru" in prompt_text else [],
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("image_generation_performed") is False, payload
+            assert payload.get("detected_registry_groups"), payload
+            assert payload.get("used_style_aliases"), payload
+            applied_rules = " ".join(payload.get("lux_rules_applied", []))
+            assert "line density" in applied_rules and "signature" in applied_rules, payload
+            style_ids = {item.get("style_id") for item in payload.get("style_mix", [])}
+            assert expected_styles <= style_ids, payload
+            if expected_mode:
+                assert payload.get("detected_mode") == expected_mode, payload
+            final_prompt = payload.get("final_prompt_preview", "")
+            assert "#ab6b0c" in final_prompt, payload
+            assert "visual spirit/state language" in final_prompt, payload
+
+        ambrosia_prompt = client.post(
+            "/visual/prompt-preview",
+            json={"prompt": "Ambrosia i\u00e7imde k\u0131r\u0131lgan umut", "style_ratios": {}, "scene_state": {}, "ambrosia_state": {}, "locked_elements": []},
+        ).json()
+        assert ambrosia_prompt.get("detected_mode") == "ambrosia", ambrosia_prompt
+        assert {"no_city", "no_room", "no_letters", "no_sign"} <= set(ambrosia_prompt.get("negative_prompt", "").split(", ")), ambrosia_prompt
+
+        scene_lock_prompt = client.post(
+            "/visual/prompt-preview",
+            json={
+                "prompt": "sahneyi koru sa\u011f tarafa k\u00fc\u00e7\u00fck kap\u0131 ekle",
+                "style_ratios": {},
+                "scene_state": {"locked_elements": ["door_anchor"]},
+                "ambrosia_state": {},
+                "locked_elements": ["door_anchor"],
+            },
+        ).json()
+        assert scene_lock_prompt.get("detected_mode") == "scene_lock", scene_lock_prompt
+        assert scene_lock_prompt.get("prompt_sections", {}).get("scene_lock", {}).get("scene_rebuild_required") is False, scene_lock_prompt
+        assert "door_anchor" in scene_lock_prompt.get("final_prompt_preview", ""), scene_lock_prompt
+
+        palette_prompt = client.post(
+            "/visual/prompt-preview",
+            json={"prompt": "Siyah kadife, platin glyph, d\u00fc\u015f\u00fck \u00e7izgi", "style_ratios": {}, "scene_state": {}, "ambrosia_state": {}, "locked_elements": []},
+        ).json()
+        assert "#0A0A0A" in palette_prompt.get("final_prompt_preview", ""), palette_prompt
+        assert "#C0C0C0" in palette_prompt.get("final_prompt_preview", ""), palette_prompt
         return "visual style registry/ratio/ambrosia/dream/scene-lock/prompt preview"
 
     def check_live_server_health(self) -> str:
