@@ -33,6 +33,7 @@ from learning.token_budget_policy import TokenBudgetPolicy
 from audio_privacy_boundary import preview_audio_privacy_boundary
 from audio_signal_schema import audio_signal_schema, audio_status_snapshot, preview_audio_signal
 from agent_decision_trace import build_agent_decision_trace
+from luxway_capabilities import luxway_capability_registry, luxway_status_snapshot, preview_luxway_command
 from agent_scaffold import (
     ANDROID_PERMISSION_NOTES,
     IOS_PERMISSION_NOTES,
@@ -318,6 +319,12 @@ class NightRadioVoicePreviewRequest(BaseModel):
     mood: str = Field(default="", max_length=1000)
     response_size: str = Field(default="medium", max_length=50)
     mode: str = Field(default="", max_length=100)
+
+
+class LuxwayPreviewCommandRequest(BaseModel):
+    command: str = Field(default="", max_length=2000)
+    platform: str = Field(default="unknown", max_length=50)
+    context: str = Field(default="", max_length=4000)
 
 
 # =========================================================
@@ -6603,6 +6610,21 @@ async def debug_audio_status():
     return audio_status_snapshot()
 
 
+@app.get("/luxway/capabilities")
+async def luxway_capabilities_endpoint():
+    return luxway_capability_registry()
+
+
+@app.post("/luxway/preview-command")
+async def luxway_preview_command_endpoint(payload: LuxwayPreviewCommandRequest):
+    return preview_luxway_command(payload.command, payload.platform, payload.context)
+
+
+@app.get("/debug/luxway-status")
+async def debug_luxway_status():
+    return luxway_status_snapshot()
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6768,6 +6790,20 @@ async def debug_agent_panel():
       <button data-audio-boundary-command="mikrofonu a\u00e7">Privacy: mikrofonu a\u00e7</button>
       <button data-audio-boundary-command="sesimi kaydet">Privacy: sesimi kaydet</button>
       <button data-audio-boundary-command="sadece tonumu sakinle\u015ftir">Privacy: tonu sakinle\u015ftir</button>
+    </div>
+    <h2>Luxway Preview</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/luxway-status">Luxway Status</button>
+      <button data-endpoint="/luxway/capabilities">Luxway Capabilities</button>
+    </div>
+    <div class="bar">
+      <button data-luxway-command="telefonumu tara">telefonumu tara</button>
+      <button data-luxway-command="gereksiz uygulamalar\u0131 bul">gereksiz uygulamalar\u0131 bul</button>
+      <button data-luxway-command="haftal\u0131k telefon raporu \u00e7\u0131kar">haftal\u0131k telefon raporu \u00e7\u0131kar</button>
+      <button data-luxway-command="Ali'ye mesaj tasla\u011f\u0131 yaz">Ali'ye mesaj tasla\u011f\u0131 yaz</button>
+      <button data-luxway-command="bildirimlerimi \u00f6nceliklendir">bildirimlerimi \u00f6nceliklendir</button>
+      <button data-luxway-command="mail \u00f6zetimi g\u00f6ster">mail \u00f6zetimi g\u00f6ster</button>
+      <button data-luxway-command="takvimimi \u00f6zetle">takvimimi \u00f6zetle</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7114,6 +7150,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadLuxwayPreview(command) {
+      statusEl.textContent = "Loading Luxway preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/luxway/preview-command", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ command, platform: "android", context: "debug panel read-only Luxway sample" })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded Luxway preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -7173,6 +7226,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-audio-boundary-command]").forEach((button) => {
       button.addEventListener("click", () => loadAudioBoundary(button.dataset.audioBoundaryCommand));
+    });
+    document.querySelectorAll("button[data-luxway-command]").forEach((button) => {
+      button.addEventListener("click", () => loadLuxwayPreview(button.dataset.luxwayCommand));
     });
   </script>
 </body>

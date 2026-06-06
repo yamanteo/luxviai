@@ -1021,6 +1021,9 @@ class SmokeRunner:
         assert "/audio/preview-signal" in html, html[:300]
         assert "/audio/privacy-boundary-preview" in html, html[:300]
         assert "/debug/audio-status" in html, html[:300]
+        assert "/luxway/capabilities" in html, html[:300]
+        assert "/luxway/preview-command" in html, html[:300]
+        assert "/debug/luxway-status" in html, html[:300]
         return "debug agent panel"
 
     def check_mode_registry_preview(self) -> str:
@@ -1922,6 +1925,72 @@ class SmokeRunner:
             assert payload.get("blocked_actions"), payload
         return "audio privacy boundary preview"
 
+    def check_luxway_capability_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        capabilities_response = client.get("/luxway/capabilities")
+        assert capabilities_response.status_code == 200, capabilities_response.text
+        capabilities_payload = capabilities_response.json()
+        assert capabilities_payload.get("read_only") is True, capabilities_payload
+        assert capabilities_payload.get("real_access_enabled") is False, capabilities_payload
+        capability_ids = {item.get("id") for item in capabilities_payload.get("capabilities", [])}
+        assert {"phone_overview", "app_usage_preview", "storage_preview", "call_or_message_draft_preview"} <= capability_ids, capabilities_payload
+
+        status_response = client.get("/debug/luxway-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("real_phone_access_enabled") is False, status
+        assert status.get("real_app_access_enabled") is False, status
+        assert status.get("real_mail_access_enabled") is False, status
+        assert status.get("real_calendar_access_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        def preview(command: str, platform: str = "android") -> dict:
+            response = client.post(
+                "/luxway/preview-command",
+                json={"command": command, "platform": platform, "context": "smoke Luxway read-only context"},
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("real_access_enabled") is False, payload
+            assert payload.get("action_performed") is False, payload
+            assert payload.get("data_read") is False, payload
+            assert payload.get("data_written") is False, payload
+            assert payload.get("read_only") is True, payload
+            return payload
+
+        phone = preview("telefonumu tara")
+        assert phone.get("requires_permission") is True, phone
+        assert phone.get("detected_capability") == "phone_overview", phone
+
+        cleanup = preview("gereksiz uygulamalari bul")
+        cleanup_ids = {item.get("id") for item in cleanup.get("capability_candidates", [])}
+        assert {"cleanup_suggestions_preview", "app_usage_preview"} & cleanup_ids, cleanup
+
+        draft = preview("Ali'ye mesaj taslagi yaz")
+        assert draft.get("detected_capability") == "call_or_message_draft_preview", draft
+        assert draft.get("requires_confirmation") is True, draft
+        assert draft.get("action_performed") is False, draft
+
+        mail = preview("mail ozetimi goster")
+        assert mail.get("detected_capability") == "mail_summary_preview", mail
+        assert mail.get("requires_permission") is True, mail
+        assert mail.get("data_read") is False, mail
+
+        calendar = preview("takvimimi ozetle", "ios")
+        assert calendar.get("detected_capability") == "calendar_summary_preview", calendar
+        assert calendar.get("platform") == "ios", calendar
+        return "luxway capability preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -1996,6 +2065,7 @@ class SmokeRunner:
             ("voice_audio_status_snapshot", self.check_voice_audio_status_snapshot),
             ("audio_signal_preview", self.check_audio_signal_preview),
             ("audio_privacy_boundary_preview", self.check_audio_privacy_boundary_preview),
+            ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
