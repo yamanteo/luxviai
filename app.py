@@ -30,6 +30,7 @@ from learning.pipeline import LearningPipeline
 from learning.cost_logger import CostLogger, estimate_tokens
 from learning.efficiency_router import EfficiencyRouter
 from learning.token_budget_policy import TokenBudgetPolicy
+from audio_signal_schema import audio_signal_schema, audio_status_snapshot, preview_audio_signal
 from agent_decision_trace import build_agent_decision_trace
 from agent_scaffold import (
     ANDROID_PERMISSION_NOTES,
@@ -296,6 +297,12 @@ class VoiceModePreviewRequest(BaseModel):
     context: str = Field(default="", max_length=4000)
     response_size: str = Field(default="medium", max_length=50)
     input_modality: str = Field(default="text", max_length=50)
+
+
+class AudioSignalPreviewRequest(BaseModel):
+    description: str = Field(default="", max_length=2000)
+    simulated_voice_note: str = Field(default="", max_length=2000)
+    context: str = Field(default="", max_length=4000)
 
 
 # =========================================================
@@ -6502,6 +6509,21 @@ async def debug_voice_status():
     return voice_status_snapshot()
 
 
+@app.get("/audio/signal-schema")
+async def audio_signal_schema_endpoint():
+    return audio_signal_schema()
+
+
+@app.post("/audio/preview-signal")
+async def audio_preview_signal_endpoint(payload: AudioSignalPreviewRequest):
+    return preview_audio_signal(payload.description, payload.simulated_voice_note, payload.context)
+
+
+@app.get("/debug/audio-status")
+async def debug_audio_status():
+    return audio_status_snapshot()
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6638,6 +6660,18 @@ async def debug_agent_panel():
       <button data-voice-command="workspace uzun cevap" data-voice-size="workspace_large">workspace uzun cevap</button>
       <button data-voice-command="normal h\u0131za d\u00f6n" data-voice-size="medium">normal h\u0131za d\u00f6n</button>
       <button data-voice-command="sadece yaz\u0131, ses yok" data-voice-size="medium">sadece yaz\u0131, ses yok</button>
+    </div>
+    <h2>Audio Signal Preview</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/audio-status">Audio Status</button>
+      <button data-endpoint="/audio/signal-schema">Audio Signal Schema</button>
+    </div>
+    <div class="bar">
+      <button data-audio-description="sesim yorgun gibi">sesim yorgun gibi</button>
+      <button data-audio-description="h\u0131zl\u0131 ve panik konu\u015fuyorum">h\u0131zl\u0131 ve panik konu\u015fuyorum</button>
+      <button data-audio-description="daha sakin bir tona ge\u00e7">daha sakin bir tona ge\u00e7</button>
+      <button data-audio-description="gece radyosu gibi yava\u015flat">gece radyosu gibi yava\u015flat</button>
+      <button data-audio-description="enerjim d\u00fc\u015f\u00fck ama net anlat">enerjim d\u00fc\u015f\u00fck ama net anlat</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6933,6 +6967,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadAudioSignal(description) {
+      statusEl.textContent = "Loading audio signal preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/audio/preview-signal", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ description, simulated_voice_note: "debug panel simulated metadata only", context: "read-only scaffold sample" })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded audio signal preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -6983,6 +7034,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-voice-command]").forEach((button) => {
       button.addEventListener("click", () => loadVoicePreview(button.dataset.voiceCommand, button.dataset.voiceSize));
+    });
+    document.querySelectorAll("button[data-audio-description]").forEach((button) => {
+      button.addEventListener("click", () => loadAudioSignal(button.dataset.audioDescription));
     });
   </script>
 </body>

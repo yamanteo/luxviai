@@ -1015,6 +1015,9 @@ class SmokeRunner:
         assert "/debug/voice-status" in html, html[:300]
         assert "/voice/modes" in html, html[:300]
         assert "/voice/preview-mode" in html, html[:300]
+        assert "/audio/signal-schema" in html, html[:300]
+        assert "/audio/preview-signal" in html, html[:300]
+        assert "/debug/audio-status" in html, html[:300]
         return "debug agent panel"
 
     def check_mode_registry_preview(self) -> str:
@@ -1721,6 +1724,72 @@ class SmokeRunner:
         assert voice_meta.get("microphone_used") is False, voice_meta
         return "voice speed preview"
 
+    def check_audio_signal_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/audio/signal-schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert schema.get("source_modality") == "simulated_audio", schema
+        assert schema.get("raw_audio_stored") is False, schema
+        assert schema.get("recording_performed") is False, schema
+        assert schema.get("microphone_used") is False, schema
+        assert schema.get("clinical_diagnosis_performed") is False, schema
+        assert schema.get("read_only") is True, schema
+
+        status_response = client.get("/debug/audio-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("audio_signal_schema_ready") is True, status
+        assert status.get("read_only") is True, status
+        assert status.get("raw_audio_stored") is False, status
+        assert status.get("recording_performed") is False, status
+        assert status.get("microphone_used") is False, status
+        assert status.get("clinical_diagnosis_performed") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        samples = [
+            "sesim yorgun gibi",
+            "hizli ve panik konusuyorum",
+            "daha sakin bir tona gec",
+            "gece radyosu gibi yavaslat",
+            "enerjim dusuk ama net anlat",
+        ]
+        for sample in samples:
+            response = client.post(
+                "/audio/preview-signal",
+                json={
+                    "description": sample,
+                    "simulated_voice_note": "smoke simulated metadata only",
+                    "context": "read-only audio signal schema preview",
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("source_modality") == "simulated_audio", payload
+            assert payload.get("raw_audio_stored") is False, payload
+            assert payload.get("recording_performed") is False, payload
+            assert payload.get("microphone_used") is False, payload
+            assert payload.get("clinical_diagnosis_performed") is False, payload
+            assert payload.get("read_only") is True, payload
+            assert payload.get("derived_signals"), payload
+            assert isinstance(payload.get("rhythm_preview"), dict), payload
+            assert isinstance(payload.get("energy_preview"), dict), payload
+            assert isinstance(payload.get("pause_pattern_preview"), dict), payload
+            assert isinstance(payload.get("tone_shift_preview"), dict), payload
+            assert isinstance(payload.get("emotional_atmosphere_preview"), dict), payload
+        return "audio signal preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -1791,6 +1860,7 @@ class SmokeRunner:
             ("visual_style_registry_preview", self.check_visual_style_registry_preview),
             ("visual_status_snapshot", self.check_visual_status_snapshot),
             ("voice_speed_preview", self.check_voice_speed_preview),
+            ("audio_signal_preview", self.check_audio_signal_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
