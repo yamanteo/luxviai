@@ -1031,6 +1031,8 @@ class SmokeRunner:
         assert "/router/simulation-preview" in html, html[:300]
         assert "/debug/model-router-full-status" in html, html[:300]
         assert "/debug/model-router-status" in html, html[:300]
+        assert "/debug/production-hardening-status" in html, html[:300]
+        assert "/debug/backlog-registry" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
         assert "/luxway/permission-model" in html, html[:300]
@@ -2619,6 +2621,39 @@ class SmokeRunner:
         assert "/router/simulation-preview" in endpoints, payload
         return "model router full status"
 
+    def check_production_hardening_backlog_registry(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        for endpoint in ["/debug/production-hardening-status", "/debug/backlog-registry"]:
+            response = client.get(endpoint)
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("layer") == "20", payload
+            assert payload.get("status") == "planning_scaffold", payload
+            assert payload.get("read_only") is True, payload
+            assert payload.get("real_fix_performed") is False, payload
+            assert payload.get("chat_stream_touched") is False, payload
+            assert payload.get("typewriter_runtime_touched") is False, payload
+            assert payload.get("db_write_performed") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            assert payload.get("file_write_performed") is False, payload
+            backlog_text = " ".join(str(item).lower() for item in payload.get("backlog_items", []))
+            assert "stop/durdur final block leak" in backlog_text, payload
+            assert "real model routing later" in backlog_text, payload
+            risk_groups = {item.get("id") for item in payload.get("risk_groups", [])}
+            assert "stream_and_stop_backlog" in risk_groups, payload
+            assert "privacy_security_audit" in risk_groups, payload
+            assert payload.get("recommended_next_checks"), payload
+            assert payload.get("safe_next_step"), payload
+
+        return "production hardening backlog registry"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2699,6 +2734,7 @@ class SmokeRunner:
             ("safe_memory_retrieval_preview", self.check_safe_memory_retrieval_preview),
             ("routing_simulation_preview", self.check_routing_simulation_preview),
             ("model_router_full_status_snapshot", self.check_model_router_full_status_snapshot),
+            ("production_hardening_backlog_registry", self.check_production_hardening_backlog_registry),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),

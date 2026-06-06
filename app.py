@@ -62,6 +62,7 @@ from multimodal_memory_scaffold import (
 from mode_registry import mode_registry, preview_mode_command
 from night_radio_voice import preview_night_radio_voice
 from permission_boundary import preview_permission_boundary
+from production_hardening_registry import backlog_registry, production_hardening_status
 from router_scaffold import preview_router_decision
 from routing_simulation import preview_routing_simulation
 from safe_memory_retrieval import preview_safe_memory_retrieval, safe_memory_policy
@@ -6788,6 +6789,16 @@ async def debug_model_router_full_status():
     }
 
 
+@app.get("/debug/production-hardening-status")
+async def debug_production_hardening_status():
+    return production_hardening_status()
+
+
+@app.get("/debug/backlog-registry")
+async def debug_backlog_registry():
+    return backlog_registry()
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -7163,6 +7174,11 @@ async def debug_agent_panel():
       <button data-routing-simulation-command="Luxway telefon raporu" data-routing-task="luxway">Sim: Luxway</button>
       <button data-routing-simulation-command="Luxeph ge\u00e7mi\u015fini getir" data-routing-task="privacy_sensitive" data-routing-sensitivity="privacy">Sim: Luxeph memory</button>
       <button data-routing-simulation-command="\u00f6zel mesaj\u0131m\u0131 \u00f6zetle" data-routing-task="permission_boundary" data-routing-sensitivity="privacy">Sim: \u00f6zel mesaj</button>
+    </div>
+    <h2>Production / Backlog</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/production-hardening-status">Production Hardening Status</button>
+      <button data-endpoint="/debug/backlog-registry">Backlog Registry</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
