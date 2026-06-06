@@ -990,12 +990,14 @@ class SmokeRunner:
             "/debug/agent/sample-dream",
             "/debug/router/sample-cv",
             "/debug/mode-preview",
+            "/debug/permission-preview",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
         assert "read-only" in lowered or "no real action" in lowered, html[:300]
         assert "no raw data is stored" in lowered, html[:300]
         assert "mode registry" in lowered, html[:300]
+        assert "permission boundary" in lowered, html[:300]
         return "debug agent panel"
 
     def check_mode_registry_preview(self) -> str:
@@ -1042,6 +1044,60 @@ class SmokeRunner:
         assert unknown_preview.get("confidence") == "low", unknown_preview
         assert unknown_preview.get("matched_modes") == [], unknown_preview
         return "mode registry preview"
+
+    def check_permission_boundary_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        def preview(command: str) -> dict[str, Any]:
+            response = client.get("/debug/permission-preview", params={"q": command})
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            boundary = payload.get("permission_preview", {})
+            assert payload.get("read_only") is True, payload
+            assert payload.get("raw_data_stored") is False, payload
+            assert payload.get("write_performed") is False, payload
+            assert boundary.get("read_only") is True, payload
+            assert boundary.get("raw_data_stored") is False, payload
+            assert boundary.get("write_performed") is False, payload
+            assert boundary.get("can_execute_now") is False, payload
+            return boundary
+
+        cv_boundary = preview("CV haz\u0131rla")
+        assert cv_boundary.get("action_type") in {"draft_only", "mode_preview"}, cv_boundary
+
+        read_mail = preview("mailimi oku")
+        assert read_mail.get("action_type") == "read_private_data", read_mail
+        assert read_mail.get("requires_permission") is True, read_mail
+        assert read_mail.get("allowed_in_scaffold") is False, read_mail
+
+        send_mail = preview("bu maili g\u00f6nder")
+        assert send_mail.get("action_type") == "write_or_send_action", send_mail
+        assert send_mail.get("requires_confirmation") is True, send_mail
+        assert send_mail.get("allowed_in_scaffold") is False, send_mail
+
+        luxeph = preview("Luxeph'e ge\u00e7")
+        assert luxeph.get("action_type") == "sensitive_private_mode" or luxeph.get("data_sensitivity") == "private_sensitive", luxeph
+
+        one_step = preview("tek ad\u0131m s\u00f6yle")
+        assert one_step.get("allowed_in_scaffold") is True, one_step
+        assert one_step.get("requires_permission") is False, one_step
+
+        device = preview("telefonumdaki gereksiz uygulamalar\u0131 sil")
+        assert device.get("action_type") == "device_or_phone_action", device
+        assert device.get("requires_confirmation") is True, device
+        assert device.get("allowed_in_scaffold") is False, device
+
+        export = preview("raporu PDF olarak indir")
+        assert export.get("action_type") == "export_or_file_action", export
+        assert export.get("allowed_in_scaffold") is False, export
+
+        return "permission boundary preview"
 
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
@@ -1106,6 +1162,7 @@ class SmokeRunner:
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),
+            ("permission_boundary_preview", self.check_permission_boundary_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),

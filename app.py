@@ -50,6 +50,7 @@ from multimodal_memory_scaffold import (
     validate_memory_signal,
 )
 from mode_registry import mode_registry, preview_mode_command
+from permission_boundary import preview_permission_boundary
 from router_scaffold import preview_router_decision
 
 try:
@@ -6152,6 +6153,26 @@ async def debug_mode_preview_post(payload: AgentIntentPreviewRequest):
     }
 
 
+@app.get("/debug/permission-preview")
+async def debug_permission_preview_get(q: str = Query("", max_length=500)):
+    return {
+        "permission_preview": preview_permission_boundary(q),
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+    }
+
+
+@app.post("/debug/permission-preview")
+async def debug_permission_preview_post(payload: AgentIntentPreviewRequest):
+    return {
+        "permission_preview": preview_permission_boundary(payload.text),
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+    }
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6194,6 +6215,16 @@ async def debug_agent_panel():
       <button data-mode-command="tek ad\u0131m s\u00f6yle">tek ad\u0131m s\u00f6yle</button>
       <button data-mode-command="Codex modu">Codex modu</button>
     </div>
+    <h2>Permission Boundary</h2>
+    <div class="bar">
+      <button data-permission-command="CV haz\u0131rla">CV haz\u0131rla</button>
+      <button data-permission-command="Luxeph'e ge\u00e7">Luxeph'e ge\u00e7</button>
+      <button data-permission-command="mailimi oku">mailimi oku</button>
+      <button data-permission-command="bu maili g\u00f6nder">bu maili g\u00f6nder</button>
+      <button data-permission-command="telefonumdaki gereksiz uygulamalar\u0131 sil">telefonumdaki gereksiz uygulamalar\u0131 sil</button>
+      <button data-permission-command="raporu PDF olarak indir">raporu PDF olarak indir</button>
+      <button data-permission-command="tek ad\u0131m s\u00f6yle">tek ad\u0131m s\u00f6yle</button>
+    </div>
     <p class="status" id="status">Choose a sample.</p>
     <pre id="output">{}</pre>
   </main>
@@ -6218,6 +6249,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-mode-command]").forEach((button) => {
       button.addEventListener("click", () => loadSample("/debug/mode-preview?q=" + encodeURIComponent(button.dataset.modeCommand)));
+    });
+    document.querySelectorAll("button[data-permission-command]").forEach((button) => {
+      button.addEventListener("click", () => loadSample("/debug/permission-preview?q=" + encodeURIComponent(button.dataset.permissionCommand)));
     });
   </script>
 </body>
