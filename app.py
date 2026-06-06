@@ -6429,6 +6429,56 @@ async def visual_prompt_preview_endpoint(payload: VisualPromptPreviewRequest):
     )
 
 
+@app.get("/debug/visual-status")
+async def debug_visual_status():
+    return {
+        "layer": "16",
+        "name": "Lux Visual System scaffold",
+        "status": "scaffold_ready",
+        "read_only": True,
+        "image_generation_enabled": False,
+        "image_api_enabled": False,
+        "file_write_enabled": False,
+        "db_write_enabled": False,
+        "memory_write_enabled": False,
+        "chat_stream_touched": False,
+        "completed_parts": [
+            "16.1 visual style registry",
+            "16.1B full visual registry expansion",
+            "16.2 style ratio preview",
+            "16.3 Ambrosia state preview",
+            "16.4 Dream Scene state preview",
+            "16.5 Scene Lock preview",
+            "16.6 visual prompt builder",
+            "16.6B prompt builder full registry sync",
+        ],
+        "available_endpoints": [
+            "/visual/styles",
+            "/visual/style-preview",
+            "/visual/ratio-preview",
+            "/visual/ambrosia-preview",
+            "/visual/dream-scene-preview",
+            "/visual/scene-lock-preview",
+            "/visual/prompt-preview",
+        ],
+        "core_visual_rules": [
+            "Lux amber #ab6b0c",
+            "black velvet #0A0A0A",
+            "platinum #C0C0C0",
+            "default low line density",
+            "bottom-right Luxviai signature default",
+            "Ambrosia is inner state, not place",
+            "no city/room/building/writing/signage for Ambrosia",
+            "Dream Scene details must be added without rebuilding the scene",
+        ],
+        "next_recommended_step": "Layer 17 Voice / Audio / Frequency scaffold",
+        "later_step": "16.7 real Image API integration later",
+        "backlog": [
+            "stop/durdur final block leak",
+        ],
+    }
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6506,6 +6556,9 @@ async def debug_agent_panel():
       <button data-workspace-builder-command="bu metni sunuma \u00e7evir">Builder: metni sunuma \u00e7evir</button>
     </div>
     <h2>Visual Style Preview</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/visual-status">Visual Status</button>
+    </div>
     <div class="bar">
       <button data-visual-style-prompt="Lux tarz\u0131 yap">Lux tarz\u0131 yap</button>
       <button data-visual-style-prompt="normal ger\u00e7ek\u00e7i temiz">normal ger\u00e7ek\u00e7i temiz</button>

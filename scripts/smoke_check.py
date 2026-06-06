@@ -1005,6 +1005,7 @@ class SmokeRunner:
         assert "layer 14 status" in lowered, html[:300]
         assert "workspace preview" in lowered, html[:300]
         assert "visual style preview" in lowered, html[:300]
+        assert "/debug/visual-status" in html, html[:300]
         assert "/visual/style-preview" in html, html[:300]
         assert "/visual/ratio-preview" in html, html[:300]
         assert "/visual/ambrosia-preview" in html, html[:300]
@@ -1614,6 +1615,31 @@ class SmokeRunner:
         assert "#C0C0C0" in palette_prompt.get("final_prompt_preview", ""), palette_prompt
         return "visual style registry/ratio/ambrosia/dream/scene-lock/prompt preview"
 
+    def check_visual_status_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/debug/visual-status")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload.get("layer") == "16", payload
+        assert payload.get("status") == "scaffold_ready", payload
+        assert payload.get("read_only") is True, payload
+        assert payload.get("image_generation_enabled") is False, payload
+        assert payload.get("image_api_enabled") is False, payload
+        assert payload.get("file_write_enabled") is False, payload
+        assert payload.get("memory_write_enabled") is False, payload
+        completed = " ".join(payload.get("completed_parts", []))
+        assert "16.6B" in completed, payload
+        rules = " ".join(payload.get("core_visual_rules", []))
+        assert "#ab6b0c" in rules, payload
+        assert "default low line density" in rules, payload
+        return "visual status"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -1682,6 +1708,7 @@ class SmokeRunner:
             ("layer14_status_snapshot", self.check_layer14_status_snapshot),
             ("workspace_schema_preview", self.check_workspace_schema_preview),
             ("visual_style_registry_preview", self.check_visual_style_registry_preview),
+            ("visual_status_snapshot", self.check_visual_status_snapshot),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
