@@ -709,6 +709,54 @@ class SmokeRunner:
         assert all(bool(cap.get("requires_user_confirmation")) for cap in high_caps), high_caps
         return "high-risk confirmation required"
 
+    def check_agent_preview_intent_read_only(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        email_response = client.post(
+            "/agent/preview_intent",
+            json={"text": "maillerimi ozetle", "source_modality": "text"},
+        )
+        assert email_response.status_code == 200, email_response.text
+        email_payload = email_response.json()
+        email_preview = email_payload.get("agent_preview", {})
+        email_ids = {item.get("id") for item in email_preview.get("matched_capabilities", [])}
+        assert {"email_summary", "read_emails"} & email_ids, email_payload
+        assert email_payload.get("read_only") is True, email_payload
+        assert email_payload.get("raw_data_stored") is False, email_payload
+        assert email_payload.get("write_performed") is False, email_payload
+
+        risky_response = client.post(
+            "/agent/preview_intent",
+            json={"text": "Ahmet'e mesaj at", "source_modality": "text"},
+        )
+        assert risky_response.status_code == 200, risky_response.text
+        risky_payload = risky_response.json()
+        risky_preview = risky_payload.get("agent_preview", {})
+        assert risky_preview.get("risk_level") == "high" or risky_preview.get("requires_user_confirmation") is True, risky_payload
+        assert risky_payload.get("read_only") is True, risky_payload
+        assert risky_payload.get("raw_data_stored") is False, risky_payload
+        assert risky_payload.get("write_performed") is False, risky_payload
+
+        visual_response = client.post(
+            "/agent/preview_intent",
+            json={"text": "bu gorselde amber isik ve Luxviai imzasini seviyorum", "source_modality": "text"},
+        )
+        assert visual_response.status_code == 200, visual_response.text
+        visual_payload = visual_response.json()
+        memory_preview = visual_payload.get("memory_preview", {})
+        signal_types = {item.get("type") for item in memory_preview.get("candidate_signals", [])}
+        assert {"visual_preference", "lux_visual_style", "lux_ambrosia_reference"} & signal_types, visual_payload
+        assert memory_preview.get("read_only") is True, visual_payload
+        assert memory_preview.get("raw_data_stored") is False, visual_payload
+        assert visual_payload.get("write_performed") is False, visual_payload
+        return "agent intent/memory preview read-only"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -765,6 +813,7 @@ class SmokeRunner:
             ("memory_schema_fields", self.check_memory_schema_contains_fields),
             ("memory_preview_raw_data", self.check_memory_preview_signal_privacy),
             ("agent_high_risk_confirmation", self.check_high_risk_agent_confirmation),
+            ("agent_preview_intent_read_only", self.check_agent_preview_intent_read_only),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import re
+import unicodedata
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, List, Mapping, Sequence
 
 
 MEMORY_SIGNAL_TYPES = [
@@ -200,4 +202,162 @@ def validate_memory_signal(payload: Mapping[str, Any]) -> Dict[str, Any]:
             "retention_and_sensitivity_validated",
             "privacy_first_policy",
         ],
+    }
+
+
+def _normalize_text(value: str) -> str:
+    text = unicodedata.normalize("NFKD", value or "")
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return (
+        text.lower()
+        .replace("ı", "i")
+        .replace("İ", "i")
+        .replace("ş", "s")
+        .replace("ğ", "g")
+        .replace("ü", "u")
+        .replace("ö", "o")
+        .replace("ç", "c")
+    )
+
+
+def _contains_any(text: str, keywords: Sequence[str]) -> bool:
+    return any(_normalize_text(keyword) in text for keyword in keywords)
+
+
+def _signal(signal_type: str, *, reason: str, source_modality: str, sensitivity: str, retention: str) -> Dict[str, Any]:
+    return {
+        "type": signal_type,
+        "title": f"{signal_type} preview",
+        "reason": reason,
+        "source_modality": _safe_modality(source_modality),
+        "sensitivity": _safe_sensitivity(sensitivity),
+        "retention": _safe_retention(retention),
+        "raw_data_stored": False,
+        "read_only": True,
+    }
+
+
+_SENSITIVE_KEYWORDS = [
+    "hassas",
+    "mahrem",
+    "ozel",
+    "private",
+    "gizli",
+    "kriz",
+    "travma",
+    "sifre",
+    "parola",
+    "tc",
+    "kimlik",
+    "adres",
+    "telefon numarasi",
+    "kredi karti",
+]
+
+_MEMORY_RULES = [
+    {
+        "signals": ["style_preference", "text_preference"],
+        "keywords": ["seviyorum", "tercih ediyorum", "bundan sonra", "boyle olsun"],
+        "reason": "Preference or future style wording detected.",
+        "retention": "project",
+    },
+    {
+        "signals": ["visual_preference", "lux_visual_style", "lux_ambrosia_reference"],
+        "keywords": ["gorsel", "renk", "amber", "pixel", "ambrosia", "luxviai imzasi", "isik"],
+        "reason": "Visual style or Lux visual system wording detected.",
+        "retention": "long_term",
+    },
+    {
+        "signals": ["dream_scene_reference"],
+        "keywords": ["ruya", "sahne", "kamera", "basim burada"],
+        "reason": "Dream scene or camera-state wording detected.",
+        "retention": "project",
+    },
+    {
+        "signals": ["audio_signal"],
+        "keywords": ["ses", "frekans", "ton", "konusma hizi"],
+        "reason": "Audio or voice signal wording detected.",
+        "retention": "project",
+    },
+    {
+        "signals": ["workspace_context", "file_context"],
+        "keywords": ["rapor", "tez", "cv", "sunum", "dosya", "pdf"],
+        "reason": "Workspace or file context wording detected.",
+        "retention": "project",
+    },
+    {
+        "signals": ["project_decision", "style_preference"],
+        "keywords": ["unutma", "not al", "kaydet", "bundan sonra"],
+        "reason": "Memory-like instruction wording detected; preview only.",
+        "retention": "project",
+    },
+]
+
+
+def _safe_summary_from_text(user_text: str, signal_count: int, sensitive: bool) -> str:
+    words = re.findall(r"\S+", (user_text or "").strip())
+    if not words:
+        return "No memory signal candidate detected."
+    scope = "sensitive " if sensitive else ""
+    return f"Read-only {scope}preview found {signal_count} candidate memory signal(s); raw text was not stored."
+
+
+def preview_memory_signals(user_text: str, source_modality: str = "text") -> Dict[str, Any]:
+    """Return candidate memory signals without writing any memory record."""
+    normalized = _normalize_text(user_text)
+    source = _safe_modality(source_modality)
+    sensitive = _contains_any(normalized, _SENSITIVE_KEYWORDS)
+    candidate_signals: List[Dict[str, Any]] = []
+
+    for rule in _MEMORY_RULES:
+        if _contains_any(normalized, rule["keywords"]):
+            retention = "session" if sensitive else str(rule["retention"])
+            sensitivity = "high" if sensitive else "low"
+            for signal_type in rule["signals"]:
+                candidate_signals.append(
+                    _signal(
+                        signal_type,
+                        reason=str(rule["reason"]),
+                        source_modality=source,
+                        sensitivity=sensitivity,
+                        retention=retention,
+                    )
+                )
+
+    if not candidate_signals and normalized.strip():
+        candidate_signals.append(
+            _signal(
+                "workspace_context",
+                reason="General text context detected as a low-confidence read-only workspace signal.",
+                source_modality=source,
+                sensitivity="high" if sensitive else "low",
+                retention="session",
+            )
+        )
+
+    deduped: List[Dict[str, Any]] = []
+    seen = set()
+    for signal in candidate_signals:
+        key = (signal["type"], signal["source_modality"])
+        if key not in seen:
+            seen.add(key)
+            deduped.append(signal)
+
+    suggested_retention = "never" if sensitive and _contains_any(normalized, ["mahrem", "kriz", "travma", "sifre", "parola"]) else (
+        "session" if sensitive else (
+            "long_term" if any(item.get("retention") == "long_term" for item in deduped) else (
+                "project" if any(item.get("retention") == "project" for item in deduped) else "session"
+            )
+        )
+    )
+    sensitivity = "high" if sensitive else ("low" if deduped else "low")
+
+    return {
+        "candidate_signals": deduped,
+        "suggested_retention": suggested_retention,
+        "sensitivity": sensitivity,
+        "raw_data_stored": False,
+        "safe_summary": _safe_summary_from_text(user_text, len(deduped), sensitive),
+        "warning_if_sensitive": "Sensitive content detected; use session/never retention and store only safe summaries." if sensitive else "",
+        "read_only": True,
     }

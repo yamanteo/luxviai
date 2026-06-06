@@ -37,12 +37,14 @@ from agent_scaffold import (
     all_capabilities,
     luxway_capabilities,
     personal_agent_capabilities,
+    preview_agent_intent,
 )
 from multimodal_memory_scaffold import (
     DEFAULT_MEMORY_FIELDS,
     MULTIMODAL_MEMORY_TEMPLATES,
     build_memory_signal,
     multimodal_memory_schema,
+    preview_memory_signals,
     validate_memory_signal,
 )
 
@@ -196,6 +198,11 @@ class MemorySignalPreviewRequest(BaseModel):
     updated_at: str = ""
     tags: List[str] = Field(default_factory=list)
     raw_data_stored: bool = False
+
+
+class AgentIntentPreviewRequest(BaseModel):
+    text: str = Field(default="", max_length=4000)
+    source_modality: str = "text"
 
 
 # =========================================================
@@ -6020,6 +6027,19 @@ async def preview_memory_signal(payload: MemorySignalPreviewRequest):
         "errors": result.get("errors"),
         "checks": result.get("checks"),
         "privacy_notes": PRIVACY_RULES,
+    }
+
+
+@app.post("/agent/preview_intent")
+async def preview_agent_intent_endpoint(payload: AgentIntentPreviewRequest):
+    agent_preview = preview_agent_intent(payload.text)
+    memory_preview = preview_memory_signals(payload.text, payload.source_modality)
+    return {
+        "agent_preview": agent_preview,
+        "memory_preview": memory_preview,
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
     }
 
 
