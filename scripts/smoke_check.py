@@ -1008,6 +1008,7 @@ class SmokeRunner:
         assert "/visual/style-preview" in html, html[:300]
         assert "/visual/ratio-preview" in html, html[:300]
         assert "/visual/ambrosia-preview" in html, html[:300]
+        assert "/visual/dream-scene-preview" in html, html[:300]
         return "debug agent panel"
 
     def check_mode_registry_preview(self) -> str:
@@ -1442,7 +1443,28 @@ class SmokeRunner:
         constraints = set(ambrosia.get("negative_constraints", []))
         assert {"no_city", "no_room", "no_letters"} <= constraints, ambrosia
         assert ambrosia.get("ambrosia_state", {}).get("state_type") == "inner_state_not_place", ambrosia
-        return "visual style registry/ratio/ambrosia preview"
+
+        dream_response = client.post(
+            "/visual/dream-scene-preview",
+            json={
+                "scene_text": "Karanl\u0131k bir denizde k\u00fc\u00e7\u00fck bir sandal var, uzakta amber bir \u0131\u015f\u0131k g\u00f6r\u00fcn\u00fcyor.",
+                "style_hint": "dream scene",
+                "locked_elements": ["boat", "amber_light"],
+            },
+        )
+        assert dream_response.status_code == 200, dream_response.text
+        dream = dream_response.json()
+        assert dream.get("read_only") is True, dream
+        assert dream.get("image_generation_performed") is False, dream
+        assert isinstance(dream.get("camera"), dict), dream
+        assert isinstance(dream.get("subjects"), list), dream
+        assert isinstance(dream.get("objects"), list), dream
+        assert isinstance(dream.get("spatial_relations"), list), dream
+        assert "locked_elements" in dream, dream
+        object_ids = {item.get("id") for item in dream.get("objects", [])}
+        assert {"boat", "amber_light"} <= object_ids, dream
+        assert dream.get("locked_elements") == ["boat", "amber_light"], dream
+        return "visual style registry/ratio/ambrosia/dream preview"
 
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")

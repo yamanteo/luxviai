@@ -59,6 +59,7 @@ from workspace_context_notes import preview_workspace_context_note
 from workspace_export_preview import build_workspace_export_preview
 from workspace_scaffold import build_workspace_preview, build_workspace_separation_preview, sample_workspace, workspace_schema
 from visual_ambrosia_state import preview_ambrosia_state
+from visual_dream_scene_state import preview_dream_scene_state
 from visual_style_ratio import preview_visual_style_ratio
 from visual_style_registry import preview_visual_style, visual_style_registry
 
@@ -264,6 +265,12 @@ class VisualAmbrosiaPreviewRequest(BaseModel):
     feeling_text: str = Field(default="", max_length=4000)
     intensity: float = Field(default=0.5, ge=0.0, le=1.0)
     style_ratio: Dict[str, Any] = Field(default_factory=dict)
+
+
+class VisualDreamScenePreviewRequest(BaseModel):
+    scene_text: str = Field(default="", max_length=4000)
+    style_hint: str = Field(default="", max_length=1000)
+    locked_elements: List[Any] = Field(default_factory=list)
 
 
 # =========================================================
@@ -6383,6 +6390,11 @@ async def visual_ambrosia_preview_endpoint(payload: VisualAmbrosiaPreviewRequest
     return preview_ambrosia_state(payload.feeling_text, payload.intensity, payload.style_ratio)
 
 
+@app.post("/visual/dream-scene-preview")
+async def visual_dream_scene_preview_endpoint(payload: VisualDreamScenePreviewRequest):
+    return preview_dream_scene_state(payload.scene_text, payload.style_hint, payload.locked_elements)
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6481,6 +6493,13 @@ async def debug_agent_panel():
       <button data-ambrosia-feeling="kafam kar\u0131\u015f\u0131k ama i\u00e7imde k\u00fc\u00e7\u00fck bir \u0131\u015f\u0131k var">Ambrosia: k\u00fc\u00e7\u00fck \u0131\u015f\u0131k</button>
       <button data-ambrosia-feeling="ruhani, siyah ve amber bir his">Ambrosia: ruhani amber</button>
       <button data-ambrosia-feeling="bo\u015flukta as\u0131l\u0131 kalm\u0131\u015f gibi">Ambrosia: bo\u015fluk</button>
+    </div>
+    <div class="bar">
+      <button data-dream-scene="Karanl\u0131k bir denizde k\u00fc\u00e7\u00fck bir sandal var, uzakta amber bir \u0131\u015f\u0131k g\u00f6r\u00fcn\u00fcyor.">Dream: deniz sandal</button>
+      <button data-dream-scene="Bir odada de\u011filim, bo\u015flukta y\u00fcr\u00fcyormu\u015f gibiyim.">Dream: bo\u015flukta y\u00fcr\u00fcme</button>
+      <button data-dream-scene="Elimde k\u00fc\u00e7\u00fck bir kase var, ba\u015f\u0131m hafif sola d\u00f6n\u00fck.">Dream: kase ve ba\u015f</button>
+      <button data-dream-scene="R\u00fcyamda merdivenlerden \u00e7\u0131k\u0131yorum ama yukar\u0131 hi\u00e7 bitmiyor.">Dream: bitmeyen merdiven</button>
+      <button data-dream-scene="G\u00f6ky\u00fcz\u00fcnde ince semboller vard\u0131.">Dream: g\u00f6ky\u00fcz\u00fc semboller</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6691,6 +6710,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadDreamScene(sceneText) {
+      statusEl.textContent = "Loading dream scene preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/visual/dream-scene-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ scene_text: sceneText, style_hint: "dream scene low line density", locked_elements: [] })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded dream scene preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -6729,6 +6765,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-ambrosia-feeling]").forEach((button) => {
       button.addEventListener("click", () => loadAmbrosia(button.dataset.ambrosiaFeeling));
+    });
+    document.querySelectorAll("button[data-dream-scene]").forEach((button) => {
+      button.addEventListener("click", () => loadDreamScene(button.dataset.dreamScene));
     });
   </script>
 </body>
