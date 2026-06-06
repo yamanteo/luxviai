@@ -4299,8 +4299,10 @@ async function continueInterruptedResponse(targetAiEl) {
     } catch (_) {
       if (!isRunActive(continueRunId)) return;
       responseText = await sendMessageViaHttp(payload, continueRunId);
-      applyContinueChunk(responseText);
-      await writer.waitIdle();
+      if (isRunActive(continueRunId)) {
+        applyContinueChunk(responseText);
+        await writer.waitIdle();
+      }
     }
     if (!isRunActive(continueRunId)) {
       setPendingState(null);
@@ -4485,7 +4487,8 @@ async function sendMessageLive(customText) {
     } catch (socketErr) {
       if (!isRunActive(runId)) return;
       responseText = await sendMessageViaHttp(payload, runId);
-      if (isRunActive(runId)) writer.push(responseText);
+      if (!isRunActive(runId)) return;
+      writer.push(responseText);
       await writer.waitIdle();
     }
     if (!isRunActive(runId)) {
