@@ -34,6 +34,7 @@ from agent_scaffold import (
     ANDROID_PERMISSION_NOTES,
     IOS_PERMISSION_NOTES,
     PRIVACY_RULES,
+    analyze_agent_request,
     all_capabilities,
     luxway_capabilities,
     plan_agent_action,
@@ -6048,6 +6049,16 @@ async def preview_agent_intent_endpoint(payload: AgentIntentPreviewRequest):
 async def plan_agent_action_endpoint(payload: AgentIntentPreviewRequest):
     return {
         "action_plan": plan_agent_action(payload.text),
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+    }
+
+
+@app.post("/agent/analyze")
+async def analyze_agent_endpoint(payload: AgentIntentPreviewRequest):
+    return {
+        "analysis": analyze_agent_request(payload.text, payload.source_modality),
         "read_only": True,
         "raw_data_stored": False,
         "write_performed": False,

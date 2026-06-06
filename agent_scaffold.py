@@ -661,3 +661,127 @@ def plan_agent_action(user_text: str) -> Dict[str, Any]:
         "blocked_reason": "Read-only scaffold: external actions, device access, message/mail sending, file operations, and memory writes are disabled.",
         "safety_note": "High-risk or personal-data actions require explicit user permission and confirmation before any future execution path.",
     }
+
+
+_SAFETY_SENSITIVE_KEYWORDS = [
+    "hassas",
+    "mahrem",
+    "ozel",
+    "gizli",
+    "kriz",
+    "tehlike",
+    "travma",
+    "sifre",
+    "parola",
+    "kimlik",
+    "kisisel veri",
+]
+
+
+def _recommended_mode(user_text: str, agent_preview: Dict[str, Any], memory_preview: Dict[str, Any]) -> str:
+    normalized = _normalize_text(user_text)
+    signal_types = {str(item.get("type", "")) for item in memory_preview.get("candidate_signals", [])}
+
+    if _contains_any(normalized, _SAFETY_SENSITIVE_KEYWORDS):
+        return "safety_sensitive"
+    if _contains_any(normalized, ["telefon", "uygulama", "depolama", "tara"]):
+        return "luxway_planning"
+    if _contains_any(normalized, ["ambrosia"]):
+        return "ambrosia"
+    if _contains_any(normalized, ["gorsel", "amber", "pixel", "imza", "renk"]) or signal_types & {"visual_preference", "lux_visual_style", "lux_ambrosia_reference"}:
+        return "visual_style_memory"
+    if _contains_any(normalized, ["ruya", "sahne", "kamera", "cizim"]) or "dream_scene_reference" in signal_types:
+        return "dream_scene"
+    if _contains_any(normalized, ["ses", "frekans", "ton"]) or "audio_signal" in signal_types:
+        return "audio_signal_future"
+    if _contains_any(normalized, ["cv", "ozgecmis"]):
+        return "cv_builder"
+    if _contains_any(normalized, ["rapor"]):
+        return "report_builder"
+    if _contains_any(normalized, ["sunum", "presentation"]):
+        return "presentation_builder"
+    if _contains_any(normalized, ["odev", "tez", "dosya duzenle", "dosya", "workspace", "calisma alani"]):
+        return "workspace"
+    if _contains_any(normalized, ["mail", "e-posta", "eposta", "email", "mesaj", "whatsapp", "sms"]):
+        return "personal_agent"
+
+    primary = agent_preview.get("primary_capability") or {}
+    primary_id = str(primary.get("id", ""))
+    if primary_id == "cv_helper":
+        return "cv_builder"
+    if primary_id == "report_helper":
+        return "report_builder"
+    if primary_id == "presentation_helper":
+        return "presentation_builder"
+    if primary_id in {"workspace_helper", "file_finder"}:
+        return "workspace"
+    if primary_id:
+        return "personal_agent"
+    return "normal_chat"
+
+
+def _recommended_next_step(mode: str, action_plan: Dict[str, Any]) -> str:
+    if mode == "safety_sensitive":
+        return "Keep the response supportive and avoid storing raw sensitive data."
+    if mode == "luxway_planning":
+        return "Show the read-only Luxway plan and ask for explicit permission before any future device step."
+    if mode in {"visual_style_memory", "ambrosia", "dream_scene", "audio_signal_future"}:
+        return "Show the candidate signal preview without writing memory."
+    if mode in {"cv_builder", "report_builder", "presentation_builder", "workspace"}:
+        return "Use the plan as guidance and ask before creating or editing any file."
+    if action_plan.get("requires_user_confirmation"):
+        return "Explain the required permission and ask for confirmation before future execution."
+    return "Continue normal chat with the read-only analysis context."
+
+
+def _permissions_needed(agent_preview: Dict[str, Any], action_plan: Dict[str, Any]) -> List[str]:
+    permissions: List[str] = []
+    for cap in agent_preview.get("matched_capabilities", []):
+        permission = str(cap.get("permission_required", "")).strip()
+        if permission:
+            permissions.append(permission)
+    plan_permission = str(action_plan.get("permission_required", "")).strip()
+    if plan_permission:
+        permissions.append(plan_permission)
+    return list(dict.fromkeys(permissions))
+
+
+def _input_summary(user_text: str, mode: str) -> Dict[str, Any]:
+    normalized = _normalize_text(user_text)
+    return {
+        "has_text": bool((user_text or "").strip()),
+        "char_count": len(user_text or ""),
+        "recommended_mode": mode,
+        "contains_high_risk_action": _has_high_risk_action(user_text),
+        "contains_sensitive_signal": _contains_any(normalized, _SAFETY_SENSITIVE_KEYWORDS),
+    }
+
+
+def analyze_agent_request(user_text: str, source_modality: str = "text") -> Dict[str, Any]:
+    """Unify agent intent, memory preview, and action planning without side effects."""
+    from multimodal_memory_scaffold import preview_memory_signals
+
+    agent_preview = preview_agent_intent(user_text)
+    memory_preview = preview_memory_signals(user_text, source_modality)
+    action_plan = plan_agent_action(user_text)
+    mode = _recommended_mode(user_text, agent_preview, memory_preview)
+    risk_level = "high" if mode == "safety_sensitive" else str(action_plan.get("risk_level", agent_preview.get("risk_level", "low")))
+    requires_user_confirmation = bool(action_plan.get("requires_user_confirmation")) or risk_level == "high"
+
+    return {
+        "analysis_id": str(uuid.uuid4()),
+        "input_summary": _input_summary(user_text, mode),
+        "agent_preview": agent_preview,
+        "memory_preview": memory_preview,
+        "action_plan": action_plan,
+        "recommended_mode": mode,
+        "recommended_next_step": _recommended_next_step(mode, action_plan),
+        "risk_level": risk_level,
+        "requires_user_confirmation": requires_user_confirmation,
+        "permissions_needed": _permissions_needed(agent_preview, action_plan),
+        "can_execute_now": False,
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+        "safety_note": "Unified analysis is read-only; no email, phone, message, file, app, or memory write operation was performed.",
+    }

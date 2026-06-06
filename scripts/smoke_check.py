@@ -822,6 +822,72 @@ class SmokeRunner:
         assert cv_payload.get("write_performed") is False, cv_payload
         return "agent action plan read-only"
 
+    def check_agent_analyze_hub_read_only(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        email_response = client.post(
+            "/agent/analyze",
+            json={"text": "maillerimi \u00f6zetle", "source_modality": "text"},
+        )
+        assert email_response.status_code == 200, email_response.text
+        email_payload = email_response.json()
+        email_analysis = email_payload.get("analysis", {})
+        assert email_analysis.get("recommended_mode") == "personal_agent", email_payload
+        assert email_payload.get("read_only") is True, email_payload
+        assert email_analysis.get("read_only") is True, email_payload
+        assert email_analysis.get("can_execute_now") is False, email_payload
+        assert email_analysis.get("raw_data_stored") is False, email_payload
+
+        phone_response = client.post(
+            "/agent/analyze",
+            json={"text": "telefonu tara kullan\u0131lmayan uygulamalar\u0131 bul", "source_modality": "text"},
+        )
+        assert phone_response.status_code == 200, phone_response.text
+        phone_payload = phone_response.json()
+        phone_analysis = phone_payload.get("analysis", {})
+        assert phone_analysis.get("recommended_mode") == "luxway_planning", phone_payload
+        assert phone_analysis.get("requires_user_confirmation") is True, phone_payload
+        assert phone_analysis.get("can_execute_now") is False, phone_payload
+
+        visual_response = client.post(
+            "/agent/analyze",
+            json={"text": "bu g\u00f6rselde amber \u0131\u015f\u0131k ve Luxviai imzas\u0131n\u0131 seviyorum", "source_modality": "text"},
+        )
+        assert visual_response.status_code == 200, visual_response.text
+        visual_payload = visual_response.json()
+        visual_analysis = visual_payload.get("analysis", {})
+        assert visual_analysis.get("recommended_mode") in {"visual_style_memory", "ambrosia"}, visual_payload
+        memory_preview = visual_analysis.get("memory_preview", {})
+        signal_types = {item.get("type") for item in memory_preview.get("candidate_signals", [])}
+        assert {"visual_preference", "lux_visual_style", "lux_ambrosia_reference"} & signal_types, visual_payload
+
+        dream_response = client.post(
+            "/agent/analyze",
+            json={"text": "r\u00fcyamda deniz kenar\u0131nda u\u00e7an insanlar vard\u0131", "source_modality": "text"},
+        )
+        assert dream_response.status_code == 200, dream_response.text
+        dream_payload = dream_response.json()
+        dream_analysis = dream_payload.get("analysis", {})
+        assert dream_analysis.get("recommended_mode") == "dream_scene", dream_payload
+
+        cv_response = client.post(
+            "/agent/analyze",
+            json={"text": "CV haz\u0131rla", "source_modality": "text"},
+        )
+        assert cv_response.status_code == 200, cv_response.text
+        cv_payload = cv_response.json()
+        cv_analysis = cv_payload.get("analysis", {})
+        assert cv_analysis.get("recommended_mode") == "cv_builder", cv_payload
+        assert cv_analysis.get("write_performed") is False, cv_payload
+        assert cv_payload.get("write_performed") is False, cv_payload
+        return "agent analysis hub read-only"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -880,6 +946,7 @@ class SmokeRunner:
             ("agent_high_risk_confirmation", self.check_high_risk_agent_confirmation),
             ("agent_preview_intent_read_only", self.check_agent_preview_intent_read_only),
             ("agent_plan_action_read_only", self.check_agent_plan_action_read_only),
+            ("agent_analyze_hub_read_only", self.check_agent_analyze_hub_read_only),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
