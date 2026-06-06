@@ -1025,6 +1025,8 @@ class SmokeRunner:
         assert "/luxway/preview-command" in html, html[:300]
         assert "/luxway/permission-model" in html, html[:300]
         assert "/luxway/permission-preview" in html, html[:300]
+        assert "/luxway/weekly-report-schema" in html, html[:300]
+        assert "/luxway/weekly-report-preview" in html, html[:300]
         assert "/debug/luxway-status" in html, html[:300]
         return "debug agent panel"
 
@@ -2045,6 +2047,65 @@ class SmokeRunner:
         assert settings.get("requires_confirmation") is True, settings
         return "luxway permission model preview"
 
+    def check_luxway_weekly_report_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/luxway/weekly-report-schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert schema.get("read_only") is True, schema
+        assert schema.get("requires_permission") is True, schema
+        assert schema.get("real_access_enabled") is False, schema
+        assert schema.get("data_read") is False, schema
+        assert schema.get("data_written") is False, schema
+        section_ids = {item.get("id") for item in schema.get("report_sections", [])}
+        assert {"week_summary", "app_usage_preview", "storage_pressure_preview", "safety_boundaries"} <= section_ids, schema
+
+        def preview(report_focus: str, platform: str = "android") -> dict:
+            response = client.post(
+                "/luxway/weekly-report-preview",
+                json={"platform": platform, "report_focus": report_focus, "context": "smoke read-only weekly report"},
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("requires_permission") is True, payload
+            assert payload.get("real_access_enabled") is False, payload
+            assert payload.get("data_read") is False, payload
+            assert payload.get("data_written") is False, payload
+            assert payload.get("action_performed") is False, payload
+            assert payload.get("read_only") is True, payload
+            report_text = json.dumps(payload.get("safe_preview_report", {}), ensure_ascii=False).lower()
+            assert "no real metrics" in report_text, payload
+            assert "explicit platform permissions" in report_text, payload
+            for forbidden in ["instagram", "whatsapp:", "gmail:", "42", "120", "gb", "saat"]:
+                assert forbidden not in report_text, payload
+            return payload
+
+        weekly = preview("haftalik telefon raporu cikar")
+        assert {"app_usage", "notifications", "calendar"} & set(weekly.get("required_permissions", [])), weekly
+
+        notifications = preview("bildirim yukumu goster")
+        notification_sections = {item.get("id") for item in notifications.get("report_sections", [])}
+        assert "notification_noise_preview" in notification_sections, notifications
+
+        unused = preview("kullanmadigim uygulamalari oner")
+        unused_sections = {item.get("id") for item in unused.get("report_sections", [])}
+        assert "unused_apps_preview" in unused_sections, unused
+
+        storage = preview("depolama baskisini goster")
+        assert "storage" in storage.get("required_permissions", []), storage
+
+        focus = preview("odak onerileri ver", "ios")
+        assert focus.get("platform") == "ios", focus
+        assert "focus_recommendations_preview" in {item.get("id") for item in focus.get("report_sections", [])}, focus
+        return "luxway weekly report preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2121,6 +2182,7 @@ class SmokeRunner:
             ("audio_privacy_boundary_preview", self.check_audio_privacy_boundary_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
+            ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),

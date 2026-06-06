@@ -35,6 +35,7 @@ from audio_signal_schema import audio_signal_schema, audio_status_snapshot, prev
 from agent_decision_trace import build_agent_decision_trace
 from luxway_capabilities import luxway_capability_registry, luxway_status_snapshot, preview_luxway_command
 from luxway_permission_model import luxway_permission_model, preview_luxway_permission
+from luxway_weekly_report import luxway_weekly_report_schema, preview_luxway_weekly_report
 from agent_scaffold import (
     ANDROID_PERMISSION_NOTES,
     IOS_PERMISSION_NOTES,
@@ -331,6 +332,12 @@ class LuxwayPreviewCommandRequest(BaseModel):
 class LuxwayPermissionPreviewRequest(BaseModel):
     command: str = Field(default="", max_length=2000)
     platform: str = Field(default="unknown", max_length=50)
+
+
+class LuxwayWeeklyReportPreviewRequest(BaseModel):
+    platform: str = Field(default="unknown", max_length=50)
+    report_focus: str = Field(default="", max_length=1000)
+    context: str = Field(default="", max_length=4000)
 
 
 # =========================================================
@@ -6626,6 +6633,11 @@ async def luxway_permission_model_endpoint():
     return luxway_permission_model()
 
 
+@app.get("/luxway/weekly-report-schema")
+async def luxway_weekly_report_schema_endpoint():
+    return luxway_weekly_report_schema()
+
+
 @app.post("/luxway/preview-command")
 async def luxway_preview_command_endpoint(payload: LuxwayPreviewCommandRequest):
     return preview_luxway_command(payload.command, payload.platform, payload.context)
@@ -6634,6 +6646,11 @@ async def luxway_preview_command_endpoint(payload: LuxwayPreviewCommandRequest):
 @app.post("/luxway/permission-preview")
 async def luxway_permission_preview_endpoint(payload: LuxwayPermissionPreviewRequest):
     return preview_luxway_permission(payload.command, payload.platform)
+
+
+@app.post("/luxway/weekly-report-preview")
+async def luxway_weekly_report_preview_endpoint(payload: LuxwayWeeklyReportPreviewRequest):
+    return preview_luxway_weekly_report(payload.platform, payload.report_focus, payload.context)
 
 
 @app.get("/debug/luxway-status")
@@ -6812,6 +6829,7 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/luxway-status">Luxway Status</button>
       <button data-endpoint="/luxway/capabilities">Luxway Capabilities</button>
       <button data-endpoint="/luxway/permission-model">Permission Model</button>
+      <button data-endpoint="/luxway/weekly-report-schema">Weekly Report Schema</button>
     </div>
     <div class="bar">
       <button data-luxway-command="telefonumu tara">telefonumu tara</button>
@@ -6829,6 +6847,13 @@ async def debug_agent_panel():
       <button data-luxway-permission-command="depolamay\u0131 temizle" data-luxway-platform="android">Permission: depolama</button>
       <button data-luxway-permission-command="ki\u015filerime mesaj yaz" data-luxway-platform="android">Permission: mesaj</button>
       <button data-luxway-permission-command="ayarlar\u0131 de\u011fi\u015ftir" data-luxway-platform="android">Permission: ayar</button>
+    </div>
+    <div class="bar">
+      <button data-luxway-weekly-focus="haftal\u0131k telefon raporu \u00e7\u0131kar" data-luxway-platform="android">Weekly: telefon raporu</button>
+      <button data-luxway-weekly-focus="bildirim y\u00fck\u00fcm\u00fc g\u00f6ster" data-luxway-platform="android">Weekly: bildirim y\u00fck\u00fc</button>
+      <button data-luxway-weekly-focus="kullanmad\u0131\u011f\u0131m uygulamalar\u0131 \u00f6ner" data-luxway-platform="android">Weekly: kullanmad\u0131\u011f\u0131m uygulamalar</button>
+      <button data-luxway-weekly-focus="depolama bask\u0131s\u0131n\u0131 g\u00f6ster" data-luxway-platform="android">Weekly: depolama</button>
+      <button data-luxway-weekly-focus="odak \u00f6nerileri ver" data-luxway-platform="android">Weekly: odak</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7209,6 +7234,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadLuxwayWeeklyReport(reportFocus, platform) {
+      statusEl.textContent = "Loading Luxway weekly report preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/luxway/weekly-report-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ report_focus: reportFocus, platform: platform || "unknown", context: "debug panel read-only weekly report sample" })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded Luxway weekly report preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -7274,6 +7316,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-luxway-permission-command]").forEach((button) => {
       button.addEventListener("click", () => loadLuxwayPermission(button.dataset.luxwayPermissionCommand, button.dataset.luxwayPlatform));
+    });
+    document.querySelectorAll("button[data-luxway-weekly-focus]").forEach((button) => {
+      button.addEventListener("click", () => loadLuxwayWeeklyReport(button.dataset.luxwayWeeklyFocus, button.dataset.luxwayPlatform));
     });
   </script>
 </body>
