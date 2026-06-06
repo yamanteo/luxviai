@@ -6681,6 +6681,66 @@ async def debug_luxway_status():
     return luxway_status_snapshot()
 
 
+@app.get("/debug/luxway-full-status")
+async def debug_luxway_full_status():
+    return {
+        "layer": "18",
+        "name": "Luxway scaffold",
+        "status": "scaffold_ready",
+        "read_only": True,
+        "real_phone_access_enabled": False,
+        "real_platform_api_enabled": False,
+        "real_app_access_enabled": False,
+        "real_storage_access_enabled": False,
+        "real_message_access_enabled": False,
+        "real_mail_access_enabled": False,
+        "real_calendar_access_enabled": False,
+        "real_notification_access_enabled": False,
+        "real_call_enabled": False,
+        "real_send_enabled": False,
+        "real_delete_enabled": False,
+        "file_write_enabled": False,
+        "db_write_enabled": False,
+        "memory_write_enabled": False,
+        "chat_stream_touched": False,
+        "typewriter_runtime_touched": False,
+        "completed_parts": [
+            "18.1 luxway capability preview",
+            "18.2 android / ios permission model preview",
+            "18.3 weekly phone report schema preview",
+            "18.4 app / storage / message / mail / calendar preview",
+            "18.5 device safety boundary preview",
+        ],
+        "available_endpoints": [
+            "/luxway/capabilities",
+            "/luxway/preview-command",
+            "/debug/luxway-status",
+            "/luxway/permission-model",
+            "/luxway/permission-preview",
+            "/luxway/weekly-report-schema",
+            "/luxway/weekly-report-preview",
+            "/luxway/data-preview",
+            "/luxway/device-safety-preview",
+        ],
+        "core_luxway_rules": [
+            "requires_permission for private phone/app/mail/calendar/message/storage access",
+            "requires_confirmation for send/delete/call/settings/cleanup actions",
+            "real_access_enabled false",
+            "data_read false",
+            "data_written false",
+            "action_performed false",
+            "no fabricated phone/app/mail/calendar metrics",
+            "risky actions blocked by default",
+            "Android/iOS platform model is preview-only",
+        ],
+        "next_recommended_step": "Layer 19 Model Router / Cost Efficiency scaffold",
+        "later_step": "18.6 real platform integration later",
+        "backlog": [
+            "stop/durdur final block leak",
+        ],
+    }
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6849,6 +6909,7 @@ async def debug_agent_panel():
     </div>
     <h2>Luxway Preview</h2>
     <div class="bar">
+      <button data-endpoint="/debug/luxway-full-status">Luxway Full Status</button>
       <button data-endpoint="/debug/luxway-status">Luxway Status</button>
       <button data-endpoint="/luxway/capabilities">Luxway Capabilities</button>
       <button data-endpoint="/luxway/permission-model">Permission Model</button>

@@ -1029,6 +1029,7 @@ class SmokeRunner:
         assert "/luxway/weekly-report-preview" in html, html[:300]
         assert "/luxway/data-preview" in html, html[:300]
         assert "/luxway/device-safety-preview" in html, html[:300]
+        assert "/debug/luxway-full-status" in html, html[:300]
         assert "/debug/luxway-status" in html, html[:300]
         return "debug agent panel"
 
@@ -2205,6 +2206,39 @@ class SmokeRunner:
         assert storage.get("detected_risk_category") == "cleanup_storage", storage
         return "luxway device safety preview"
 
+    def check_luxway_full_status_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/debug/luxway-full-status")
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data.get("layer") == "18", data
+        assert data.get("status") == "scaffold_ready", data
+        assert data.get("read_only") is True, data
+        assert data.get("real_phone_access_enabled") is False, data
+        assert data.get("real_platform_api_enabled") is False, data
+        assert data.get("real_app_access_enabled") is False, data
+        assert data.get("real_mail_access_enabled") is False, data
+        assert data.get("real_calendar_access_enabled") is False, data
+        assert data.get("real_call_enabled") is False, data
+        assert data.get("real_send_enabled") is False, data
+        assert data.get("real_delete_enabled") is False, data
+        assert data.get("memory_write_enabled") is False, data
+        assert data.get("typewriter_runtime_touched") is False, data
+        completed = " ".join(str(item) for item in data.get("completed_parts", []))
+        assert "18.5" in completed, data
+        rules = " ".join(str(item).lower() for item in data.get("core_luxway_rules", []))
+        assert "requires_confirmation" in rules, data
+        assert "risky actions blocked by default" in rules, data
+        endpoints = set(data.get("available_endpoints", []))
+        assert "/luxway/device-safety-preview" in endpoints, data
+        return "luxway full status"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2284,6 +2318,7 @@ class SmokeRunner:
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),
             ("luxway_data_preview", self.check_luxway_data_preview),
             ("luxway_device_safety_preview", self.check_luxway_device_safety_preview),
+            ("luxway_full_status_snapshot", self.check_luxway_full_status_snapshot),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
