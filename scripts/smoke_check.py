@@ -757,6 +757,71 @@ class SmokeRunner:
         assert visual_payload.get("write_performed") is False, visual_payload
         return "agent intent/memory preview read-only"
 
+    def check_agent_plan_action_read_only(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        email_response = client.post(
+            "/agent/plan_action",
+            json={"text": "maillerimi \u00f6zetle", "source_modality": "text"},
+        )
+        assert email_response.status_code == 200, email_response.text
+        email_payload = email_response.json()
+        email_plan = email_payload.get("action_plan", {})
+        email_ids = {item.get("id") for item in email_plan.get("matched_capabilities", [])}
+        assert {"email_summary", "read_emails"} & email_ids, email_payload
+        assert email_payload.get("read_only") is True, email_payload
+        assert email_plan.get("read_only") is True, email_payload
+        assert email_plan.get("can_execute_now") is False, email_payload
+        assert email_plan.get("raw_data_stored") is False, email_payload
+        assert email_payload.get("raw_data_stored") is False, email_payload
+        assert email_payload.get("write_performed") is False, email_payload
+
+        risky_response = client.post(
+            "/agent/plan_action",
+            json={"text": "Ahmet'e mesaj at", "source_modality": "text"},
+        )
+        assert risky_response.status_code == 200, risky_response.text
+        risky_payload = risky_response.json()
+        risky_plan = risky_payload.get("action_plan", {})
+        assert risky_plan.get("risk_level") == "high" or risky_plan.get("requires_user_confirmation") is True, risky_payload
+        assert risky_plan.get("execution_status") == "not_executed", risky_payload
+        assert risky_plan.get("can_execute_now") is False, risky_payload
+        assert risky_payload.get("write_performed") is False, risky_payload
+
+        phone_response = client.post(
+            "/agent/plan_action",
+            json={"text": "telefonu tara kullan\u0131lmayan uygulamalar\u0131 bul", "source_modality": "text"},
+        )
+        assert phone_response.status_code == 200, phone_response.text
+        phone_payload = phone_response.json()
+        phone_plan = phone_payload.get("action_plan", {})
+        phone_ids = {item.get("id") for item in phone_plan.get("matched_capabilities", [])}
+        expected_phone = {"device_cleanup_suggestions", "app_usage_review", "phone_assistant_luxway"}
+        assert expected_phone & phone_ids, phone_payload
+        assert phone_plan.get("requires_user_confirmation") is True, phone_payload
+        assert phone_plan.get("can_execute_now") is False, phone_payload
+
+        cv_response = client.post(
+            "/agent/plan_action",
+            json={"text": "CV haz\u0131rla", "source_modality": "text"},
+        )
+        assert cv_response.status_code == 200, cv_response.text
+        cv_payload = cv_response.json()
+        cv_plan = cv_payload.get("action_plan", {})
+        cv_ids = {item.get("id") for item in cv_plan.get("matched_capabilities", [])}
+        assert "cv_helper" in cv_ids, cv_payload
+        assert cv_plan.get("risk_level") in {"low", "medium"}, cv_payload
+        assert cv_plan.get("can_execute_now") is False, cv_payload
+        assert cv_plan.get("execution_status") == "not_executed", cv_payload
+        assert cv_payload.get("write_performed") is False, cv_payload
+        return "agent action plan read-only"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -814,6 +879,7 @@ class SmokeRunner:
             ("memory_preview_raw_data", self.check_memory_preview_signal_privacy),
             ("agent_high_risk_confirmation", self.check_high_risk_agent_confirmation),
             ("agent_preview_intent_read_only", self.check_agent_preview_intent_read_only),
+            ("agent_plan_action_read_only", self.check_agent_plan_action_read_only),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),

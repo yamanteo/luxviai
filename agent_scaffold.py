@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unicodedata
+import uuid
 from typing import Any, Dict, List, Sequence
 
 
@@ -344,6 +345,13 @@ def _normalize_text(value: str) -> str:
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     return (
         text.lower()
+        .replace("\u0131", "i")
+        .replace("\u0130", "i")
+        .replace("\u015f", "s")
+        .replace("\u011f", "g")
+        .replace("\u00fc", "u")
+        .replace("\u00f6", "o")
+        .replace("\u00e7", "c")
         .replace("ı", "i")
         .replace("İ", "i")
         .replace("ş", "s")
@@ -414,6 +422,9 @@ _HIGH_RISK_ACTION_KEYWORDS = [
     "mail gonder",
     "uygulama sil",
     "telefon ayari degistir",
+    "dosya sil",
+    "kisisel veri",
+    "kisisel veriye eris",
 ]
 
 
@@ -479,4 +490,174 @@ def preview_agent_intent(user_text: str) -> Dict[str, Any]:
         "permission_required": primary_capability.get("permission_required") if primary_capability else "",
         "reason": " ".join(reasons) if reasons else "No specific capability keyword matched; workspace helper is suggested as a read-only fallback.",
         "read_only": True,
+    }
+
+
+_ACTION_STEP_TEMPLATES = {
+    "email_summary": [
+        "E-posta erisim izni kontrol edilir.",
+        "Son e-postalar guvenli ve salt okunur sekilde okunur.",
+        "Onemli basliklar ve aksiyon gerektiren maddeler ozetlenir.",
+        "Kullaniciya yalnizca guvenli ozet gosterilir.",
+    ],
+    "read_emails": [
+        "E-posta okuma izni ve kapsam siniri kontrol edilir.",
+        "Izin olmadan hicbir posta kutusuna erisilmez.",
+        "Okuma kapsami kullanici onayindan sonra belirlenir.",
+        "Ham e-posta icerigi saklanmadan yalnizca ozet hazirlanir.",
+    ],
+    "message_summary": [
+        "Mesaj kaynagi ve okuma izni kontrol edilir.",
+        "Mesajlar yalnizca kullanici onayli kapsamda incelenir.",
+        "Onemli noktalar guvenli ozet olarak gruplanir.",
+        "Ham mesaj icerigi saklanmaz.",
+    ],
+    "draft_message": [
+        "Kisi dogrulanir.",
+        "Mesaj taslagi hazirlanir.",
+        "Kullanici onayi istenir.",
+        "Onay olmadan gonderim yapilmaz.",
+    ],
+    "call_contact": [
+        "Kisi ve numara kullanici tarafindan dogrulanir.",
+        "Arama niyeti tekrar onaylatilir.",
+        "Gerekli telefon izni kontrol edilir.",
+        "Onay olmadan arama baslatilmaz.",
+    ],
+    "device_cleanup_suggestions": [
+        "Cihaz tarama izni ve platform uygunlugu kontrol edilir.",
+        "Depolama ve uygulama kullanimi salt okunur metriklerle incelenir.",
+        "Kullanilmayan uygulamalar icin oneriler listelenir.",
+        "Onay olmadan silme veya ayar degisikligi yapilmaz.",
+    ],
+    "app_usage_review": [
+        "Uygulama kullanim istatistigi izni kontrol edilir.",
+        "Uygulama kullanimi salt okunur sekilde ozetlenir.",
+        "Yogun kullanim ve dusuk kullanim sinyalleri ayrilir.",
+        "Herhangi bir uygulama kaldirma islemi yapilmaz.",
+    ],
+    "phone_assistant_luxway": [
+        "Luxway platform izni ve cihaz kapsam siniri kontrol edilir.",
+        "Istenen telefon eylemi risk seviyesine gore siniflandirilir.",
+        "Kullanici onayi alinmadan cihaz aksiyonu tetiklenmez.",
+        "Bu scaffold yalnizca plan uretir.",
+    ],
+    "file_finder": [
+        "Dosya arama kapsami ve izin siniri kontrol edilir.",
+        "Dosya adlari ve metadata salt okunur sekilde taranir.",
+        "Aday dosyalar kullaniciya liste halinde sunulur.",
+        "Dosya acma, tasima veya silme islemi yapilmaz.",
+    ],
+    "cv_helper": [
+        "CV hedefi ve kullanici tarafindan saglanan icerik belirlenir.",
+        "Bolumler ve eksik alanlar planlanir.",
+        "Taslak oneriler kullaniciya gosterilir.",
+        "Kullanici onayi olmadan dosya yazilmaz veya paylasilmaz.",
+    ],
+    "report_helper": [
+        "Rapor amaci ve kaynak kapsam belirlenir.",
+        "Basliklar ve bolum sirasi planlanir.",
+        "Ozet ve aksiyon maddeleri taslaklanir.",
+        "Kaynak dosyalara yazma islemi yapilmaz.",
+    ],
+    "presentation_helper": [
+        "Sunum hedefi ve hedef kitle belirlenir.",
+        "Slayt akisi ve bolumler planlanir.",
+        "Anlatim notlari icin taslak oneriler uretilir.",
+        "Dosya olusturma veya duzenleme islemi yapilmaz.",
+    ],
+    "calendar_overview": [
+        "Takvim okuma izni kontrol edilir.",
+        "Toplanti ve randevu yogunlugu salt okunur sekilde incelenir.",
+        "Cakisma ve bosluk onerileri hazirlanir.",
+        "Takvim etkinligi olusturma veya degistirme yapilmaz.",
+    ],
+    "workspace_helper": [
+        "Calisma hedefi ve proje baglami ayrilir.",
+        "Gorevler ve sonraki adimlar planlanir.",
+        "Oncelik ve zamanlama onerileri hazirlanir.",
+        "Gercek dosya veya hafiza yazma islemi yapilmaz.",
+    ],
+}
+
+_INTENT_LABELS = {
+    "email_summary": "email_summary_request",
+    "read_emails": "email_read_preview_request",
+    "message_summary": "message_summary_request",
+    "draft_message": "message_draft_or_send_request",
+    "call_contact": "phone_call_request",
+    "device_cleanup_suggestions": "device_cleanup_request",
+    "app_usage_review": "app_usage_review_request",
+    "phone_assistant_luxway": "luxway_phone_assistant_request",
+    "file_finder": "file_finder_request",
+    "cv_helper": "cv_helper_request",
+    "report_helper": "report_helper_request",
+    "presentation_helper": "presentation_helper_request",
+    "calendar_overview": "calendar_overview_request",
+    "workspace_helper": "workspace_helper_request",
+}
+
+_PERSONAL_DATA_PERMISSIONS = {
+    "email_read",
+    "message_read",
+    "read_only_content",
+    "calendar_read",
+    "file_list",
+    "phone_call",
+    "device_storage_stats",
+    "app_usage_stats",
+    "notification_read",
+}
+
+
+def _has_high_risk_action(user_text: str) -> bool:
+    normalized = _normalize_text(user_text)
+    return _contains_any(normalized, [_normalize_text(item) for item in _HIGH_RISK_ACTION_KEYWORDS])
+
+
+def _needs_personal_data_permission(capabilities: Sequence[Dict[str, Any]]) -> bool:
+    for cap in capabilities:
+        permission = str(cap.get("permission_required", ""))
+        if permission in _PERSONAL_DATA_PERMISSIONS:
+            return True
+    return False
+
+
+def _action_steps(primary_capability: Dict[str, Any] | None) -> List[str]:
+    if not primary_capability:
+        return [
+            "Kullanici niyeti salt okunur sekilde siniflandirilir.",
+            "Gerekli capability ve izinler belirlenir.",
+            "Kullanici onayi gerekip gerekmedigi isaretlenir.",
+            "Gercek islem yapilmaz.",
+        ]
+    cap_id = str(primary_capability.get("id", ""))
+    return list(_ACTION_STEP_TEMPLATES.get(cap_id, _ACTION_STEP_TEMPLATES["workspace_helper"]))
+
+
+def plan_agent_action(user_text: str) -> Dict[str, Any]:
+    """Build a read-only action plan; no external action or memory write occurs."""
+    preview = preview_agent_intent(user_text)
+    matched_capabilities = list(preview.get("matched_capabilities", []))
+    primary_capability = preview.get("primary_capability")
+    high_risk_action = _has_high_risk_action(user_text)
+    personal_data_access = _needs_personal_data_permission(matched_capabilities)
+    risk_level = "high" if high_risk_action else str(preview.get("risk_level", "low"))
+    requires_user_confirmation = bool(preview.get("requires_user_confirmation")) or high_risk_action or personal_data_access
+
+    return {
+        "action_id": str(uuid.uuid4()),
+        "user_intent": _INTENT_LABELS.get(str(primary_capability.get("id", "")) if primary_capability else "", "general_agent_request"),
+        "primary_capability": primary_capability,
+        "matched_capabilities": matched_capabilities,
+        "risk_level": risk_level,
+        "permission_required": preview.get("permission_required", ""),
+        "requires_user_confirmation": requires_user_confirmation,
+        "can_execute_now": False,
+        "execution_status": "not_executed",
+        "read_only": True,
+        "raw_data_stored": False,
+        "planned_steps": _action_steps(primary_capability),
+        "blocked_reason": "Read-only scaffold: external actions, device access, message/mail sending, file operations, and memory writes are disabled.",
+        "safety_note": "High-risk or personal-data actions require explicit user permission and confirmation before any future execution path.",
     }

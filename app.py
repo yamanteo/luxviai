@@ -36,6 +36,7 @@ from agent_scaffold import (
     PRIVACY_RULES,
     all_capabilities,
     luxway_capabilities,
+    plan_agent_action,
     personal_agent_capabilities,
     preview_agent_intent,
 )
@@ -6037,6 +6038,16 @@ async def preview_agent_intent_endpoint(payload: AgentIntentPreviewRequest):
     return {
         "agent_preview": agent_preview,
         "memory_preview": memory_preview,
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+    }
+
+
+@app.post("/agent/plan_action")
+async def plan_agent_action_endpoint(payload: AgentIntentPreviewRequest):
+    return {
+        "action_plan": plan_agent_action(payload.text),
         "read_only": True,
         "raw_data_stored": False,
         "write_performed": False,

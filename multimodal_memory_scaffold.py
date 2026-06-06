@@ -210,6 +210,13 @@ def _normalize_text(value: str) -> str:
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     return (
         text.lower()
+        .replace("\u0131", "i")
+        .replace("\u0130", "i")
+        .replace("\u015f", "s")
+        .replace("\u011f", "g")
+        .replace("\u00fc", "u")
+        .replace("\u00f6", "o")
+        .replace("\u00e7", "c")
         .replace("ı", "i")
         .replace("İ", "i")
         .replace("ş", "s")
