@@ -54,6 +54,7 @@ from mode_registry import mode_registry, preview_mode_command
 from permission_boundary import preview_permission_boundary
 from router_scaffold import preview_router_decision
 from workspace_command_parser import parse_workspace_command
+from workspace_context_notes import preview_workspace_context_note
 from workspace_export_preview import build_workspace_export_preview
 from workspace_scaffold import build_workspace_preview, build_workspace_separation_preview, sample_workspace, workspace_schema
 
@@ -227,6 +228,12 @@ class WorkspaceCommandParseRequest(BaseModel):
 class WorkspaceExportPreviewRequest(BaseModel):
     blocks: List[Dict[str, Any]] = Field(default_factory=list)
     export_type: str = Field(default="copy", max_length=40)
+
+
+class WorkspaceContextPreviewRequest(BaseModel):
+    context_note: str = Field(default="", max_length=4000)
+    project_type: str = Field(default="", max_length=200)
+    current_blocks: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 # =========================================================
@@ -6274,6 +6281,11 @@ async def workspace_export_preview(payload: WorkspaceExportPreviewRequest):
     return build_workspace_export_preview(payload.blocks, payload.export_type)
 
 
+@app.post("/workspace/context-preview")
+async def workspace_context_preview(payload: WorkspaceContextPreviewRequest):
+    return preview_workspace_context_note(payload.context_note, payload.project_type, payload.current_blocks)
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6332,6 +6344,13 @@ async def debug_agent_panel():
       <button data-workspace-export-type="pdf">Export: pdf preview</button>
       <button data-workspace-export-type="word">Export: word preview</button>
       <button data-workspace-export-type="presentation">Export: presentation preview</button>
+    </div>
+    <div class="bar">
+      <button data-workspace-context-note="Bu hoca ayr\u0131nt\u0131l\u0131 cevap sever.">Context: ayr\u0131nt\u0131l\u0131</button>
+      <button data-workspace-context-note="Tekrar g\u00f6rmeyi sevmez.">Context: tekrar</button>
+      <button data-workspace-context-note="Kaynak eksikli\u011finden puan k\u0131r\u0131yor.">Context: kaynak</button>
+      <button data-workspace-context-note="Giri\u015f g\u00fc\u00e7l\u00fc olmal\u0131.">Context: giri\u015f</button>
+      <button data-workspace-context-note="\u00d6nceki \u00f6\u011frenciler y\u00f6ntem k\u0131sm\u0131nda zorland\u0131.">Context: y\u00f6ntem</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6457,6 +6476,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadWorkspaceContext(contextNote) {
+      statusEl.textContent = "Loading workspace context preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/workspace/context-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ context_note: contextNote, project_type: "debug_sample", current_blocks: [] })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded workspace context preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -6480,6 +6516,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-workspace-export-type]").forEach((button) => {
       button.addEventListener("click", () => loadWorkspaceExport(button.dataset.workspaceExportType));
+    });
+    document.querySelectorAll("button[data-workspace-context-note]").forEach((button) => {
+      button.addEventListener("click", () => loadWorkspaceContext(button.dataset.workspaceContextNote));
     });
   </script>
 </body>

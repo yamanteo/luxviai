@@ -1302,7 +1302,31 @@ class SmokeRunner:
         assert "giris bolumunu kisalt" not in clean_text.lower(), export_preview
         assert export_preview.get("export_package_preview", {}).get("status") == "preview_only", export_preview
 
-        return "workspace schema/preview/separation/parser/export"
+        def context_preview(context_note: str) -> dict:
+            response = client.post(
+                "/workspace/context-preview",
+                json={"context_note": context_note, "project_type": "tez", "current_blocks": []},
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("memory_write_performed") is False, payload
+            assert payload.get("write_performed") is False, payload
+            return payload
+
+        detail_context = context_preview("Bu hoca ayr\u0131nt\u0131l\u0131 cevap sever.")
+        assert detail_context.get("detail_level") == "high", detail_context
+        assert detail_context.get("recommended_workspace_behavior"), detail_context
+
+        repetition_context = context_preview("Tekrar g\u00f6rmeyi sevmez.")
+        assert repetition_context.get("repetition_policy") == "reduce_repetition", repetition_context
+
+        source_context = context_preview("Kaynak eksikli\u011finden puan k\u0131r\u0131yor.")
+        assert source_context.get("source_expectations"), source_context
+        warnings = " ".join(source_context.get("warnings", [])).lower()
+        assert "invent" in warnings or "uydur" in warnings, source_context
+
+        return "workspace schema/preview/separation/parser/export/context"
 
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
