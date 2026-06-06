@@ -1013,6 +1013,7 @@ class SmokeRunner:
         assert "/visual/scene-lock-preview" in html, html[:300]
         assert "/visual/prompt-preview" in html, html[:300]
         assert "/debug/voice-status" in html, html[:300]
+        assert "/debug/voice-audio-status" in html, html[:300]
         assert "/voice/modes" in html, html[:300]
         assert "/voice/preview-mode" in html, html[:300]
         assert "/voice/night-radio-preview" in html, html[:300]
@@ -1775,6 +1776,33 @@ class SmokeRunner:
             assert payload.get("stream_behavior", {}).get("block_dump_allowed") is False, payload
         return "night radio voice preview"
 
+    def check_voice_audio_status_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/debug/voice-audio-status")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload.get("layer") == "17", payload
+        assert payload.get("status") == "scaffold_ready", payload
+        assert payload.get("read_only") is True, payload
+        assert payload.get("real_tts_enabled") is False, payload
+        assert payload.get("real_stt_enabled") is False, payload
+        assert payload.get("real_audio_enabled") is False, payload
+        assert payload.get("microphone_enabled") is False, payload
+        assert payload.get("recording_enabled") is False, payload
+        assert payload.get("memory_write_enabled") is False, payload
+        assert payload.get("typewriter_runtime_touched") is False, payload
+        completed = " ".join(payload.get("completed_parts", []))
+        assert "17.4" in completed, payload
+        rules = " ".join(payload.get("core_voice_rules", []))
+        assert "block_dump_allowed false" in rules, payload
+        return "voice audio status"
+
     def check_audio_signal_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -1965,6 +1993,7 @@ class SmokeRunner:
             ("visual_status_snapshot", self.check_visual_status_snapshot),
             ("voice_speed_preview", self.check_voice_speed_preview),
             ("night_radio_voice_preview", self.check_night_radio_voice_preview),
+            ("voice_audio_status_snapshot", self.check_voice_audio_status_snapshot),
             ("audio_signal_preview", self.check_audio_signal_preview),
             ("audio_privacy_boundary_preview", self.check_audio_privacy_boundary_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),

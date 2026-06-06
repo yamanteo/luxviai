@@ -6529,6 +6529,60 @@ async def debug_voice_status():
     return voice_status_snapshot()
 
 
+@app.get("/debug/voice-audio-status")
+async def debug_voice_audio_status():
+    return {
+        "layer": "17",
+        "name": "Voice / Audio / Frequency scaffold",
+        "status": "scaffold_ready",
+        "read_only": True,
+        "real_tts_enabled": False,
+        "real_stt_enabled": False,
+        "real_audio_enabled": False,
+        "microphone_enabled": False,
+        "recording_enabled": False,
+        "file_write_enabled": False,
+        "db_write_enabled": False,
+        "memory_write_enabled": False,
+        "chat_stream_touched": False,
+        "typewriter_runtime_touched": False,
+        "completed_parts": [
+            "17.1 voice + writing speed registry",
+            "17.2 audio signal schema",
+            "17.3 privacy-first audio boundary",
+            "17.4 night radio voice preview",
+        ],
+        "available_endpoints": [
+            "/voice/modes",
+            "/voice/preview-mode",
+            "/debug/voice-status",
+            "/audio/signal-schema",
+            "/audio/preview-signal",
+            "/debug/audio-status",
+            "/audio/privacy-boundary-preview",
+            "/voice/night-radio-preview",
+        ],
+        "core_voice_rules": [
+            "default writing speed 0.9",
+            "quick summary speed 1.3",
+            "very fast summary speed 1.5 only when explicitly requested",
+            "long answers stay around 0.9 and do not exceed 1.1 unless explicitly requested",
+            "smooth_typewriter true",
+            "block_dump_allowed false",
+            "final_bulk_injection_allowed false",
+            "night radio speed 0.7-0.85",
+            "input_modality voice is simulated metadata only",
+            "no clinical diagnosis",
+            "no raw audio stored",
+        ],
+        "next_recommended_step": "Layer 18 Luxway scaffold or later 17.6 real voice integration",
+        "later_step": "17.6 real voice integration later",
+        "backlog": [
+            "stop/durdur final block leak",
+        ],
+    }
+
+
 @app.get("/audio/signal-schema")
 async def audio_signal_schema_endpoint():
     return audio_signal_schema()
@@ -6673,6 +6727,9 @@ async def debug_agent_panel():
       <button data-visual-prompt="sahneyi koru, sa\u011f tarafa k\u00fc\u00e7\u00fck kap\u0131 ekle">Prompt: scene lock kap\u0131</button>
     </div>
     <h2>Voice / Speed Preview</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/voice-audio-status">Voice Audio Status</button>
+    </div>
     <div class="bar">
       <button data-endpoint="/debug/voice-status">Voice Status</button>
       <button data-endpoint="/voice/modes">Voice Modes</button>
