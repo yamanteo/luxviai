@@ -60,6 +60,7 @@ from workspace_export_preview import build_workspace_export_preview
 from workspace_scaffold import build_workspace_preview, build_workspace_separation_preview, sample_workspace, workspace_schema
 from visual_ambrosia_state import preview_ambrosia_state
 from visual_dream_scene_state import preview_dream_scene_state
+from visual_scene_lock import preview_scene_lock
 from visual_style_ratio import preview_visual_style_ratio
 from visual_style_registry import preview_visual_style, visual_style_registry
 
@@ -271,6 +272,12 @@ class VisualDreamScenePreviewRequest(BaseModel):
     scene_text: str = Field(default="", max_length=4000)
     style_hint: str = Field(default="", max_length=1000)
     locked_elements: List[Any] = Field(default_factory=list)
+
+
+class VisualSceneLockPreviewRequest(BaseModel):
+    current_scene_state: Dict[str, Any] = Field(default_factory=dict)
+    new_detail: str = Field(default="", max_length=4000)
+    lock_strength: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
 # =========================================================
@@ -6395,6 +6402,11 @@ async def visual_dream_scene_preview_endpoint(payload: VisualDreamScenePreviewRe
     return preview_dream_scene_state(payload.scene_text, payload.style_hint, payload.locked_elements)
 
 
+@app.post("/visual/scene-lock-preview")
+async def visual_scene_lock_preview_endpoint(payload: VisualSceneLockPreviewRequest):
+    return preview_scene_lock(payload.current_scene_state, payload.new_detail, payload.lock_strength)
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6500,6 +6512,13 @@ async def debug_agent_panel():
       <button data-dream-scene="Elimde k\u00fc\u00e7\u00fck bir kase var, ba\u015f\u0131m hafif sola d\u00f6n\u00fck.">Dream: kase ve ba\u015f</button>
       <button data-dream-scene="R\u00fcyamda merdivenlerden \u00e7\u0131k\u0131yorum ama yukar\u0131 hi\u00e7 bitmiyor.">Dream: bitmeyen merdiven</button>
       <button data-dream-scene="G\u00f6ky\u00fcz\u00fcnde ince semboller vard\u0131.">Dream: g\u00f6ky\u00fcz\u00fc semboller</button>
+    </div>
+    <div class="bar">
+      <button data-scene-lock-detail="ba\u015f\u0131n\u0131 biraz sola \u00e7evir">Scene Lock: ba\u015f sola</button>
+      <button data-scene-lock-detail="elindeki kaseyi koru">Scene Lock: kaseyi koru</button>
+      <button data-scene-lock-detail="amber \u0131\u015f\u0131k biraz daha uzaktan gelsin">Scene Lock: amber uzak</button>
+      <button data-scene-lock-detail="g\u00f6ky\u00fcz\u00fcndeki sembolleri azalt">Scene Lock: sembol azalt</button>
+      <button data-scene-lock-detail="sahneyi de\u011fi\u015ftirme, sadece sa\u011f tarafa k\u00fc\u00e7\u00fck bir kap\u0131 ekle">Scene Lock: sa\u011f kap\u0131</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6727,6 +6746,32 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadSceneLock(newDetail) {
+      statusEl.textContent = "Loading scene lock preview";
+      output.textContent = "{}";
+      const currentSceneState = {
+        locked_elements: ["dream_self", "bowl", "amber_light"],
+        subjects: [{ id: "dream_self", type: "self_presence", locked_candidate: true }],
+        objects: [
+          { id: "bowl", type: "object_or_environment", locked_candidate: true },
+          { id: "amber_light", type: "object_or_environment", locked_candidate: true }
+        ],
+        spatial_relations: [{ relation: "held_by_subject", target: "bowl" }]
+      };
+      try {
+        const response = await fetch("/visual/scene-lock-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ current_scene_state: currentSceneState, new_detail: newDetail, lock_strength: 1.0 })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded scene lock preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -6768,6 +6813,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-dream-scene]").forEach((button) => {
       button.addEventListener("click", () => loadDreamScene(button.dataset.dreamScene));
+    });
+    document.querySelectorAll("button[data-scene-lock-detail]").forEach((button) => {
+      button.addEventListener("click", () => loadSceneLock(button.dataset.sceneLockDetail));
     });
   </script>
 </body>

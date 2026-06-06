@@ -1009,6 +1009,7 @@ class SmokeRunner:
         assert "/visual/ratio-preview" in html, html[:300]
         assert "/visual/ambrosia-preview" in html, html[:300]
         assert "/visual/dream-scene-preview" in html, html[:300]
+        assert "/visual/scene-lock-preview" in html, html[:300]
         return "debug agent panel"
 
     def check_mode_registry_preview(self) -> str:
@@ -1464,7 +1465,31 @@ class SmokeRunner:
         object_ids = {item.get("id") for item in dream.get("objects", [])}
         assert {"boat", "amber_light"} <= object_ids, dream
         assert dream.get("locked_elements") == ["boat", "amber_light"], dream
-        return "visual style registry/ratio/ambrosia/dream preview"
+
+        scene_lock_response = client.post(
+            "/visual/scene-lock-preview",
+            json={
+                "current_scene_state": {
+                    "locked_elements": ["dream_self", "bowl"],
+                    "subjects": [{"id": "dream_self", "type": "self_presence", "locked_candidate": True}],
+                    "objects": [{"id": "bowl", "type": "object_or_environment", "locked_candidate": True}],
+                },
+                "new_detail": "ba\u015f\u0131n\u0131 biraz sola \u00e7evir",
+                "lock_strength": 1.0,
+            },
+        )
+        assert scene_lock_response.status_code == 200, scene_lock_response.text
+        scene_lock = scene_lock_response.json()
+        assert scene_lock.get("read_only") is True, scene_lock
+        assert scene_lock.get("image_generation_performed") is False, scene_lock
+        assert scene_lock.get("scene_rebuild_required") is False, scene_lock
+        assert scene_lock.get("locked_elements") == ["dream_self", "bowl"], scene_lock
+        assert scene_lock.get("preserved_elements"), scene_lock
+        proposed_updates = scene_lock.get("proposed_updates", [])
+        assert isinstance(proposed_updates, list) and proposed_updates, scene_lock
+        assert any(item.get("operation") == "adjust_pose" for item in proposed_updates), scene_lock
+        assert scene_lock.get("updated_scene_preview", {}).get("scene_rebuild_required") is False, scene_lock
+        return "visual style registry/ratio/ambrosia/dream/scene-lock preview"
 
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
