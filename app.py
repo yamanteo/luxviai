@@ -58,6 +58,7 @@ from workspace_command_parser import parse_workspace_command
 from workspace_context_notes import preview_workspace_context_note
 from workspace_export_preview import build_workspace_export_preview
 from workspace_scaffold import build_workspace_preview, build_workspace_separation_preview, sample_workspace, workspace_schema
+from visual_style_ratio import preview_visual_style_ratio
 from visual_style_registry import preview_visual_style, visual_style_registry
 
 try:
@@ -247,6 +248,13 @@ class WorkspaceBuilderPreviewRequest(BaseModel):
 
 class VisualStylePreviewRequest(BaseModel):
     prompt: str = Field(default="", max_length=4000)
+    requested_styles: List[str] = Field(default_factory=list)
+    mode: str = Field(default="", max_length=100)
+
+
+class VisualStyleRatioPreviewRequest(BaseModel):
+    prompt: str = Field(default="", max_length=4000)
+    ratio_text: str = Field(default="", max_length=4000)
     requested_styles: List[str] = Field(default_factory=list)
     mode: str = Field(default="", max_length=100)
 
@@ -6358,6 +6366,11 @@ async def visual_style_preview_endpoint(payload: VisualStylePreviewRequest):
     return preview_visual_style(payload.prompt, payload.requested_styles, payload.mode)
 
 
+@app.post("/visual/ratio-preview")
+async def visual_ratio_preview_endpoint(payload: VisualStyleRatioPreviewRequest):
+    return preview_visual_style_ratio(payload.prompt, payload.ratio_text, payload.requested_styles, payload.mode)
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6442,6 +6455,13 @@ async def debug_agent_panel():
       <button data-visual-style-prompt="Ambrosia hissi">Ambrosia hissi</button>
       <button data-visual-style-prompt="r\u00fcya sahnesi">r\u00fcya sahnesi</button>
       <button data-visual-style-prompt="soft neon vintage">soft neon vintage</button>
+    </div>
+    <div class="bar">
+      <button data-visual-ratio-prompt="%40 ya\u011fl\u0131 boya %20 pixel">Ratio: boya/pixel</button>
+      <button data-visual-ratio-prompt="pixel %5 azalt amber %10 art\u0131r">Ratio: pixel azalt amber art\u0131r</button>
+      <button data-visual-ratio-prompt="Lux tarz\u0131 ama ger\u00e7ek\u00e7i temiz">Ratio: Lux ger\u00e7ek\u00e7i</button>
+      <button data-visual-ratio-prompt="soft neon vintage">Ratio: neon vintage</button>
+      <button data-visual-ratio-prompt="Ambrosia hissi">Ratio: Ambrosia</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6618,6 +6638,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadVisualRatio(prompt) {
+      statusEl.textContent = "Loading visual ratio preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/visual/ratio-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, ratio_text: "", requested_styles: [], mode: "debug_panel" })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded visual ratio preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -6650,6 +6687,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-visual-style-prompt]").forEach((button) => {
       button.addEventListener("click", () => loadVisualStyle(button.dataset.visualStylePrompt));
+    });
+    document.querySelectorAll("button[data-visual-ratio-prompt]").forEach((button) => {
+      button.addEventListener("click", () => loadVisualRatio(button.dataset.visualRatioPrompt));
     });
   </script>
 </body>

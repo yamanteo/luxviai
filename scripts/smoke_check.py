@@ -1006,6 +1006,7 @@ class SmokeRunner:
         assert "workspace preview" in lowered, html[:300]
         assert "visual style preview" in lowered, html[:300]
         assert "/visual/style-preview" in html, html[:300]
+        assert "/visual/ratio-preview" in html, html[:300]
         return "debug agent panel"
 
     def check_mode_registry_preview(self) -> str:
@@ -1406,7 +1407,26 @@ class SmokeRunner:
         mix_by_id = {item.get("style_id"): item for item in mix}
         assert mix_by_id.get("oil_paint", {}).get("ratio") == 0.4, preview
         assert mix_by_id.get("pixel", {}).get("ratio") == 0.2, preview
-        return "visual style registry preview"
+
+        ratio_response = client.post(
+            "/visual/ratio-preview",
+            json={"prompt": "%40 ya\u011fl\u0131 boya %20 pixel", "ratio_text": "", "requested_styles": [], "mode": "smoke"},
+        )
+        assert ratio_response.status_code == 200, ratio_response.text
+        ratio_payload = ratio_response.json()
+        assert ratio_payload.get("read_only") is True, ratio_payload
+        assert ratio_payload.get("image_generation_performed") is False, ratio_payload
+        assert ratio_payload.get("lux_amber_accent") == "#ab6b0c", ratio_payload
+        assert ratio_payload.get("line_density_default") == "low", ratio_payload
+        assert ratio_payload.get("signature_default") is True, ratio_payload
+        requested_ratios = ratio_payload.get("requested_ratios", {})
+        assert requested_ratios.get("oil_paint") == 0.4, ratio_payload
+        assert requested_ratios.get("pixel") == 0.2, ratio_payload
+        normalized_ratios = ratio_payload.get("normalized_ratios", {})
+        assert "oil_paint" in normalized_ratios and "pixel" in normalized_ratios, ratio_payload
+        final_mix = ratio_payload.get("final_style_mix_preview", [])
+        assert isinstance(final_mix, list) and final_mix, ratio_payload
+        return "visual style registry/ratio preview"
 
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
