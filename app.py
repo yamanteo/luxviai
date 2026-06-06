@@ -64,6 +64,7 @@ from visual_prompt_builder import build_visual_prompt_preview
 from visual_scene_lock import preview_scene_lock
 from visual_style_ratio import preview_visual_style_ratio
 from visual_style_registry import preview_visual_style, visual_style_registry
+from voice_mode_registry import preview_voice_mode, voice_mode_registry, voice_status_snapshot
 
 try:
     from dotenv import load_dotenv
@@ -288,6 +289,13 @@ class VisualPromptPreviewRequest(BaseModel):
     scene_state: Dict[str, Any] = Field(default_factory=dict)
     ambrosia_state: Dict[str, Any] = Field(default_factory=dict)
     locked_elements: List[Any] = Field(default_factory=list)
+
+
+class VoiceModePreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=2000)
+    context: str = Field(default="", max_length=4000)
+    response_size: str = Field(default="medium", max_length=50)
+    input_modality: str = Field(default="text", max_length=50)
 
 
 # =========================================================
@@ -6479,6 +6487,21 @@ async def debug_visual_status():
     }
 
 
+@app.get("/voice/modes")
+async def voice_modes_endpoint():
+    return voice_mode_registry()
+
+
+@app.post("/voice/preview-mode")
+async def voice_preview_mode_endpoint(payload: VoiceModePreviewRequest):
+    return preview_voice_mode(payload.command, payload.context, payload.response_size, payload.input_modality)
+
+
+@app.get("/debug/voice-status")
+async def debug_voice_status():
+    return voice_status_snapshot()
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6601,6 +6624,20 @@ async def debug_agent_panel():
       <button data-visual-prompt="R\u00fcya: karanl\u0131k denizde k\u00fc\u00e7\u00fck sandal">Prompt: r\u00fcya sandal</button>
       <button data-visual-prompt="%40 ya\u011fl\u0131 boya %20 pixel amber \u0131\u015f\u0131k">Prompt: boya pixel</button>
       <button data-visual-prompt="sahneyi koru, sa\u011f tarafa k\u00fc\u00e7\u00fck kap\u0131 ekle">Prompt: scene lock kap\u0131</button>
+    </div>
+    <h2>Voice / Speed Preview</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/voice-status">Voice Status</button>
+      <button data-endpoint="/voice/modes">Voice Modes</button>
+    </div>
+    <div class="bar">
+      <button data-voice-command="daha yava\u015f yaz" data-voice-size="medium">daha yava\u015f yaz</button>
+      <button data-voice-command="h\u0131zl\u0131 \u00f6zetle" data-voice-size="short">h\u0131zl\u0131 \u00f6zetle</button>
+      <button data-voice-command="\u00e7ok h\u0131zl\u0131 \u00f6zet" data-voice-size="short">\u00e7ok h\u0131zl\u0131 \u00f6zet</button>
+      <button data-voice-command="gece radyosu gibi konu\u015f" data-voice-size="medium">gece radyosu gibi konu\u015f</button>
+      <button data-voice-command="workspace uzun cevap" data-voice-size="workspace_large">workspace uzun cevap</button>
+      <button data-voice-command="normal h\u0131za d\u00f6n" data-voice-size="medium">normal h\u0131za d\u00f6n</button>
+      <button data-voice-command="sadece yaz\u0131, ses yok" data-voice-size="medium">sadece yaz\u0131, ses yok</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6879,6 +6916,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadVoicePreview(command, responseSize) {
+      statusEl.textContent = "Loading voice / speed preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/voice/preview-mode", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ command, context: "debug panel read-only sample", response_size: responseSize || "medium", input_modality: "text" })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded voice / speed preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -6926,6 +6980,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-visual-prompt]").forEach((button) => {
       button.addEventListener("click", () => loadVisualPrompt(button.dataset.visualPrompt));
+    });
+    document.querySelectorAll("button[data-voice-command]").forEach((button) => {
+      button.addEventListener("click", () => loadVoicePreview(button.dataset.voiceCommand, button.dataset.voiceSize));
     });
   </script>
 </body>

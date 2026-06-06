@@ -1012,6 +1012,9 @@ class SmokeRunner:
         assert "/visual/dream-scene-preview" in html, html[:300]
         assert "/visual/scene-lock-preview" in html, html[:300]
         assert "/visual/prompt-preview" in html, html[:300]
+        assert "/debug/voice-status" in html, html[:300]
+        assert "/voice/modes" in html, html[:300]
+        assert "/voice/preview-mode" in html, html[:300]
         return "debug agent panel"
 
     def check_mode_registry_preview(self) -> str:
@@ -1640,6 +1643,84 @@ class SmokeRunner:
         assert "default low line density" in rules, payload
         return "visual status"
 
+    def check_voice_speed_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        modes_response = client.get("/voice/modes")
+        assert modes_response.status_code == 200, modes_response.text
+        modes_payload = modes_response.json()
+        assert modes_payload.get("read_only") is True, modes_payload
+        assert modes_payload.get("real_audio_enabled") is False, modes_payload
+        mode_ids = {mode.get("id") for mode in modes_payload.get("voice_modes", [])}
+        assert {"normal_voice", "night_radio_voice", "silent_text_only", "fast_brief_voice"} <= mode_ids, modes_payload
+
+        status_response = client.get("/debug/voice-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("voice_registry_ready") is True, status
+        assert status.get("read_only") is True, status
+        assert status.get("real_audio_enabled") is False, status
+        assert status.get("microphone_used") is False, status
+        assert status.get("recording_performed") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("user_facing_output_file_created") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        def preview(command: str, response_size: str = "medium", input_modality: str = "text") -> dict:
+            response = client.post(
+                "/voice/preview-mode",
+                json={
+                    "command": command,
+                    "context": "smoke test read-only context",
+                    "response_size": response_size,
+                    "input_modality": input_modality,
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("block_dump_prevention") is True, payload
+            behavior = payload.get("stream_behavior", {})
+            assert behavior.get("block_dump_allowed") is False, payload
+            assert behavior.get("final_bulk_injection_allowed") is False, payload
+            assert behavior.get("smooth_typewriter") is True, payload
+            assert payload.get("real_audio_enabled") is False, payload
+            assert payload.get("microphone_used") is False, payload
+            assert payload.get("recording_performed") is False, payload
+            assert payload.get("read_only") is True, payload
+            return payload
+
+        slow = preview("daha yavas yaz")
+        assert slow.get("writing_speed_preview") == 0.8, slow
+        very_slow = preview("cok yavas anlat")
+        assert very_slow.get("writing_speed_preview") in {0.7, 0.8}, very_slow
+        quick = preview("hizli ozetle", "short")
+        assert quick.get("writing_speed_preview") == 1.3, quick
+        very_quick = preview("cok hizli ozet", "short")
+        assert very_quick.get("writing_speed_preview") == 1.5, very_quick
+        long_answer = preview("hizli uret ama uzun detayli cevap", "long")
+        assert 0.8 <= float(long_answer.get("writing_speed_preview")) <= 1.1, long_answer
+        workspace_large = preview("workspace uzun cevap", "workspace_large")
+        assert workspace_large.get("writing_speed_preview") in {0.9, 1.0}, workspace_large
+        night = preview("gece radyosu gibi konus")
+        assert night.get("detected_voice_mode") == "night_radio_voice", night
+        assert 0.7 <= float(night.get("writing_speed_preview")) <= 0.85, night
+        silent = preview("sadece yazi, ses yok")
+        assert silent.get("detected_voice_mode") == "silent_text_only", silent
+        assert silent.get("voice_speed_preview") == 0.0, silent
+        voice_meta = preview("net konus", "medium", "voice")
+        assert voice_meta.get("input_modality") == "voice", voice_meta
+        assert voice_meta.get("microphone_used") is False, voice_meta
+        return "voice speed preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -1709,6 +1790,7 @@ class SmokeRunner:
             ("workspace_schema_preview", self.check_workspace_schema_preview),
             ("visual_style_registry_preview", self.check_visual_style_registry_preview),
             ("visual_status_snapshot", self.check_visual_status_snapshot),
+            ("voice_speed_preview", self.check_voice_speed_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
