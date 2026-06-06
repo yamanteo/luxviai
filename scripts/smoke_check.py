@@ -1026,6 +1026,8 @@ class SmokeRunner:
         assert "/router/hint-preview" in html, html[:300]
         assert "/router/cost-privacy-policy" in html, html[:300]
         assert "/router/cost-preview" in html, html[:300]
+        assert "/router/safe-memory-policy" in html, html[:300]
+        assert "/router/memory-retrieval-preview" in html, html[:300]
         assert "/debug/model-router-status" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
@@ -2458,6 +2460,67 @@ class SmokeRunner:
         assert safety.get("privacy_risk") == "high", safety
         return "cost privacy policy preview"
 
+    def check_safe_memory_retrieval_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        policy_response = client.get("/router/safe-memory-policy")
+        assert policy_response.status_code == 200, policy_response.text
+        policy = policy_response.json()
+        assert policy.get("read_only") is True, policy
+        assert policy.get("luxeph_no_memory_rule") is True, policy
+        assert policy.get("raw_memory_returned") is False, policy
+        assert policy.get("raw_sensitive_memory_returned") is False, policy
+        assert policy.get("memory_read_performed") is False, policy
+        assert policy.get("memory_write_performed") is False, policy
+        assert "raw_audio" in policy.get("blocked_memory_types", []), policy
+
+        def preview(command: str, task_type: str = "", sensitivity: str = "normal", memory_type: str = "") -> dict:
+            response = client.post(
+                "/router/memory-retrieval-preview",
+                json={
+                    "command": command,
+                    "task_type": task_type,
+                    "sensitivity": sensitivity,
+                    "requested_memory_type": memory_type,
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("raw_memory_returned") is False, payload
+            assert payload.get("raw_sensitive_memory_returned") is False, payload
+            assert payload.get("memory_read_performed") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            assert payload.get("db_write_performed") is False, payload
+            assert payload.get("file_write_performed") is False, payload
+            assert payload.get("read_only") is True, payload
+            return payload
+
+        visual = preview("gorsel tarzimi hatirla", "visual_prompt", memory_type="lux_visual_style")
+        assert visual.get("retrieval_allowed") is True, visual
+        assert visual.get("safe_context_preview", {}).get("summary_only") is True, visual
+
+        workspace = preview("workspace proje notlarimi kullan", "workspace", memory_type="workspace_context")
+        assert workspace.get("retrieval_allowed") is True, workspace
+        assert "workspace_context" in workspace.get("allowed_memory_types", []), workspace
+
+        luxeph = preview("Luxeph gecmisini getir", "privacy_sensitive", "privacy", "emotional_context")
+        assert luxeph.get("retrieval_allowed") is False, luxeph
+        assert "luxeph" in str(luxeph.get("retrieval_reason", "")).lower(), luxeph
+
+        private_message = preview("ozel mesaj gecmisimi getir", "permission_boundary", "privacy", "safety_boundary")
+        assert private_message.get("raw_sensitive_memory_returned") is False, private_message
+        assert private_message.get("retrieval_allowed") is False, private_message
+
+        ambrosia = preview("Ambrosia tarzimi kullan", "ambrosia_prompt", memory_type="lux_ambrosia_reference")
+        assert ambrosia.get("retrieval_allowed") is True, ambrosia
+        return "safe memory retrieval preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2535,6 +2598,7 @@ class SmokeRunner:
             ("model_router_config_preview", self.check_model_router_config_preview),
             ("model_router_hint_preview", self.check_model_router_hint_preview),
             ("cost_privacy_policy_preview", self.check_cost_privacy_policy_preview),
+            ("safe_memory_retrieval_preview", self.check_safe_memory_retrieval_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),

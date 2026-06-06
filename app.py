@@ -63,6 +63,7 @@ from mode_registry import mode_registry, preview_mode_command
 from night_radio_voice import preview_night_radio_voice
 from permission_boundary import preview_permission_boundary
 from router_scaffold import preview_router_decision
+from safe_memory_retrieval import preview_safe_memory_retrieval, safe_memory_policy
 from workspace_builder_preview import build_workspace_builder_preview
 from workspace_command_parser import parse_workspace_command
 from workspace_context_notes import preview_workspace_context_note
@@ -375,6 +376,13 @@ class CostPrivacyPreviewRequest(BaseModel):
     task_type: str = Field(default="", max_length=80)
     sensitivity: str = Field(default="normal", max_length=50)
     estimated_tokens_bucket: str = Field(default="", max_length=50)
+
+
+class SafeMemoryRetrievalPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    task_type: str = Field(default="", max_length=80)
+    sensitivity: str = Field(default="normal", max_length=50)
+    requested_memory_type: str = Field(default="", max_length=80)
 
 
 # =========================================================
@@ -6685,6 +6693,16 @@ async def router_cost_preview_endpoint(payload: CostPrivacyPreviewRequest):
     return preview_cost_privacy(payload.command, payload.task_type, payload.sensitivity, payload.estimated_tokens_bucket)
 
 
+@app.get("/router/safe-memory-policy")
+async def router_safe_memory_policy_endpoint():
+    return safe_memory_policy()
+
+
+@app.post("/router/memory-retrieval-preview")
+async def router_memory_retrieval_preview_endpoint(payload: SafeMemoryRetrievalPreviewRequest):
+    return preview_safe_memory_retrieval(payload.command, payload.task_type, payload.sensitivity, payload.requested_memory_type)
+
+
 @app.get("/debug/model-router-status")
 async def debug_model_router_status():
     return model_router_status()
@@ -7015,6 +7033,7 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/model-router-status">Model Router Status</button>
       <button data-endpoint="/router/model-config">Model Router Config</button>
       <button data-endpoint="/router/cost-privacy-policy">Cost Privacy Policy</button>
+      <button data-endpoint="/router/safe-memory-policy">Safe Memory Policy</button>
     </div>
     <div class="bar">
       <button data-model-router-command="normal sohbet" data-model-task="normal_chat">normal sohbet</button>
@@ -7043,6 +7062,14 @@ async def debug_agent_panel():
       <button data-cost-privacy-command="ses kayd\u0131m\u0131 analiz et" data-cost-task="audio_voice" data-cost-sensitivity="privacy">Cost: ses kayd\u0131</button>
       <button data-cost-privacy-command="dosyam\u0131 oku" data-cost-task="workspace" data-cost-sensitivity="privacy">Cost: dosya</button>
       <button data-cost-privacy-command="hassas g\u00fcvenlik sorusu" data-cost-task="safety_sensitive" data-cost-sensitivity="safety">Cost: hassas g\u00fcvenlik</button>
+    </div>
+    <div class="bar">
+      <button data-safe-memory-command="g\u00f6rsel tarz\u0131m\u0131 hat\u0131rla" data-safe-memory-task="visual_prompt" data-safe-memory-type="lux_visual_style">Memory: g\u00f6rsel tarz</button>
+      <button data-safe-memory-command="workspace proje notlar\u0131m\u0131 kullan" data-safe-memory-task="workspace" data-safe-memory-type="workspace_context">Memory: workspace notlar</button>
+      <button data-safe-memory-command="Luxeph ge\u00e7mi\u015fini getir" data-safe-memory-task="privacy_sensitive" data-safe-memory-type="emotional_context">Memory: Luxeph block</button>
+      <button data-safe-memory-command="ses sinyalimi kullan" data-safe-memory-task="audio_voice" data-safe-memory-type="audio_signal">Memory: ses sinyali</button>
+      <button data-safe-memory-command="\u00f6zel mesaj ge\u00e7mi\u015fimi getir" data-safe-memory-task="permission_boundary" data-safe-memory-sensitivity="privacy" data-safe-memory-type="safety_boundary">Memory: \u00f6zel mesaj block</button>
+      <button data-safe-memory-command="Ambrosia tarz\u0131m\u0131 kullan" data-safe-memory-task="ambrosia_prompt" data-safe-memory-type="lux_ambrosia_reference">Memory: Ambrosia tarz</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7541,6 +7568,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadSafeMemoryPreview(command, taskType, sensitivity, memoryType) {
+      statusEl.textContent = "Loading safe memory preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/router/memory-retrieval-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            task_type: taskType || "",
+            sensitivity: sensitivity || "normal",
+            requested_memory_type: memoryType || ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded safe memory preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -7638,6 +7687,14 @@ async def debug_agent_panel():
         button.dataset.costPrivacyCommand,
         button.dataset.costTask,
         button.dataset.costSensitivity
+      ));
+    });
+    document.querySelectorAll("button[data-safe-memory-command]").forEach((button) => {
+      button.addEventListener("click", () => loadSafeMemoryPreview(
+        button.dataset.safeMemoryCommand,
+        button.dataset.safeMemoryTask,
+        button.dataset.safeMemorySensitivity,
+        button.dataset.safeMemoryType
       ));
     });
   </script>
