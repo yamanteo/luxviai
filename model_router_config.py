@@ -407,6 +407,73 @@ def preview_model_route(
     )
 
 
+def _source_area_task_hint(source_area: str, task_type: str) -> str:
+    if task_type:
+        return task_type
+    source = source_area if source_area in {"general", "workspace", "visual", "luxway", "voice", "agent", "codex"} else "general"
+    hints = {
+        "general": "",
+        "workspace": "workspace",
+        "visual": "visual_prompt",
+        "luxway": "luxway",
+        "voice": "audio_voice",
+        "agent": "decision_trace",
+        "codex": "code",
+    }
+    return hints[source]
+
+
+def _model_hint(provider: str, role: str) -> str:
+    if provider == "deepseek_primary":
+        return "deepseek_default" if role == "primary_reasoning" else f"deepseek_{role}"
+    if provider == "mini_5_4_support":
+        return f"mini_5_4_{role}"
+    if provider == "gpt_5_5_premium_fallback":
+        return "gpt_5_5_premium_fallback"
+    if provider == "image_api_future":
+        return "image_api_future"
+    return f"{provider}_{role}"
+
+
+def preview_model_hint(
+    command: str,
+    source_area: str = "general",
+    task_type: str = "",
+    sensitivity: str = "normal",
+    response_size: str = "medium",
+) -> Dict[str, Any]:
+    source = source_area if source_area in {"general", "workspace", "visual", "luxway", "voice", "agent", "codex"} else "general"
+    routed = preview_model_route(command, _source_area_task_hint(source, task_type), sensitivity, response_size)
+    hint_reason = routed.get("route_reason", "")
+    if routed.get("detected_task_type") == "luxway":
+        hint_reason = f"{hint_reason}; permission boundary metadata required"
+    if routed.get("detected_task_type") == "unknown":
+        hint_reason = f"{hint_reason}; low confidence, clarification may be needed"
+    return {
+        "raw_command": routed.get("raw_command", command or ""),
+        "source_area": source,
+        "detected_task_type": routed.get("detected_task_type"),
+        "model_hint": _model_hint(str(routed.get("recommended_provider")), str(routed.get("recommended_model_role"))),
+        "recommended_provider": routed.get("recommended_provider"),
+        "recommended_model_role": routed.get("recommended_model_role"),
+        "auxiliary_provider": routed.get("auxiliary_provider"),
+        "fallback_provider": routed.get("fallback_provider"),
+        "target_distribution": routed.get("target_distribution", dict(TARGET_DISTRIBUTION)),
+        "hint_reason": hint_reason,
+        "raw_user_text_logged": False,
+        "routing_changed": False,
+        "real_model_switch_performed": False,
+        "real_api_call_performed": False,
+        "billing_write_performed": False,
+        "memory_write_performed": False,
+        "db_write_performed": False,
+        "read_only": True,
+        "safe_derived_signals_only": True,
+        "image_generation_performed": routed.get("image_generation_performed", False),
+        "permission_boundary_required": routed.get("permission_boundary_required", False),
+    }
+
+
 def model_router_config() -> Dict[str, Any]:
     return {
         "model_roles": list(MODEL_ROLE_REGISTRY.values()),

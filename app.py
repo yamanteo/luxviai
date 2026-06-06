@@ -38,7 +38,7 @@ from luxway_data_preview import preview_luxway_data
 from luxway_device_safety import preview_luxway_device_safety
 from luxway_permission_model import luxway_permission_model, preview_luxway_permission
 from luxway_weekly_report import luxway_weekly_report_schema, preview_luxway_weekly_report
-from model_router_config import model_router_config, model_router_status, preview_model_route
+from model_router_config import model_router_config, model_router_status, preview_model_hint, preview_model_route
 from agent_scaffold import (
     ANDROID_PERMISSION_NOTES,
     IOS_PERMISSION_NOTES,
@@ -356,6 +356,14 @@ class LuxwayDeviceSafetyPreviewRequest(BaseModel):
 
 class ModelRouterPreviewRequest(BaseModel):
     command: str = Field(default="", max_length=4000)
+    task_type: str = Field(default="", max_length=80)
+    sensitivity: str = Field(default="normal", max_length=50)
+    response_size: str = Field(default="medium", max_length=50)
+
+
+class ModelRouterHintPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    source_area: str = Field(default="general", max_length=50)
     task_type: str = Field(default="", max_length=80)
     sensitivity: str = Field(default="normal", max_length=50)
     response_size: str = Field(default="medium", max_length=50)
@@ -6654,6 +6662,11 @@ async def router_model_preview_endpoint(payload: ModelRouterPreviewRequest):
     return preview_model_route(payload.command, payload.task_type, payload.sensitivity, payload.response_size)
 
 
+@app.post("/router/hint-preview")
+async def router_hint_preview_endpoint(payload: ModelRouterHintPreviewRequest):
+    return preview_model_hint(payload.command, payload.source_area, payload.task_type, payload.sensitivity, payload.response_size)
+
+
 @app.get("/debug/model-router-status")
 async def debug_model_router_status():
     return model_router_status()
@@ -6996,6 +7009,14 @@ async def debug_agent_panel():
       <button data-model-router-command="hassas g\u00fcvenlik sorusu" data-model-task="safety_sensitive" data-model-sensitivity="safety">hassas g\u00fcvenlik sorusu</button>
       <button data-model-router-command="kritik kod debug" data-model-task="critical_debug" data-model-sensitivity="high">kritik kod debug</button>
       <button data-model-router-command="kod d\u00fczenle" data-model-task="code">kod d\u00fczenle</button>
+    </div>
+    <div class="bar">
+      <button data-model-hint-command="uzun rapor yaz" data-model-source="workspace" data-model-task="report_writer" data-model-size="long">Hint: Workspace rapor</button>
+      <button data-model-hint-command="r\u00fcya sahnesi promptla" data-model-source="visual" data-model-task="dream_scene">Hint: Visual r\u00fcya</button>
+      <button data-model-hint-command="g\u00f6rsel \u00fcret" data-model-source="visual" data-model-task="image_generation_request">Hint: Image \u00fcret</button>
+      <button data-model-hint-command="\u00e7izimi oku" data-model-source="visual" data-model-task="sketch_understanding_request">Hint: Mini \u00e7izim</button>
+      <button data-model-hint-command="kritik kod debug" data-model-source="codex" data-model-task="critical_debug" data-model-sensitivity="high">Hint: GPT fallback</button>
+      <button data-model-hint-command="Luxway telefon raporu" data-model-source="luxway" data-model-task="luxway">Hint: Luxway</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7449,6 +7470,29 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadModelHintPreview(command, sourceArea, taskType, sensitivity, responseSize) {
+      statusEl.textContent = "Loading model hint preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/router/hint-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            source_area: sourceArea || "general",
+            task_type: taskType || "",
+            sensitivity: sensitivity || "normal",
+            response_size: responseSize || "medium"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded model hint preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -7527,6 +7571,15 @@ async def debug_agent_panel():
     document.querySelectorAll("button[data-model-router-command]").forEach((button) => {
       button.addEventListener("click", () => loadModelRouterPreview(
         button.dataset.modelRouterCommand,
+        button.dataset.modelTask,
+        button.dataset.modelSensitivity,
+        button.dataset.modelSize
+      ));
+    });
+    document.querySelectorAll("button[data-model-hint-command]").forEach((button) => {
+      button.addEventListener("click", () => loadModelHintPreview(
+        button.dataset.modelHintCommand,
+        button.dataset.modelSource,
         button.dataset.modelTask,
         button.dataset.modelSensitivity,
         button.dataset.modelSize
