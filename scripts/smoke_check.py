@@ -1004,6 +1004,8 @@ class SmokeRunner:
         assert "agent decision trace" in lowered, html[:300]
         assert "layer 14 status" in lowered, html[:300]
         assert "workspace preview" in lowered, html[:300]
+        assert "visual style preview" in lowered, html[:300]
+        assert "/visual/style-preview" in html, html[:300]
         return "debug agent panel"
 
     def check_mode_registry_preview(self) -> str:
@@ -1368,6 +1370,44 @@ class SmokeRunner:
 
         return "workspace schema/preview/separation/parser/export/context/builder"
 
+    def check_visual_style_registry_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        styles_response = client.get("/visual/styles")
+        assert styles_response.status_code == 200, styles_response.text
+        styles_payload = styles_response.json()
+        assert styles_payload.get("read_only") is True, styles_payload
+        assert styles_payload.get("image_generation_performed") is False, styles_payload
+        styles = styles_payload.get("styles", [])
+        assert isinstance(styles, list) and styles, styles_payload
+        style_ids = {style.get("id") for style in styles}
+        assert "lux_amber_accent" in style_ids, styles_payload
+        metadata = styles_payload.get("metadata", {})
+        assert metadata.get("lux_amber_accent_color") == "#ab6b0c", styles_payload
+        assert metadata.get("default_line_density") == "low", styles_payload
+
+        preview_response = client.post(
+            "/visual/style-preview",
+            json={"prompt": "%40 ya\u011fl\u0131 boya %20 pixel", "requested_styles": [], "mode": "smoke"},
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("read_only") is True, preview
+        assert preview.get("image_generation_performed") is False, preview
+        assert preview.get("signature_default") is True, preview
+        mix = preview.get("style_mix_preview", [])
+        assert isinstance(mix, list) and mix, preview
+        mix_by_id = {item.get("style_id"): item for item in mix}
+        assert mix_by_id.get("oil_paint", {}).get("ratio") == 0.4, preview
+        assert mix_by_id.get("pixel", {}).get("ratio") == 0.2, preview
+        return "visual style registry preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -1435,6 +1475,7 @@ class SmokeRunner:
             ("agent_decision_trace_preview", self.check_agent_decision_trace_preview),
             ("layer14_status_snapshot", self.check_layer14_status_snapshot),
             ("workspace_schema_preview", self.check_workspace_schema_preview),
+            ("visual_style_registry_preview", self.check_visual_style_registry_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
