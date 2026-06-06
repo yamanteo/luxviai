@@ -38,6 +38,7 @@ from luxway_data_preview import preview_luxway_data
 from luxway_device_safety import preview_luxway_device_safety
 from luxway_permission_model import luxway_permission_model, preview_luxway_permission
 from luxway_weekly_report import luxway_weekly_report_schema, preview_luxway_weekly_report
+from model_router_config import model_router_config, model_router_status, preview_model_route
 from agent_scaffold import (
     ANDROID_PERMISSION_NOTES,
     IOS_PERMISSION_NOTES,
@@ -351,6 +352,13 @@ class LuxwayDataPreviewRequest(BaseModel):
 class LuxwayDeviceSafetyPreviewRequest(BaseModel):
     command: str = Field(default="", max_length=2000)
     platform: str = Field(default="unknown", max_length=50)
+
+
+class ModelRouterPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    task_type: str = Field(default="", max_length=80)
+    sensitivity: str = Field(default="normal", max_length=50)
+    response_size: str = Field(default="medium", max_length=50)
 
 
 # =========================================================
@@ -6636,6 +6644,21 @@ async def debug_audio_status():
     return audio_status_snapshot()
 
 
+@app.get("/router/model-config")
+async def router_model_config_endpoint():
+    return model_router_config()
+
+
+@app.post("/router/model-preview")
+async def router_model_preview_endpoint(payload: ModelRouterPreviewRequest):
+    return preview_model_route(payload.command, payload.task_type, payload.sensitivity, payload.response_size)
+
+
+@app.get("/debug/model-router-status")
+async def debug_model_router_status():
+    return model_router_status()
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -6955,6 +6978,24 @@ async def debug_agent_panel():
       <button data-luxway-safety-command="annemi ara" data-luxway-platform="android">Safety: ara</button>
       <button data-luxway-safety-command="ayarlar\u0131 de\u011fi\u015ftir" data-luxway-platform="android">Safety: ayar</button>
       <button data-luxway-safety-command="depolamay\u0131 temizle" data-luxway-platform="android">Safety: depolama</button>
+    </div>
+    <h2>Model Router Preview</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/model-router-status">Model Router Status</button>
+      <button data-endpoint="/router/model-config">Model Router Config</button>
+    </div>
+    <div class="bar">
+      <button data-model-router-command="normal sohbet" data-model-task="normal_chat">normal sohbet</button>
+      <button data-model-router-command="uzun rapor yaz" data-model-task="report_writer" data-model-size="long">uzun rapor yaz</button>
+      <button data-model-router-command="CV haz\u0131rla" data-model-task="cv_builder">CV haz\u0131rla</button>
+      <button data-model-router-command="r\u00fcya sahnesi promptla" data-model-task="dream_scene">r\u00fcya sahnesi promptla</button>
+      <button data-model-router-command="Lux Ambrosia promptu haz\u0131rla" data-model-task="ambrosia_prompt">Lux Ambrosia promptu</button>
+      <button data-model-router-command="g\u00f6rsel \u00fcret" data-model-task="image_generation_request">g\u00f6rsel \u00fcret</button>
+      <button data-model-router-command="\u00e7izimi oku" data-model-task="sketch_understanding_request">\u00e7izimi oku</button>
+      <button data-model-router-command="Luxway telefon raporu" data-model-task="luxway">Luxway telefon raporu</button>
+      <button data-model-router-command="hassas g\u00fcvenlik sorusu" data-model-task="safety_sensitive" data-model-sensitivity="safety">hassas g\u00fcvenlik sorusu</button>
+      <button data-model-router-command="kritik kod debug" data-model-task="critical_debug" data-model-sensitivity="high">kritik kod debug</button>
+      <button data-model-router-command="kod d\u00fczenle" data-model-task="code">kod d\u00fczenle</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7386,6 +7427,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadModelRouterPreview(command, taskType, sensitivity, responseSize) {
+      statusEl.textContent = "Loading model router preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/router/model-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            task_type: taskType || "",
+            sensitivity: sensitivity || "normal",
+            response_size: responseSize || "medium"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded model router preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -7460,6 +7523,14 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-luxway-safety-command]").forEach((button) => {
       button.addEventListener("click", () => loadLuxwayDeviceSafety(button.dataset.luxwaySafetyCommand, button.dataset.luxwayPlatform));
+    });
+    document.querySelectorAll("button[data-model-router-command]").forEach((button) => {
+      button.addEventListener("click", () => loadModelRouterPreview(
+        button.dataset.modelRouterCommand,
+        button.dataset.modelTask,
+        button.dataset.modelSensitivity,
+        button.dataset.modelSize
+      ));
     });
   </script>
 </body>

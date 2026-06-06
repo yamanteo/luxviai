@@ -1021,6 +1021,9 @@ class SmokeRunner:
         assert "/audio/preview-signal" in html, html[:300]
         assert "/audio/privacy-boundary-preview" in html, html[:300]
         assert "/debug/audio-status" in html, html[:300]
+        assert "/router/model-config" in html, html[:300]
+        assert "/router/model-preview" in html, html[:300]
+        assert "/debug/model-router-status" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
         assert "/luxway/permission-model" in html, html[:300]
@@ -2239,6 +2242,102 @@ class SmokeRunner:
         assert "/luxway/device-safety-preview" in endpoints, data
         return "luxway full status"
 
+    def check_model_router_config_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        config_response = client.get("/router/model-config")
+        assert config_response.status_code == 200, config_response.text
+        config = config_response.json()
+        assert config.get("read_only") is True, config
+        assert config.get("deepseek_target_share") == 0.96, config
+        assert config.get("mini_5_4_target_share") == 0.03, config
+        assert config.get("gpt_5_5_target_share") == 0.01, config
+        role_ids = {item.get("id") for item in config.get("model_roles", [])}
+        assert {"deepseek_primary", "mini_5_4_support", "gpt_5_5_premium_fallback", "image_api_future"} <= role_ids, config
+        policy = config.get("privacy_policy", {})
+        assert policy.get("raw_user_text_logged") is False, config
+        assert policy.get("real_billing_write") is False, config
+
+        status_response = client.get("/debug/model-router-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("model_router_ready") is True, status
+        assert status.get("read_only") is True, status
+        assert status.get("routing_changed") is False, status
+        assert status.get("real_model_switch_performed") is False, status
+        assert status.get("real_api_call_performed") is False, status
+        assert status.get("billing_write_performed") is False, status
+        assert status.get("memory_write_performed") is False, status
+        assert status.get("db_write_performed") is False, status
+        assert status.get("file_write_performed") is False, status
+        assert status.get("raw_user_text_logged") is False, status
+        assert status.get("deepseek_target_share") == 0.96, status
+        assert status.get("mini_5_4_target_share") == 0.03, status
+        assert status.get("gpt_5_5_target_share") == 0.01, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        def preview(command: str, task_type: str = "", sensitivity: str = "normal", response_size: str = "medium") -> dict:
+            response = client.post(
+                "/router/model-preview",
+                json={
+                    "command": command,
+                    "task_type": task_type,
+                    "sensitivity": sensitivity,
+                    "response_size": response_size,
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("raw_user_text_logged") is False, payload
+            assert payload.get("safe_derived_signals_only") is True, payload
+            assert payload.get("routing_changed") is False, payload
+            assert payload.get("real_model_switch_performed") is False, payload
+            assert payload.get("real_api_call_performed") is False, payload
+            assert payload.get("billing_write_performed") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            assert payload.get("db_write_performed") is False, payload
+            assert payload.get("file_write_performed") is False, payload
+            assert payload.get("read_only") is True, payload
+            return payload
+
+        normal = preview("normal sohbet")
+        assert normal.get("recommended_provider") == "deepseek_primary", normal
+        assert normal.get("target_distribution", {}).get("deepseek") == 0.96, normal
+
+        report = preview("uzun rapor yaz", response_size="long")
+        assert report.get("detected_task_type") in {"workspace", "report_writer"}, report
+        assert report.get("recommended_provider") == "deepseek_primary", report
+
+        dream = preview("ruya sahnesi promptla")
+        assert dream.get("recommended_provider") == "deepseek_primary", dream
+        assert dream.get("recommended_model_role") in {"visual_prompt_planner", "primary_reasoning"}, dream
+        assert dream.get("real_api_call_performed") is False, dream
+
+        image = preview("gorsel uret")
+        assert image.get("recommended_provider") == "image_api_future" or image.get("recommended_model_role") == "image_generation_future", image
+        assert image.get("image_generation_performed") is False, image
+        assert image.get("real_api_call_performed") is False, image
+
+        sketch = preview("cizimi oku")
+        assert sketch.get("recommended_provider") == "mini_5_4_support", sketch
+        assert sketch.get("recommended_model_role") in {"multimodal_reader_future", "sketch_interpreter_future"}, sketch
+
+        critical = preview("kritik kod debug", sensitivity="high")
+        assert critical.get("recommended_provider") == "gpt_5_5_premium_fallback" or critical.get("fallback_model_role") == "fallback_high_quality", critical
+        assert critical.get("real_model_switch_performed") is False, critical
+
+        luxway = preview("Luxway telefon raporu")
+        assert luxway.get("recommended_provider") == "deepseek_primary", luxway
+        assert luxway.get("real_phone_access_enabled") is False, luxway
+        return "model router config preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2313,6 +2412,7 @@ class SmokeRunner:
             ("voice_audio_status_snapshot", self.check_voice_audio_status_snapshot),
             ("audio_signal_preview", self.check_audio_signal_preview),
             ("audio_privacy_boundary_preview", self.check_audio_privacy_boundary_preview),
+            ("model_router_config_preview", self.check_model_router_config_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),
