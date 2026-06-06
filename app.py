@@ -30,6 +30,21 @@ from learning.pipeline import LearningPipeline
 from learning.cost_logger import CostLogger, estimate_tokens
 from learning.efficiency_router import EfficiencyRouter
 from learning.token_budget_policy import TokenBudgetPolicy
+from agent_scaffold import (
+    ANDROID_PERMISSION_NOTES,
+    IOS_PERMISSION_NOTES,
+    PRIVACY_RULES,
+    all_capabilities,
+    luxway_capabilities,
+    personal_agent_capabilities,
+)
+from multimodal_memory_scaffold import (
+    DEFAULT_MEMORY_FIELDS,
+    MULTIMODAL_MEMORY_TEMPLATES,
+    build_memory_signal,
+    multimodal_memory_schema,
+    validate_memory_signal,
+)
 
 try:
     from dotenv import load_dotenv
@@ -167,6 +182,20 @@ class ExplainRequest(BaseModel):
     text: str = Field(min_length=1, max_length=300)
     user_lang: str = "tr"
     force_translate: bool = False
+
+
+class MemorySignalPreviewRequest(BaseModel):
+    id: str = ""
+    type: str
+    title: str = ""
+    summary: str = ""
+    source_modality: str = "text"
+    sensitivity: str = "low"
+    retention: str = "session"
+    created_at: str = ""
+    updated_at: str = ""
+    tags: List[str] = Field(default_factory=list)
+    raw_data_stored: bool = False
 
 
 # =========================================================
@@ -5954,6 +5983,43 @@ async def memory(user_id: str = "default_user"):
     return {
         "items": items[:20],
         "analysis": build_memory_overview(profile, session, garden),
+    }
+
+
+@app.get("/agent/capabilities")
+async def agent_capabilities():
+    return {
+        "personal_capabilities": personal_agent_capabilities(),
+        "luxway_capabilities": luxway_capabilities(),
+        "platform_permissions": {
+            "android": ANDROID_PERMISSION_NOTES,
+            "ios": IOS_PERMISSION_NOTES,
+        },
+        "privacy_rules": PRIVACY_RULES,
+        "all_capabilities": all_capabilities(),
+    }
+
+
+@app.get("/memory/schema")
+async def memory_schema():
+    return {
+        "schema": multimodal_memory_schema(),
+        "templates": MULTIMODAL_MEMORY_TEMPLATES[:],
+        "required_fields": DEFAULT_MEMORY_FIELDS,
+    }
+
+
+@app.post("/memory/preview_signal")
+async def preview_memory_signal(payload: MemorySignalPreviewRequest):
+    signal = build_memory_signal(payload.dict())
+    result = validate_memory_signal(signal)
+    # preview path only; persistence is explicitly deferred.
+    return {
+        "ok": result.get("ok"),
+        "signal": result.get("signal"),
+        "errors": result.get("errors"),
+        "checks": result.get("checks"),
+        "privacy_notes": PRIVACY_RULES,
     }
 
 

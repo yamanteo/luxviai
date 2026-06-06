@@ -470,6 +470,53 @@ class SmokeRunner:
         assert "response" in chat_json and "meta" in chat_json, chat_json
         return "/health /chat"
 
+    def check_agent_capabilities_api(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/agent/capabilities")
+        assert response.status_code == 200, response.text
+        data = response.json()
+        personal = data.get("personal_capabilities")
+        luxway = data.get("luxway_capabilities")
+        required_personal = {
+            "weekly_summary",
+            "task_followup",
+            "email_summary",
+            "message_summary",
+            "calendar_overview",
+            "file_finder",
+            "device_cleanup_suggestions",
+            "app_usage_review",
+            "notification_priority",
+            "phone_assistant_luxway",
+            "workspace_helper",
+            "cv_helper",
+            "report_helper",
+            "presentation_helper",
+        }
+        required_luxway = {
+            "read_emails",
+            "read_messages",
+            "draft_message",
+            "call_contact",
+            "open_app",
+            "scan_unused_apps",
+            "scan_storage_usage",
+            "app_cleanup_suggestions",
+            "notification_digest",
+            "device_health_summary",
+        }
+        assert isinstance(personal, list) and required_personal.issubset({item.get("id") for item in personal}), personal
+        assert isinstance(luxway, list) and required_luxway.issubset({item.get("id") for item in luxway}), luxway
+        assert data.get("platform_permissions", {}).get("android"), data
+        assert data.get("platform_permissions", {}).get("ios"), data
+        return "agent capabilities"
+
     def check_ws_stream_schema(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -549,6 +596,119 @@ class SmokeRunner:
             luxapp.enforce_count_guard = original_enforce
         return "typing/chunk/done"
 
+    def check_agent_privacy_rules_present(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/agent/capabilities")
+        assert response.status_code == 200, response.text
+        data = response.json()
+        rules = data.get("privacy_rules", [])
+        assert isinstance(rules, list) and rules, rules
+        joined = " ".join(str(x).lower() for x in rules)
+        assert "onay" in joined, rules
+        assert "permission" in joined, rules
+        return "privacy rule checks"
+
+    def check_luxway_capabilities_planned_inactive(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/agent/capabilities")
+        assert response.status_code == 200, response.text
+        luxway = response.json().get("luxway_capabilities", [])
+        assert isinstance(luxway, list) and luxway, luxway
+        assert all(item.get("enabled") is False for item in luxway), luxway
+        assert all(str(item.get("status")) == "planned" for item in luxway), luxway
+        return "luxway planned/inactive"
+
+    def check_memory_schema_contains_fields(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        required = {
+            "id",
+            "type",
+            "title",
+            "summary",
+            "source_modality",
+            "sensitivity",
+            "retention",
+            "created_at",
+            "updated_at",
+            "tags",
+            "raw_data_stored",
+        }
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/memory/schema")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        schema = payload.get("schema", {})
+        assert required.issubset(set(schema.get("required_fields", []))), schema
+        assert "templates" in payload and isinstance(payload.get("templates"), list), payload
+        assert "signal_types" in schema and isinstance(schema.get("signal_types"), list), schema
+        return "memory schema fields"
+
+    def check_memory_preview_signal_privacy(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.post(
+            "/memory/preview_signal",
+            json={
+                "type": "text_preference",
+                "title": "test sinyal",
+                "summary": "özet",
+                "source_modality": "text",
+                "sensitivity": "low",
+                "retention": "session",
+                "raw_data_stored": True,
+                "tags": ["test", "smoke"],
+            },
+        )
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        signal = payload.get("signal", {})
+        assert payload.get("ok") is True, payload
+        assert signal.get("raw_data_stored") is False, payload
+        assert signal.get("title"), payload
+        assert signal.get("summary"), payload
+        assert any("raw_data_stored_enforced_false" in str(x) for x in payload.get("checks", [])), payload
+        return "memory preview raw false"
+
+    def check_high_risk_agent_confirmation(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/agent/capabilities")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        all_caps = payload.get("all_capabilities", [])
+        assert isinstance(all_caps, list) and all_caps, all_caps
+        high_caps = [cap for cap in all_caps if str(cap.get("risk_level")).lower() == "high"]
+        assert high_caps, "No high-risk caps found"
+        assert all(bool(cap.get("requires_user_confirmation")) for cap in high_caps), high_caps
+        return "high-risk confirmation required"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -599,6 +759,12 @@ class SmokeRunner:
             ("efficiency_router_shadow", self.check_efficiency_and_shadow),
             ("auto_continuation", self.check_auto_continuation),
             ("api_schema_in_process", self.check_api_schema),
+            ("agent_capabilities_schema", self.check_agent_capabilities_api),
+            ("agent_privacy_rules", self.check_agent_privacy_rules_present),
+            ("luxway_status_inactive", self.check_luxway_capabilities_planned_inactive),
+            ("memory_schema_fields", self.check_memory_schema_contains_fields),
+            ("memory_preview_raw_data", self.check_memory_preview_signal_privacy),
+            ("agent_high_risk_confirmation", self.check_high_risk_agent_confirmation),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
