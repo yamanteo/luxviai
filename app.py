@@ -30,6 +30,7 @@ from learning.pipeline import LearningPipeline
 from learning.cost_logger import CostLogger, estimate_tokens
 from learning.efficiency_router import EfficiencyRouter
 from learning.token_budget_policy import TokenBudgetPolicy
+from agent_decision_trace import build_agent_decision_trace
 from agent_scaffold import (
     ANDROID_PERMISSION_NOTES,
     IOS_PERMISSION_NOTES,
@@ -6173,6 +6174,26 @@ async def debug_permission_preview_post(payload: AgentIntentPreviewRequest):
     }
 
 
+@app.get("/debug/agent-decision-trace")
+async def debug_agent_decision_trace_get(q: str = Query("", max_length=500)):
+    return {
+        "decision_trace": build_agent_decision_trace(q),
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+    }
+
+
+@app.post("/debug/agent-decision-trace")
+async def debug_agent_decision_trace_post(payload: AgentIntentPreviewRequest):
+    return {
+        "decision_trace": build_agent_decision_trace(payload.text),
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+    }
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6225,6 +6246,17 @@ async def debug_agent_panel():
       <button data-permission-command="raporu PDF olarak indir">raporu PDF olarak indir</button>
       <button data-permission-command="tek ad\u0131m s\u00f6yle">tek ad\u0131m s\u00f6yle</button>
     </div>
+    <h2>Agent Decision Trace</h2>
+    <div class="bar">
+      <button data-trace-command="CV haz\u0131rla">CV haz\u0131rla</button>
+      <button data-trace-command="Luxeph'e ge\u00e7">Luxeph'e ge\u00e7</button>
+      <button data-trace-command="mailimi oku">mailimi oku</button>
+      <button data-trace-command="bu maili g\u00f6nder">bu maili g\u00f6nder</button>
+      <button data-trace-command="telefonumdaki gereksiz uygulamalar\u0131 sil">telefonumdaki gereksiz uygulamalar\u0131 sil</button>
+      <button data-trace-command="raporu PDF olarak indir">raporu PDF olarak indir</button>
+      <button data-trace-command="tek ad\u0131m s\u00f6yle">tek ad\u0131m s\u00f6yle</button>
+      <button data-trace-command="Codex modu">Codex modu</button>
+    </div>
     <p class="status" id="status">Choose a sample.</p>
     <pre id="output">{}</pre>
   </main>
@@ -6252,6 +6284,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-permission-command]").forEach((button) => {
       button.addEventListener("click", () => loadSample("/debug/permission-preview?q=" + encodeURIComponent(button.dataset.permissionCommand)));
+    });
+    document.querySelectorAll("button[data-trace-command]").forEach((button) => {
+      button.addEventListener("click", () => loadSample("/debug/agent-decision-trace?q=" + encodeURIComponent(button.dataset.traceCommand)));
     });
   </script>
 </body>

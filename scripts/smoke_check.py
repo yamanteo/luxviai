@@ -991,6 +991,7 @@ class SmokeRunner:
             "/debug/router/sample-cv",
             "/debug/mode-preview",
             "/debug/permission-preview",
+            "/debug/agent-decision-trace",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -998,6 +999,7 @@ class SmokeRunner:
         assert "no raw data is stored" in lowered, html[:300]
         assert "mode registry" in lowered, html[:300]
         assert "permission boundary" in lowered, html[:300]
+        assert "agent decision trace" in lowered, html[:300]
         return "debug agent panel"
 
     def check_mode_registry_preview(self) -> str:
@@ -1099,6 +1101,55 @@ class SmokeRunner:
 
         return "permission boundary preview"
 
+    def check_agent_decision_trace_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        def trace(command: str) -> dict[str, Any]:
+            response = client.get("/debug/agent-decision-trace", params={"q": command})
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            item = payload.get("decision_trace", {})
+            assert payload.get("read_only") is True, payload
+            assert payload.get("raw_data_stored") is False, payload
+            assert payload.get("write_performed") is False, payload
+            assert item.get("read_only") is True, payload
+            assert item.get("raw_data_stored") is False, payload
+            assert item.get("write_performed") is False, payload
+            assert item.get("can_execute_now") is False, payload
+            assert item.get("user_facing_preview"), payload
+            return item
+
+        cv_trace = trace("CV haz\u0131rla")
+        assert cv_trace.get("inferred_agent_domain") in {"cv", "workspace"}, cv_trace
+        assert cv_trace.get("inferred_user_intent") in {"draft_document", "start_mode"}, cv_trace
+        assert cv_trace.get("scaffold_decision") == "allowed_preview_only", cv_trace
+
+        read_mail = trace("mailimi oku")
+        assert read_mail.get("inferred_agent_domain") == "email", read_mail
+        assert read_mail.get("inferred_user_intent") == "read_private_data", read_mail
+        assert read_mail.get("scaffold_decision") in {"blocked_requires_permission", "blocked_real_action_not_implemented"}, read_mail
+
+        send_mail = trace("bu maili g\u00f6nder")
+        assert send_mail.get("inferred_user_intent") == "send_or_write", send_mail
+        assert send_mail.get("scaffold_decision") in {"blocked_requires_confirmation", "blocked_real_action_not_implemented"}, send_mail
+
+        luxeph = trace("Luxeph'e ge\u00e7")
+        assert luxeph.get("inferred_agent_domain") == "luxeph", luxeph
+        assert luxeph.get("scaffold_decision") in {"blocked_private_sensitive", "blocked_requires_confirmation"}, luxeph
+
+        one_step = trace("tek ad\u0131m s\u00f6yle")
+        assert one_step.get("scaffold_decision") == "allowed_preview_only", one_step
+
+        unknown = trace("bunu belki sonra dusunelim")
+        assert unknown.get("scaffold_decision") == "low_confidence_ask_clarify", unknown
+        return "agent decision trace preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -1163,6 +1214,7 @@ class SmokeRunner:
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),
             ("permission_boundary_preview", self.check_permission_boundary_preview),
+            ("agent_decision_trace_preview", self.check_agent_decision_trace_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
