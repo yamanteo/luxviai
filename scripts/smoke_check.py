@@ -1028,6 +1028,7 @@ class SmokeRunner:
         assert "/luxway/weekly-report-schema" in html, html[:300]
         assert "/luxway/weekly-report-preview" in html, html[:300]
         assert "/luxway/data-preview" in html, html[:300]
+        assert "/luxway/device-safety-preview" in html, html[:300]
         assert "/debug/luxway-status" in html, html[:300]
         return "debug agent panel"
 
@@ -2157,6 +2158,53 @@ class SmokeRunner:
         assert notifications.get("detected_domain") == "notifications", notifications
         return "luxway data preview"
 
+    def check_luxway_device_safety_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        def preview(command: str, platform: str = "android") -> dict:
+            response = client.post("/luxway/device-safety-preview", json={"command": command, "platform": platform})
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("requires_permission") is True, payload
+            assert payload.get("requires_confirmation") is True, payload
+            assert payload.get("blocked_by_default") is True, payload
+            assert payload.get("real_access_enabled") is False, payload
+            assert payload.get("action_performed") is False, payload
+            assert payload.get("data_read") is False, payload
+            assert payload.get("data_written") is False, payload
+            assert payload.get("read_only") is True, payload
+            assert payload.get("safe_alternative"), payload
+            assert payload.get("confirmation_phrase_required"), payload
+            return payload
+
+        app_delete = preview("gereksiz uygulamalari sil")
+        assert app_delete.get("detected_risk_category") in {"delete_app", "cleanup_storage"}, app_delete
+
+        file_delete = preview("bu dosyayi sil")
+        assert file_delete.get("detected_risk_category") == "delete_file", file_delete
+
+        message = preview("Ali'ye mesaj gonder")
+        assert message.get("detected_risk_category") == "send_message", message
+
+        mail = preview("bu maili gonder")
+        assert mail.get("detected_risk_category") == "send_mail", mail
+
+        call = preview("annemi ara")
+        assert call.get("detected_risk_category") == "make_call", call
+
+        settings = preview("ayarlari degistir")
+        assert settings.get("detected_risk_category") == "change_device_setting", settings
+
+        storage = preview("depolamayi temizle")
+        assert storage.get("detected_risk_category") == "cleanup_storage", storage
+        return "luxway device safety preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2235,6 +2283,7 @@ class SmokeRunner:
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),
             ("luxway_data_preview", self.check_luxway_data_preview),
+            ("luxway_device_safety_preview", self.check_luxway_device_safety_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),

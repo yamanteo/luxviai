@@ -35,6 +35,7 @@ from audio_signal_schema import audio_signal_schema, audio_status_snapshot, prev
 from agent_decision_trace import build_agent_decision_trace
 from luxway_capabilities import luxway_capability_registry, luxway_status_snapshot, preview_luxway_command
 from luxway_data_preview import preview_luxway_data
+from luxway_device_safety import preview_luxway_device_safety
 from luxway_permission_model import luxway_permission_model, preview_luxway_permission
 from luxway_weekly_report import luxway_weekly_report_schema, preview_luxway_weekly_report
 from agent_scaffold import (
@@ -344,6 +345,11 @@ class LuxwayWeeklyReportPreviewRequest(BaseModel):
 class LuxwayDataPreviewRequest(BaseModel):
     command: str = Field(default="", max_length=2000)
     domain: str = Field(default="", max_length=50)
+    platform: str = Field(default="unknown", max_length=50)
+
+
+class LuxwayDeviceSafetyPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=2000)
     platform: str = Field(default="unknown", max_length=50)
 
 
@@ -6665,6 +6671,11 @@ async def luxway_data_preview_endpoint(payload: LuxwayDataPreviewRequest):
     return preview_luxway_data(payload.command, payload.domain, payload.platform)
 
 
+@app.post("/luxway/device-safety-preview")
+async def luxway_device_safety_preview_endpoint(payload: LuxwayDeviceSafetyPreviewRequest):
+    return preview_luxway_device_safety(payload.command, payload.platform)
+
+
 @app.get("/debug/luxway-status")
 async def debug_luxway_status():
     return luxway_status_snapshot()
@@ -6874,6 +6885,15 @@ async def debug_agent_panel():
       <button data-luxway-data-command="gereksiz uygulamalar\u0131 bul" data-luxway-domain="app_usage" data-luxway-platform="android">Data: uygulama</button>
       <button data-luxway-data-command="depolamay\u0131 temizle" data-luxway-domain="storage" data-luxway-platform="android">Data: depolama</button>
       <button data-luxway-data-command="bildirimlerimi \u00f6nceliklendir" data-luxway-domain="notifications" data-luxway-platform="android">Data: bildirim</button>
+    </div>
+    <div class="bar">
+      <button data-luxway-safety-command="gereksiz uygulamalar\u0131 sil" data-luxway-platform="android">Safety: uygulama sil</button>
+      <button data-luxway-safety-command="bu dosyay\u0131 sil" data-luxway-platform="android">Safety: dosya sil</button>
+      <button data-luxway-safety-command="Ali'ye mesaj g\u00f6nder" data-luxway-platform="android">Safety: mesaj g\u00f6nder</button>
+      <button data-luxway-safety-command="bu maili g\u00f6nder" data-luxway-platform="android">Safety: mail g\u00f6nder</button>
+      <button data-luxway-safety-command="annemi ara" data-luxway-platform="android">Safety: ara</button>
+      <button data-luxway-safety-command="ayarlar\u0131 de\u011fi\u015ftir" data-luxway-platform="android">Safety: ayar</button>
+      <button data-luxway-safety-command="depolamay\u0131 temizle" data-luxway-platform="android">Safety: depolama</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7288,6 +7308,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadLuxwayDeviceSafety(command, platform) {
+      statusEl.textContent = "Loading Luxway device safety preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/luxway/device-safety-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ command, platform: platform || "unknown" })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded Luxway device safety preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -7359,6 +7396,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-luxway-data-command]").forEach((button) => {
       button.addEventListener("click", () => loadLuxwayDataPreview(button.dataset.luxwayDataCommand, button.dataset.luxwayDomain, button.dataset.luxwayPlatform));
+    });
+    document.querySelectorAll("button[data-luxway-safety-command]").forEach((button) => {
+      button.addEventListener("click", () => loadLuxwayDeviceSafety(button.dataset.luxwaySafetyCommand, button.dataset.luxwayPlatform));
     });
   </script>
 </body>
