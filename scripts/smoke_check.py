@@ -1027,6 +1027,7 @@ class SmokeRunner:
         assert "/luxway/permission-preview" in html, html[:300]
         assert "/luxway/weekly-report-schema" in html, html[:300]
         assert "/luxway/weekly-report-preview" in html, html[:300]
+        assert "/luxway/data-preview" in html, html[:300]
         assert "/debug/luxway-status" in html, html[:300]
         return "debug agent panel"
 
@@ -2106,6 +2107,56 @@ class SmokeRunner:
         assert "focus_recommendations_preview" in {item.get("id") for item in focus.get("report_sections", [])}, focus
         return "luxway weekly report preview"
 
+    def check_luxway_data_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        def preview(command: str, domain: str = "", platform: str = "android") -> dict:
+            response = client.post("/luxway/data-preview", json={"command": command, "domain": domain, "platform": platform})
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("requires_permission") is True, payload
+            assert payload.get("real_access_enabled") is False, payload
+            assert payload.get("data_read") is False, payload
+            assert payload.get("data_written") is False, payload
+            assert payload.get("action_performed") is False, payload
+            assert payload.get("read_only") is True, payload
+            preview_text = json.dumps(payload.get("preview_sections", []), ensure_ascii=False).lower()
+            preview_text += json.dumps(payload.get("safe_preview_message", ""), ensure_ascii=False).lower()
+            assert "schema preview only" in preview_text, payload
+            assert "no real or invented" in preview_text, payload
+            for forbidden in ["instagram", "whatsapp:", "gmail:", "ali:", "yarin 10", "42", "120", "gb"]:
+                assert forbidden not in preview_text, payload
+            return payload
+
+        mail = preview("mailimi ozetle")
+        assert mail.get("detected_domain") == "mail", mail
+        assert "mail" in mail.get("required_permissions", []), mail
+
+        messages = preview("mesajlarimi ozetle")
+        assert messages.get("detected_domain") == "messages", messages
+        assert "messages" in messages.get("required_permissions", []), messages
+
+        calendar = preview("takvimimi ozetle", platform="ios")
+        assert calendar.get("detected_domain") == "calendar", calendar
+        assert calendar.get("platform") == "ios", calendar
+
+        storage = preview("depolamayi temizle")
+        assert storage.get("detected_domain") == "storage", storage
+        assert storage.get("requires_confirmation") is True, storage
+
+        apps = preview("gereksiz uygulamalari bul")
+        assert apps.get("detected_domain") == "app_usage", apps
+
+        notifications = preview("bildirimlerimi onceliklendir")
+        assert notifications.get("detected_domain") == "notifications", notifications
+        return "luxway data preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2183,6 +2234,7 @@ class SmokeRunner:
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),
+            ("luxway_data_preview", self.check_luxway_data_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
