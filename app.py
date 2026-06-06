@@ -6121,6 +6121,66 @@ async def debug_router_sample_cv():
     return _debug_router_sample("CV haz\u0131rla, eksik alanlar\u0131 bana sor ve profesyonel T\u00fcrk\u00e7e yap.")
 
 
+@app.get("/debug/agent-panel")
+async def debug_agent_panel():
+    html_doc = """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Luxviai Agent Debug Panel</title>
+  <style>
+    :root { color-scheme: dark; --bg: #101010; --panel: #181818; --line: #333; --amber: #ab6b0c; --text: #f4efe7; --muted: #b7ada0; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { max-width: 1120px; margin: 0 auto; padding: 32px 20px; }
+    h1 { margin: 0 0 8px; font-size: 28px; font-weight: 700; letter-spacing: 0; }
+    .note { margin: 0 0 22px; color: var(--muted); line-height: 1.5; }
+    .bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+    button { border: 1px solid var(--line); background: #202020; color: var(--text); padding: 10px 13px; border-radius: 8px; cursor: pointer; font: inherit; }
+    button:hover, button:focus { border-color: var(--amber); outline: 2px solid rgba(171, 107, 12, 0.25); }
+    pre { min-height: 420px; overflow: auto; margin: 0; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: #f8f2e9; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+    .status { color: var(--amber); margin: 0 0 10px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Luxviai Agent Debug Panel</h1>
+    <p class="note">Read-only scaffold preview. No real action is executed. No raw data is stored.</p>
+    <div class="bar">
+      <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
+      <button data-endpoint="/debug/agent/sample-luxway">Luxway Sample</button>
+      <button data-endpoint="/debug/agent/sample-visual">Visual Memory Sample</button>
+      <button data-endpoint="/debug/agent/sample-dream">Dream Scene Sample</button>
+      <button data-endpoint="/debug/router/sample-cv">CV Router Sample</button>
+    </div>
+    <p class="status" id="status">Choose a sample.</p>
+    <pre id="output">{}</pre>
+  </main>
+  <script>
+    const output = document.getElementById("output");
+    const statusEl = document.getElementById("status");
+    async function loadSample(endpoint) {
+      statusEl.textContent = "Loading " + endpoint;
+      output.textContent = "{}";
+      try {
+        const response = await fetch(endpoint, { headers: { "Accept": "application/json" } });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded " + endpoint : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
+    document.querySelectorAll("button[data-endpoint]").forEach((button) => {
+      button.addEventListener("click", () => loadSample(button.dataset.endpoint));
+    });
+  </script>
+</body>
+</html>"""
+    return HTMLResponse(content=html_doc)
+
+
 @app.get("/digest")
 async def digest(user_id: str = "default_user"):
     user_id = safe_user_id(user_id)

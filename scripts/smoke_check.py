@@ -972,6 +972,30 @@ class SmokeRunner:
 
         return "debug sample previews"
 
+    def check_debug_agent_panel(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/debug/agent-panel")
+        assert response.status_code == 200, response.text
+        html = response.text
+        for endpoint in [
+            "/debug/agent/sample-email",
+            "/debug/agent/sample-luxway",
+            "/debug/agent/sample-visual",
+            "/debug/agent/sample-dream",
+            "/debug/router/sample-cv",
+        ]:
+            assert endpoint in html, endpoint
+        lowered = html.lower()
+        assert "read-only" in lowered or "no real action" in lowered, html[:300]
+        assert "no raw data is stored" in lowered, html[:300]
+        return "debug agent panel"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -1033,6 +1057,7 @@ class SmokeRunner:
             ("agent_analyze_hub_read_only", self.check_agent_analyze_hub_read_only),
             ("router_preview_read_only", self.check_router_preview_read_only),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
+            ("debug_agent_panel", self.check_debug_agent_panel),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
