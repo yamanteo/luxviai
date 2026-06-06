@@ -1215,7 +1215,46 @@ class SmokeRunner:
         assert all(block.get("copyable") is False for block in command_blocks), blocks
         content_blocks = [block for block in blocks if block.get("type") in {"draft", "final", "paragraph", "heading"}]
         assert any(block.get("exportable") is True for block in content_blocks), blocks
-        return "workspace schema/preview"
+
+        separation_command = "sesli komut: giri\u015f b\u00f6l\u00fcm\u00fcn\u00fc k\u0131salt"
+        separation_response = client.post(
+            "/workspace/separation-preview",
+            json={
+                "command": separation_command,
+                "content": "Giris bolumu gereksiz tekrarlar iceriyor ve daha kisa olabilir.",
+            },
+        )
+        assert separation_response.status_code == 200, separation_response.text
+        separation = separation_response.json()
+        assert separation.get("read_only") is True, separation
+        assert separation.get("write_performed") is False, separation
+        for key in [
+            "original_blocks",
+            "command_blocks",
+            "content_blocks",
+            "exportable_blocks",
+            "non_exportable_blocks",
+            "final_output_blocks",
+        ]:
+            assert isinstance(separation.get(key), list), separation
+        separation_command_blocks = separation.get("command_blocks", [])
+        assert any(
+            block.get("type") == "command" and block.get("exportable") is False and block.get("copyable") is False
+            for block in separation_command_blocks
+        ), separation_command_blocks
+        assert any(
+            block.get("type") == "voice_command" and block.get("exportable") is False and block.get("copyable") is False
+            for block in separation_command_blocks
+        ), separation_command_blocks
+        clean_export = separation.get("clean_export_preview", "")
+        assert separation_command not in clean_export, separation
+        assert "sesli komut" not in clean_export.lower(), separation
+        assert any(block.get("exportable") is True for block in separation.get("content_blocks", [])), separation
+        assert all(
+            block.get("type") not in {"command", "voice_command", "ai_note"}
+            for block in separation.get("final_output_blocks", [])
+        ), separation
+        return "workspace schema/preview/separation"
 
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")

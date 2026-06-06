@@ -53,7 +53,7 @@ from multimodal_memory_scaffold import (
 from mode_registry import mode_registry, preview_mode_command
 from permission_boundary import preview_permission_boundary
 from router_scaffold import preview_router_decision
-from workspace_scaffold import build_workspace_preview, sample_workspace, workspace_schema
+from workspace_scaffold import build_workspace_preview, build_workspace_separation_preview, sample_workspace, workspace_schema
 
 try:
     from dotenv import load_dotenv
@@ -6247,6 +6247,11 @@ async def workspace_preview(payload: WorkspacePreviewRequest):
     return build_workspace_preview(payload.command, payload.content)
 
 
+@app.post("/workspace/separation-preview")
+async def workspace_separation_preview(payload: WorkspacePreviewRequest):
+    return build_workspace_separation_preview(payload.command, payload.content)
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6284,6 +6289,13 @@ async def debug_agent_panel():
       <button data-workspace-command="sunuma \u00e7evir">sunuma \u00e7evir</button>
       <button data-workspace-command="3. paragraf\u0131 akademikle\u015ftir">3. paragraf\u0131 akademikle\u015ftir</button>
       <button data-workspace-command="bu metni sonu\u00e7 b\u00f6l\u00fcm\u00fcne uygun hale getir">sonu\u00e7 b\u00f6l\u00fcm\u00fc</button>
+    </div>
+    <div class="bar">
+      <button data-workspace-separation-command="3. paragraf\u0131 akademikle\u015ftir">Separation: akademikle\u015ftir</button>
+      <button data-workspace-separation-command="bu metni rapora \u00e7evir">Separation: rapor</button>
+      <button data-workspace-separation-command="sunuma \u00e7evir">Separation: sunum</button>
+      <button data-workspace-separation-command="CV haz\u0131rla">Separation: CV</button>
+      <button data-workspace-separation-command="sesli komut: giri\u015f b\u00f6l\u00fcm\u00fcn\u00fc k\u0131salt">Separation: sesli komut</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6358,6 +6370,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadWorkspaceSeparation(command) {
+      statusEl.textContent = "Loading workspace separation preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/workspace/separation-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ command, content: "Ornek belge icerigi; sadece read-only ayrim onizlemesi icin kullanilir." })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded workspace separation preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -6372,6 +6401,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-workspace-command]").forEach((button) => {
       button.addEventListener("click", () => loadWorkspace(button.dataset.workspaceCommand));
+    });
+    document.querySelectorAll("button[data-workspace-separation-command]").forEach((button) => {
+      button.addEventListener("click", () => loadWorkspaceSeparation(button.dataset.workspaceSeparationCommand));
     });
   </script>
 </body>

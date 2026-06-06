@@ -39,8 +39,12 @@ WORKSPACE_BLOCK_FIELDS = [
     "metadata",
 ]
 
-_NON_COPY_EXPORT_TYPES = {"command", "voice_command"}
+_COMMAND_BLOCK_TYPES = {"command", "voice_command"}
+_NON_COPY_EXPORT_TYPES = set(_COMMAND_BLOCK_TYPES)
+_NON_EXPORTABLE_INTERNAL_TYPES = {"command", "voice_command", "ai_note"}
 _EXPORTABLE_CONTENT_TYPES = {"heading", "paragraph", "draft", "final", "section", "table_placeholder", "export_package_preview"}
+_CONTENT_BLOCK_TYPES = {"heading", "paragraph", "draft", "final", "section", "table_placeholder", "export_package_preview"}
+_FINAL_OUTPUT_TYPES = {"heading", "paragraph", "draft", "final", "table_placeholder"}
 
 
 def _normalize_text(value: str) -> str:
@@ -70,7 +74,7 @@ def _block(
     metadata: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
     copyable = block_type not in _NON_COPY_EXPORT_TYPES
-    exportable = block_type in _EXPORTABLE_CONTENT_TYPES and block_type not in _NON_COPY_EXPORT_TYPES
+    exportable = block_type in _EXPORTABLE_CONTENT_TYPES and block_type not in _NON_EXPORTABLE_INTERNAL_TYPES
     editable = block_type not in {"source", "citation", "export_package_preview"} and block_type not in _NON_COPY_EXPORT_TYPES
     return {
         "id": str(uuid.uuid4()),
@@ -94,6 +98,7 @@ def workspace_schema() -> Dict[str, Any]:
         "block_fields": list(WORKSPACE_BLOCK_FIELDS),
         "rules": [
             "command and voice_command blocks are never copyable or exportable.",
+            "ai_note blocks are internal preview notes and are never exportable.",
             "content blocks such as heading, paragraph, draft, and final can be exportable in preview.",
             "this scaffold never writes files, exports documents, or persists workspace data.",
         ],
@@ -231,6 +236,105 @@ def build_workspace_preview(command: str, content: str = "") -> Dict[str, Any]:
         "workspace_kind": kind,
         "blocks": blocks,
         "schema": workspace_schema(),
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+        "file_created": False,
+        "export_performed": False,
+    }
+
+
+def _is_voice_command(command: str) -> bool:
+    normalized = _normalize_text(command)
+    return "sesli komut" in normalized or "voice command" in normalized
+
+
+def _safe_preview_content(command: str, content: str) -> str:
+    if content.strip():
+        return content
+    kind = _workspace_kind(command)
+    if kind == "workspace":
+        return "Workspace content preview placeholder."
+    return ""
+
+
+def _sanitize_exportable_command_echo(blocks: List[Dict[str, Any]], command: str) -> None:
+    command_text = (command or "").strip()
+    if not command_text:
+        return
+    for block in blocks:
+        if block.get("exportable") is True and str(block.get("content", "")).strip() == command_text:
+            block["content"] = "Workspace content preview placeholder."
+
+
+def _with_internal_separation_blocks(command: str, content: str) -> List[Dict[str, Any]]:
+    preview = build_workspace_preview(command, _safe_preview_content(command, content))
+    blocks = list(preview["blocks"])
+    _sanitize_exportable_command_echo(blocks, command)
+    document = next((block for block in blocks if block.get("type") == "document"), {})
+    document_id = str(document.get("id", ""))
+    next_order = max(int(block.get("order", 0)) for block in blocks) + 1
+    if _is_voice_command(command):
+        blocks.append(
+            _block(
+                "voice_command",
+                title="Voice Command",
+                content=command,
+                role="input_command",
+                order=next_order,
+                parent_id=document_id,
+                metadata={"read_only": True, "excluded_from_export": True},
+            )
+        )
+        next_order += 1
+    blocks.append(
+        _block(
+            "ai_note",
+            title="Separation Note",
+            content="Internal preview note; command, voice command, and AI notes are excluded from clean export.",
+            role="internal_note",
+            order=next_order,
+            parent_id=document_id,
+            metadata={"read_only": True, "excluded_from_export": True},
+        )
+    )
+    return sorted(blocks, key=lambda block: int(block.get("order", 0)))
+
+
+def build_workspace_separation_preview(command: str, content: str = "") -> Dict[str, Any]:
+    blocks = _with_internal_separation_blocks(command, content)
+    command_blocks = [block for block in blocks if block.get("type") in _COMMAND_BLOCK_TYPES]
+    content_blocks = [block for block in blocks if block.get("type") in _CONTENT_BLOCK_TYPES]
+    exportable_blocks = [
+        block
+        for block in blocks
+        if block.get("exportable") is True and block.get("type") not in _NON_EXPORTABLE_INTERNAL_TYPES
+    ]
+    non_exportable_blocks = [block for block in blocks if block.get("exportable") is False]
+    final_output_blocks = [
+        block
+        for block in blocks
+        if block.get("type") in _FINAL_OUTPUT_TYPES
+        and block.get("exportable") is True
+        and block.get("role") == "content"
+    ]
+    clean_export_preview = "\n\n".join(
+        str(block.get("content", "")).strip()
+        for block in final_output_blocks
+        if str(block.get("content", "")).strip()
+    )
+    return {
+        "separation_id": str(uuid.uuid4()),
+        "command": command,
+        "content": content,
+        "original_blocks": blocks,
+        "command_blocks": command_blocks,
+        "content_blocks": content_blocks,
+        "exportable_blocks": exportable_blocks,
+        "non_exportable_blocks": non_exportable_blocks,
+        "final_output_blocks": final_output_blocks,
+        "clean_export_preview": clean_export_preview,
+        "safety_note": "Read-only preview only; commands, voice commands, and AI notes are excluded from export output.",
         "read_only": True,
         "raw_data_stored": False,
         "write_performed": False,
