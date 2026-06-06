@@ -1017,6 +1017,7 @@ class SmokeRunner:
         assert "/voice/preview-mode" in html, html[:300]
         assert "/audio/signal-schema" in html, html[:300]
         assert "/audio/preview-signal" in html, html[:300]
+        assert "/audio/privacy-boundary-preview" in html, html[:300]
         assert "/debug/audio-status" in html, html[:300]
         return "debug agent panel"
 
@@ -1790,6 +1791,59 @@ class SmokeRunner:
             assert isinstance(payload.get("emotional_atmosphere_preview"), dict), payload
         return "audio signal preview"
 
+    def check_audio_privacy_boundary_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        analyze_response = client.post(
+            "/audio/privacy-boundary-preview",
+            json={"command": "sesimi analiz et", "audio_context": "", "consent_state": "not_granted"},
+        )
+        assert analyze_response.status_code == 200, analyze_response.text
+        analyze = analyze_response.json()
+        assert analyze.get("consent_required") is True, analyze
+        assert analyze.get("raw_audio_stored") is False, analyze
+        assert analyze.get("recording_performed") is False, analyze
+        assert analyze.get("microphone_used") is False, analyze
+        assert analyze.get("clinical_diagnosis_allowed") is False, analyze
+        assert analyze.get("memory_write_allowed") is False, analyze
+        assert analyze.get("read_only") is True, analyze
+
+        mic_response = client.post(
+            "/audio/privacy-boundary-preview",
+            json={"command": "mikrofonu ac", "audio_context": "", "consent_state": "not_granted"},
+        )
+        assert mic_response.status_code == 200, mic_response.text
+        mic = mic_response.json()
+        blocked_without_consent = set(mic.get("blocked_without_consent", []))
+        assert "microphone_access" in blocked_without_consent, mic
+        assert "real_audio_processing_without_explicit_consent" in blocked_without_consent, mic
+
+        for command in ["panik konusuyorum", "sesimi kaydet", "sadece tonumu sakinlestir"]:
+            response = client.post(
+                "/audio/privacy-boundary-preview",
+                json={"command": command, "audio_context": "smoke boundary", "consent_state": "not_granted"},
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("raw_audio_allowed") is False, payload
+            assert payload.get("raw_audio_stored") is False, payload
+            assert payload.get("derived_signal_only") is True, payload
+            assert payload.get("recording_performed") is False, payload
+            assert payload.get("microphone_used") is False, payload
+            assert payload.get("clinical_diagnosis_allowed") is False, payload
+            assert payload.get("clinical_diagnosis_performed") is False, payload
+            assert payload.get("memory_write_allowed") is False, payload
+            assert payload.get("read_only") is True, payload
+            assert payload.get("safe_audio_use"), payload
+            assert payload.get("blocked_actions"), payload
+        return "audio privacy boundary preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -1861,6 +1915,7 @@ class SmokeRunner:
             ("visual_status_snapshot", self.check_visual_status_snapshot),
             ("voice_speed_preview", self.check_voice_speed_preview),
             ("audio_signal_preview", self.check_audio_signal_preview),
+            ("audio_privacy_boundary_preview", self.check_audio_privacy_boundary_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),

@@ -30,6 +30,7 @@ from learning.pipeline import LearningPipeline
 from learning.cost_logger import CostLogger, estimate_tokens
 from learning.efficiency_router import EfficiencyRouter
 from learning.token_budget_policy import TokenBudgetPolicy
+from audio_privacy_boundary import preview_audio_privacy_boundary
 from audio_signal_schema import audio_signal_schema, audio_status_snapshot, preview_audio_signal
 from agent_decision_trace import build_agent_decision_trace
 from agent_scaffold import (
@@ -303,6 +304,12 @@ class AudioSignalPreviewRequest(BaseModel):
     description: str = Field(default="", max_length=2000)
     simulated_voice_note: str = Field(default="", max_length=2000)
     context: str = Field(default="", max_length=4000)
+
+
+class AudioPrivacyBoundaryRequest(BaseModel):
+    command: str = Field(default="", max_length=2000)
+    audio_context: str = Field(default="", max_length=4000)
+    consent_state: str = Field(default="not_granted", max_length=50)
 
 
 # =========================================================
@@ -6519,6 +6526,11 @@ async def audio_preview_signal_endpoint(payload: AudioSignalPreviewRequest):
     return preview_audio_signal(payload.description, payload.simulated_voice_note, payload.context)
 
 
+@app.post("/audio/privacy-boundary-preview")
+async def audio_privacy_boundary_preview_endpoint(payload: AudioPrivacyBoundaryRequest):
+    return preview_audio_privacy_boundary(payload.command, payload.audio_context, payload.consent_state)
+
+
 @app.get("/debug/audio-status")
 async def debug_audio_status():
     return audio_status_snapshot()
@@ -6672,6 +6684,13 @@ async def debug_agent_panel():
       <button data-audio-description="daha sakin bir tona ge\u00e7">daha sakin bir tona ge\u00e7</button>
       <button data-audio-description="gece radyosu gibi yava\u015flat">gece radyosu gibi yava\u015flat</button>
       <button data-audio-description="enerjim d\u00fc\u015f\u00fck ama net anlat">enerjim d\u00fc\u015f\u00fck ama net anlat</button>
+    </div>
+    <div class="bar">
+      <button data-audio-boundary-command="sesimi analiz et">Privacy: sesimi analiz et</button>
+      <button data-audio-boundary-command="panik konu\u015fuyorum">Privacy: panik konu\u015fuyorum</button>
+      <button data-audio-boundary-command="mikrofonu a\u00e7">Privacy: mikrofonu a\u00e7</button>
+      <button data-audio-boundary-command="sesimi kaydet">Privacy: sesimi kaydet</button>
+      <button data-audio-boundary-command="sadece tonumu sakinle\u015ftir">Privacy: tonu sakinle\u015ftir</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6984,6 +7003,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadAudioBoundary(command) {
+      statusEl.textContent = "Loading audio privacy boundary preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/audio/privacy-boundary-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ command, audio_context: "debug panel simulated boundary check", consent_state: "not_granted" })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded audio privacy boundary preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -7037,6 +7073,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-audio-description]").forEach((button) => {
       button.addEventListener("click", () => loadAudioSignal(button.dataset.audioDescription));
+    });
+    document.querySelectorAll("button[data-audio-boundary-command]").forEach((button) => {
+      button.addEventListener("click", () => loadAudioBoundary(button.dataset.audioBoundaryCommand));
     });
   </script>
 </body>
