@@ -53,6 +53,7 @@ from multimodal_memory_scaffold import (
     validate_memory_signal,
 )
 from mode_registry import mode_registry, preview_mode_command
+from night_radio_voice import preview_night_radio_voice
 from permission_boundary import preview_permission_boundary
 from router_scaffold import preview_router_decision
 from workspace_builder_preview import build_workspace_builder_preview
@@ -310,6 +311,13 @@ class AudioPrivacyBoundaryRequest(BaseModel):
     command: str = Field(default="", max_length=2000)
     audio_context: str = Field(default="", max_length=4000)
     consent_state: str = Field(default="not_granted", max_length=50)
+
+
+class NightRadioVoicePreviewRequest(BaseModel):
+    text: str = Field(default="", max_length=4000)
+    mood: str = Field(default="", max_length=1000)
+    response_size: str = Field(default="medium", max_length=50)
+    mode: str = Field(default="", max_length=100)
 
 
 # =========================================================
@@ -6511,6 +6519,11 @@ async def voice_preview_mode_endpoint(payload: VoiceModePreviewRequest):
     return preview_voice_mode(payload.command, payload.context, payload.response_size, payload.input_modality)
 
 
+@app.post("/voice/night-radio-preview")
+async def voice_night_radio_preview_endpoint(payload: NightRadioVoicePreviewRequest):
+    return preview_night_radio_voice(payload.text, payload.mood, payload.response_size, payload.mode)
+
+
 @app.get("/debug/voice-status")
 async def debug_voice_status():
     return voice_status_snapshot()
@@ -6672,6 +6685,13 @@ async def debug_agent_panel():
       <button data-voice-command="workspace uzun cevap" data-voice-size="workspace_large">workspace uzun cevap</button>
       <button data-voice-command="normal h\u0131za d\u00f6n" data-voice-size="medium">normal h\u0131za d\u00f6n</button>
       <button data-voice-command="sadece yaz\u0131, ses yok" data-voice-size="medium">sadece yaz\u0131, ses yok</button>
+    </div>
+    <div class="bar">
+      <button data-night-radio-text="gece radyosu gibi anlat" data-night-radio-size="medium">Night Radio: anlat</button>
+      <button data-night-radio-text="bu metni sakin podcast tonu yap" data-night-radio-size="medium">Night Radio: podcast</button>
+      <button data-night-radio-text="uyumadan \u00f6nce yava\u015f anlat" data-night-radio-size="long">Night Radio: uyku</button>
+      <button data-night-radio-text="daha yumu\u015fak ve d\u00fc\u015f\u00fck ton" data-night-radio-size="medium">Night Radio: yumu\u015fak</button>
+      <button data-night-radio-text="sadece yaz\u0131 ama gece radyosu hissi" data-night-radio-size="medium">Night Radio: text only</button>
     </div>
     <h2>Audio Signal Preview</h2>
     <div class="bar">
@@ -6986,6 +7006,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadNightRadioPreview(text, responseSize) {
+      statusEl.textContent = "Loading night radio voice preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/voice/night-radio-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ text, mood: "debug panel read-only sample", response_size: responseSize || "medium", mode: "" })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded night radio voice preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadAudioSignal(description) {
       statusEl.textContent = "Loading audio signal preview";
       output.textContent = "{}";
@@ -7070,6 +7107,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-voice-command]").forEach((button) => {
       button.addEventListener("click", () => loadVoicePreview(button.dataset.voiceCommand, button.dataset.voiceSize));
+    });
+    document.querySelectorAll("button[data-night-radio-text]").forEach((button) => {
+      button.addEventListener("click", () => loadNightRadioPreview(button.dataset.nightRadioText, button.dataset.nightRadioSize));
     });
     document.querySelectorAll("button[data-audio-description]").forEach((button) => {
       button.addEventListener("click", () => loadAudioSignal(button.dataset.audioDescription));

@@ -1015,6 +1015,7 @@ class SmokeRunner:
         assert "/debug/voice-status" in html, html[:300]
         assert "/voice/modes" in html, html[:300]
         assert "/voice/preview-mode" in html, html[:300]
+        assert "/voice/night-radio-preview" in html, html[:300]
         assert "/audio/signal-schema" in html, html[:300]
         assert "/audio/preview-signal" in html, html[:300]
         assert "/audio/privacy-boundary-preview" in html, html[:300]
@@ -1725,6 +1726,55 @@ class SmokeRunner:
         assert voice_meta.get("microphone_used") is False, voice_meta
         return "voice speed preview"
 
+    def check_night_radio_voice_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        response = client.post(
+            "/voice/night-radio-preview",
+            json={"text": "gece radyosu gibi anlat", "mood": "", "response_size": "medium", "mode": ""},
+        )
+        assert response.status_code == 200, response.text
+        night = response.json()
+        assert night.get("detected_mode") == "night_radio", night
+        assert 0.7 <= float(night.get("writing_speed_preview")) <= 0.85, night
+        assert night.get("real_audio_enabled") is False, night
+        assert night.get("tts_performed") is False, night
+        assert night.get("microphone_used") is False, night
+        assert night.get("recording_performed") is False, night
+        assert night.get("read_only") is True, night
+        stream = night.get("stream_behavior", {})
+        assert stream.get("block_dump_allowed") is False, night
+        assert stream.get("final_bulk_injection_allowed") is False, night
+        assert stream.get("smooth_typewriter") is True, night
+
+        samples = [
+            ("bu metni sakin podcast tonu yap", "podcast", 0.9, 0.95),
+            ("uyumadan once yavas anlat", "night_radio", 0.7, 0.85),
+            ("daha yumusak ve dusuk ton", "calm", 0.7, 0.85),
+            ("sadece yazi ama gece radyosu hissi", "text_only_night", 0.7, 0.85),
+            ("hizli ozet gece radyosu gibi", "night_radio", 0.9, 1.0),
+        ]
+        for text, expected_mode, min_speed, max_speed in samples:
+            sample_response = client.post(
+                "/voice/night-radio-preview",
+                json={"text": text, "mood": "", "response_size": "medium", "mode": ""},
+            )
+            assert sample_response.status_code == 200, sample_response.text
+            payload = sample_response.json()
+            assert payload.get("detected_mode") == expected_mode, payload
+            assert min_speed <= float(payload.get("writing_speed_preview")) <= max_speed, payload
+            assert payload.get("real_audio_enabled") is False, payload
+            assert payload.get("tts_performed") is False, payload
+            assert payload.get("read_only") is True, payload
+            assert payload.get("stream_behavior", {}).get("block_dump_allowed") is False, payload
+        return "night radio voice preview"
+
     def check_audio_signal_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -1914,6 +1964,7 @@ class SmokeRunner:
             ("visual_style_registry_preview", self.check_visual_style_registry_preview),
             ("visual_status_snapshot", self.check_visual_status_snapshot),
             ("voice_speed_preview", self.check_voice_speed_preview),
+            ("night_radio_voice_preview", self.check_night_radio_voice_preview),
             ("audio_signal_preview", self.check_audio_signal_preview),
             ("audio_privacy_boundary_preview", self.check_audio_privacy_boundary_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
