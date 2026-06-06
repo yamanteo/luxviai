@@ -54,6 +54,7 @@ from mode_registry import mode_registry, preview_mode_command
 from permission_boundary import preview_permission_boundary
 from router_scaffold import preview_router_decision
 from workspace_command_parser import parse_workspace_command
+from workspace_export_preview import build_workspace_export_preview
 from workspace_scaffold import build_workspace_preview, build_workspace_separation_preview, sample_workspace, workspace_schema
 
 try:
@@ -221,6 +222,11 @@ class WorkspacePreviewRequest(BaseModel):
 class WorkspaceCommandParseRequest(BaseModel):
     command: str = Field(default="", max_length=4000)
     current_blocks: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class WorkspaceExportPreviewRequest(BaseModel):
+    blocks: List[Dict[str, Any]] = Field(default_factory=list)
+    export_type: str = Field(default="copy", max_length=40)
 
 
 # =========================================================
@@ -6263,6 +6269,11 @@ async def workspace_parse_command(payload: WorkspaceCommandParseRequest):
     return parse_workspace_command(payload.command, payload.current_blocks)
 
 
+@app.post("/workspace/export-preview")
+async def workspace_export_preview(payload: WorkspaceExportPreviewRequest):
+    return build_workspace_export_preview(payload.blocks, payload.export_type)
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6315,6 +6326,12 @@ async def debug_agent_panel():
       <button data-workspace-parse-command="k\u0131salt">Parser: k\u0131salt</button>
       <button data-workspace-parse-command="sunuma \u00e7evir">Parser: sunum</button>
       <button data-workspace-parse-command="bu k\u0131sm\u0131 sonu\u00e7 b\u00f6l\u00fcm\u00fcne uygun hale getir">Parser: sonu\u00e7</button>
+    </div>
+    <div class="bar">
+      <button data-workspace-export-type="copy">Export: copy preview</button>
+      <button data-workspace-export-type="pdf">Export: pdf preview</button>
+      <button data-workspace-export-type="word">Export: word preview</button>
+      <button data-workspace-export-type="presentation">Export: presentation preview</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6423,6 +6440,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadWorkspaceExport(exportType) {
+      statusEl.textContent = "Loading workspace export preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/workspace/export-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ export_type: exportType, blocks: [] })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded workspace export preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -6443,6 +6477,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-workspace-parse-command]").forEach((button) => {
       button.addEventListener("click", () => loadWorkspaceParser(button.dataset.workspaceParseCommand));
+    });
+    document.querySelectorAll("button[data-workspace-export-type]").forEach((button) => {
+      button.addEventListener("click", () => loadWorkspaceExport(button.dataset.workspaceExportType));
     });
   </script>
 </body>

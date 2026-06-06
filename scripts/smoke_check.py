@@ -1282,7 +1282,27 @@ class SmokeRunner:
         assert presentation_parse.get("workspace_intent") == "create_presentation", presentation_parse
         assert presentation_parse.get("operation") == "convert", presentation_parse
 
-        return "workspace schema/preview/separation/parser"
+        export_response = client.post("/workspace/export-preview", json={"export_type": "pdf", "blocks": []})
+        assert export_response.status_code == 200, export_response.text
+        export_preview = export_response.json()
+        assert export_preview.get("read_only") is True, export_preview
+        assert export_preview.get("export_performed") is False, export_preview
+        assert export_preview.get("file_written") is False, export_preview
+        assert export_preview.get("send_performed") is False, export_preview
+        included_blocks = export_preview.get("included_blocks", [])
+        excluded_blocks = export_preview.get("excluded_blocks", [])
+        assert isinstance(included_blocks, list) and included_blocks, export_preview
+        assert isinstance(excluded_blocks, list) and excluded_blocks, export_preview
+        assert any(block.get("type") in {"final", "paragraph"} for block in included_blocks), included_blocks
+        assert any(block.get("type") == "command" for block in excluded_blocks), excluded_blocks
+        assert any(block.get("type") == "voice_command" for block in excluded_blocks), excluded_blocks
+        assert any(block.get("type") == "ai_note" for block in excluded_blocks), excluded_blocks
+        clean_text = export_preview.get("clean_text_preview", "")
+        assert "sesli komut" not in clean_text.lower(), export_preview
+        assert "giris bolumunu kisalt" not in clean_text.lower(), export_preview
+        assert export_preview.get("export_package_preview", {}).get("status") == "preview_only", export_preview
+
+        return "workspace schema/preview/separation/parser/export"
 
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
