@@ -33,6 +33,7 @@ from learning.token_budget_policy import TokenBudgetPolicy
 from audio_privacy_boundary import preview_audio_privacy_boundary
 from audio_signal_schema import audio_signal_schema, audio_status_snapshot, preview_audio_signal
 from agent_decision_trace import build_agent_decision_trace
+from cost_privacy_policy import cost_privacy_policy, preview_cost_privacy
 from luxway_capabilities import luxway_capability_registry, luxway_status_snapshot, preview_luxway_command
 from luxway_data_preview import preview_luxway_data
 from luxway_device_safety import preview_luxway_device_safety
@@ -367,6 +368,13 @@ class ModelRouterHintPreviewRequest(BaseModel):
     task_type: str = Field(default="", max_length=80)
     sensitivity: str = Field(default="normal", max_length=50)
     response_size: str = Field(default="medium", max_length=50)
+
+
+class CostPrivacyPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    task_type: str = Field(default="", max_length=80)
+    sensitivity: str = Field(default="normal", max_length=50)
+    estimated_tokens_bucket: str = Field(default="", max_length=50)
 
 
 # =========================================================
@@ -6667,6 +6675,16 @@ async def router_hint_preview_endpoint(payload: ModelRouterHintPreviewRequest):
     return preview_model_hint(payload.command, payload.source_area, payload.task_type, payload.sensitivity, payload.response_size)
 
 
+@app.get("/router/cost-privacy-policy")
+async def router_cost_privacy_policy_endpoint():
+    return cost_privacy_policy()
+
+
+@app.post("/router/cost-preview")
+async def router_cost_preview_endpoint(payload: CostPrivacyPreviewRequest):
+    return preview_cost_privacy(payload.command, payload.task_type, payload.sensitivity, payload.estimated_tokens_bucket)
+
+
 @app.get("/debug/model-router-status")
 async def debug_model_router_status():
     return model_router_status()
@@ -6996,6 +7014,7 @@ async def debug_agent_panel():
     <div class="bar">
       <button data-endpoint="/debug/model-router-status">Model Router Status</button>
       <button data-endpoint="/router/model-config">Model Router Config</button>
+      <button data-endpoint="/router/cost-privacy-policy">Cost Privacy Policy</button>
     </div>
     <div class="bar">
       <button data-model-router-command="normal sohbet" data-model-task="normal_chat">normal sohbet</button>
@@ -7017,6 +7036,13 @@ async def debug_agent_panel():
       <button data-model-hint-command="\u00e7izimi oku" data-model-source="visual" data-model-task="sketch_understanding_request">Hint: Mini \u00e7izim</button>
       <button data-model-hint-command="kritik kod debug" data-model-source="codex" data-model-task="critical_debug" data-model-sensitivity="high">Hint: GPT fallback</button>
       <button data-model-hint-command="Luxway telefon raporu" data-model-source="luxway" data-model-task="luxway">Hint: Luxway</button>
+    </div>
+    <div class="bar">
+      <button data-cost-privacy-command="normal sohbet maliyet preview" data-cost-task="normal_chat">Cost: normal sohbet</button>
+      <button data-cost-privacy-command="\u00f6zel mesaj\u0131m\u0131 \u00f6zetle" data-cost-task="permission_boundary" data-cost-sensitivity="privacy">Cost: \u00f6zel mesaj</button>
+      <button data-cost-privacy-command="ses kayd\u0131m\u0131 analiz et" data-cost-task="audio_voice" data-cost-sensitivity="privacy">Cost: ses kayd\u0131</button>
+      <button data-cost-privacy-command="dosyam\u0131 oku" data-cost-task="workspace" data-cost-sensitivity="privacy">Cost: dosya</button>
+      <button data-cost-privacy-command="hassas g\u00fcvenlik sorusu" data-cost-task="safety_sensitive" data-cost-sensitivity="safety">Cost: hassas g\u00fcvenlik</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7493,6 +7519,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadCostPrivacyPreview(command, taskType, sensitivity) {
+      statusEl.textContent = "Loading cost privacy preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/router/cost-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            task_type: taskType || "",
+            sensitivity: sensitivity || "normal",
+            estimated_tokens_bucket: "medium"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded cost privacy preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -7583,6 +7631,13 @@ async def debug_agent_panel():
         button.dataset.modelTask,
         button.dataset.modelSensitivity,
         button.dataset.modelSize
+      ));
+    });
+    document.querySelectorAll("button[data-cost-privacy-command]").forEach((button) => {
+      button.addEventListener("click", () => loadCostPrivacyPreview(
+        button.dataset.costPrivacyCommand,
+        button.dataset.costTask,
+        button.dataset.costSensitivity
       ));
     });
   </script>

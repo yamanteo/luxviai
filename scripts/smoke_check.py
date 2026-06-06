@@ -1024,6 +1024,8 @@ class SmokeRunner:
         assert "/router/model-config" in html, html[:300]
         assert "/router/model-preview" in html, html[:300]
         assert "/router/hint-preview" in html, html[:300]
+        assert "/router/cost-privacy-policy" in html, html[:300]
+        assert "/router/cost-preview" in html, html[:300]
         assert "/debug/model-router-status" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
@@ -2391,6 +2393,71 @@ class SmokeRunner:
         assert "permission" in str(luxway.get("hint_reason", "")).lower(), luxway
         return "model router hint preview"
 
+    def check_cost_privacy_policy_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        policy_response = client.get("/router/cost-privacy-policy")
+        assert policy_response.status_code == 200, policy_response.text
+        policy = policy_response.json()
+        assert policy.get("raw_user_text_logged") is False, policy
+        assert policy.get("raw_audio_logged") is False, policy
+        assert policy.get("raw_file_content_logged") is False, policy
+        assert policy.get("safe_derived_metadata_only") is True, policy
+        assert policy.get("billing_write_performed") is False, policy
+        assert policy.get("db_write_performed") is False, policy
+        assert policy.get("memory_write_performed") is False, policy
+        blocked = set(policy.get("blocked_metadata", []))
+        assert {"raw_user_message", "raw_audio"} <= blocked, policy
+
+        def preview(command: str, task_type: str = "", sensitivity: str = "normal") -> dict:
+            response = client.post(
+                "/router/cost-preview",
+                json={
+                    "command": command,
+                    "task_type": task_type,
+                    "sensitivity": sensitivity,
+                    "estimated_tokens_bucket": "medium",
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("raw_user_text_logged") is False, payload
+            assert payload.get("raw_private_message_logged") is False, payload
+            assert payload.get("raw_audio_logged") is False, payload
+            assert payload.get("raw_file_content_logged") is False, payload
+            assert payload.get("raw_sensitive_content_logged") is False, payload
+            assert payload.get("safe_derived_metadata_only") is True, payload
+            assert payload.get("billing_write_performed") is False, payload
+            assert payload.get("db_write_performed") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            assert payload.get("file_write_performed") is False, payload
+            assert payload.get("read_only") is True, payload
+            assert "raw_user_message" in payload.get("blocked_metadata", []), payload
+            assert "raw_audio" in payload.get("blocked_metadata", []), payload
+            return payload
+
+        normal = preview("normal sohbet maliyet preview", "normal_chat")
+        assert normal.get("privacy_risk") in {"low", "medium", "high"}, normal
+
+        private_message = preview("ozel mesajimi ozetle", "permission_boundary", "privacy")
+        assert private_message.get("privacy_risk") == "high", private_message
+
+        audio = preview("ses kaydimi analiz et", "audio_voice", "privacy")
+        assert audio.get("privacy_risk") == "high", audio
+
+        file_preview = preview("dosyami oku", "workspace", "privacy")
+        assert file_preview.get("privacy_risk") == "high", file_preview
+
+        safety = preview("hassas guvenlik sorusu", "safety_sensitive", "safety")
+        assert safety.get("privacy_risk") == "high", safety
+        return "cost privacy policy preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2467,6 +2534,7 @@ class SmokeRunner:
             ("audio_privacy_boundary_preview", self.check_audio_privacy_boundary_preview),
             ("model_router_config_preview", self.check_model_router_config_preview),
             ("model_router_hint_preview", self.check_model_router_hint_preview),
+            ("cost_privacy_policy_preview", self.check_cost_privacy_policy_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),
