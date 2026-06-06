@@ -6194,6 +6194,38 @@ async def debug_agent_decision_trace_post(payload: AgentIntentPreviewRequest):
     }
 
 
+def _layer14_status() -> Dict[str, Any]:
+    return {
+        "layer": "14",
+        "name": "Personal Agent + Multimodal Memory + Router + Command-first scaffold",
+        "status": "scaffold_ready",
+        "read_only": True,
+        "real_actions_enabled": False,
+        "memory_writes_enabled": False,
+        "chat_stream_touched": False,
+        "completed_parts": [
+            "14.1 capabilities/schema",
+            "14.2 intent/memory preview",
+            "14.3 action plan",
+            "14.4 analysis hub",
+            "14.5 router preview",
+            "14.6 debug samples",
+            "14.7 agent panel",
+            "14.8 mode registry",
+            "14.9 permission boundary",
+            "14.10 decision trace",
+        ],
+        "important_backlog": [
+            "stop/durdur final block leak",
+        ],
+    }
+
+
+@app.get("/debug/layer14-status")
+async def debug_layer14_status():
+    return _layer14_status()
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6220,6 +6252,10 @@ async def debug_agent_panel():
   <main>
     <h1>Luxviai Agent Debug Panel</h1>
     <p class="note">Read-only scaffold preview. No real action is executed. No raw data is stored.</p>
+    <h2>Layer 14 Status</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/layer14-status">Layer 14 Status</button>
+    </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
       <button data-endpoint="/debug/agent/sample-luxway">Luxway Sample</button>

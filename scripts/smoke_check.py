@@ -984,6 +984,7 @@ class SmokeRunner:
         assert response.status_code == 200, response.text
         html = response.text
         for endpoint in [
+            "/debug/layer14-status",
             "/debug/agent/sample-email",
             "/debug/agent/sample-luxway",
             "/debug/agent/sample-visual",
@@ -1000,6 +1001,7 @@ class SmokeRunner:
         assert "mode registry" in lowered, html[:300]
         assert "permission boundary" in lowered, html[:300]
         assert "agent decision trace" in lowered, html[:300]
+        assert "layer 14 status" in lowered, html[:300]
         return "debug agent panel"
 
     def check_mode_registry_preview(self) -> str:
@@ -1150,6 +1152,29 @@ class SmokeRunner:
         assert unknown.get("scaffold_decision") == "low_confidence_ask_clarify", unknown
         return "agent decision trace preview"
 
+    def check_layer14_status_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/debug/layer14-status")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload.get("layer") == "14", payload
+        assert payload.get("status") == "scaffold_ready", payload
+        assert payload.get("read_only") is True, payload
+        assert payload.get("real_actions_enabled") is False, payload
+        assert payload.get("memory_writes_enabled") is False, payload
+        assert payload.get("chat_stream_touched") is False, payload
+        completed = payload.get("completed_parts", [])
+        assert isinstance(completed, list) and len(completed) >= 10, payload
+        backlog = " ".join(str(item).lower() for item in payload.get("important_backlog", []))
+        assert "stop" in backlog and "durdur" in backlog, payload
+        return "layer 14 status"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -1215,6 +1240,7 @@ class SmokeRunner:
             ("mode_registry_preview", self.check_mode_registry_preview),
             ("permission_boundary_preview", self.check_permission_boundary_preview),
             ("agent_decision_trace_preview", self.check_agent_decision_trace_preview),
+            ("layer14_status_snapshot", self.check_layer14_status_snapshot),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
