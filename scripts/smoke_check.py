@@ -1007,6 +1007,7 @@ class SmokeRunner:
         assert "visual style preview" in lowered, html[:300]
         assert "/visual/style-preview" in html, html[:300]
         assert "/visual/ratio-preview" in html, html[:300]
+        assert "/visual/ambrosia-preview" in html, html[:300]
         return "debug agent panel"
 
     def check_mode_registry_preview(self) -> str:
@@ -1426,7 +1427,22 @@ class SmokeRunner:
         assert "oil_paint" in normalized_ratios and "pixel" in normalized_ratios, ratio_payload
         final_mix = ratio_payload.get("final_style_mix_preview", [])
         assert isinstance(final_mix, list) and final_mix, ratio_payload
-        return "visual style registry/ratio preview"
+
+        ambrosia_response = client.post(
+            "/visual/ambrosia-preview",
+            json={"feeling_text": "i\u00e7imde sessiz ama a\u011f\u0131r bir yorgunluk var", "intensity": 0.6, "style_ratio": {}},
+        )
+        assert ambrosia_response.status_code == 200, ambrosia_response.text
+        ambrosia = ambrosia_response.json()
+        assert ambrosia.get("read_only") is True, ambrosia
+        assert ambrosia.get("image_generation_performed") is False, ambrosia
+        assert ambrosia.get("background", {}).get("color") == "#0A0A0A", ambrosia
+        assert ambrosia.get("light", {}).get("color") == "#AB6B0C", ambrosia
+        assert ambrosia.get("glyph_layer", {}).get("color") == "#C0C0C0", ambrosia
+        constraints = set(ambrosia.get("negative_constraints", []))
+        assert {"no_city", "no_room", "no_letters"} <= constraints, ambrosia
+        assert ambrosia.get("ambrosia_state", {}).get("state_type") == "inner_state_not_place", ambrosia
+        return "visual style registry/ratio/ambrosia preview"
 
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")

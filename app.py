@@ -58,6 +58,7 @@ from workspace_command_parser import parse_workspace_command
 from workspace_context_notes import preview_workspace_context_note
 from workspace_export_preview import build_workspace_export_preview
 from workspace_scaffold import build_workspace_preview, build_workspace_separation_preview, sample_workspace, workspace_schema
+from visual_ambrosia_state import preview_ambrosia_state
 from visual_style_ratio import preview_visual_style_ratio
 from visual_style_registry import preview_visual_style, visual_style_registry
 
@@ -257,6 +258,12 @@ class VisualStyleRatioPreviewRequest(BaseModel):
     ratio_text: str = Field(default="", max_length=4000)
     requested_styles: List[str] = Field(default_factory=list)
     mode: str = Field(default="", max_length=100)
+
+
+class VisualAmbrosiaPreviewRequest(BaseModel):
+    feeling_text: str = Field(default="", max_length=4000)
+    intensity: float = Field(default=0.5, ge=0.0, le=1.0)
+    style_ratio: Dict[str, Any] = Field(default_factory=dict)
 
 
 # =========================================================
@@ -6371,6 +6378,11 @@ async def visual_ratio_preview_endpoint(payload: VisualStyleRatioPreviewRequest)
     return preview_visual_style_ratio(payload.prompt, payload.ratio_text, payload.requested_styles, payload.mode)
 
 
+@app.post("/visual/ambrosia-preview")
+async def visual_ambrosia_preview_endpoint(payload: VisualAmbrosiaPreviewRequest):
+    return preview_ambrosia_state(payload.feeling_text, payload.intensity, payload.style_ratio)
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6462,6 +6474,13 @@ async def debug_agent_panel():
       <button data-visual-ratio-prompt="Lux tarz\u0131 ama ger\u00e7ek\u00e7i temiz">Ratio: Lux ger\u00e7ek\u00e7i</button>
       <button data-visual-ratio-prompt="soft neon vintage">Ratio: neon vintage</button>
       <button data-visual-ratio-prompt="Ambrosia hissi">Ratio: Ambrosia</button>
+    </div>
+    <div class="bar">
+      <button data-ambrosia-feeling="i\u00e7imde sessiz ama a\u011f\u0131r bir yorgunluk var">Ambrosia: yorgunluk</button>
+      <button data-ambrosia-feeling="umut var ama \u00e7ok k\u0131r\u0131lgan">Ambrosia: k\u0131r\u0131lgan umut</button>
+      <button data-ambrosia-feeling="kafam kar\u0131\u015f\u0131k ama i\u00e7imde k\u00fc\u00e7\u00fck bir \u0131\u015f\u0131k var">Ambrosia: k\u00fc\u00e7\u00fck \u0131\u015f\u0131k</button>
+      <button data-ambrosia-feeling="ruhani, siyah ve amber bir his">Ambrosia: ruhani amber</button>
+      <button data-ambrosia-feeling="bo\u015flukta as\u0131l\u0131 kalm\u0131\u015f gibi">Ambrosia: bo\u015fluk</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6655,6 +6674,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadAmbrosia(feelingText) {
+      statusEl.textContent = "Loading Ambrosia state preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/visual/ambrosia-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ feeling_text: feelingText, intensity: 0.55, style_ratio: {} })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded Ambrosia state preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -6690,6 +6726,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-visual-ratio-prompt]").forEach((button) => {
       button.addEventListener("click", () => loadVisualRatio(button.dataset.visualRatioPrompt));
+    });
+    document.querySelectorAll("button[data-ambrosia-feeling]").forEach((button) => {
+      button.addEventListener("click", () => loadAmbrosia(button.dataset.ambrosiaFeeling));
     });
   </script>
 </body>
