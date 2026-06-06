@@ -53,6 +53,7 @@ from multimodal_memory_scaffold import (
 from mode_registry import mode_registry, preview_mode_command
 from permission_boundary import preview_permission_boundary
 from router_scaffold import preview_router_decision
+from workspace_command_parser import parse_workspace_command
 from workspace_scaffold import build_workspace_preview, build_workspace_separation_preview, sample_workspace, workspace_schema
 
 try:
@@ -215,6 +216,11 @@ class AgentIntentPreviewRequest(BaseModel):
 class WorkspacePreviewRequest(BaseModel):
     command: str = Field(default="", max_length=4000)
     content: str = Field(default="", max_length=12000)
+
+
+class WorkspaceCommandParseRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    current_blocks: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 # =========================================================
@@ -6252,6 +6258,11 @@ async def workspace_separation_preview(payload: WorkspacePreviewRequest):
     return build_workspace_separation_preview(payload.command, payload.content)
 
 
+@app.post("/workspace/parse-command")
+async def workspace_parse_command(payload: WorkspaceCommandParseRequest):
+    return parse_workspace_command(payload.command, payload.current_blocks)
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6296,6 +6307,14 @@ async def debug_agent_panel():
       <button data-workspace-separation-command="sunuma \u00e7evir">Separation: sunum</button>
       <button data-workspace-separation-command="CV haz\u0131rla">Separation: CV</button>
       <button data-workspace-separation-command="sesli komut: giri\u015f b\u00f6l\u00fcm\u00fcn\u00fc k\u0131salt">Separation: sesli komut</button>
+    </div>
+    <div class="bar">
+      <button data-workspace-parse-command="CV haz\u0131rla">Parser: CV</button>
+      <button data-workspace-parse-command="3. paragraf\u0131 akademikle\u015ftir">Parser: paragraf 3</button>
+      <button data-workspace-parse-command="bu iki paragraf aras\u0131na ge\u00e7i\u015f c\u00fcmlesi ekle">Parser: ge\u00e7i\u015f</button>
+      <button data-workspace-parse-command="k\u0131salt">Parser: k\u0131salt</button>
+      <button data-workspace-parse-command="sunuma \u00e7evir">Parser: sunum</button>
+      <button data-workspace-parse-command="bu k\u0131sm\u0131 sonu\u00e7 b\u00f6l\u00fcm\u00fcne uygun hale getir">Parser: sonu\u00e7</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6387,6 +6406,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadWorkspaceParser(command) {
+      statusEl.textContent = "Loading workspace command parser";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/workspace/parse-command", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ command, current_blocks: [] })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded workspace command parser" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -6404,6 +6440,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-workspace-separation-command]").forEach((button) => {
       button.addEventListener("click", () => loadWorkspaceSeparation(button.dataset.workspaceSeparationCommand));
+    });
+    document.querySelectorAll("button[data-workspace-parse-command]").forEach((button) => {
+      button.addEventListener("click", () => loadWorkspaceParser(button.dataset.workspaceParseCommand));
     });
   </script>
 </body>

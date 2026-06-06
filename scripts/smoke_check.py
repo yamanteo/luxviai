@@ -1254,7 +1254,35 @@ class SmokeRunner:
             block.get("type") not in {"command", "voice_command", "ai_note"}
             for block in separation.get("final_output_blocks", [])
         ), separation
-        return "workspace schema/preview/separation"
+
+        def parse_workspace(command: str) -> dict:
+            response = client.post("/workspace/parse-command", json={"command": command, "current_blocks": []})
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("write_performed") is False, payload
+            assert payload.get("block_update_performed") is False, payload
+            return payload
+
+        cv_parse = parse_workspace("CV haz\u0131rla")
+        assert cv_parse.get("workspace_intent") == "create_cv", cv_parse
+        assert cv_parse.get("operation") == "create", cv_parse
+
+        paragraph_parse = parse_workspace("3. paragraf\u0131 akademikle\u015ftir")
+        assert paragraph_parse.get("workspace_intent") == "academic_rewrite", paragraph_parse
+        assert paragraph_parse.get("target_block_type") == "paragraph", paragraph_parse
+        assert "3" in paragraph_parse.get("target_block_hint", ""), paragraph_parse
+
+        shorten_parse = parse_workspace("k\u0131salt")
+        assert shorten_parse.get("workspace_intent") == "shorten", shorten_parse
+        assert shorten_parse.get("operation") == "shorten", shorten_parse
+        assert shorten_parse.get("needs_clarification") is True, shorten_parse
+
+        presentation_parse = parse_workspace("sunuma \u00e7evir")
+        assert presentation_parse.get("workspace_intent") == "create_presentation", presentation_parse
+        assert presentation_parse.get("operation") == "convert", presentation_parse
+
+        return "workspace schema/preview/separation/parser"
 
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
