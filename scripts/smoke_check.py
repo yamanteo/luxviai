@@ -1010,6 +1010,7 @@ class SmokeRunner:
         assert "/visual/ambrosia-preview" in html, html[:300]
         assert "/visual/dream-scene-preview" in html, html[:300]
         assert "/visual/scene-lock-preview" in html, html[:300]
+        assert "/visual/prompt-preview" in html, html[:300]
         return "debug agent panel"
 
     def check_mode_registry_preview(self) -> str:
@@ -1489,7 +1490,28 @@ class SmokeRunner:
         assert isinstance(proposed_updates, list) and proposed_updates, scene_lock
         assert any(item.get("operation") == "adjust_pose" for item in proposed_updates), scene_lock
         assert scene_lock.get("updated_scene_preview", {}).get("scene_rebuild_required") is False, scene_lock
-        return "visual style registry/ratio/ambrosia/dream/scene-lock preview"
+
+        prompt_response = client.post(
+            "/visual/prompt-preview",
+            json={
+                "prompt": "R\u00fcya: karanl\u0131k denizde k\u00fc\u00e7\u00fck sandal",
+                "mode": "",
+                "style_ratios": {"ratio_text": "%40 ya\u011fl\u0131 boya %20 pixel"},
+                "scene_state": dream,
+                "ambrosia_state": {},
+                "locked_elements": ["boat", "amber_light"],
+            },
+        )
+        assert prompt_response.status_code == 200, prompt_response.text
+        prompt_preview = prompt_response.json()
+        assert prompt_preview.get("read_only") is True, prompt_preview
+        assert prompt_preview.get("image_generation_performed") is False, prompt_preview
+        assert prompt_preview.get("final_prompt_preview"), prompt_preview
+        assert prompt_preview.get("negative_prompt"), prompt_preview
+        assert prompt_preview.get("lux_signature_note"), prompt_preview
+        assert "prompt_sections" in prompt_preview, prompt_preview
+        assert "boat" in prompt_preview.get("final_prompt_preview", ""), prompt_preview
+        return "visual style registry/ratio/ambrosia/dream/scene-lock/prompt preview"
 
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")

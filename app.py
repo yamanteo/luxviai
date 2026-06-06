@@ -60,6 +60,7 @@ from workspace_export_preview import build_workspace_export_preview
 from workspace_scaffold import build_workspace_preview, build_workspace_separation_preview, sample_workspace, workspace_schema
 from visual_ambrosia_state import preview_ambrosia_state
 from visual_dream_scene_state import preview_dream_scene_state
+from visual_prompt_builder import build_visual_prompt_preview
 from visual_scene_lock import preview_scene_lock
 from visual_style_ratio import preview_visual_style_ratio
 from visual_style_registry import preview_visual_style, visual_style_registry
@@ -278,6 +279,15 @@ class VisualSceneLockPreviewRequest(BaseModel):
     current_scene_state: Dict[str, Any] = Field(default_factory=dict)
     new_detail: str = Field(default="", max_length=4000)
     lock_strength: float = Field(default=1.0, ge=0.0, le=1.0)
+
+
+class VisualPromptPreviewRequest(BaseModel):
+    prompt: str = Field(default="", max_length=4000)
+    mode: str = Field(default="", max_length=100)
+    style_ratios: Dict[str, Any] = Field(default_factory=dict)
+    scene_state: Dict[str, Any] = Field(default_factory=dict)
+    ambrosia_state: Dict[str, Any] = Field(default_factory=dict)
+    locked_elements: List[Any] = Field(default_factory=list)
 
 
 # =========================================================
@@ -6407,6 +6417,18 @@ async def visual_scene_lock_preview_endpoint(payload: VisualSceneLockPreviewRequ
     return preview_scene_lock(payload.current_scene_state, payload.new_detail, payload.lock_strength)
 
 
+@app.post("/visual/prompt-preview")
+async def visual_prompt_preview_endpoint(payload: VisualPromptPreviewRequest):
+    return build_visual_prompt_preview(
+        payload.prompt,
+        payload.mode,
+        payload.style_ratios,
+        payload.scene_state,
+        payload.ambrosia_state,
+        payload.locked_elements,
+    )
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6519,6 +6541,13 @@ async def debug_agent_panel():
       <button data-scene-lock-detail="amber \u0131\u015f\u0131k biraz daha uzaktan gelsin">Scene Lock: amber uzak</button>
       <button data-scene-lock-detail="g\u00f6ky\u00fcz\u00fcndeki sembolleri azalt">Scene Lock: sembol azalt</button>
       <button data-scene-lock-detail="sahneyi de\u011fi\u015ftirme, sadece sa\u011f tarafa k\u00fc\u00e7\u00fck bir kap\u0131 ekle">Scene Lock: sa\u011f kap\u0131</button>
+    </div>
+    <div class="bar">
+      <button data-visual-prompt="Lux tarz\u0131 karanl\u0131k sahne">Prompt: Lux karanl\u0131k</button>
+      <button data-visual-prompt="Ambrosia: i\u00e7imde k\u0131r\u0131lgan umut var">Prompt: Ambrosia umut</button>
+      <button data-visual-prompt="R\u00fcya: karanl\u0131k denizde k\u00fc\u00e7\u00fck sandal">Prompt: r\u00fcya sandal</button>
+      <button data-visual-prompt="%40 ya\u011fl\u0131 boya %20 pixel amber \u0131\u015f\u0131k">Prompt: boya pixel</button>
+      <button data-visual-prompt="sahneyi koru, sa\u011f tarafa k\u00fc\u00e7\u00fck kap\u0131 ekle">Prompt: scene lock kap\u0131</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6772,6 +6801,31 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadVisualPrompt(prompt) {
+      statusEl.textContent = "Loading visual prompt preview";
+      output.textContent = "{}";
+      const sceneState = {
+        locked_elements: ["boat", "amber_light"],
+        objects: [
+          { id: "boat", type: "object_or_environment", locked_candidate: true },
+          { id: "amber_light", type: "object_or_environment", locked_candidate: true }
+        ],
+        lighting: { key_light: "distant_amber_light", color: "#AB6B0C" }
+      };
+      try {
+        const response = await fetch("/visual/prompt-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, mode: "", style_ratios: {}, scene_state: sceneState, ambrosia_state: {}, locked_elements: sceneState.locked_elements })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded visual prompt preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -6816,6 +6870,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-scene-lock-detail]").forEach((button) => {
       button.addEventListener("click", () => loadSceneLock(button.dataset.sceneLockDetail));
+    });
+    document.querySelectorAll("button[data-visual-prompt]").forEach((button) => {
+      button.addEventListener("click", () => loadVisualPrompt(button.dataset.visualPrompt));
     });
   </script>
 </body>
