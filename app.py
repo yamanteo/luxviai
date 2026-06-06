@@ -53,6 +53,7 @@ from multimodal_memory_scaffold import (
 from mode_registry import mode_registry, preview_mode_command
 from permission_boundary import preview_permission_boundary
 from router_scaffold import preview_router_decision
+from workspace_builder_preview import build_workspace_builder_preview
 from workspace_command_parser import parse_workspace_command
 from workspace_context_notes import preview_workspace_context_note
 from workspace_export_preview import build_workspace_export_preview
@@ -234,6 +235,13 @@ class WorkspaceContextPreviewRequest(BaseModel):
     context_note: str = Field(default="", max_length=4000)
     project_type: str = Field(default="", max_length=200)
     current_blocks: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class WorkspaceBuilderPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    content: str = Field(default="", max_length=12000)
+    context_note: str = Field(default="", max_length=4000)
+    project_type: str = Field(default="", max_length=200)
 
 
 # =========================================================
@@ -6286,6 +6294,11 @@ async def workspace_context_preview(payload: WorkspaceContextPreviewRequest):
     return preview_workspace_context_note(payload.context_note, payload.project_type, payload.current_blocks)
 
 
+@app.post("/workspace/builder-preview")
+async def workspace_builder_preview(payload: WorkspaceBuilderPreviewRequest):
+    return build_workspace_builder_preview(payload.command, payload.content, payload.context_note, payload.project_type)
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6351,6 +6364,13 @@ async def debug_agent_panel():
       <button data-workspace-context-note="Kaynak eksikli\u011finden puan k\u0131r\u0131yor.">Context: kaynak</button>
       <button data-workspace-context-note="Giri\u015f g\u00fc\u00e7l\u00fc olmal\u0131.">Context: giri\u015f</button>
       <button data-workspace-context-note="\u00d6nceki \u00f6\u011frenciler y\u00f6ntem k\u0131sm\u0131nda zorland\u0131.">Context: y\u00f6ntem</button>
+    </div>
+    <div class="bar">
+      <button data-workspace-builder-command="CV haz\u0131rla">Builder: CV</button>
+      <button data-workspace-builder-command="rapor yaz">Builder: rapor</button>
+      <button data-workspace-builder-command="sunuma \u00e7evir">Builder: sunum</button>
+      <button data-workspace-builder-command="\u00f6devim var">Builder: \u00f6dev</button>
+      <button data-workspace-builder-command="bu metni sunuma \u00e7evir">Builder: metni sunuma \u00e7evir</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6493,6 +6513,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadWorkspaceBuilder(command) {
+      statusEl.textContent = "Loading workspace builder preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/workspace/builder-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ command, content: "", context_note: "", project_type: "debug_sample" })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded workspace builder preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -6519,6 +6556,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-workspace-context-note]").forEach((button) => {
       button.addEventListener("click", () => loadWorkspaceContext(button.dataset.workspaceContextNote));
+    });
+    document.querySelectorAll("button[data-workspace-builder-command]").forEach((button) => {
+      button.addEventListener("click", () => loadWorkspaceBuilder(button.dataset.workspaceBuilderCommand));
     });
   </script>
 </body>

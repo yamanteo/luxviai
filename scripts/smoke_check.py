@@ -1326,7 +1326,34 @@ class SmokeRunner:
         warnings = " ".join(source_context.get("warnings", [])).lower()
         assert "invent" in warnings or "uydur" in warnings, source_context
 
-        return "workspace schema/preview/separation/parser/export/context"
+        def builder_preview(command: str) -> dict:
+            response = client.post(
+                "/workspace/builder-preview",
+                json={"command": command, "content": "", "context_note": "", "project_type": "debug"},
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("export_ready") is False, payload
+            assert payload.get("file_written") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            return payload
+
+        cv_builder = builder_preview("CV haz\u0131rla")
+        assert cv_builder.get("builder_type") == "cv", cv_builder
+        assert cv_builder.get("suggested_structure"), cv_builder
+
+        report_builder = builder_preview("rapor yaz")
+        assert report_builder.get("builder_type") == "report", report_builder
+
+        presentation_builder = builder_preview("sunuma \u00e7evir")
+        assert presentation_builder.get("builder_type") == "presentation", presentation_builder
+
+        homework_builder = builder_preview("\u00f6devim var")
+        assert homework_builder.get("builder_type") in {"generic_document", "report"}, homework_builder
+        assert homework_builder.get("missing_inputs") or homework_builder.get("clarification_question"), homework_builder
+
+        return "workspace schema/preview/separation/parser/export/context/builder"
 
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
