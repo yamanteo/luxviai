@@ -937,6 +937,41 @@ class SmokeRunner:
         assert dream_preview.get("output_type") == "dream_scene_state", dream_payload
         return "router preview read-only"
 
+    def check_debug_sample_preview_endpoints(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        samples = [
+            ("/debug/agent/sample-email", "agent_analysis"),
+            ("/debug/agent/sample-luxway", "agent_analysis"),
+            ("/debug/agent/sample-visual", "agent_analysis"),
+            ("/debug/agent/sample-dream", "agent_analysis"),
+            ("/debug/router/sample-cv", "router_preview"),
+        ]
+
+        for path, result_key in samples:
+            response = client.get(path)
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("sample_text"), payload
+            assert payload.get("read_only") is True, payload
+            assert payload.get("raw_data_stored") is False, payload
+            assert payload.get("write_performed") is False, payload
+            result = payload.get(result_key, {})
+            assert isinstance(result, dict) and result, payload
+            if result_key == "agent_analysis":
+                assert result.get("recommended_mode"), payload
+                assert result.get("can_execute_now") is False, payload
+            else:
+                assert result.get("recommended_mode") or result.get("output_type"), payload
+                assert result.get("can_execute_now") is False, payload
+
+        return "debug sample previews"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -997,6 +1032,7 @@ class SmokeRunner:
             ("agent_plan_action_read_only", self.check_agent_plan_action_read_only),
             ("agent_analyze_hub_read_only", self.check_agent_analyze_hub_read_only),
             ("router_preview_read_only", self.check_router_preview_read_only),
+            ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),

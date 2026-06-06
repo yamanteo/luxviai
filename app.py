@@ -6076,6 +6076,51 @@ async def router_preview_endpoint(payload: AgentIntentPreviewRequest):
     }
 
 
+def _debug_agent_sample(sample_text: str) -> Dict[str, Any]:
+    return {
+        "sample_text": sample_text,
+        "agent_analysis": analyze_agent_request(sample_text, "text"),
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+    }
+
+
+def _debug_router_sample(sample_text: str) -> Dict[str, Any]:
+    return {
+        "sample_text": sample_text,
+        "router_preview": preview_router_decision(sample_text, "text"),
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+    }
+
+
+@app.get("/debug/agent/sample-email")
+async def debug_agent_sample_email():
+    return _debug_agent_sample("Maillerimi \u00f6zetle ve \u00f6nemli olanlar\u0131 ay\u0131r.")
+
+
+@app.get("/debug/agent/sample-luxway")
+async def debug_agent_sample_luxway():
+    return _debug_agent_sample("Telefonu tara, kullan\u0131lmayan uygulamalar\u0131 ve \u00e7ok yer kaplayanlar\u0131 bul.")
+
+
+@app.get("/debug/agent/sample-visual")
+async def debug_agent_sample_visual():
+    return _debug_agent_sample("Bu g\u00f6rselde amber \u0131\u015f\u0131k, d\u00fc\u015f\u00fck \u00e7izgi yo\u011funlu\u011fu ve sa\u011f alt Luxviai imzas\u0131n\u0131 seviyorum.")
+
+
+@app.get("/debug/agent/sample-dream")
+async def debug_agent_sample_dream():
+    return _debug_agent_sample("R\u00fcyamda deniz kenar\u0131nda u\u00e7an insanlar, ay ve ya\u011fmur vard\u0131; bunu g\u00f6rselle\u015ftir.")
+
+
+@app.get("/debug/router/sample-cv")
+async def debug_router_sample_cv():
+    return _debug_router_sample("CV haz\u0131rla, eksik alanlar\u0131 bana sor ve profesyonel T\u00fcrk\u00e7e yap.")
+
+
 @app.get("/digest")
 async def digest(user_id: str = "default_user"):
     user_id = safe_user_id(user_id)
