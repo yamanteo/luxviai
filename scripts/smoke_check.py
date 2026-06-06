@@ -1393,9 +1393,18 @@ class SmokeRunner:
         assert isinstance(styles, list) and styles, styles_payload
         style_ids = {style.get("id") for style in styles}
         assert "lux_amber_accent" in style_ids, styles_payload
+        groups = styles_payload.get("groups", {})
+        assert "main_visual_modes" in groups, styles_payload
+        assert "paint_surface_layers" in groups, styles_payload
+        assert "light_layers" in groups, styles_payload
+        assert "lux_special_visual_rules" in groups, styles_payload
+        assert any(style.get("id") == "scene_lock" for style in groups.get("main_visual_modes", [])), styles_payload
+        assert any(style.get("id") == "paper_texture" for style in groups.get("paint_surface_layers", [])), styles_payload
         metadata = styles_payload.get("metadata", {})
         assert metadata.get("lux_amber_accent_color") == "#ab6b0c", styles_payload
         assert metadata.get("default_line_density") == "low", styles_payload
+        metadata_constraints = set(metadata.get("ambrosia_negative_constraints", []))
+        assert {"no_city", "no_room", "no_letters"} <= metadata_constraints, styles_payload
 
         preview_response = client.post(
             "/visual/style-preview",
@@ -1411,6 +1420,15 @@ class SmokeRunner:
         mix_by_id = {item.get("style_id"): item for item in mix}
         assert mix_by_id.get("oil_paint", {}).get("ratio") == 0.4, preview
         assert mix_by_id.get("pixel", {}).get("ratio") == 0.2, preview
+
+        alias_preview_response = client.post(
+            "/visual/style-preview",
+            json={"prompt": "Los Neon Vintage Afis Paper Texture Scene Lock", "requested_styles": [], "mode": "smoke"},
+        )
+        assert alias_preview_response.status_code == 200, alias_preview_response.text
+        alias_preview = alias_preview_response.json()
+        alias_style_ids = {style.get("id") for style in alias_preview.get("suggested_styles", [])}
+        assert {"dim_neon", "vintage_poster", "paper_texture", "scene_lock"} <= alias_style_ids, alias_preview
 
         ratio_response = client.post(
             "/visual/ratio-preview",

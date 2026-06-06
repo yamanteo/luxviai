@@ -47,15 +47,33 @@ def _style_map() -> Dict[str, Dict[str, Any]]:
     return {style["id"]: style for style in visual_style_registry()["styles"]}
 
 
+def _expanded_style_aliases() -> Dict[str, List[str]]:
+    aliases = {style_id: list(items) for style_id, items in _STYLE_ALIASES.items()}
+    for style in visual_style_registry()["styles"]:
+        style_id = style["id"]
+        names = [
+            style_id,
+            style_id.replace("_", " "),
+            str(style.get("display_name", "")),
+            *[str(item) for item in style.get("aliases", [])],
+        ]
+        bucket = aliases.setdefault(style_id, [])
+        for name in names:
+            normalized = _normalize_text(name).replace("_", " ").strip()
+            if normalized and normalized not in bucket:
+                bucket.append(normalized)
+    return aliases
+
+
 def _style_for_alias(alias: str) -> str:
     normalized = _normalize_text(alias).replace("_", " ").strip()
     styles_by_id = _style_map()
     if normalized.replace(" ", "_") in styles_by_id:
         return normalized.replace(" ", "_")
-    for style_id, aliases in _STYLE_ALIASES.items():
+    for style_id, aliases in _expanded_style_aliases().items():
         if normalized in aliases:
             return style_id
-    for style_id, aliases in _STYLE_ALIASES.items():
+    for style_id, aliases in _expanded_style_aliases().items():
         if any(item in normalized for item in aliases):
             return style_id
     return ""
@@ -68,7 +86,7 @@ def _detect_styles(text: str, requested_styles: List[str]) -> List[str]:
         style_id = _style_for_alias(requested)
         if style_id and style_id not in detected:
             detected.append(style_id)
-    for style_id, aliases in _STYLE_ALIASES.items():
+    for style_id, aliases in _expanded_style_aliases().items():
         if any(alias in normalized for alias in aliases) and style_id not in detected:
             detected.append(style_id)
     if not detected:
@@ -79,7 +97,7 @@ def _detect_styles(text: str, requested_styles: List[str]) -> List[str]:
 def _parse_direct_ratios(text: str) -> Dict[str, float]:
     normalized = _normalize_text(text)
     ratios: Dict[str, float] = {}
-    for style_id, aliases in _STYLE_ALIASES.items():
+    for style_id, aliases in _expanded_style_aliases().items():
         for alias in aliases:
             escaped = re.escape(alias)
             patterns = [
@@ -101,7 +119,7 @@ def _parse_direct_ratios(text: str) -> Dict[str, float]:
 def _parse_adjustments(text: str) -> Dict[str, Dict[str, float | str]]:
     normalized = _normalize_text(text)
     adjustments: Dict[str, Dict[str, float | str]] = {}
-    for style_id, aliases in _STYLE_ALIASES.items():
+    for style_id, aliases in _expanded_style_aliases().items():
         for alias in aliases:
             escaped = re.escape(alias)
             pattern = rf"{escaped}\s*%\s*(\d+(?:\.\d+)?)\s*(azalt|artir|arttir|cogalt|yukselt)"
