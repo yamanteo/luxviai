@@ -63,6 +63,7 @@ from mode_registry import mode_registry, preview_mode_command
 from night_radio_voice import preview_night_radio_voice
 from permission_boundary import preview_permission_boundary
 from router_scaffold import preview_router_decision
+from routing_simulation import preview_routing_simulation
 from safe_memory_retrieval import preview_safe_memory_retrieval, safe_memory_policy
 from workspace_builder_preview import build_workspace_builder_preview
 from workspace_command_parser import parse_workspace_command
@@ -383,6 +384,14 @@ class SafeMemoryRetrievalPreviewRequest(BaseModel):
     task_type: str = Field(default="", max_length=80)
     sensitivity: str = Field(default="normal", max_length=50)
     requested_memory_type: str = Field(default="", max_length=80)
+
+
+class RoutingSimulationPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    scenario: str = Field(default="", max_length=200)
+    task_type: str = Field(default="", max_length=80)
+    sensitivity: str = Field(default="normal", max_length=50)
+    response_size: str = Field(default="medium", max_length=50)
 
 
 # =========================================================
@@ -6703,6 +6712,11 @@ async def router_memory_retrieval_preview_endpoint(payload: SafeMemoryRetrievalP
     return preview_safe_memory_retrieval(payload.command, payload.task_type, payload.sensitivity, payload.requested_memory_type)
 
 
+@app.post("/router/simulation-preview")
+async def router_simulation_preview_endpoint(payload: RoutingSimulationPreviewRequest):
+    return preview_routing_simulation(payload.command, payload.scenario, payload.task_type, payload.sensitivity, payload.response_size)
+
+
 @app.get("/debug/model-router-status")
 async def debug_model_router_status():
     return model_router_status()
@@ -7070,6 +7084,18 @@ async def debug_agent_panel():
       <button data-safe-memory-command="ses sinyalimi kullan" data-safe-memory-task="audio_voice" data-safe-memory-type="audio_signal">Memory: ses sinyali</button>
       <button data-safe-memory-command="\u00f6zel mesaj ge\u00e7mi\u015fimi getir" data-safe-memory-task="permission_boundary" data-safe-memory-sensitivity="privacy" data-safe-memory-type="safety_boundary">Memory: \u00f6zel mesaj block</button>
       <button data-safe-memory-command="Ambrosia tarz\u0131m\u0131 kullan" data-safe-memory-task="ambrosia_prompt" data-safe-memory-type="lux_ambrosia_reference">Memory: Ambrosia tarz</button>
+    </div>
+    <div class="bar">
+      <button data-routing-simulation-command="normal sohbet" data-routing-task="normal_chat">Sim: normal sohbet</button>
+      <button data-routing-simulation-command="uzun akademik rapor yaz" data-routing-task="report_writer" data-routing-size="long">Sim: akademik rapor</button>
+      <button data-routing-simulation-command="CV haz\u0131rla" data-routing-task="cv_builder">Sim: CV</button>
+      <button data-routing-simulation-command="r\u00fcya sahnesi promptla" data-routing-task="dream_scene">Sim: r\u00fcya prompt</button>
+      <button data-routing-simulation-command="\u00e7izimi oku" data-routing-task="sketch_understanding_request">Sim: \u00e7izim oku</button>
+      <button data-routing-simulation-command="g\u00f6rsel \u00fcret" data-routing-task="image_generation_request">Sim: g\u00f6rsel \u00fcret</button>
+      <button data-routing-simulation-command="kritik kod debug" data-routing-task="critical_debug" data-routing-sensitivity="high">Sim: kritik debug</button>
+      <button data-routing-simulation-command="Luxway telefon raporu" data-routing-task="luxway">Sim: Luxway</button>
+      <button data-routing-simulation-command="Luxeph ge\u00e7mi\u015fini getir" data-routing-task="privacy_sensitive" data-routing-sensitivity="privacy">Sim: Luxeph memory</button>
+      <button data-routing-simulation-command="\u00f6zel mesaj\u0131m\u0131 \u00f6zetle" data-routing-task="permission_boundary" data-routing-sensitivity="privacy">Sim: \u00f6zel mesaj</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7590,6 +7616,29 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadRoutingSimulation(command, taskType, sensitivity, responseSize) {
+      statusEl.textContent = "Loading routing simulation preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/router/simulation-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            scenario: "debug panel simulation",
+            task_type: taskType || "",
+            sensitivity: sensitivity || "normal",
+            response_size: responseSize || "medium"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded routing simulation preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -7695,6 +7744,14 @@ async def debug_agent_panel():
         button.dataset.safeMemoryTask,
         button.dataset.safeMemorySensitivity,
         button.dataset.safeMemoryType
+      ));
+    });
+    document.querySelectorAll("button[data-routing-simulation-command]").forEach((button) => {
+      button.addEventListener("click", () => loadRoutingSimulation(
+        button.dataset.routingSimulationCommand,
+        button.dataset.routingTask,
+        button.dataset.routingSensitivity,
+        button.dataset.routingSize
       ));
     });
   </script>
