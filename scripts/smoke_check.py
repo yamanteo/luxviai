@@ -1023,6 +1023,8 @@ class SmokeRunner:
         assert "/debug/audio-status" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
+        assert "/luxway/permission-model" in html, html[:300]
+        assert "/luxway/permission-preview" in html, html[:300]
         assert "/debug/luxway-status" in html, html[:300]
         return "debug agent panel"
 
@@ -1991,6 +1993,58 @@ class SmokeRunner:
         assert calendar.get("platform") == "ios", calendar
         return "luxway capability preview"
 
+    def check_luxway_permission_model_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        model_response = client.get("/luxway/permission-model")
+        assert model_response.status_code == 200, model_response.text
+        model = model_response.json()
+        assert model.get("read_only") is True, model
+        assert model.get("real_permission_requested") is False, model
+        assert model.get("real_access_enabled") is False, model
+        permission_ids = {item.get("id") for item in model.get("permission_groups", [])}
+        assert {"notifications", "calendar", "storage", "app_usage", "device_settings"} <= permission_ids, model
+
+        def preview(command: str, platform: str = "unknown") -> dict:
+            response = client.post("/luxway/permission-preview", json={"command": command, "platform": platform})
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("real_permission_requested") is False, payload
+            assert payload.get("real_access_enabled") is False, payload
+            assert payload.get("action_performed") is False, payload
+            assert payload.get("data_read") is False, payload
+            assert payload.get("data_written") is False, payload
+            assert payload.get("read_only") is True, payload
+            return payload
+
+        notifications = preview("Android bildirimlerimi onceliklendir", "android")
+        assert "notifications" in notifications.get("detected_permission_groups", []), notifications
+        assert notifications.get("platform") == "android", notifications
+
+        calendar = preview("iOS takvimimi ozetle", "ios")
+        assert "calendar" in calendar.get("detected_permission_groups", []), calendar
+        assert calendar.get("platform") == "ios", calendar
+
+        storage = preview("depolamayi temizle", "android")
+        assert {"storage", "files"} & set(storage.get("detected_permission_groups", [])), storage
+        assert storage.get("requires_confirmation") is True, storage
+
+        contacts = preview("kisilerime mesaj yaz", "android")
+        groups = set(contacts.get("detected_permission_groups", []))
+        assert {"contacts", "messages"} <= groups, contacts
+        assert contacts.get("requires_confirmation") is True, contacts
+
+        settings = preview("ayarlari degistir", "android")
+        assert "device_settings" in settings.get("detected_permission_groups", []), settings
+        assert settings.get("requires_confirmation") is True, settings
+        return "luxway permission model preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2066,6 +2120,7 @@ class SmokeRunner:
             ("audio_signal_preview", self.check_audio_signal_preview),
             ("audio_privacy_boundary_preview", self.check_audio_privacy_boundary_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
+            ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),

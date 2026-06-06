@@ -34,6 +34,7 @@ from audio_privacy_boundary import preview_audio_privacy_boundary
 from audio_signal_schema import audio_signal_schema, audio_status_snapshot, preview_audio_signal
 from agent_decision_trace import build_agent_decision_trace
 from luxway_capabilities import luxway_capability_registry, luxway_status_snapshot, preview_luxway_command
+from luxway_permission_model import luxway_permission_model, preview_luxway_permission
 from agent_scaffold import (
     ANDROID_PERMISSION_NOTES,
     IOS_PERMISSION_NOTES,
@@ -325,6 +326,11 @@ class LuxwayPreviewCommandRequest(BaseModel):
     command: str = Field(default="", max_length=2000)
     platform: str = Field(default="unknown", max_length=50)
     context: str = Field(default="", max_length=4000)
+
+
+class LuxwayPermissionPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=2000)
+    platform: str = Field(default="unknown", max_length=50)
 
 
 # =========================================================
@@ -6615,9 +6621,19 @@ async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
 
 
+@app.get("/luxway/permission-model")
+async def luxway_permission_model_endpoint():
+    return luxway_permission_model()
+
+
 @app.post("/luxway/preview-command")
 async def luxway_preview_command_endpoint(payload: LuxwayPreviewCommandRequest):
     return preview_luxway_command(payload.command, payload.platform, payload.context)
+
+
+@app.post("/luxway/permission-preview")
+async def luxway_permission_preview_endpoint(payload: LuxwayPermissionPreviewRequest):
+    return preview_luxway_permission(payload.command, payload.platform)
 
 
 @app.get("/debug/luxway-status")
@@ -6795,6 +6811,7 @@ async def debug_agent_panel():
     <div class="bar">
       <button data-endpoint="/debug/luxway-status">Luxway Status</button>
       <button data-endpoint="/luxway/capabilities">Luxway Capabilities</button>
+      <button data-endpoint="/luxway/permission-model">Permission Model</button>
     </div>
     <div class="bar">
       <button data-luxway-command="telefonumu tara">telefonumu tara</button>
@@ -6804,6 +6821,14 @@ async def debug_agent_panel():
       <button data-luxway-command="bildirimlerimi \u00f6nceliklendir">bildirimlerimi \u00f6nceliklendir</button>
       <button data-luxway-command="mail \u00f6zetimi g\u00f6ster">mail \u00f6zetimi g\u00f6ster</button>
       <button data-luxway-command="takvimimi \u00f6zetle">takvimimi \u00f6zetle</button>
+    </div>
+    <div class="bar">
+      <button data-luxway-permission-command="Android bildirimlerimi \u00f6nceliklendir" data-luxway-platform="android">Permission: Android bildirim</button>
+      <button data-luxway-permission-command="iOS takvimimi \u00f6zetle" data-luxway-platform="ios">Permission: iOS takvim</button>
+      <button data-luxway-permission-command="uygulamalar\u0131 tara" data-luxway-platform="android">Permission: uygulamalar</button>
+      <button data-luxway-permission-command="depolamay\u0131 temizle" data-luxway-platform="android">Permission: depolama</button>
+      <button data-luxway-permission-command="ki\u015filerime mesaj yaz" data-luxway-platform="android">Permission: mesaj</button>
+      <button data-luxway-permission-command="ayarlar\u0131 de\u011fi\u015ftir" data-luxway-platform="android">Permission: ayar</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7167,6 +7192,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadLuxwayPermission(command, platform) {
+      statusEl.textContent = "Loading Luxway permission preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/luxway/permission-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ command, platform: platform || "unknown" })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded Luxway permission preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -7229,6 +7271,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-luxway-command]").forEach((button) => {
       button.addEventListener("click", () => loadLuxwayPreview(button.dataset.luxwayCommand));
+    });
+    document.querySelectorAll("button[data-luxway-permission-command]").forEach((button) => {
+      button.addEventListener("click", () => loadLuxwayPermission(button.dataset.luxwayPermissionCommand, button.dataset.luxwayPlatform));
     });
   </script>
 </body>
