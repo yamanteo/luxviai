@@ -53,6 +53,7 @@ from multimodal_memory_scaffold import (
 from mode_registry import mode_registry, preview_mode_command
 from permission_boundary import preview_permission_boundary
 from router_scaffold import preview_router_decision
+from workspace_scaffold import build_workspace_preview, sample_workspace, workspace_schema
 
 try:
     from dotenv import load_dotenv
@@ -209,6 +210,11 @@ class MemorySignalPreviewRequest(BaseModel):
 class AgentIntentPreviewRequest(BaseModel):
     text: str = Field(default="", max_length=4000)
     source_modality: str = "text"
+
+
+class WorkspacePreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    content: str = Field(default="", max_length=12000)
 
 
 # =========================================================
@@ -6226,6 +6232,21 @@ async def debug_layer14_status():
     return _layer14_status()
 
 
+@app.get("/workspace/schema")
+async def workspace_schema_endpoint():
+    return workspace_schema()
+
+
+@app.get("/debug/workspace/sample")
+async def debug_workspace_sample():
+    return sample_workspace()
+
+
+@app.post("/workspace/preview")
+async def workspace_preview(payload: WorkspacePreviewRequest):
+    return build_workspace_preview(payload.command, payload.content)
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6255,6 +6276,14 @@ async def debug_agent_panel():
     <h2>Layer 14 Status</h2>
     <div class="bar">
       <button data-endpoint="/debug/layer14-status">Layer 14 Status</button>
+    </div>
+    <h2>Workspace Preview</h2>
+    <div class="bar">
+      <button data-workspace-command="CV haz\u0131rla">CV haz\u0131rla</button>
+      <button data-workspace-command="rapor yaz">rapor yaz</button>
+      <button data-workspace-command="sunuma \u00e7evir">sunuma \u00e7evir</button>
+      <button data-workspace-command="3. paragraf\u0131 akademikle\u015ftir">3. paragraf\u0131 akademikle\u015ftir</button>
+      <button data-workspace-command="bu metni sonu\u00e7 b\u00f6l\u00fcm\u00fcne uygun hale getir">sonu\u00e7 b\u00f6l\u00fcm\u00fc</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -6312,6 +6341,23 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadWorkspace(command) {
+      statusEl.textContent = "Loading workspace preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/workspace/preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ command, content: "" })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded workspace preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -6323,6 +6369,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-trace-command]").forEach((button) => {
       button.addEventListener("click", () => loadSample("/debug/agent-decision-trace?q=" + encodeURIComponent(button.dataset.traceCommand)));
+    });
+    document.querySelectorAll("button[data-workspace-command]").forEach((button) => {
+      button.addEventListener("click", () => loadWorkspace(button.dataset.workspaceCommand));
     });
   </script>
 </body>

@@ -1,0 +1,243 @@
+"""Read-only LuxWorkspace schema and block preview scaffold."""
+
+from __future__ import annotations
+
+import unicodedata
+import uuid
+from typing import Any, Dict, List, Mapping
+
+
+WORKSPACE_BLOCK_TYPES = [
+    "project",
+    "document",
+    "section",
+    "heading",
+    "paragraph",
+    "command",
+    "voice_command",
+    "ai_note",
+    "source",
+    "citation",
+    "draft",
+    "final",
+    "table_placeholder",
+    "export_package_preview",
+]
+
+WORKSPACE_BLOCK_FIELDS = [
+    "id",
+    "type",
+    "title",
+    "content",
+    "role",
+    "copyable",
+    "exportable",
+    "editable",
+    "order",
+    "parent_id",
+    "status",
+    "metadata",
+]
+
+_NON_COPY_EXPORT_TYPES = {"command", "voice_command"}
+_EXPORTABLE_CONTENT_TYPES = {"heading", "paragraph", "draft", "final", "section", "table_placeholder", "export_package_preview"}
+
+
+def _normalize_text(value: str) -> str:
+    text = unicodedata.normalize("NFKD", value or "")
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return (
+        text.lower()
+        .replace("\u0131", "i")
+        .replace("\u0130", "i")
+        .replace("\u015f", "s")
+        .replace("\u011f", "g")
+        .replace("\u00fc", "u")
+        .replace("\u00f6", "o")
+        .replace("\u00e7", "c")
+    )
+
+
+def _block(
+    block_type: str,
+    *,
+    title: str,
+    content: str,
+    role: str,
+    order: int,
+    parent_id: str = "",
+    status: str = "preview",
+    metadata: Mapping[str, Any] | None = None,
+) -> Dict[str, Any]:
+    copyable = block_type not in _NON_COPY_EXPORT_TYPES
+    exportable = block_type in _EXPORTABLE_CONTENT_TYPES and block_type not in _NON_COPY_EXPORT_TYPES
+    editable = block_type not in {"source", "citation", "export_package_preview"} and block_type not in _NON_COPY_EXPORT_TYPES
+    return {
+        "id": str(uuid.uuid4()),
+        "type": block_type,
+        "title": title,
+        "content": content,
+        "role": role,
+        "copyable": copyable,
+        "exportable": exportable,
+        "editable": editable,
+        "order": order,
+        "parent_id": parent_id,
+        "status": status,
+        "metadata": dict(metadata or {}),
+    }
+
+
+def workspace_schema() -> Dict[str, Any]:
+    return {
+        "block_types": list(WORKSPACE_BLOCK_TYPES),
+        "block_fields": list(WORKSPACE_BLOCK_FIELDS),
+        "rules": [
+            "command and voice_command blocks are never copyable or exportable.",
+            "content blocks such as heading, paragraph, draft, and final can be exportable in preview.",
+            "this scaffold never writes files, exports documents, or persists workspace data.",
+        ],
+        "read_only": True,
+        "write_performed": False,
+    }
+
+
+def _workspace_kind(command: str) -> str:
+    normalized = _normalize_text(command)
+    if "cv" in normalized or "ozgecmis" in normalized:
+        return "cv"
+    if "sunum" in normalized or "presentation" in normalized:
+        return "presentation"
+    if "rapor" in normalized:
+        return "report"
+    if "akademik" in normalized or "paragraf" in normalized:
+        return "rewrite"
+    if "sonuc" in normalized:
+        return "conclusion"
+    return "workspace"
+
+
+def _content_for_kind(kind: str, command: str, content: str) -> Dict[str, str]:
+    if kind == "cv":
+        return {
+            "title": "CV Builder Preview",
+            "heading": "Profesyonel CV Taslak Iskeleti",
+            "draft": "Profil, deneyim, beceriler ve proje bolumleri icin read-only taslak plan.",
+            "final": "CV dosyasi olusturulmaz; kullanici onayi olmadan export veya yazma yapilmaz.",
+        }
+    if kind == "presentation":
+        return {
+            "title": "Presentation Preview",
+            "heading": "Sunum Akisi Taslagi",
+            "draft": "Giris, problem, cozum, kanit ve kapanis slaytlari icin bolum onizlemesi.",
+            "final": "Sunum dosyasi olusturulmaz; yalnizca plan onizlemesi sunulur.",
+        }
+    if kind == "report":
+        return {
+            "title": "Report Preview",
+            "heading": "Rapor Taslak Iskeleti",
+            "draft": "Yonetici ozeti, bulgular, analiz ve sonuc bolumleri icin read-only taslak.",
+            "final": "Rapor PDF/Word olarak disari aktarilmaz; sadece scaffold preview doner.",
+        }
+    if kind == "rewrite":
+        return {
+            "title": "Rewrite Preview",
+            "heading": "Akademiklestirme Onizlemesi",
+            "draft": content or "Secilen paragraf daha resmi, acik ve akademik bir tona tasinabilir.",
+            "final": "Gercek editor degisikligi yapilmaz; kullaniciya sadece onerilen yon verilir.",
+        }
+    if kind == "conclusion":
+        return {
+            "title": "Conclusion Preview",
+            "heading": "Sonuc Bolumu Onizlemesi",
+            "draft": content or "Metin sonuc bolumune uygun olarak toparlayici ve etkili hale getirilebilir.",
+            "final": "Metin kaydedilmez; sonuc bolumu icin read-only yapi onerilir.",
+        }
+    return {
+        "title": "Workspace Preview",
+        "heading": "LuxWorkspace Blok Onizlemesi",
+        "draft": command or "Kullanici komutu workspace bloklarina ayrilabilir.",
+        "final": "Bu onizleme kalici workspace veya dosya olusturmaz.",
+    }
+
+
+def build_workspace_preview(command: str, content: str = "") -> Dict[str, Any]:
+    kind = _workspace_kind(command)
+    copy = _content_for_kind(kind, command, content)
+    project_id = str(uuid.uuid4())
+    document_id = str(uuid.uuid4())
+    section_id = str(uuid.uuid4())
+    blocks = [
+        {
+            **_block(
+                "project",
+                title="LuxWorkspace Project",
+                content="Read-only workspace preview project.",
+                role="container",
+                order=0,
+                metadata={"workspace_kind": kind},
+            ),
+            "id": project_id,
+        },
+        {
+            **_block(
+                "document",
+                title=copy["title"],
+                content="Document preview container; no file is created.",
+                role="container",
+                order=1,
+                parent_id=project_id,
+                metadata={"source": "preview"},
+            ),
+            "id": document_id,
+        },
+        _block(
+            "command",
+            title="User Command",
+            content=command,
+            role="input_command",
+            order=2,
+            parent_id=document_id,
+            metadata={"read_only": True},
+        ),
+        {
+            **_block(
+                "section",
+                title="Primary Section",
+                content="Generated preview section.",
+                role="structure",
+                order=3,
+                parent_id=document_id,
+            ),
+            "id": section_id,
+        },
+        _block("heading", title=copy["heading"], content=copy["heading"], role="content", order=4, parent_id=section_id),
+        _block("draft", title="Draft Preview", content=copy["draft"], role="content", order=5, parent_id=section_id),
+        _block("final", title="Final Preview Boundary", content=copy["final"], role="content", order=6, parent_id=section_id),
+        _block(
+            "export_package_preview",
+            title="Export Boundary",
+            content="Export package is preview-only; Word/PDF/export is disabled.",
+            role="boundary",
+            order=7,
+            parent_id=document_id,
+            metadata={"export_enabled": False},
+        ),
+    ]
+    return {
+        "workspace_id": str(uuid.uuid4()),
+        "command": command,
+        "content": content,
+        "workspace_kind": kind,
+        "blocks": blocks,
+        "schema": workspace_schema(),
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+        "file_created": False,
+        "export_performed": False,
+    }
+
+
+def sample_workspace() -> Dict[str, Any]:
+    return build_workspace_preview("CV hazirla", "Kisa profil, deneyim ve proje bilgileri icin taslak scaffold.")

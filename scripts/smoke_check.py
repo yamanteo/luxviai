@@ -985,6 +985,7 @@ class SmokeRunner:
         html = response.text
         for endpoint in [
             "/debug/layer14-status",
+            "/workspace/preview",
             "/debug/agent/sample-email",
             "/debug/agent/sample-luxway",
             "/debug/agent/sample-visual",
@@ -1002,6 +1003,7 @@ class SmokeRunner:
         assert "permission boundary" in lowered, html[:300]
         assert "agent decision trace" in lowered, html[:300]
         assert "layer 14 status" in lowered, html[:300]
+        assert "workspace preview" in lowered, html[:300]
         return "debug agent panel"
 
     def check_mode_registry_preview(self) -> str:
@@ -1175,6 +1177,46 @@ class SmokeRunner:
         assert "stop" in backlog and "durdur" in backlog, payload
         return "layer 14 status"
 
+    def check_workspace_schema_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/workspace/schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert "block_types" in schema and "command" in schema.get("block_types", []), schema
+        assert "block_fields" in schema and "exportable" in schema.get("block_fields", []), schema
+        assert schema.get("read_only") is True, schema
+
+        sample_response = client.get("/debug/workspace/sample")
+        assert sample_response.status_code == 200, sample_response.text
+        sample = sample_response.json()
+        assert sample.get("read_only") is True, sample
+        assert sample.get("write_performed") is False, sample
+
+        preview_response = client.post(
+            "/workspace/preview",
+            json={"command": "CV haz\u0131rla", "content": "Kisa profil ve deneyim bilgisi."},
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("read_only") is True, preview
+        assert preview.get("write_performed") is False, preview
+        assert preview.get("file_created") is False, preview
+        blocks = preview.get("blocks", [])
+        assert isinstance(blocks, list) and blocks, preview
+        command_blocks = [block for block in blocks if block.get("type") == "command"]
+        assert command_blocks and all(block.get("exportable") is False for block in command_blocks), blocks
+        assert all(block.get("copyable") is False for block in command_blocks), blocks
+        content_blocks = [block for block in blocks if block.get("type") in {"draft", "final", "paragraph", "heading"}]
+        assert any(block.get("exportable") is True for block in content_blocks), blocks
+        return "workspace schema/preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -1241,6 +1283,7 @@ class SmokeRunner:
             ("permission_boundary_preview", self.check_permission_boundary_preview),
             ("agent_decision_trace_preview", self.check_agent_decision_trace_preview),
             ("layer14_status_snapshot", self.check_layer14_status_snapshot),
+            ("workspace_schema_preview", self.check_workspace_schema_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
