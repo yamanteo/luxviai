@@ -888,6 +888,55 @@ class SmokeRunner:
         assert cv_payload.get("write_performed") is False, cv_payload
         return "agent analysis hub read-only"
 
+    def check_router_preview_read_only(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        def post_router(text: str) -> dict[str, Any]:
+            response = client.post("/router/preview", json={"text": text, "source_modality": "text"})
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            preview = payload.get("router_preview", {})
+            assert payload.get("read_only") is True, payload
+            assert payload.get("raw_data_stored") is False, payload
+            assert payload.get("write_performed") is False, payload
+            assert preview.get("read_only") is True, payload
+            assert preview.get("raw_data_stored") is False, payload
+            assert preview.get("write_performed") is False, payload
+            return payload
+
+        email_payload = post_router("maillerimi \u00f6zetle")
+        email_preview = email_payload.get("router_preview", {})
+        assert email_preview.get("should_use_agent") is True, email_payload
+        assert email_preview.get("output_type") in {"action_plan", "memory_preview"}, email_payload
+        assert email_preview.get("can_execute_now") is False, email_payload
+
+        phone_payload = post_router("telefonu tara kullan\u0131lmayan uygulamalar\u0131 bul")
+        phone_preview = phone_payload.get("router_preview", {})
+        assert phone_preview.get("should_use_luxway") is True, phone_payload
+        assert phone_preview.get("should_require_confirmation") is True, phone_payload
+        assert phone_preview.get("can_execute_now") is False, phone_payload
+
+        cv_payload = post_router("CV haz\u0131rla")
+        cv_preview = cv_payload.get("router_preview", {})
+        assert cv_preview.get("output_type") == "cv_builder", cv_payload
+        assert cv_preview.get("should_use_workspace") is True or cv_preview.get("recommended_mode") == "cv_builder", cv_payload
+
+        ambrosia_payload = post_router("bu hissi Lux Ambrosia olarak g\u00f6rselle\u015ftir")
+        ambrosia_preview = ambrosia_payload.get("router_preview", {})
+        assert ambrosia_preview.get("should_use_visual_system") is True, ambrosia_payload
+        assert ambrosia_preview.get("output_type") in {"ambrosia_state", "visual_prompt"}, ambrosia_payload
+
+        dream_payload = post_router("r\u00fcyam\u0131 g\u00f6rselle\u015ftir")
+        dream_preview = dream_payload.get("router_preview", {})
+        assert dream_preview.get("output_type") == "dream_scene_state", dream_payload
+        return "router preview read-only"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -947,6 +996,7 @@ class SmokeRunner:
             ("agent_preview_intent_read_only", self.check_agent_preview_intent_read_only),
             ("agent_plan_action_read_only", self.check_agent_plan_action_read_only),
             ("agent_analyze_hub_read_only", self.check_agent_analyze_hub_read_only),
+            ("router_preview_read_only", self.check_router_preview_read_only),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),

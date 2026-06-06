@@ -49,6 +49,7 @@ from multimodal_memory_scaffold import (
     preview_memory_signals,
     validate_memory_signal,
 )
+from router_scaffold import preview_router_decision
 
 try:
     from dotenv import load_dotenv
@@ -6059,6 +6060,16 @@ async def plan_agent_action_endpoint(payload: AgentIntentPreviewRequest):
 async def analyze_agent_endpoint(payload: AgentIntentPreviewRequest):
     return {
         "analysis": analyze_agent_request(payload.text, payload.source_modality),
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+    }
+
+
+@app.post("/router/preview")
+async def router_preview_endpoint(payload: AgentIntentPreviewRequest):
+    return {
+        "router_preview": preview_router_decision(payload.text, payload.source_modality),
         "read_only": True,
         "raw_data_stored": False,
         "write_performed": False,
