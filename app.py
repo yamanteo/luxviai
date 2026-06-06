@@ -49,6 +49,7 @@ from multimodal_memory_scaffold import (
     preview_memory_signals,
     validate_memory_signal,
 )
+from mode_registry import mode_registry, preview_mode_command
 from router_scaffold import preview_router_decision
 
 try:
@@ -6121,6 +6122,36 @@ async def debug_router_sample_cv():
     return _debug_router_sample("CV haz\u0131rla, eksik alanlar\u0131 bana sor ve profesyonel T\u00fcrk\u00e7e yap.")
 
 
+@app.get("/debug/mode-registry")
+async def debug_mode_registry():
+    return {
+        "modes": mode_registry(),
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+    }
+
+
+@app.get("/debug/mode-preview")
+async def debug_mode_preview_get(q: str = Query("", max_length=500)):
+    return {
+        "mode_preview": preview_mode_command(q),
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+    }
+
+
+@app.post("/debug/mode-preview")
+async def debug_mode_preview_post(payload: AgentIntentPreviewRequest):
+    return {
+        "mode_preview": preview_mode_command(payload.text),
+        "read_only": True,
+        "raw_data_stored": False,
+        "write_performed": False,
+    }
+
+
 @app.get("/debug/agent-panel")
 async def debug_agent_panel():
     html_doc = """<!doctype html>
@@ -6135,6 +6166,7 @@ async def debug_agent_panel():
     main { max-width: 1120px; margin: 0 auto; padding: 32px 20px; }
     h1 { margin: 0 0 8px; font-size: 28px; font-weight: 700; letter-spacing: 0; }
     .note { margin: 0 0 22px; color: var(--muted); line-height: 1.5; }
+    h2 { margin: 22px 0 10px; font-size: 18px; font-weight: 650; letter-spacing: 0; }
     .bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
     button { border: 1px solid var(--line); background: #202020; color: var(--text); padding: 10px 13px; border-radius: 8px; cursor: pointer; font: inherit; }
     button:hover, button:focus { border-color: var(--amber); outline: 2px solid rgba(171, 107, 12, 0.25); }
@@ -6152,6 +6184,15 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/agent/sample-visual">Visual Memory Sample</button>
       <button data-endpoint="/debug/agent/sample-dream">Dream Scene Sample</button>
       <button data-endpoint="/debug/router/sample-cv">CV Router Sample</button>
+    </div>
+    <h2>Mode Registry</h2>
+    <div class="bar">
+      <button data-mode-command="Luxeph'e ge\u00e7">Luxeph'e ge\u00e7</button>
+      <button data-mode-command="CV haz\u0131rla">CV haz\u0131rla</button>
+      <button data-mode-command="r\u00fcyam\u0131 g\u00f6rsele \u00e7evir">r\u00fcyam\u0131 g\u00f6rsele \u00e7evir</button>
+      <button data-mode-command="gece radyosu modu">gece radyosu modu</button>
+      <button data-mode-command="tek ad\u0131m s\u00f6yle">tek ad\u0131m s\u00f6yle</button>
+      <button data-mode-command="Codex modu">Codex modu</button>
     </div>
     <p class="status" id="status">Choose a sample.</p>
     <pre id="output">{}</pre>
@@ -6174,6 +6215,9 @@ async def debug_agent_panel():
     }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
+    });
+    document.querySelectorAll("button[data-mode-command]").forEach((button) => {
+      button.addEventListener("click", () => loadSample("/debug/mode-preview?q=" + encodeURIComponent(button.dataset.modeCommand)));
     });
   </script>
 </body>

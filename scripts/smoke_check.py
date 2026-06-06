@@ -989,12 +989,59 @@ class SmokeRunner:
             "/debug/agent/sample-visual",
             "/debug/agent/sample-dream",
             "/debug/router/sample-cv",
+            "/debug/mode-preview",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
         assert "read-only" in lowered or "no real action" in lowered, html[:300]
         assert "no raw data is stored" in lowered, html[:300]
+        assert "mode registry" in lowered, html[:300]
         return "debug agent panel"
+
+    def check_mode_registry_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        registry_response = client.get("/debug/mode-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry_payload = registry_response.json()
+        modes = registry_payload.get("modes", [])
+        assert isinstance(modes, list) and len(modes) >= 10, registry_payload
+        mode_ids = {mode.get("id") for mode in modes}
+        for expected_id in {"luxeph", "cv_builder", "dream_scene", "night_radio", "one_step", "codex_mode"}:
+            assert expected_id in mode_ids, registry_payload
+        assert registry_payload.get("read_only") is True, registry_payload
+        assert registry_payload.get("raw_data_stored") is False, registry_payload
+
+        def assert_mode(command: str, expected_id: str) -> None:
+            response = client.get("/debug/mode-preview", params={"q": command})
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            preview = payload.get("mode_preview", {})
+            assert payload.get("read_only") is True, payload
+            assert payload.get("raw_data_stored") is False, payload
+            assert payload.get("write_performed") is False, payload
+            matched_ids = {item.get("mode", {}).get("id") for item in preview.get("matched_modes", [])}
+            assert expected_id in matched_ids, payload
+            assert preview.get("can_execute_now") is False, payload
+
+        assert_mode("Luxeph'e ge\u00e7", "luxeph")
+        assert_mode("CV haz\u0131rla", "cv_builder")
+        assert_mode("r\u00fcyam\u0131 g\u00f6rsele \u00e7evir", "dream_scene")
+        assert_mode("gece radyosu modu", "night_radio")
+        assert_mode("tek ad\u0131m s\u00f6yle", "one_step")
+        assert_mode("Codex modu", "codex_mode")
+
+        unknown_response = client.get("/debug/mode-preview", params={"q": "bunu anlamlandir ama moda gecme"})
+        assert unknown_response.status_code == 200, unknown_response.text
+        unknown_preview = unknown_response.json().get("mode_preview", {})
+        assert unknown_preview.get("confidence") == "low", unknown_preview
+        assert unknown_preview.get("matched_modes") == [], unknown_preview
+        return "mode registry preview"
 
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
@@ -1058,6 +1105,7 @@ class SmokeRunner:
             ("router_preview_read_only", self.check_router_preview_read_only),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
+            ("mode_registry_preview", self.check_mode_registry_preview),
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
