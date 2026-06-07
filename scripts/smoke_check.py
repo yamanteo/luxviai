@@ -339,6 +339,10 @@ class SmokeRunner:
         assert "function isContinueCommand" in html
         assert "cleanBaseText.slice(-1200)" in html
         assert "function cleanInterruptedPartialText" in html
+        assert "function analyzeContinuationBoundary" in html
+        assert "function buildContinuationBoundaryInstruction" in html
+        assert "lastNumber" in html
+        assert "nextNumber" in html
         assert "safePartialText" in html
         assert "resumeUnavailableFallback" in html
         assert "Ekranda zaten görünen metin, aynen korunacak" in html
@@ -370,6 +374,8 @@ class SmokeRunner:
         assert "if (stopped || !chunk || !runStillActive()) return" in html
         assert 'reject(new Error("stale_run"))' in html
         assert "continueInterruptedResponse(targetAiEl)" in html
+        assert "continuationBoundary" in html
+        assert "boundaryInstruction" in html
         assert "Madde/listede kaldıysan bir sonraki madde" in html
         assert "Sadece bu metne eklenecek devam kısmını üret" in html
         return "safe resume/hard-stop context"

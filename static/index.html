@@ -4259,6 +4259,7 @@ function continuePromptText() {
 function normalizeContinuationText(text) {
   return String(text || "")
     .toLowerCase()
+    .replace(/[*_`~]+/g, "")
     .replace(/\s+/g, " ")
     .replace(/[“”"']/g, "")
     .trim();
@@ -4280,6 +4281,43 @@ function cleanInterruptedPartialText(text) {
   // If the marker leaked onto the end of the previous line, trim it too.
   clean = clean.replace(/(\S)\s+(?:\d+[\.)])\s*$/g, "$1");
   return clean.trim();
+}
+
+function analyzeContinuationBoundary(text) {
+  const clean = String(text || "").trim();
+  const numberedMatches = [...clean.matchAll(/(?:^|\n)\s*(\d+)[\.)]\s+/g)];
+  const inlineMatches = [...clean.matchAll(/(?:^|\s)(\d+)[\.)]\s+/g)];
+  const matches = numberedMatches.length ? numberedMatches : inlineMatches;
+  const lastMatch = matches.length ? matches[matches.length - 1] : null;
+  const lastNumber = lastMatch ? Number(lastMatch[1]) : null;
+  const endsWithSentence = /[.!?…)](?:\s|$)/.test(clean.slice(-3)) || /[.!?…]\s*$/.test(clean);
+  const endsWithCommaLike = /[,;:–-]\s*$/.test(clean);
+  const lastTail = clean.slice(-220);
+  const likelyIncomplete = Boolean(clean) && (!endsWithSentence || endsWithCommaLike);
+  return {
+    hasNumberedList: lastNumber !== null,
+    lastNumber,
+    nextNumber: lastNumber !== null ? lastNumber + 1 : null,
+    likelyIncomplete,
+    lastTail
+  };
+}
+
+function buildContinuationBoundaryInstruction(boundary) {
+  if (!boundary) return "";
+  const lines = [];
+  if (boundary.hasNumberedList) {
+    lines.push(`Son görünen liste maddesi: ${boundary.lastNumber}.`);
+    lines.push(boundary.likelyIncomplete
+      ? `Metin ${boundary.lastNumber}. madde içinde kesilmiş olabilir; önce bu maddeyi doğal biçimde tamamla, sonra gerekiyorsa ${boundary.nextNumber}. maddeden devam et.`
+      : `Bir sonraki yeni madde gerekiyorsa ${boundary.nextNumber}. maddeden başla; 1'den veya önceki maddelerden başlama.`);
+  } else if (boundary.likelyIncomplete) {
+    lines.push("Metin cümle ortasında kesilmiş olabilir; önce yarım cümleyi doğal biçimde tamamla.");
+  }
+  if (boundary.lastTail) {
+    lines.push(`Son görünen kısa kuyruk: ${boundary.lastTail}`);
+  }
+  return lines.join("\n");
 }
 
 function trimRepeatedContinuationStart(baseText, incomingText) {
@@ -4412,7 +4450,9 @@ async function continueInterruptedResponse(targetAiEl) {
   }
   markRunStarted(continueRunId);
   const resumeContext = cleanBaseText.slice(-1200);
-  const bridgeMessage = `${continuePromptText()}\n\nKullanıcının önceki isteği: ${state.userText || ""}\nEkranda zaten görünen metin, aynen korunacak:\n${resumeContext}\n\nSadece bu metne eklenecek devam kısmını üret. Ekrandaki metni tekrar yazma. Baştan alma, aynı maddeyi/başlığı/cümleyi tekrar etme. Madde/listede kaldıysan bir sonraki madde veya tamamlanmamış cümlenin devamından sürdür. Eğer metin \"Lev\" gibi yarım bir isimle bitiyorsa önce onu doğal biçimde tamamla, sonra sonraki maddeye geç.`;
+  const continuationBoundary = analyzeContinuationBoundary(cleanBaseText);
+  const boundaryInstruction = buildContinuationBoundaryInstruction(continuationBoundary);
+  const bridgeMessage = `${continuePromptText()}\n\nKullanıcının önceki isteği: ${state.userText || ""}\nEkranda zaten görünen metin, aynen korunacak:\n${resumeContext}\n\nKesilme analizi:\n${boundaryInstruction || "Belirgin liste/cümle sınırı yok; son görünen metnin doğal devamını üret."}\n\nSadece bu metne eklenecek devam kısmını üret. Ekrandaki metni tekrar yazma. Baştan alma, aynı maddeyi/başlığı/cümleyi tekrar etme. Madde/listede kaldıysan bir sonraki madde veya tamamlanmamış cümlenin devamından sürdür. Eğer metin yarım bir isim/kelime ile bitiyorsa önce onu doğal biçimde tamamla, sonra sonraki maddeye geç.`;
   stopStreamRequested = false;
   setResponseLock(true);
   const writer = createPacedWriter(targetAiEl, 0.9, continueRunId);
