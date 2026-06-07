@@ -36,6 +36,7 @@ from agent_decision_trace import build_agent_decision_trace
 from cost_privacy_policy import cost_privacy_policy, preview_cost_privacy
 from endpoint_coverage_matrix import endpoint_coverage_matrix
 from live_readiness_checklist import live_readiness_checklist
+from master_status_summary import master_status_summary
 from luxway_capabilities import luxway_capability_registry, luxway_status_snapshot, preview_luxway_command
 from luxway_data_preview import preview_luxway_data
 from luxway_device_safety import preview_luxway_device_safety
@@ -6817,6 +6818,11 @@ async def debug_live_readiness():
     return live_readiness_checklist()
 
 
+@app.get("/debug/master-status")
+async def debug_master_status():
+    return master_status_summary()
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -7195,6 +7201,7 @@ async def debug_agent_panel():
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
+      <button data-endpoint="/debug/master-status">Master Status</button>
       <button data-endpoint="/debug/system-control-audit">System Control Audit</button>
       <button data-endpoint="/debug/endpoint-coverage">Endpoint Coverage</button>
       <button data-endpoint="/debug/live-readiness">Live Readiness</button>
