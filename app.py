@@ -41,6 +41,7 @@ from drive_mode_preview import drive_mode_schema, drive_mode_status, preview_dri
 from emotional_reflection_support import emotional_reflection_registry, emotional_status, preview_emotional_reflection
 from endpoint_coverage_matrix import endpoint_coverage_matrix
 from layer21_status import layer21_status_snapshot
+from layer22_candidate_scoring import candidate_scoring_matrix, layer22_scoring_status, preview_candidate_score
 from layer22_future_candidates import future_candidates_registry, layer22_status_snapshot, preview_future_candidate
 from live_readiness_checklist import live_readiness_checklist
 from master_status_summary import master_status_summary
@@ -484,6 +485,14 @@ class FutureCandidatePreviewRequest(BaseModel):
     user_goal: str = Field(default="", max_length=1000)
     risk_level: str = Field(default="", max_length=50)
     implementation_depth: str = Field(default="", max_length=100)
+
+
+class FutureScorePreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    candidate_id: str = Field(default="", max_length=100)
+    focus: str = Field(default="", max_length=80)
+    risk_tolerance: str = Field(default="", max_length=80)
+    implementation_goal: str = Field(default="", max_length=200)
 
 
 # =========================================================
@@ -6937,6 +6946,27 @@ async def debug_layer22_status():
     return layer22_status_snapshot()
 
 
+@app.get("/future/scoring-matrix")
+async def future_scoring_matrix_endpoint():
+    return candidate_scoring_matrix()
+
+
+@app.post("/future/score-preview")
+async def future_score_preview_endpoint(payload: FutureScorePreviewRequest):
+    return preview_candidate_score(
+        payload.command,
+        payload.candidate_id,
+        payload.focus,
+        payload.risk_tolerance,
+        payload.implementation_goal,
+    )
+
+
+@app.get("/debug/layer22-scoring-status")
+async def debug_layer22_scoring_status():
+    return layer22_scoring_status()
+
+
 @app.get("/support/registry")
 async def support_registry_endpoint():
     return support_registry()
@@ -7497,6 +7527,20 @@ async def debug_agent_panel():
       <button data-future-command="En pratik fikirleri g\u00f6ster">En pratik fikirleri g\u00f6ster</button>
       <button data-future-command="G\u00fcvenlik riski y\u00fcksek olanlar\u0131 ay\u0131r">G\u00fcvenlik riski y\u00fcksek olanlar\u0131 ay\u0131r</button>
       <button data-future-command="Lux'u en \u00f6zel yapan fikirleri s\u0131rala">Lux'u en \u00f6zel yapan fikirleri s\u0131rala</button>
+    </div>
+    <h2>Layer 22 Scoring Matrix</h2>
+    <div class="bar">
+      <button data-endpoint="/future/scoring-matrix">Scoring Matrix</button>
+      <button data-endpoint="/debug/layer22-scoring-status">Layer 22 Scoring Status</button>
+    </div>
+    <div class="bar">
+      <button data-future-score-command="En pratik fikirleri s\u0131rala" data-future-score-focus="practical">En pratik fikirleri s\u0131rala</button>
+      <button data-future-score-command="Reklam de\u011feri y\u00fcksek olanlar\u0131 g\u00f6ster" data-future-score-focus="marketing">Reklam de\u011feri y\u00fcksek olanlar\u0131 g\u00f6ster</button>
+      <button data-future-score-command="Lux'u en \u00f6zel yapan fikirleri s\u0131rala" data-future-score-focus="premium_identity">Lux'u en \u00f6zel yapan fikirleri s\u0131rala</button>
+      <button data-future-score-command="\u0130lk scaffold i\u00e7in en mant\u0131kl\u0131 \u00fc\u00e7 fikri se\u00e7" data-future-score-focus="fastest_scaffold">\u0130lk scaffold i\u00e7in en mant\u0131kl\u0131 \u00fc\u00e7 fikri se\u00e7</button>
+      <button data-future-score-command="Riskli fikirleri ay\u0131r" data-future-score-focus="privacy_review">Riskli fikirleri ay\u0131r</button>
+      <button data-future-score-command="Finality Sense puan\u0131n\u0131 g\u00f6ster" data-future-score-candidate="finality_sense">Finality Sense puan\u0131n\u0131 g\u00f6ster</button>
+      <button data-future-score-command="Time Twin neden hemen yap\u0131lmamal\u0131?" data-future-score-candidate="lux_time_twin">Time Twin neden hemen yap\u0131lmamal\u0131?</button>
     </div>
     <h2>Background Support</h2>
     <div class="bar">
@@ -8374,6 +8418,29 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadFutureScorePreview(command, focus, candidateId) {
+      statusEl.textContent = "Loading future scoring preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/future/score-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            candidate_id: candidateId || "",
+            focus: focus || "",
+            risk_tolerance: "normal_preview",
+            implementation_goal: "debug panel scoring preview"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded future scoring preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -8529,6 +8596,13 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-future-command]").forEach((button) => {
       button.addEventListener("click", () => loadFuturePreview(button.dataset.futureCommand));
+    });
+    document.querySelectorAll("button[data-future-score-command]").forEach((button) => {
+      button.addEventListener("click", () => loadFutureScorePreview(
+        button.dataset.futureScoreCommand,
+        button.dataset.futureScoreFocus,
+        button.dataset.futureScoreCandidate
+      ));
     });
   </script>
 </body>

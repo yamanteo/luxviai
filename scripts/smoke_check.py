@@ -1041,6 +1041,9 @@ class SmokeRunner:
         assert "/future/candidates" in html, html[:300]
         assert "/future/preview" in html, html[:300]
         assert "/debug/layer22-status" in html, html[:300]
+        assert "/future/scoring-matrix" in html, html[:300]
+        assert "/future/score-preview" in html, html[:300]
+        assert "/debug/layer22-scoring-status" in html, html[:300]
         assert "/support/registry" in html, html[:300]
         assert "/support/preview" in html, html[:300]
         assert "/debug/support-status" in html, html[:300]
@@ -2952,6 +2955,102 @@ class SmokeRunner:
         assert ranking, ranking_response.json()
         return "layer 22 future candidates"
 
+    def check_layer22_candidate_scoring_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        matrix_response = client.get("/future/scoring-matrix")
+        assert matrix_response.status_code == 200, matrix_response.text
+        matrix = matrix_response.json()
+        assert matrix.get("layer") == "22.2", matrix
+        assert matrix.get("status") == "scoring_matrix_ready", matrix
+        assert matrix.get("candidate_count") == 20, matrix
+        assert matrix.get("read_only") is True, matrix
+        assert matrix.get("real_action_enabled") is False, matrix
+        items = matrix.get("items", [])
+        names = {item.get("name") for item in items}
+        assert "Finality Sense" in names, matrix
+        assert "Lux Time Twin" in names, matrix
+        for item in items:
+            assert item.get("read_only") is True, item
+            scores = item.get("scores", {})
+            for score_name in [
+                "practicality_score",
+                "daily_use_score",
+                "premium_identity_score",
+                "wow_factor_score",
+                "marketing_demo_score",
+                "technical_complexity_score",
+                "privacy_risk_score",
+                "safety_risk_score",
+                "dependency_score",
+                "scaffold_readiness_score",
+                "first_build_priority_score",
+            ]:
+                assert score_name in scores, item
+                assert 0 <= scores[score_name] <= 10, item
+
+        status_response = client.get("/debug/layer22-scoring-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "scoring_matrix_ready", status
+        assert status.get("candidate_count") == 20, status
+        assert status.get("read_only") is True, status
+        safety = status.get("safety_boundaries", {})
+        assert safety.get("real_action_enabled") is False, status
+        assert safety.get("action_performed") is False, status
+        assert safety.get("memory_write_performed") is False, status
+        assert safety.get("db_write_performed") is False, status
+        assert safety.get("file_created") is False, status
+        assert safety.get("export_performed") is False, status
+        assert safety.get("device_control_performed") is False, status
+
+        def score_preview(command: str, focus: str = "", candidate_id: str = "") -> dict:
+            response = client.post(
+                "/future/score-preview",
+                json={
+                    "command": command,
+                    "candidate_id": candidate_id,
+                    "focus": focus,
+                    "risk_tolerance": "normal",
+                    "implementation_goal": "smoke",
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("real_action_enabled") is False, payload
+            assert payload.get("action_performed") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            assert payload.get("db_write_performed") is False, payload
+            assert payload.get("file_created") is False, payload
+            assert payload.get("export_performed") is False, payload
+            assert payload.get("device_control_performed") is False, payload
+            return payload
+
+        practical = score_preview("En pratik fikirleri sirala", "practical")
+        assert practical.get("focus") == "practical", practical
+        assert practical.get("ranking"), practical
+
+        marketing = score_preview("Reklam degeri yuksek olanlari goster", "marketing")
+        assert marketing.get("focus") == "marketing", marketing
+        assert marketing.get("ranking"), marketing
+
+        first_build = score_preview("Ilk scaffold icin en mantikli uc fikri sec", "fastest_scaffold")
+        assert first_build.get("recommended_first_build"), first_build
+
+        risk = score_preview("Riskli fikirleri ayir", "privacy_review")
+        assert risk.get("high_risk_candidates"), risk
+
+        finality = score_preview("Finality Sense puanini goster", candidate_id="finality_sense")
+        assert (finality.get("matched_candidate") or {}).get("name") == "Finality Sense", finality
+        return "layer 22 candidate scoring matrix"
+
     def check_background_support_registry_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3650,6 +3749,7 @@ class SmokeRunner:
             ("master_status_summary_preview", self.check_master_status_summary_preview),
             ("layer21_status_snapshot", self.check_layer21_status_snapshot),
             ("layer22_future_candidates_preview", self.check_layer22_future_candidates_preview),
+            ("layer22_candidate_scoring_preview", self.check_layer22_candidate_scoring_preview),
             ("background_support_registry_preview", self.check_background_support_registry_preview),
             ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview),
             ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview),
