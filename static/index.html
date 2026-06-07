@@ -3039,6 +3039,102 @@ function addMessageToHistory(role, text) {
   const conv = getActiveConversation();
   addMessageToHistoryForConversation(conv.id, role, text);
 }
+function clipConversationSummaryText(text, limit = 120) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (clean.length <= limit) return clean;
+  return clean.slice(0, Math.max(20, limit - 3)).trim() + "...";
+}
+function parseConversationSummaryCommand(text) {
+  const raw = String(text || "").trim();
+  const normalized = normalizeHintKey(raw).replace(/\s+/g, " ").trim();
+  if (!normalized) return null;
+  const wantsSummary = /(ozet|summary|summarize|toparla)/.test(normalized);
+  const hasConversationScope = /(sohbet|konusma|mesaj|ileti|bu sayfa|sayfa|aktif|chat|conversation|message|son\s+)/.test(normalized);
+  if (!wantsSummary || !hasConversationScope) return null;
+  let limit = null;
+  const numeric = normalized.match(/\b(?:son|last)\s+(\d{1,2})\s+(?:mesaji|mesajı|mesaj|ileti|message|messages)\b/)
+    || normalized.match(/\b(\d{1,2})\s+(?:mesaji|mesajı|mesaj|ileti|message|messages)\s+(?:ozetle|summarize)\b/);
+  if (numeric) limit = Math.max(2, Math.min(60, Number(numeric[1]) || 20));
+  else if (/son yirmi|last twenty/.test(normalized)) limit = 20;
+  else if (/son on|last ten/.test(normalized)) limit = 10;
+  return { id: "conversation_summary", rawText: raw, limit };
+}
+function summaryTopicLabel(text) {
+  const words = normalizeHintKey(text)
+    .split(/\s+/)
+    .filter(w => w.length > 3 && !["bunu", "şunu", "sunu", "soyle", "söyle", "yap", "olan", "icin", "için", "gibi", "daha", "sonra", "simdi", "şimdi"].includes(w));
+  const unique = [];
+  words.forEach(w => {
+    if (!unique.includes(w)) unique.push(w);
+  });
+  return unique.slice(0, 3).join(", ") || clipConversationSummaryText(text, 42);
+}
+function buildConversationFlowSummary(messages, limit = null) {
+  const usable = (Array.isArray(messages) ? messages : [])
+    .filter(m => m && (m.role === "user" || m.role === "assistant") && String(m.text || "").trim());
+  const scoped = limit ? usable.slice(-limit) : usable;
+  const userMessages = scoped.filter(m => m.role === "user");
+  if (!userMessages.length) return "Henüz özetlenecek yeterli sohbet yok.";
+  const firstUser = userMessages[0];
+  const lastUser = userMessages[userMessages.length - 1];
+  const important = [];
+  const signalRx = /(önemli|onemli|kritik|hata|düzelt|duzelt|tekrar|geri|devam|eksik|tamamla|özellikle|ozellikle|istiyorum|istemiyorum)/i;
+  userMessages.forEach(m => {
+    const text = String(m.text || "");
+    if ((text.length >= 80 || signalRx.test(text)) && important.length < 6) important.push(clipConversationSummaryText(text, 150));
+  });
+  if (!important.length) {
+    userMessages.slice(0, 4).forEach(m => important.push(clipConversationSummaryText(m.text, 130)));
+  }
+  const topicFlow = [];
+  const seen = new Set();
+  let previous = "";
+  userMessages.forEach((m, idx) => {
+    if (topicFlow.length >= 6) return;
+    const label = summaryTopicLabel(m.text);
+    const key = normalizeHintKey(label.split(",")[0] || label);
+    if (idx === 0) topicFlow.push("Başlangıç: " + clipConversationSummaryText(m.text, 120));
+    else if (key && key !== previous) {
+      topicFlow.push((seen.has(key) ? "Aynı odağa dönüş: " : "Yeni konu/odak: ") + clipConversationSummaryText(m.text, 120));
+    }
+    if (key) seen.add(key);
+    previous = key || previous;
+  });
+  const keywordPool = [];
+  userMessages.forEach(m => {
+    normalizeHintKey(m.text).split(/\s+/).forEach(w => {
+      if (w.length > 3 && !keywordPool.includes(w)) keywordPool.push(w);
+    });
+  });
+  return [
+    "SOHBET ÖZETİ",
+    "",
+    "Kapsam: " + (limit ? `son ${limit} mesaj` : "aktif sayfadaki sohbet") + ".",
+    "Başlangıç konusu: " + clipConversationSummaryText(firstUser.text, 150),
+    "Son odak: " + clipConversationSummaryText(lastUser.text, 150),
+    "",
+    "Önemli anlar:",
+    ...important.map(x => "- " + x),
+    "",
+    "Konu akışı:",
+    ...topicFlow.map(x => "- " + x),
+    "",
+    "Başlıca kavramlar: " + (keywordPool.slice(0, 8).join(", ") || "Henüz belirgin değil"),
+    "Not: Bu özet sadece bu sayfadaki görünen konuşmadan üretildi; yeni hafıza kaydı yapılmadı."
+  ].join("\n");
+}
+function handleLocalConversationSummaryCommand(text, limit = null) {
+  const parsed = parseConversationSummaryCommand(text) || { rawText: text || "sohbet özeti", limit };
+  const conv = getActiveConversation();
+  const beforeMessages = Array.isArray(conv.messages) ? conv.messages.slice() : [];
+  appendMessage("user", parsed.rawText || "sohbet özeti");
+  messageInput.value = "";
+  clearDraftState();
+  const summary = buildConversationFlowSummary(beforeMessages, parsed.limit || limit || null);
+  appendMessage("ai", summary);
+  resetTypingSignals();
+  return true;
+}
 function loadConversation(id) {
   const conv = userHistory.conversations.find(x => x.id === id);
   if (!conv) return;
@@ -3862,6 +3958,11 @@ async function fetchJson(url, options) {
 async function sendMessage(customText) {
   const text = (customText || messageInput.value).trim();
   if (!text) return;
+  const localSummaryCommand = parseConversationSummaryCommand(text);
+  if (localSummaryCommand) {
+    handleLocalConversationSummaryCommand(text, localSummaryCommand.limit);
+    return;
+  }
 
   appendMessage("user", text);
   messageInput.value = "";
@@ -4431,6 +4532,11 @@ async function sendMessageLive(customText) {
   if (aiResponding) return;
   const text = (customText || messageInput.value).trim();
   if (!text) return;
+  const localSummaryCommand = parseConversationSummaryCommand(text);
+  if (localSummaryCommand) {
+    handleLocalConversationSummaryCommand(text, localSummaryCommand.limit);
+    return;
+  }
   if (activeGeneration && !aiResponding) {
     hardCancelActiveTransport(null, true);
     activeGeneration = null;
@@ -4991,14 +5097,23 @@ const voiceInfra = {
   parseCommand(text) {
     const normalized = normalizeHintKey(text).replace(/\s+/g, " ").trim();
     if (!normalized) return null;
+    const summaryCommand = parseConversationSummaryCommand(text);
+    if (summaryCommand) return summaryCommand;
     for (const [id, keys] of Object.entries(this.commandLexicon)) {
       if (keys.includes(normalized)) return id;
     }
     return null;
   },
-  executeCommand(commandId) {
+  executeCommand(command) {
+    const commandId = typeof command === "string" ? command : (command && command.id);
     if (!commandId) return false;
     switch (commandId) {
+      case "conversation_summary":
+        handleLocalConversationSummaryCommand(
+          (command && command.rawText) || "sohbet özeti",
+          command && command.limit ? command.limit : null
+        );
+        return true;
       case "new_chat":
         startNewTopConversation();
         return true;

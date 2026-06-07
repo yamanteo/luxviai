@@ -3019,6 +3019,46 @@ class SmokeRunner:
         assert luxapp.weather_context_greeting("günaydın") is True
         return "permission-based weather context"
 
+    def check_conversation_summary_command(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        user_id = f"{DEBUG_USER_ID}_summary"
+        active, session = luxapp.create_new_session(user_id, "luxviai")
+        samples = [
+            ("user", "Layer 20 status snapshot nerede kalmıştı?"),
+            ("assistant", "Layer 20 master status ile kapanmıştı."),
+            ("user", "Şimdi sohbet özeti özelliği istiyorum."),
+            ("assistant", "Aktif konuşma ve son mesaj kapsamı eklenebilir."),
+            ("user", "Sonra tekrar Layer 20 konusuna dönebiliriz."),
+            ("assistant", "Dönüş noktası ayrıca özetlenebilir."),
+        ]
+        for role, content in samples:
+            luxapp.add_message(session, role, content, {"smoke": True})
+        luxapp.save_session(user_id, active, session)
+
+        assert luxapp.is_conversation_summary_command("son 20 mesajı özetle") is True
+        assert luxapp.parse_conversation_summary_limit("son 20 mesajı özetle") == 20
+        text = luxapp.get_command_response(user_id, "son 20 mesajı özetle")
+        assert text and "SOHBET ÖZETİ" in text, text
+        assert "Başlangıç konusu" in text, text
+        assert "Önemli anlar" in text, text
+        assert "Konu akışı" in text, text
+        assert "Son odak" in text, text
+
+        client = TestClient(luxapp.app)
+        response = client.post("/conversation/summary", json={"user_id": user_id, "limit": 20, "scope": "smoke"})
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload.get("read_only") is True, payload
+        assert payload.get("memory_write_performed") is False, payload
+        assert payload.get("db_write_performed") is False, payload
+        assert "SOHBET ÖZETİ" in payload.get("summary", ""), payload
+        return "conversation summary command"
+
     def check_layer21_status_snapshot(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4571,6 +4611,7 @@ class SmokeRunner:
             ("master_status_summary_preview", self.check_master_status_summary_preview),
             ("lux_character_status", self.check_lux_character_status),
             ("location_weather_context", self.check_location_weather_context),
+            ("conversation_summary_command", self.check_conversation_summary_command),
             ("layer21_status_snapshot", self.check_layer21_status_snapshot),
             ("layer22_future_candidates_preview", self.check_layer22_future_candidates_preview),
             ("layer22_full_status_snapshot", self.check_layer22_full_status_snapshot),

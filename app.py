@@ -228,6 +228,12 @@ class ChatRequest(BaseModel):
     location_timezone: str = Field(default="", max_length=80)
 
 
+class ConversationSummaryRequest(BaseModel):
+    user_id: str = "default_user"
+    limit: Optional[int] = Field(default=None, ge=2, le=60)
+    scope: str = Field(default="active_session", max_length=40)
+
+
 class NoteCreate(BaseModel):
     user_id: str = "default_user"
     text: str = Field(min_length=1, max_length=2000)
@@ -4565,6 +4571,132 @@ def generate_session_summary(session: Dict[str, Any]) -> str:
     )
 
 
+def clip_summary_text(text: str, limit: int = 140) -> str:
+    clean = re.sub(r"\s+", " ", str(text or "")).strip()
+    if len(clean) <= limit:
+        return clean
+    return clean[: max(20, limit - 3)].rstrip() + "..."
+
+
+def message_topic_label(text: str) -> str:
+    words = top_keywords([text], 3)
+    if words:
+        return ", ".join(words[:3])
+    clean = clip_summary_text(text, 48)
+    return clean or "belirsiz"
+
+
+def parse_conversation_summary_limit(message: str) -> Optional[int]:
+    low = fold_turkish_ascii(message or "")
+    patterns = [
+        r"\bson\s+(\d{1,2})\s+(?:mesaji|mesajı|mesaj|ileti|message)",
+        r"\blast\s+(\d{1,2})\s+(?:message|messages)",
+        r"\b(\d{1,2})\s+(?:mesaji|mesajı|mesaj|ileti|message|messages)\s+(?:ozetle|özetle|summarize)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, low)
+        if not match:
+            continue
+        try:
+            return clamp_int(int(match.group(1)), 2, 60, 20)
+        except (TypeError, ValueError):
+            return 20
+    if contains_any(low, ["son yirmi", "last twenty"]):
+        return 20
+    if contains_any(low, ["son on", "last ten"]):
+        return 10
+    return None
+
+
+def is_conversation_summary_command(message: str) -> bool:
+    low = fold_turkish_ascii(message or "")
+    if parse_conversation_summary_limit(message) is not None and contains_any(low, ["mesaj", "ileti", "message"]):
+        return True
+    if not contains_any(low, ["ozet", "summary", "summarize", "toparla"]):
+        return False
+    return contains_any(low, [
+        "sohbet", "konusma", "konuşma", "mesaj", "ileti", "bu sayfa", "sayfa",
+        "son ", "aktif", "chat", "conversation", "message",
+    ])
+
+
+def generate_conversation_flow_summary(session: Dict[str, Any], limit: Optional[int] = None, scope: str = "active_session") -> str:
+    messages = [
+        m for m in safe_list(session.get("messages"))
+        if isinstance(m, dict) and m.get("role") in {"user", "assistant"} and str(m.get("content", "")).strip()
+    ]
+    if limit:
+        messages = messages[-clamp_int(limit, 2, 60, 20):]
+    if not messages:
+        return "Henüz özetlenecek yeterli sohbet yok."
+
+    user_messages = [m for m in messages if m.get("role") == "user"]
+    if not user_messages:
+        return "Henüz kullanıcının özetlenecek mesajı yok."
+
+    first_user = user_messages[0]
+    last_user = user_messages[-1]
+    keywords = top_keywords([str(m.get("content", "")) for m in user_messages], 8)
+
+    topic_flow: List[str] = []
+    seen_topics: Dict[str, int] = {}
+    previous_topic = ""
+    for idx, msg in enumerate(user_messages, 1):
+        content = str(msg.get("content", ""))
+        label = message_topic_label(content)
+        topic_key = fold_turkish_ascii(label.split(",")[0] if label else "")
+        if not previous_topic:
+            topic_flow.append(f"Başlangıç: {clip_summary_text(content, 120)}")
+        elif topic_key and topic_key != previous_topic:
+            if topic_key in seen_topics:
+                topic_flow.append(f"Aynı odağa dönüş: {clip_summary_text(content, 120)}")
+            else:
+                topic_flow.append(f"Yeni konu/odak: {clip_summary_text(content, 120)}")
+        seen_topics[topic_key] = idx
+        previous_topic = topic_key or previous_topic
+        if len(topic_flow) >= 6:
+            break
+
+    important: List[str] = []
+    signal_words = [
+        "önemli", "onemli", "hata", "düzelt", "duzelt", "kritik", "sonra",
+        "tekrar", "geri", "devam", "şimdi", "simdi", "istemiyorum", "istiyorum",
+        "özellikle", "ozellikle", "eksik", "tamamla",
+    ]
+    for msg in user_messages:
+        content = str(msg.get("content", ""))
+        folded = fold_turkish_ascii(content)
+        if len(content) >= 80 or contains_any(folded, signal_words):
+            important.append(clip_summary_text(content, 150))
+        if len(important) >= 6:
+            break
+    if not important:
+        important = [clip_summary_text(m.get("content", ""), 130) for m in user_messages[:4]]
+
+    scope_label = "son " + str(limit) + " mesaj" if limit else "aktif sohbet"
+    if scope:
+        scope_label += f" / {clip_summary_text(scope, 32)}"
+
+    lines = [
+        "SOHBET ÖZETİ",
+        "",
+        f"Kapsam: {scope_label}.",
+        f"Başlangıç konusu: {clip_summary_text(first_user.get('content', ''), 150)}",
+        f"Son odak: {clip_summary_text(last_user.get('content', ''), 150)}",
+        "",
+        "Önemli anlar:",
+    ]
+    lines.extend(f"- {item}" for item in important[:6] if item)
+    lines.extend(["", "Konu akışı:"])
+    lines.extend(f"- {item}" for item in topic_flow[:6] if item)
+    lines.extend([
+        "",
+        "Başlıca kavramlar: " + (", ".join(keywords) if keywords else "Henüz belirgin değil"),
+        "Not: Bu özet sadece mevcut/aktif sohbet mesajlarından üretildi; yeni hafıza kaydı yapılmadı.",
+    ])
+    return "\n".join(lines).strip()
+
+
 def generate_luxdream(dream_text: str, profile: Dict[str, Any], session: Dict[str, Any]) -> str:
     if not client:
         return (
@@ -4750,7 +4882,14 @@ def get_command_response(user_id: str, message: str) -> Optional[str]:
         return search_in_all(user_id, keyword)
 
     if low in ["!sohbet_ozeti", "!cmd:sohbet_ozeti"]:
-        return generate_session_summary(session)
+        return generate_conversation_flow_summary(session, None, "aktif sohbet")
+
+    if is_conversation_summary_command(message):
+        return generate_conversation_flow_summary(
+            session,
+            parse_conversation_summary_limit(message),
+            "doğal dil sohbet özeti komutu",
+        )
 
     if low in ["!farkindalik_ozeti", "!cmd:farkindalik_ozeti"]:
         digest = build_weekly_digest(profile, session, garden)
@@ -9469,10 +9608,25 @@ async def digest(user_id: str = "default_user"):
 
 
 @app.get("/summary")
-async def summary(user_id: str = "default_user"):
+async def summary(user_id: str = "default_user", limit: Optional[int] = Query(None, ge=2, le=60)):
     user_id = safe_user_id(user_id)
     session = load_current_session(user_id)
-    return {"summary": generate_session_summary(session)}
+    return {"summary": generate_conversation_flow_summary(session, limit, "active_session")}
+
+
+@app.post("/conversation/summary")
+async def conversation_summary(payload: ConversationSummaryRequest):
+    user_id = safe_user_id(payload.user_id)
+    session = load_current_session(user_id)
+    limit = clamp_int(payload.limit, 2, 60, 20) if payload.limit is not None else None
+    return {
+        "summary": generate_conversation_flow_summary(session, limit, payload.scope),
+        "limit": limit,
+        "scope": payload.scope,
+        "read_only": True,
+        "memory_write_performed": False,
+        "db_write_performed": False,
+    }
 
 
 @app.get("/search")
