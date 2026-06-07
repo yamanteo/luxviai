@@ -15,7 +15,7 @@ from threading import Lock
 from time import perf_counter
 from typing import Any, Dict, List, Optional
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -195,6 +195,8 @@ learning_dashboard_engine = LearningDashboardEngine(BASE_DIR)
 token_budget_policy = TokenBudgetPolicy()
 efficiency_router = EfficiencyRouter()
 cost_logger = CostLogger(BASE_DIR)
+weather_cache_lock = Lock()
+WEATHER_CONTEXT_CACHE: Dict[str, Dict[str, Any]] = {}
 
 # Aşama-1 Learning Lab dosya temeli (boşsa oluştur)
 try:
@@ -221,6 +223,9 @@ class ChatRequest(BaseModel):
     ghost_hesitation: bool = False
     client_signals: Dict[str, Any] = Field(default_factory=dict)
     location: str = "İstanbul"
+    location_latitude: Optional[float] = None
+    location_longitude: Optional[float] = None
+    location_timezone: str = Field(default="", max_length=80)
 
 
 class NoteCreate(BaseModel):
@@ -3521,6 +3526,219 @@ def location_for_prompt(raw_location: str) -> str:
     return loc
 
 
+def clean_optional_coordinate(value: Optional[float], low: float, high: float) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if low <= number <= high:
+        return number
+    return None
+
+
+def weather_code_tr(code: Any) -> str:
+    try:
+        numeric = int(code)
+    except (TypeError, ValueError):
+        return "belirsiz"
+    if numeric == 0:
+        return "açık"
+    if numeric in {1, 2}:
+        return "az bulutlu"
+    if numeric == 3:
+        return "bulutlu"
+    if numeric in {45, 48}:
+        return "sisli"
+    if numeric in {51, 53, 55, 56, 57}:
+        return "çisenti"
+    if numeric in {61, 63, 65, 66, 67, 80, 81, 82}:
+        return "yağmurlu"
+    if numeric in {71, 73, 75, 77, 85, 86}:
+        return "karlı"
+    if numeric in {95, 96, 99}:
+        return "gök gürültülü"
+    return "belirsiz"
+
+
+def fetch_weather_context(
+    latitude: Optional[float],
+    longitude: Optional[float],
+    location_label: str = "",
+    client_timezone: str = "",
+) -> Dict[str, Any]:
+    lat = clean_optional_coordinate(latitude, -90.0, 90.0)
+    lon = clean_optional_coordinate(longitude, -180.0, 180.0)
+    if lat is None or lon is None:
+        return {"available": False, "reason": "no_permission_or_coordinates"}
+
+    cache_key = f"{round(lat, 2)}:{round(lon, 2)}"
+    now_ts = datetime.now(timezone.utc).timestamp()
+    with weather_cache_lock:
+        cached = WEATHER_CONTEXT_CACHE.get(cache_key)
+        if cached and now_ts - safe_float(cached.get("cached_at"), 0.0) < 900:
+            return dict(cached.get("payload", {}))
+
+    query = urlencode({
+        "latitude": f"{lat:.5f}",
+        "longitude": f"{lon:.5f}",
+        "current": "temperature_2m,apparent_temperature,precipitation,rain,snowfall,weather_code,wind_speed_10m,wind_gusts_10m,is_day",
+        "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum",
+        "forecast_days": "1",
+        "timezone": "auto",
+    })
+    url = f"https://api.open-meteo.com/v1/forecast?{query}"
+    try:
+        req = Request(url, headers={"User-Agent": "luxviai-weather-context/1.0"})
+        with urlopen(req, timeout=1.5) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (HTTPError, URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
+        logging.warning(f"Weather context unavailable: {type(exc).__name__}")
+        return {"available": False, "reason": "weather_api_unavailable"}
+
+    current = safe_dict(payload.get("current"))
+    daily = safe_dict(payload.get("daily"))
+    code = current.get("weather_code")
+    temp = safe_float(current.get("temperature_2m"), 0.0)
+    apparent = safe_float(current.get("apparent_temperature"), temp)
+    precipitation = safe_float(current.get("precipitation"), 0.0)
+    rain = safe_float(current.get("rain"), 0.0)
+    snowfall = safe_float(current.get("snowfall"), 0.0)
+    wind = safe_float(current.get("wind_speed_10m"), 0.0)
+    gust = safe_float(current.get("wind_gusts_10m"), wind)
+    max_values = safe_list(daily.get("temperature_2m_max"))
+    min_values = safe_list(daily.get("temperature_2m_min"))
+    precip_prob_values = safe_list(daily.get("precipitation_probability_max"))
+    precip_sum_values = safe_list(daily.get("precipitation_sum"))
+    snow_sum_values = safe_list(daily.get("snowfall_sum"))
+    daily_max = safe_float(max_values[0], temp) if max_values else temp
+    daily_min = safe_float(min_values[0], temp) if min_values else temp
+    precip_probability = safe_float(precip_prob_values[0], 0.0) if precip_prob_values else 0.0
+    daily_precip = safe_float(precip_sum_values[0], precipitation) if precip_sum_values else precipitation
+    daily_snow = safe_float(snow_sum_values[0], snowfall) if snow_sum_values else snowfall
+    condition = weather_code_tr(code)
+    significant = bool(
+        condition in {"yağmurlu", "karlı", "gök gürültülü", "sisli"}
+        or precipitation > 0
+        or rain > 0
+        or snowfall > 0
+        or daily_precip >= 1
+        or daily_snow > 0
+        or temp <= 4
+        or apparent <= 2
+        or temp >= 34
+        or daily_max >= 35
+        or gust >= 45
+    )
+    result = {
+        "available": True,
+        "source": "open-meteo",
+        "location_label": location_for_prompt(location_label),
+        "timezone": str(payload.get("timezone") or client_timezone or "").strip(),
+        "local_time": str(current.get("time") or "").strip(),
+        "temperature_c": round(temp, 1),
+        "apparent_temperature_c": round(apparent, 1),
+        "daily_min_c": round(daily_min, 1),
+        "daily_max_c": round(daily_max, 1),
+        "precipitation_mm": round(max(precipitation, rain, daily_precip), 1),
+        "snowfall_cm": round(max(snowfall, daily_snow), 1),
+        "precipitation_probability": round(precip_probability, 1),
+        "wind_speed_kmh": round(wind, 1),
+        "wind_gusts_kmh": round(gust, 1),
+        "weather_code": code,
+        "condition_tr": condition,
+        "significant": significant,
+        "privacy_note": "Konum yalnızca kullanıcı tarayıcıda izin verdiyse bu istek için kullanılır; koordinat promptta gösterilmez.",
+    }
+    with weather_cache_lock:
+        WEATHER_CONTEXT_CACHE[cache_key] = {"cached_at": now_ts, "payload": result}
+    return result
+
+
+def weather_context_requested(message: str) -> bool:
+    low = fold_turkish_ascii(message or "")
+    return contains_any(low, [
+        "hava", "yagmur", "yağmur", "kar", "sicak", "sıcak", "soguk", "soğuk",
+        "derece", "semsiye", "şemsiye", "disari", "dışarı", "usur", "üşür",
+        "gunes", "güneş", "yuruyus", "yürüyüş", "ise gid", "işe gid",
+    ])
+
+
+def weather_context_greeting(message: str) -> bool:
+    low = fold_turkish_ascii(message or "")
+    return contains_any(low, ["gunaydin", "günaydın", "iyi gunler", "iyi günler", "iyi aksam", "iyi akşam", "merhaba", "selam"])
+
+
+def weather_condition_key(weather: Dict[str, Any]) -> str:
+    return "|".join([
+        str(weather.get("location_label", ""))[:80],
+        str(weather.get("condition_tr", "")),
+        str(round(safe_float(weather.get("temperature_c"), 0.0))),
+        str(round(safe_float(weather.get("daily_max_c"), 0.0))),
+    ])
+
+
+def weather_hint_recently_used(profile: Dict[str, Any], weather: Dict[str, Any]) -> bool:
+    eco = safe_dict(profile.get("ecological_context"))
+    last = safe_dict(eco.get("last_weather_hint"))
+    if last.get("condition_key") != weather_condition_key(weather):
+        return False
+    ts = str(last.get("ts", ""))
+    try:
+        seen = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    seen = seen.astimezone(timezone.utc) if seen.tzinfo else seen.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - seen < timedelta(hours=8)
+
+
+def mark_weather_hint_used(profile: Dict[str, Any], weather: Dict[str, Any], reason: str) -> None:
+    eco = profile.setdefault("ecological_context", {})
+    eco["last_weather_hint"] = {
+        "condition_key": weather_condition_key(weather),
+        "location": str(weather.get("location_label", ""))[:120],
+        "condition": weather.get("condition_tr", ""),
+        "ts": now_iso(),
+        "reason": reason,
+    }
+
+
+def build_weather_runtime_hint(message: str, profile: Dict[str, Any], weather: Dict[str, Any]) -> str:
+    if not safe_dict(weather).get("available"):
+        return ""
+    explicit = weather_context_requested(message)
+    greeting = weather_context_greeting(message)
+    significant = bool(weather.get("significant"))
+    if not explicit and not greeting and not significant:
+        return ""
+    reason = "explicit_weather_question" if explicit else "significant_greeting_or_context" if greeting or significant else "contextual"
+    if not explicit and weather_hint_recently_used(profile, weather):
+        return ""
+    mark_weather_hint_used(profile, weather, reason)
+    place = str(weather.get("location_label") or "paylaşılan konum").strip()
+    local_time = str(weather.get("local_time") or "").strip()
+    condition = str(weather.get("condition_tr") or "belirsiz").strip()
+    temp = weather.get("temperature_c")
+    feels = weather.get("apparent_temperature_c")
+    daily_min = weather.get("daily_min_c")
+    daily_max = weather.get("daily_max_c")
+    precip = weather.get("precipitation_mm")
+    snow = weather.get("snowfall_cm")
+    wind = weather.get("wind_gusts_kmh")
+    return (
+        "İZİNLİ KONUM / HAVA BAĞLAMI:\n"
+        f"- Kullanıcı tarayıcı konum izni verdi; görünen yer: {place}.\n"
+        f"- Yerel zaman verisi: {local_time or 'belirsiz'}.\n"
+        f"- Anlık hava: {temp}°C, hissedilen {feels}°C, durum {condition}.\n"
+        f"- Gün aralığı: {daily_min}°C / {daily_max}°C; yağış {precip} mm; kar {snow} cm; rüzgar hamlesi {wind} km/s.\n"
+        "- Koordinatları kullanıcıya yazma; sadece şehir/ülke ve hava bağlamını doğal gerekirse kullan.\n"
+        "- Hava/saat/konum bilgisini yalnızca kullanıcı hava, dışarı çıkma, işe gitme, yol, plan veya günaydın/akşam bağlamı verdiyse kullan.\n"
+        "- Aynı yağmur/şemsiye cümlesini tekrar etme; her gün aynı kalıbı kullanma. Bazen hiç hava demeden normal cevap ver.\n"
+        "- Kısa ve insani söyle: ör. şemsiye, soğuk, kar, sıcak, rüzgar, günün ilerleyen kısmı. Abartma ve kesin sağlık/tıbbi uyarı verme.\n"
+    )
+
+
 def build_system_prompt(
     profile: Dict[str, Any],
     analysis: Dict[str, Any],
@@ -3529,6 +3747,8 @@ def build_system_prompt(
     digest: Dict[str, Any],
     location: str = "Konum paylaşılmadı",
     runtime_hints: Optional[List[str]] = None,
+    weather_context: Optional[Dict[str, Any]] = None,
+    user_message: str = "",
 ) -> str:
     memory_block = "\n".join(f"- {s}" for s in memory_snippets[:5]) if memory_snippets else "- Belirgin geri çağırma yok."
     layer_block = build_layer_prompt_summary(analysis, digest)
@@ -3581,6 +3801,7 @@ def build_system_prompt(
     current_datetime = now_local.strftime("%d.%m.%Y saat : %H:%M")
     current_hour = now_local.hour
     location_line = location_for_prompt(location)
+    weather_hint = build_weather_runtime_hint(user_message, profile, safe_dict(weather_context))
 
     if 5 <= current_hour < 11:
         time_context = "Sabah. Günaydın."
@@ -3597,6 +3818,7 @@ def build_system_prompt(
 GİZLİ KONTEXT (kullanıcıya otomatik yazma):
 - Şu an: Bugün ({current_datetime}) / {time_context}
 - Konum: {location_line}
+{weather_hint}
 
 Sen Luxviai'sin. Luxviai — Light your way! / Yolunu aydınlat!
 Sen bir yapay zekâsın; bunu saklamazsın.
@@ -5058,6 +5280,9 @@ def prepare_chat_plan(
     ghost_hesitation: bool = False,
     location: str = "İstanbul",
     client_signals: Optional[Dict[str, Any]] = None,
+    location_latitude: Optional[float] = None,
+    location_longitude: Optional[float] = None,
+    location_timezone: str = "",
 ) -> Dict[str, Any]:
     user_id = safe_user_id(user_id)
     mode = (mode or "luxviai").lower().strip()
@@ -5130,6 +5355,16 @@ def prepare_chat_plan(
     if location:
         locs = profile["ecological_context"].setdefault("locations", {})
         locs[location] = int(locs.get(location, 0)) + 1
+
+    if weather_context_requested(message) or weather_context_greeting(message):
+        weather_context = fetch_weather_context(
+            location_latitude,
+            location_longitude,
+            location_label=location,
+            client_timezone=location_timezone,
+        )
+    else:
+        weather_context = {"available": False, "reason": "not_relevant_for_message"}
 
     active, session = load_or_create_session(user_id, mode)
 
@@ -5247,7 +5482,17 @@ def prepare_chat_plan(
     )
     context_ms = ms_since(context_start)
     prompt_start = perf_counter()
-    prompt = build_system_prompt(profile, analysis, mode, memory_snippets, digest, location, runtime_hints=runtime_hints)
+    prompt = build_system_prompt(
+        profile,
+        analysis,
+        mode,
+        memory_snippets,
+        digest,
+        location,
+        runtime_hints=runtime_hints,
+        weather_context=weather_context,
+        user_message=message,
+    )
     live_ctx_text = str(learning_context.get("context_text", "")).strip() or str(learning_context.get("context_line", "")).strip()
     if live_ctx_text:
         prompt += f"\n\n[Learning Lab]\n{live_ctx_text}"
@@ -5290,6 +5535,7 @@ def prepare_chat_plan(
         "max_tokens": max_tokens,
         "weekly_report": digest,
         "memory_preview": memory_snippets,
+        "weather_context": weather_context,
         "luxmirror_nudge": luxmirror_nudge,
         "luxching_nudge": luxching_nudge,
         "luxdream_nudge": luxdream_nudge,
@@ -9343,6 +9589,9 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
         request.ghost_hesitation,
         request.location,
         request.client_signals,
+        request.location_latitude,
+        request.location_longitude,
+        request.location_timezone,
     )
     plan_ms = ms_since(plan_start)
 
@@ -9536,6 +9785,9 @@ async def ws_chat(websocket: WebSocket):
                 request.ghost_hesitation,
                 request.location,
                 request.client_signals,
+                request.location_latitude,
+                request.location_longitude,
+                request.location_timezone,
             )
             plan_ms = ms_since(plan_start)
 

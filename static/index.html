@@ -1589,6 +1589,7 @@ let longPressTimer = null;
 let currentLang = localStorage.getItem("lux_lang") || "tr";
 let languageApplySeq = 0;
 let hiddenLocationLabel = null;
+let hiddenLocationContext = null;
 let shareEditorMode = "pen";
 let shareDrawColor = "#ED9107";
 let shareLineSize = 4;
@@ -3876,6 +3877,9 @@ async function sendMessage(customText) {
         mode: currentMode,
         ghost_hesitation: false,
         location: hiddenLocationLabel || "Konum paylaşılmadı",
+        location_latitude: hiddenLocationContext ? hiddenLocationContext.latitude : null,
+        location_longitude: hiddenLocationContext ? hiddenLocationContext.longitude : null,
+        location_timezone: hiddenLocationContext ? hiddenLocationContext.timezone : "",
         client_signals: collectClientSignals()
       })
     });
@@ -4291,6 +4295,9 @@ async function continueInterruptedResponse(targetAiEl) {
     mode: currentMode,
     ghost_hesitation: false,
     location: hiddenLocationLabel || "Konum paylaşılmadı",
+    location_latitude: hiddenLocationContext ? hiddenLocationContext.latitude : null,
+    location_longitude: hiddenLocationContext ? hiddenLocationContext.longitude : null,
+    location_timezone: hiddenLocationContext ? hiddenLocationContext.timezone : "",
     client_signals: collectClientSignals()
   };
   try {
@@ -4457,6 +4464,9 @@ async function sendMessageLive(customText) {
     mode: currentMode,
     ghost_hesitation: false,
     location: hiddenLocationLabel || "Konum paylaşılmadı",
+    location_latitude: hiddenLocationContext ? hiddenLocationContext.latitude : null,
+    location_longitude: hiddenLocationContext ? hiddenLocationContext.longitude : null,
+    location_timezone: hiddenLocationContext ? hiddenLocationContext.timezone : "",
     client_signals: collectClientSignals()
   };
 
@@ -5298,6 +5308,7 @@ function compactLocationLabel(raw) {
 async function resolveHiddenLocation() {
   if (!navigator.geolocation) {
     hiddenLocationLabel = null;
+    hiddenLocationContext = null;
     return null;
   }
   return new Promise(resolve => {
@@ -5309,13 +5320,20 @@ async function resolveHiddenLocation() {
         const revFirst = revJson && revJson.results && revJson.results[0];
         const loc = compactLocationLabel(revFirst) || `Enlem ${latitude.toFixed(3)}, Boylam ${longitude.toFixed(3)}`;
         hiddenLocationLabel = loc;
+        hiddenLocationContext = {
+          latitude,
+          longitude,
+          timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone || "")
+        };
         resolve(hiddenLocationLabel);
       } catch (_) {
         hiddenLocationLabel = null;
+        hiddenLocationContext = null;
         resolve(hiddenLocationLabel);
       }
     }, () => {
       hiddenLocationLabel = null;
+      hiddenLocationContext = null;
       resolve(hiddenLocationLabel);
     }, { enableHighAccuracy: false, timeout: 7000, maximumAge: 600000 });
   });

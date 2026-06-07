@@ -2968,6 +2968,57 @@ class SmokeRunner:
         assert {"luxviai", "luxching", "luxdream", "luxta", "luxeph"}.issubset(luxapp.ALLOWED_MODES), luxapp.ALLOWED_MODES
         return "lux character core/status"
 
+    def check_location_weather_context(self) -> str:
+        luxapp = self.patch_app_for_api()
+        request = luxapp.ChatRequest(
+            message="günaydın",
+            location="Netherlands North Holland Amsterdam",
+            location_latitude=52.3676,
+            location_longitude=4.9041,
+            location_timezone="Europe/Amsterdam",
+        )
+        assert request.location_latitude == 52.3676, request
+        assert request.location_longitude == 4.9041, request
+        assert request.location_timezone == "Europe/Amsterdam", request
+
+        profile = luxapp.ensure_profile_shape(luxapp.default_profile())
+        weather = {
+            "available": True,
+            "source": "open-meteo",
+            "location_label": "Netherlands North Holland Amsterdam",
+            "timezone": "Europe/Amsterdam",
+            "local_time": "2026-06-07T09:15",
+            "temperature_c": 2.0,
+            "apparent_temperature_c": 0.0,
+            "daily_min_c": 1.0,
+            "daily_max_c": 4.0,
+            "precipitation_mm": 3.5,
+            "snowfall_cm": 0.0,
+            "precipitation_probability": 90.0,
+            "wind_gusts_kmh": 26.0,
+            "weather_code": 61,
+            "condition_tr": "yağmurlu",
+            "significant": True,
+        }
+        hint = luxapp.build_weather_runtime_hint("günaydın", profile, weather)
+        assert "Amsterdam" in hint, hint
+        assert "2.0°C" in hint, hint
+        assert "yağmurlu" in hint, hint
+        assert "Koordinatları kullanıcıya yazma" in hint, hint
+        assert "Aynı yağmur/şemsiye cümlesini tekrar etme" in hint, hint
+
+        repeated = luxapp.build_weather_runtime_hint("günaydın", profile, weather)
+        assert repeated == "", repeated
+
+        explicit = luxapp.build_weather_runtime_hint("hava nasıl", profile, weather)
+        assert "Amsterdam" in explicit and "yağmurlu" in explicit, explicit
+
+        unavailable = luxapp.fetch_weather_context(None, None, "Konum paylaşılmadı", "")
+        assert unavailable.get("available") is False, unavailable
+        assert luxapp.weather_context_requested("dışarı çıkacağım hava nasıl") is True
+        assert luxapp.weather_context_greeting("günaydın") is True
+        return "permission-based weather context"
+
     def check_layer21_status_snapshot(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4519,6 +4570,7 @@ class SmokeRunner:
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
             ("master_status_summary_preview", self.check_master_status_summary_preview),
             ("lux_character_status", self.check_lux_character_status),
+            ("location_weather_context", self.check_location_weather_context),
             ("layer21_status_snapshot", self.check_layer21_status_snapshot),
             ("layer22_future_candidates_preview", self.check_layer22_future_candidates_preview),
             ("layer22_full_status_snapshot", self.check_layer22_full_status_snapshot),
