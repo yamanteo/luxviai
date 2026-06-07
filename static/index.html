@@ -1620,7 +1620,9 @@ let topicsOpen = false;
 let activeGeneration = null;
 let responseRunId = 0;
 let activeRunId = null;
+let activeRunState = null;
 const stoppedRunIds = new Set();
+console.info("Lux stop hotfix version:", "stop-kill-late-output-v3");
 let pendingDeleteConversationId = null;
 const soundLocaleCache = {};
 const scrollState = {
@@ -4097,6 +4099,9 @@ function createPacedWriter(targetEl, speedFactor = 0.9, runId = null) {
     expectedText() {
       return current + queue.join("");
     },
+    visibleText() {
+      return current;
+    },
     stop() {
       stopped = true;
       queue.length = 0;
@@ -4118,12 +4123,32 @@ function isRunStopped(runId) {
 
 function markRunStarted(runId) {
   activeRunId = runId;
+  activeRunState = {
+    id: runId,
+    active: true,
+    stopped: false,
+    aborted: false,
+    createdAt: Date.now()
+  };
   stoppedRunIds.delete(runId);
   if (stoppedRunIds.size > 80) {
     const keep = Array.from(stoppedRunIds).slice(-40);
     stoppedRunIds.clear();
     keep.forEach(id => stoppedRunIds.add(id));
   }
+  console.info("Lux run started:", runId);
+}
+
+function markRunKilled(runId, reason = "stopped") {
+  if (runId !== null && runId !== undefined) stoppedRunIds.add(runId);
+  if (activeRunState && (runId === null || runId === undefined || activeRunState.id === runId)) {
+    activeRunState.active = false;
+    activeRunState.stopped = true;
+    activeRunState.aborted = true;
+    activeRunState.reason = reason;
+  }
+  if (activeRunId === runId || runId === null || runId === undefined) activeRunId = null;
+  console.info("Lux run stopped:", runId, reason);
 }
 
 function isRunActive(runId) {
@@ -4131,6 +4156,11 @@ function isRunActive(runId) {
     runId !== null &&
     runId !== undefined &&
     activeRunId === runId &&
+    activeRunState &&
+    activeRunState.id === runId &&
+    activeRunState.active === true &&
+    activeRunState.stopped !== true &&
+    activeRunState.aborted !== true &&
     activeGeneration &&
     activeGeneration.runId === runId &&
     responseRunId === runId &&
@@ -4139,14 +4169,19 @@ function isRunActive(runId) {
   );
 }
 
+function discardLateOutput(runId, reason = "late_output") {
+  if (runId !== null && runId !== undefined) console.info("Lux late output discarded:", runId, reason);
+  return false;
+}
+
 function isBubbleForRun(targetEl, runId) {
   if (!targetEl || runId === null || runId === undefined) return true;
   return String(targetEl.dataset.runId || "") === String(runId);
 }
 
 function forceFinalVisibleText(writer, targetEl, finalText, runId = null) {
-  if (runId !== null && !isRunActive(runId)) return;
-  if (runId !== null && !isBubbleForRun(targetEl, runId)) return;
+  if (runId !== null && !isRunActive(runId)) return discardLateOutput(runId, "force_final");
+  if (runId !== null && !isBubbleForRun(targetEl, runId)) return discardLateOutput(runId, "wrong_bubble_force_final");
   const text = String(finalText || "").trim();
   if (!text || !targetEl) return;
   if (writer && typeof writer.setExact === "function") {
@@ -4160,8 +4195,8 @@ function forceFinalVisibleText(writer, targetEl, finalText, runId = null) {
 }
 
 function reconcileFinalText(writer, targetEl, finalText, runId = null) {
-  if (runId !== null && !isRunActive(runId)) return;
-  if (runId !== null && !isBubbleForRun(targetEl, runId)) return;
+  if (runId !== null && !isRunActive(runId)) return discardLateOutput(runId, "final_event");
+  if (runId !== null && !isBubbleForRun(targetEl, runId)) return discardLateOutput(runId, "wrong_bubble_final");
   const text = String(finalText || "").trim();
   if (!text || !targetEl) return;
   const expected = writer && typeof writer.expectedText === "function"
@@ -4172,10 +4207,11 @@ function reconcileFinalText(writer, targetEl, finalText, runId = null) {
     writer.push(text.slice(expected.length));
     return;
   }
-  forceFinalVisibleText(writer, targetEl, text);
+  forceFinalVisibleText(writer, targetEl, text, runId);
 }
 
 function hardCancelActiveTransport(runId = null, closeSocket = false) {
+  if (runId !== null && runId !== undefined) markRunKilled(runId, "transport_cancel");
   if (activeFetchController && typeof activeFetchController.abort === "function") {
     try { activeFetchController.abort(); } catch (_) {}
   }
@@ -4195,8 +4231,7 @@ function hardCancelActiveTransport(runId = null, closeSocket = false) {
 function stopActiveResponse() {
   const stoppedRunId = activeGeneration ? activeGeneration.runId : activeRunId;
   stopStreamRequested = true;
-  if (stoppedRunId !== null && stoppedRunId !== undefined) stoppedRunIds.add(stoppedRunId);
-  activeRunId = null;
+  markRunKilled(stoppedRunId, "user_stop");
   responseRunId += 1;
   clearInterruptedState(true);
   if (typeof streamAbort === "function") {
@@ -4433,11 +4468,12 @@ async function continueInterruptedResponse(targetAiEl) {
     resetTypingSignals();
   } catch (_) {
     setPendingState(null);
-    // no-op
+    discardLateOutput(continueRunId, "continue_catch");
   } finally {
     if (activeGeneration && activeGeneration.runId === continueRunId) {
       activeGeneration = null;
       if (activeRunId === continueRunId) activeRunId = null;
+      if (activeRunState && activeRunState.id === continueRunId) activeRunState = null;
       setResponseLock(false);
     }
   }
@@ -4462,7 +4498,12 @@ function sendMessageViaSocket(payload, onChunk, onFinal, runId = null) {
         let streamed = "";
         wsPending = {
           onMessage(data) {
-            if (runId !== null && !isRunActive(runId)) return;
+            if (runId !== null && !isRunActive(runId)) {
+              if (wsPending && wsPending.runId === runId) wsPending = null;
+              discardLateOutput(runId, "websocket_message");
+              reject(new Error("stale_run"));
+              return;
+            }
             if (data.type === "chunk") {
               const chunk = data.text || "";
               if (chunk) {
@@ -4580,8 +4621,8 @@ async function sendMessageLive(customText) {
     streamAbort = (options = {}) => {
       if (!activeGeneration || activeGeneration.runId !== runId) return;
       const shouldShowResume = options.showResume !== false;
-      const partialText = (writer && typeof writer.expectedText === "function")
-        ? writer.expectedText()
+      const partialText = (writer && typeof writer.visibleText === "function")
+        ? writer.visibleText()
         : (aiDiv.innerText || "");
       writer.stop();
       hardCancelActiveTransport(runId, true);
@@ -4638,9 +4679,11 @@ async function sendMessageLive(customText) {
     resetTypingSignals();
   } catch (_) {
     setPendingState(null);
-    if (!stopStreamRequested) {
+    if (isRunActive(runId) && isBubbleForRun(aiDiv, runId) && !stopStreamRequested) {
       aiDiv.innerText = connectionFallback();
       addMessageToHistoryForConversation(conversationId, "assistant", aiDiv.innerText);
+    } else {
+      discardLateOutput(runId, "catch_fallback");
     }
   } finally {
     streamAbort = null;
@@ -4648,6 +4691,7 @@ async function sendMessageLive(customText) {
     if (activeGeneration && activeGeneration.runId === runId) {
       activeGeneration = null;
       if (activeRunId === runId) activeRunId = null;
+      if (activeRunState && activeRunState.id === runId) activeRunState = null;
       setResponseLock(false);
     }
   }
