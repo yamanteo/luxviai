@@ -70,6 +70,7 @@ from multimodal_memory_scaffold import (
 from mode_registry import mode_registry, preview_mode_command
 from night_radio_voice import preview_night_radio_voice
 from permission_boundary import preview_permission_boundary
+from pointer_context_preview import pointer_schema, pointer_status, preview_pointer_action
 from production_hardening_registry import backlog_registry, production_hardening_status
 from router_scaffold import preview_router_decision
 from routing_simulation import preview_routing_simulation
@@ -441,6 +442,16 @@ class DeviceBridgePreviewRequest(BaseModel):
     content_type: str = Field(default="", max_length=100)
     requested_output: str = Field(default="", max_length=200)
     risk_level: str = Field(default="normal", max_length=50)
+
+
+class PointerPreviewActionRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    selected_text: str = Field(default="", max_length=12000)
+    context_hint: str = Field(default="", max_length=4000)
+    surface_type: str = Field(default="", max_length=100)
+    source_app: str = Field(default="", max_length=100)
+    target_intent: str = Field(default="", max_length=200)
+    sensitivity: str = Field(default="normal", max_length=50)
 
 
 # =========================================================
@@ -6956,6 +6967,29 @@ async def debug_device_bridge_status():
     return device_bridge_status()
 
 
+@app.get("/pointer/schema")
+async def pointer_schema_endpoint():
+    return pointer_schema()
+
+
+@app.post("/pointer/preview-action")
+async def pointer_preview_action_endpoint(payload: PointerPreviewActionRequest):
+    return preview_pointer_action(
+        payload.command,
+        payload.selected_text,
+        payload.context_hint,
+        payload.surface_type,
+        payload.source_app,
+        payload.target_intent,
+        payload.sensitivity,
+    )
+
+
+@app.get("/debug/pointer-status")
+async def debug_pointer_status():
+    return pointer_status()
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -7411,6 +7445,23 @@ async def debug_agent_panel():
       <button data-device-bridge-command="Mail olarak göndermeye hazırla ama gönderme">Mail olarak göndermeye hazırla ama gönderme</button>
       <button data-device-bridge-command="Yakındaki yazıcıdan çıktı almaya hazırla">Yakındaki yazıcıdan çıktı almaya hazırla</button>
       <button data-device-bridge-command="Bilgisayarda açık sayfayı telefondan devam ettir">Bilgisayarda açık sayfayı telefondan devam ettir</button>
+    </div>
+    <h2>Pointer / Context Cursor</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/pointer-status">Pointer Status</button>
+      <button data-endpoint="/pointer/schema">Pointer Schema</button>
+    </div>
+    <div class="bar">
+      <button data-pointer-command="Şunu açıkla" data-pointer-selected="Seçili örnek metin">Şunu açıkla</button>
+      <button data-pointer-command="Bu hata ne demek?" data-pointer-hint="error message">Bu hata ne demek?</button>
+      <button data-pointer-command="Bu tabloyu özetle" data-pointer-hint="table region">Bu tabloyu özetle</button>
+      <button data-pointer-command="Bu PDF alanından rapor bölümü çıkar" data-pointer-hint="pdf region">Bu PDF alanından rapor bölümü çıkar</button>
+      <button data-pointer-command="Bu videonun bu anından not çıkar" data-pointer-hint="video moment">Bu videonun bu anından not çıkar</button>
+      <button data-pointer-command="Bu adrese yol tarifi hazırla" data-pointer-hint="address">Bu adrese yol tarifi hazırla</button>
+      <button data-pointer-command="Bu mesaja cevap taslağı yaz" data-pointer-hint="message">Bu mesaja cevap taslağı yaz</button>
+      <button data-pointer-command="Bu ürünü diğer seçeneklerle karşılaştır" data-pointer-hint="product">Bu ürünü diğer seçeneklerle karşılaştır</button>
+      <button data-pointer-command="Bunu PDF'e hazırla ama export etme" data-pointer-selected="Seçili paragraf">Bunu PDF'e hazırla ama export etme</button>
+      <button data-pointer-command="Bunu yazdırmaya hazırla ama yazdırma" data-pointer-selected="Seçili çıktı metni">Bunu yazdırmaya hazırla ama yazdırma</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -8068,6 +8119,31 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadPointerPreview(command, selectedText, contextHint) {
+      statusEl.textContent = "Loading pointer preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/pointer/preview-action", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            selected_text: selectedText || "",
+            context_hint: contextHint || "debug panel context hint",
+            surface_type: "",
+            source_app: "debug panel surface",
+            target_intent: "",
+            sensitivity: "normal"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded pointer preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -8207,6 +8283,13 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-device-bridge-command]").forEach((button) => {
       button.addEventListener("click", () => loadDeviceBridgePreview(button.dataset.deviceBridgeCommand));
+    });
+    document.querySelectorAll("button[data-pointer-command]").forEach((button) => {
+      button.addEventListener("click", () => loadPointerPreview(
+        button.dataset.pointerCommand,
+        button.dataset.pointerSelected,
+        button.dataset.pointerHint
+      ));
     });
   </script>
 </body>

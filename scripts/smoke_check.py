@@ -1052,6 +1052,9 @@ class SmokeRunner:
         assert "/device-bridge/schema" in html, html[:300]
         assert "/device-bridge/preview" in html, html[:300]
         assert "/debug/device-bridge-status" in html, html[:300]
+        assert "/pointer/schema" in html, html[:300]
+        assert "/pointer/preview-action" in html, html[:300]
+        assert "/debug/pointer-status" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
         assert "/luxway/permission-model" in html, html[:300]
@@ -3171,6 +3174,86 @@ class SmokeRunner:
         preview("Bilgisayarda acik sayfayi telefondan devam ettir", {"app_handoff_preview", "browser_surface"})
         return "device bridge preview"
 
+    def check_pointer_context_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/pointer/schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert schema.get("status") == "pointer_schema_ready", schema
+        assert schema.get("read_only") is True, schema
+        assert schema.get("can_execute_now") is False, schema
+        type_ids = {item.get("id") for item in schema.get("detected_types", [])}
+        assert {"text_selection", "table_region", "error_message", "email_or_message", "address", "map_location"} <= type_ids, schema
+        action_ids = {item.get("id") for item in schema.get("suggested_action_groups", [])}
+        assert {"explain", "summarize", "create_reply_draft", "export_ready_preview", "print_ready_preview"} <= action_ids, schema
+        assert schema.get("real_screen_read_performed") is False, schema
+        assert schema.get("real_click_performed") is False, schema
+        assert schema.get("real_control_performed") is False, schema
+
+        status_response = client.get("/debug/pointer-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("real_screen_read_performed") is False, status
+        assert status.get("real_click_performed") is False, status
+        assert status.get("real_control_performed") is False, status
+        assert status.get("real_send_performed") is False, status
+        assert status.get("real_export_performed") is False, status
+        assert status.get("real_print_performed") is False, status
+        assert status.get("real_file_created") is False, status
+        assert status.get("memory_read_performed") is False, status
+        assert status.get("memory_write_performed") is False, status
+
+        def preview(command: str, expected_types: set[str], expected_actions: set[str], selected_text: str = "", context_hint: str = "") -> dict:
+            response = client.post(
+                "/pointer/preview-action",
+                json={
+                    "command": command,
+                    "selected_text": selected_text,
+                    "context_hint": context_hint,
+                    "surface_type": "",
+                    "source_app": "smoke surface",
+                    "target_intent": "",
+                    "sensitivity": "normal",
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("can_execute_now") is False, payload
+            assert payload.get("real_screen_read_performed") is False, payload
+            assert payload.get("real_click_performed") is False, payload
+            assert payload.get("real_control_performed") is False, payload
+            assert payload.get("real_send_performed") is False, payload
+            assert payload.get("real_export_performed") is False, payload
+            assert payload.get("real_print_performed") is False, payload
+            assert payload.get("real_file_created") is False, payload
+            assert payload.get("memory_read_performed") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            detected_type = payload.get("detected_type", {}).get("id")
+            assert detected_type in expected_types, payload
+            detected_actions = {item.get("id") for item in payload.get("suggested_actions", [])}
+            assert expected_actions & detected_actions, payload
+            assert payload.get("privacy_boundary", {}).get("no_silent_screen_scraping") is True, payload
+            assert payload.get("safe_pointer_plan", {}).get("steps"), payload
+            return payload
+
+        preview("Bu hata ne demek?", {"error_message"}, {"troubleshoot", "explain"}, context_hint="error message")
+        preview("Bu tabloyu ozetle", {"table_region"}, {"summarize"}, context_hint="table region")
+        preview("Bu mesaja cevap taslagi yaz", {"email_or_message"}, {"create_reply_draft"}, context_hint="message")
+        preview("Bu adrese yol tarifi hazirla", {"address", "map_location"}, {"navigation_ready_preview"}, context_hint="address")
+        preview("Bunu PDF'e hazirla ama export etme", {"pdf_region", "text_selection", "paragraph"}, {"export_ready_preview"}, selected_text="Secili metin")
+        preview("Bunu yazdirmaya hazirla ama yazdirma", {"text_selection", "paragraph"}, {"print_ready_preview"}, selected_text="Secili cikti metni")
+        return "pointer context preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -3261,6 +3344,7 @@ class SmokeRunner:
             ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview),
             ("context_bridge_preview", self.check_context_bridge_preview),
             ("device_bridge_preview", self.check_device_bridge_preview),
+            ("pointer_context_preview", self.check_pointer_context_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),
