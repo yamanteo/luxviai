@@ -1622,7 +1622,7 @@ let responseRunId = 0;
 let activeRunId = null;
 let activeRunState = null;
 const stoppedRunIds = new Set();
-console.info("Lux stop hotfix version:", "stop-kill-late-output-v3");
+console.info("Lux stop hotfix version:", "stop-kill-late-output-v4-resume");
 let pendingDeleteConversationId = null;
 const soundLocaleCache = {};
 const scrollState = {
@@ -4233,9 +4233,8 @@ function stopActiveResponse() {
   stopStreamRequested = true;
   markRunKilled(stoppedRunId, "user_stop");
   responseRunId += 1;
-  clearInterruptedState(true);
   if (typeof streamAbort === "function") {
-    try { streamAbort({ showResume: false }); } catch (_) {}
+    try { streamAbort({ showResume: true }); } catch (_) {}
   }
   hardCancelActiveTransport(stoppedRunId, true);
   if (activeGeneration && activeGeneration.writer && typeof activeGeneration.writer.stop === "function") {
@@ -4247,7 +4246,6 @@ function stopActiveResponse() {
   activeGeneration = null;
   activeAiDiv = null;
   streamAbort = null;
-  clearInterruptedState(true);
   setPendingState(null);
   setResponseLock(false);
 }
@@ -4391,6 +4389,7 @@ function appendResumeButton(afterMsgEl) {
 async function continueInterruptedResponse(targetAiEl) {
   const state = interruptedState;
   if (!state || !targetAiEl) return;
+  document.querySelectorAll(".resume-btn").forEach(x => x.remove());
   const continueRunId = ++responseRunId;
   const conversationId = state.conversationId || activeConversationId || getActiveConversation().id;
   if (currentMode !== state.mode) currentMode = state.mode;
@@ -4404,7 +4403,7 @@ async function continueInterruptedResponse(targetAiEl) {
   }
   markRunStarted(continueRunId);
   const resumeContext = cleanBaseText.slice(-1200);
-  const bridgeMessage = `${continuePromptText()}\n\nKullanıcının önceki isteği: ${state.userText || ""}\nKaldığın son güvenli bölüm: ${resumeContext}\n\nYalnızca bu son bölümün doğal devamını yaz. Baştan alma, aynı maddeyi/başlığı/cümleyi tekrar etme.`;
+  const bridgeMessage = `${continuePromptText()}\n\nKullanıcının önceki isteği: ${state.userText || ""}\nKaldığın son güvenli bölüm: ${resumeContext}\n\nYalnızca bu son bölümün doğal devamını yaz. Baştan alma, aynı maddeyi/başlığı/cümleyi tekrar etme. Madde/listede kaldıysan bir sonraki madde veya tamamlanmamış cümlenin devamından sürdür.`;
   stopStreamRequested = false;
   setResponseLock(true);
   const writer = createPacedWriter(targetAiEl, 0.9, continueRunId);
@@ -4583,6 +4582,13 @@ async function sendMessageLive(customText) {
     activeGeneration = null;
     setPendingState(null);
   }
+  if (interruptedState && isContinueCommand(text)) {
+    const targetAiEl = interruptedState.messageEl;
+    messageInput.value = "";
+    clearDraftState();
+    continueInterruptedResponse(targetAiEl);
+    return;
+  }
   if (interruptedState) {
     clearInterruptedState(true);
     hardCancelActiveTransport(null, true);
@@ -4713,11 +4719,6 @@ messageInput.addEventListener("keydown", e => {
   }
 });
 messageInput.addEventListener("input", () => {
-  if (interruptedState) {
-    clearInterruptedState(true);
-    setPendingState(null);
-    hardCancelActiveTransport(null, true);
-  }
   saveDraftState(messageInput.value);
 });
 

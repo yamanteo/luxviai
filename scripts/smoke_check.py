@@ -340,7 +340,7 @@ class SmokeRunner:
         assert "cleanBaseText.slice(-1200)" in html
         assert "resumeUnavailableFallback" in html
         assert "Yalnızca bu son bölümün doğal devamını yaz" in html
-        assert "interruptedState && isContinueCommand(text)" not in html
+        assert "interruptedState && isContinueCommand(text)" in html
         assert "if (interruptedState) {\n    clearInterruptedState(true);" in html
         assert '"devam et ama yeni konu' not in html
         assert '"kaldığın yerden devam et"' in html
@@ -358,7 +358,7 @@ class SmokeRunner:
         assert "isRunActive(runId)" in html
         assert "activeFetchController.abort" in html
         assert 'dataset.streamState = "cancelled"' in html
-        assert "streamAbort({ showResume: false })" in html
+        assert "streamAbort({ showResume: true })" in html
         assert "const shouldShowResume = options.showResume !== false" in html
         assert "if (shouldShowResume) appendResumeButton(aiDiv)" in html
         assert "else clearInterruptedState(true)" in html
@@ -367,7 +367,8 @@ class SmokeRunner:
         assert "createPacedWriter(targetAiEl, 0.9, continueRunId)" in html
         assert "if (stopped || !chunk || !runStillActive()) return" in html
         assert 'reject(new Error("stale_run"))' in html
-        assert "if (interruptedState && !isContinueCommand(messageInput.value))" not in html
+        assert "continueInterruptedResponse(targetAiEl)" in html
+        assert "Madde/listede kaldıysan bir sonraki madde" in html
         return "safe resume/hard-stop context"
 
     def check_cost_logger_privacy(self) -> str:
