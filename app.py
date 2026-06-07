@@ -51,6 +51,7 @@ from layer22_candidate_scoring import candidate_scoring_matrix, layer22_scoring_
 from layer22_future_candidates import future_candidates_registry, layer22_status_snapshot, preview_future_candidate
 from layer22_status_snapshot import layer22_full_status_snapshot
 from live_readiness_checklist import live_readiness_checklist
+from lux_character_core import build_complete_lux_character_core, lux_character_status_payload
 from master_status_summary import master_status_summary
 from meta_intelligence_core import meta_core_registry, meta_status, preview_meta_quality
 from luxway_capabilities import luxway_capability_registry, luxway_status_snapshot, preview_luxway_command
@@ -736,6 +737,8 @@ ANALYSIS_LAYER_NAMES = [
 ]
 
 THEORY_LENSES = {
+    "Sigmund Freud": "bilinçdışı arzu, bastırma, tekrar, savunma, rüya çalışması, semptom, söz sürçmesi, iç çatışma",
+    "Carl Gustav Jung": "arketipler, gölge, persona, anima/animus, bireyleşme, kolektif semboller, rüya imgeleri, kişisel mitoloji",
     "Hegel": "diyalektik çatışma, dönüşüm, gerilimin daha geniş bir biçimde taşınması",
     "Slavoj Žižek": "ideolojik fantazi, görünmeyen arzunun gündelik cümlede saklanması",
     "Jacques Lacan": "arzu, eksiklik, dilin kullanıcıyı kurma biçimi",
@@ -2366,7 +2369,9 @@ def infer_theory_lenses(message: str, analysis: Dict[str, Any]) -> List[Dict[str
     if analysis.get("contradiction_marker") == "var":
         add("Hegel", "iç gerilim ve dönüşme ihtimali", 2)
         add("Fyodor Dostoyevski", "çok sesli iç konuşma", 2)
-    if analysis.get("symbolic_density") == "yüksek" or contains_any(low, ["rüya", "kapı", "oda", "deniz", "tren", "gölge"]):
+    if analysis.get("symbolic_density") == "yüksek" or contains_any(low, ["rüya", "ruya", "kapı", "kapi", "oda", "deniz", "tren", "gölge", "golge", "persona", "arketip"]):
+        add("Carl Gustav Jung", "arketip, gölge, persona ve rüya imgesi", 4)
+        add("Sigmund Freud", "rüya çalışması, tekrar ve bastırılmış iç çatışma", 3)
         add("Jacques Lacan", "arzu ve eksiklik dili", 2)
         add("Donald Winnicott", "geçiş alanı ve imge", 2)
     if contains_any(low, ["beden", "kalbim", "nefes", "titriyorum", "donuyorum", "kasılıyor"]):
@@ -2381,7 +2386,8 @@ def infer_theory_lenses(message: str, analysis: Dict[str, Any]) -> List[Dict[str
         add("Antonio Gramsci", "içselleştirilmiş baskı", 2)
         add("Lefebvre/de Certeau", "gündelik yaşam ritimleri", 2)
         add("Stanley Milgram", "otorite ve sınır", 1)
-    if contains_any(low, ["hep", "asla", "itiraf", "suç", "vicdan"]):
+    if contains_any(low, ["hep", "asla", "itiraf", "suç", "suc", "vicdan", "bastır", "bastir", "tekrar", "savunma"]):
+        add("Sigmund Freud", "tekrar, bastırma ve savunma izi", 3)
         add("Lev Tolstoy", "sadeleşme ve etik berraklık", 1)
         add("Melanie Klein", "iyi/kötü iç nesne salınımı", 1)
     if emotion in {"kaygı", "öfke", "umut"}:
@@ -3585,6 +3591,8 @@ def build_system_prompt(
     else:
         time_context = "Gece. İyi geceler."
 
+    lux_character_core = build_complete_lux_character_core()
+
     base = f"""
 GİZLİ KONTEXT (kullanıcıya otomatik yazma):
 - Şu an: Bugün ({current_datetime}) / {time_context}
@@ -3663,6 +3671,9 @@ FORMAT / COUNT DISCIPLINE:
 - Hatalı noktalama birleşimleri üretme: ".,", ",.", "..,", ",,", ";,".
 - Kullanıcı "sadece liste", "sadece satır" veya "sadece prompt" dediyse gereksiz açıklama ekleme.
 
+LUX CHARACTER / ANALYSIS CORE:
+{lux_character_core}
+
 HAFIZA İPUÇLARI:
 {memory_block}
 
@@ -3714,12 +3725,18 @@ def fallback_reply(mode: str, analysis: Dict[str, Any]) -> str:
     if mode == "luxta":
         return random.choice(LUXTA_REPLIES)
     if mode == "luxeph":
-        return "Buradayım. Bunu bu anın içinde, kayıt tutmadan sadeleştirebiliriz."
+        return "Buradayım. Bunu kayıt tutmadan sadeleştirelim; önce ana yükü ayırıp tek güvenli adıma indirelim."
     if mode == "luxching":
         return "Bunu fal gibi değil, kararın içindeki dengeyi görmek için kısa ve sembolik okuyabiliriz."
     if mode == "luxdream":
-        return "Rüyayı kesin anlamlara zorlamadan, sahne ve duygusuyla yavaşça açabiliriz."
-    return "Anladım. Bunu fazla büyütmeden, net ve sakin şekilde birlikte toparlayabiliriz."
+        return "Rüyayı kesin anlamlara zorlamadan, ana imgeyi ve duyguyu ayırıp tek sakin okuma planına çevirebiliriz."
+    theme = str(analysis.get("theme") or "ana yük").strip() or "ana yük"
+    emotion = str(analysis.get("primary_emotion") or "").strip().lower()
+    if emotion in {"öfke", "kızgınlık", "kizginlik"}:
+        return "Haklısın. Burada eksik kalan kısmı düzeltiyorum; önce ana kuralı sabitleyip doğru sırayla ilerleyelim."
+    if contains_any(theme.lower(), ["teknik", "proje", "kod", "workspace"]):
+        return "Anladım. Bunu ikiye ayırmak daha doğru: önce eksik kısmı netleştirelim, sonra uygulanabilir prompta çevirelim."
+    return f"Anladım. Burada ana nokta {theme} gibi görünüyor; bunu büyütmeden netleştirip tek adımlık bir plana çevirelim."
 
 
 def crisis_reply() -> str:
@@ -7038,6 +7055,11 @@ async def debug_live_readiness():
 @app.get("/debug/master-status")
 async def debug_master_status():
     return master_status_summary()
+
+
+@app.get("/debug/lux-character-status")
+async def debug_lux_character_status():
+    return lux_character_status_payload(ANALYSIS_LAYER_NAMES, THEORY_LENSES)
 
 
 @app.get("/debug/layer21-status")

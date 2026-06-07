@@ -2893,6 +2893,80 @@ class SmokeRunner:
         assert payload.get("file_write_performed") is False, payload
         return "master status summary"
 
+    def check_lux_character_status(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/debug/lux-character-status")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload.get("lux_character_core_version") == "21.0", payload
+        assert payload.get("continuous_analysis_core_enabled") is True, payload
+        assert payload.get("analysis_layer_count") == 16, payload
+        assert len(payload.get("analysis_layers", [])) == 16, payload
+        for key in [
+            "theory_lens_blending_enabled",
+            "jung_in_general_lenses",
+            "freud_in_general_lenses",
+            "dream_priority_stack_enabled",
+            "analysis_to_action_bridge_enabled",
+            "personal_agent_learning_rules_enabled",
+            "visual_ambrosia_rules_enabled",
+            "premium_agent_voice_enabled",
+            "format_count_discipline_enabled",
+            "exact_transfer_discipline_enabled",
+            "command_first_mindset_enabled",
+            "background_support_reflexes_enabled",
+            "future_layer_awareness_enabled",
+            "emotional_analysis_preserved",
+            "voice_analysis_future_ready",
+            "clinical_claims_blocked",
+        ]:
+            assert payload.get(key) is True, (key, payload)
+        assert payload.get("real_actions_enabled") is False, payload
+        assert payload.get("chat_stream_touched") is False, payload
+        assert payload.get("static_ui_touched") is False, payload
+
+        assert "Sigmund Freud" in luxapp.THEORY_LENSES, luxapp.THEORY_LENSES
+        assert "Carl Gustav Jung" in luxapp.THEORY_LENSES, luxapp.THEORY_LENSES
+        dream_lenses = luxapp.infer_theory_lenses(
+            "Ruyamda golge, kapi ve deniz vardi",
+            {"primary_emotion": "kaygı", "theme": "belirsiz", "symbolic_density": "yüksek"},
+        )
+        dream_names = [item.get("name") for item in dream_lenses]
+        assert "Carl Gustav Jung" in dream_names, dream_lenses
+        assert "Sigmund Freud" in dream_names, dream_lenses
+
+        prompt = luxapp.build_system_prompt(luxapp.default_profile(), {}, "luxviai", [], {}, "Konum paylaşılmadı")
+        for token in [
+            "CONTINUOUS ANALYSIS",
+            "THEORY LENS",
+            "Jung",
+            "Freud",
+            "LUX AMBROSIA",
+            "ANALYSIS TO ACTION",
+            "FORMAT / COUNT",
+            "EXACTNESS",
+            "COMMAND-FIRST",
+            "BACKGROUND SUPPORT",
+            "DO NOT INVENT",
+            "LuxWorkspace",
+            "Device Bridge",
+            "Context Bridge",
+            "Drive Mode",
+            "Wake Mode",
+        ]:
+            assert token in prompt, token
+
+        fallback = luxapp.fallback_reply("luxviai", {"theme": "proje", "primary_emotion": "nötr"}).lower()
+        assert any(x in fallback for x in ["tek adım", "netleştir", "plan", "düzeltiyorum", "doğru sırayla"]), fallback
+        assert {"luxviai", "luxching", "luxdream", "luxta", "luxeph"}.issubset(luxapp.ALLOWED_MODES), luxapp.ALLOWED_MODES
+        return "lux character core/status"
+
     def check_layer21_status_snapshot(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4443,6 +4517,7 @@ class SmokeRunner:
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
             ("master_status_summary_preview", self.check_master_status_summary_preview),
+            ("lux_character_status", self.check_lux_character_status),
             ("layer21_status_snapshot", self.check_layer21_status_snapshot),
             ("layer22_future_candidates_preview", self.check_layer22_future_candidates_preview),
             ("layer22_full_status_snapshot", self.check_layer22_full_status_snapshot),
