@@ -88,6 +88,7 @@ from visual_prompt_builder import build_visual_prompt_preview
 from visual_scene_lock import preview_scene_lock
 from visual_style_ratio import preview_visual_style_ratio
 from visual_style_registry import preview_visual_style, visual_style_registry
+from wake_sonic_preview import preview_wake_sonic, wake_sonic_registry, wake_sonic_schema, wake_sonic_status
 from voice_mode_registry import preview_voice_mode, voice_mode_registry, voice_status_snapshot
 
 try:
@@ -463,6 +464,15 @@ class DriveModePreviewRequest(BaseModel):
     requested_action: str = Field(default="", max_length=200)
     risk_level: str = Field(default="normal", max_length=50)
     surface_type: str = Field(default="", max_length=100)
+
+
+class WakeSonicPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    wake_mode: str = Field(default="", max_length=100)
+    sonic_event: str = Field(default="", max_length=100)
+    environment: str = Field(default="", max_length=100)
+    sensitivity: str = Field(default="normal", max_length=50)
+    user_permission_state: str = Field(default="not_granted", max_length=100)
 
 
 # =========================================================
@@ -7024,6 +7034,33 @@ async def debug_drive_mode_status():
     return drive_mode_status()
 
 
+@app.get("/wake-sonic/schema")
+async def wake_sonic_schema_endpoint():
+    return wake_sonic_schema()
+
+
+@app.get("/wake-sonic/registry")
+async def wake_sonic_registry_endpoint():
+    return wake_sonic_registry()
+
+
+@app.post("/wake-sonic/preview")
+async def wake_sonic_preview_endpoint(payload: WakeSonicPreviewRequest):
+    return preview_wake_sonic(
+        payload.command,
+        payload.wake_mode,
+        payload.sonic_event,
+        payload.environment,
+        payload.sensitivity,
+        payload.user_permission_state,
+    )
+
+
+@app.get("/debug/wake-sonic-status")
+async def debug_wake_sonic_status():
+    return wake_sonic_status()
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -7513,6 +7550,23 @@ async def debug_agent_panel():
       <button data-drive-command="Arama hazırlığı yap ama arama başlatma">Arama hazırlığı yap ama arama başlatma</button>
       <button data-drive-command="Hatırlatıcı hazırla">Hatırlatıcı hazırla</button>
       <button data-drive-command="Bu işi eller serbest kuyruğa al">Bu işi eller serbest kuyruğa al</button>
+    </div>
+    <h2>Wake Mode + Sonic Signature</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/wake-sonic-status">Wake Sonic Status</button>
+      <button data-endpoint="/wake-sonic/schema">Wake Sonic Schema</button>
+      <button data-endpoint="/wake-sonic/registry">Wake Sonic Registry</button>
+    </div>
+    <div class="bar">
+      <button data-wake-sonic-command="Wake mode kapalı olsun">Wake mode kapalı olsun</button>
+      <button data-wake-sonic-command="Uygulama açıkken Hey Lux ile uyansın">Uygulama açıkken Hey Lux ile uyansın</button>
+      <button data-wake-sonic-command="Arka planda izinli wake phrase fikrini göster">Arka planda izinli wake phrase fikrini göster</button>
+      <button data-wake-sonic-command="Lux'un açılış sesini tarif et">Lux'un açılış sesini tarif et</button>
+      <button data-wake-sonic-command="Dinlemeye başladığında kısa ses nasıl olsun?">Dinlemeye başladığında kısa ses nasıl olsun?</button>
+      <button data-wake-sonic-command="Onay sesi premium olsun">Onay sesi premium olsun</button>
+      <button data-wake-sonic-command="Gece modu sesi daha sakin olsun">Gece modu sesi daha sakin olsun</button>
+      <button data-wake-sonic-command="Alarm gibi olmasın, lüks ve yumuşak olsun">Alarm gibi olmasın, lüks ve yumuşak olsun</button>
+      <button data-wake-sonic-command="Mikrofon gizlilik sınırını göster">Mikrofon gizlilik sınırını göster</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -8220,6 +8274,30 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadWakeSonicPreview(command) {
+      statusEl.textContent = "Loading wake sonic preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/wake-sonic/preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            wake_mode: "",
+            sonic_event: "",
+            environment: "debug panel",
+            sensitivity: "normal",
+            user_permission_state: "not_granted"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded wake sonic preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -8369,6 +8447,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-drive-command]").forEach((button) => {
       button.addEventListener("click", () => loadDriveModePreview(button.dataset.driveCommand));
+    });
+    document.querySelectorAll("button[data-wake-sonic-command]").forEach((button) => {
+      button.addEventListener("click", () => loadWakeSonicPreview(button.dataset.wakeSonicCommand));
     });
   </script>
 </body>

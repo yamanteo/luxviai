@@ -1058,6 +1058,10 @@ class SmokeRunner:
         assert "/drive-mode/schema" in html, html[:300]
         assert "/drive-mode/preview" in html, html[:300]
         assert "/debug/drive-mode-status" in html, html[:300]
+        assert "/wake-sonic/schema" in html, html[:300]
+        assert "/wake-sonic/registry" in html, html[:300]
+        assert "/wake-sonic/preview" in html, html[:300]
+        assert "/debug/wake-sonic-status" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
         assert "/luxway/permission-model" in html, html[:300]
@@ -3347,6 +3351,97 @@ class SmokeRunner:
         preview("Arama hazirligi yap ama arama baslatma", {"call_prepare_preview"})
         return "drive mode preview"
 
+    def check_wake_sonic_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/wake-sonic/schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert schema.get("status") == "wake_sonic_schema_ready", schema
+        assert schema.get("read_only") is True, schema
+        wake_ids = {item.get("id") for item in schema.get("wake_modes", [])}
+        assert {"off", "app_open_wake_phrase", "permissioned_background_wake_phrase"} <= wake_ids, schema
+        safety = schema.get("wake_safety_flags", {})
+        assert safety.get("microphone_access_enabled") is False, schema
+        assert safety.get("real_wake_detection_performed") is False, schema
+        assert safety.get("continuous_recording_performed") is False, schema
+        assert safety.get("hidden_recording_allowed") is False, schema
+        assert safety.get("audio_recorded") is False, schema
+        assert safety.get("audio_transcribed") is False, schema
+        assert safety.get("audio_played") is False, schema
+        assert safety.get("background_listening_enabled") is False, schema
+
+        registry_response = client.get("/wake-sonic/registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("status") == "wake_sonic_registry_ready", registry
+        family_ids = {item.get("id") for item in registry.get("sonic_family", [])}
+        assert {"lux_wake", "lux_listen", "lux_confirm", "lux_hold", "lux_soft_error", "lux_night"} <= family_ids, registry
+        assert "warm_amber_halo" in registry.get("sonic_signature", {}).get("style_tags", []), registry
+        assert registry.get("microphone_access_enabled") is False, registry
+
+        status_response = client.get("/debug/wake-sonic-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("microphone_access_enabled") is False, status
+        assert status.get("real_wake_detection_performed") is False, status
+        assert status.get("continuous_recording_performed") is False, status
+        assert status.get("hidden_recording_allowed") is False, status
+        assert status.get("audio_recorded") is False, status
+        assert status.get("audio_transcribed") is False, status
+        assert status.get("audio_played") is False, status
+        assert status.get("background_listening_enabled") is False, status
+        assert status.get("memory_read_performed") is False, status
+        assert status.get("memory_write_performed") is False, status
+
+        def preview(command: str, expected_wake: set[str] | None = None, expected_sonic: set[str] | None = None) -> dict:
+            response = client.post(
+                "/wake-sonic/preview",
+                json={
+                    "command": command,
+                    "wake_mode": "",
+                    "sonic_event": "",
+                    "environment": "smoke",
+                    "sensitivity": "normal",
+                    "user_permission_state": "not_granted",
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("microphone_access_enabled") is False, payload
+            assert payload.get("real_wake_detection_performed") is False, payload
+            assert payload.get("continuous_recording_performed") is False, payload
+            assert payload.get("hidden_recording_allowed") is False, payload
+            assert payload.get("audio_recorded") is False, payload
+            assert payload.get("audio_transcribed") is False, payload
+            assert payload.get("audio_played") is False, payload
+            assert payload.get("background_listening_enabled") is False, payload
+            assert payload.get("memory_read_performed") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            if expected_wake:
+                assert payload.get("detected_wake_mode", {}).get("id") in expected_wake, payload
+            if expected_sonic:
+                assert payload.get("sonic_family_item", {}).get("id") in expected_sonic, payload
+            assert payload.get("safety_boundary", {}).get("no_hidden_recording") is True, payload
+            return payload
+
+        preview("Wake mode kapali olsun", {"off"}, None)
+        preview("Uygulama acikken Hey Lux ile uyansin", {"app_open_wake_phrase"}, None)
+        preview("Arka planda izinli wake phrase fikrini goster", {"permissioned_background_wake_phrase"}, None)
+        preview("Lux'un acilis sesini tarif et", None, {"lux_wake"})
+        preview("Onay sesi premium olsun", None, {"lux_confirm"})
+        preview("Gece modu sesi daha sakin olsun", None, {"lux_night"})
+        return "wake sonic preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -3439,6 +3534,7 @@ class SmokeRunner:
             ("device_bridge_preview", self.check_device_bridge_preview),
             ("pointer_context_preview", self.check_pointer_context_preview),
             ("drive_mode_preview", self.check_drive_mode_preview),
+            ("wake_sonic_preview", self.check_wake_sonic_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),
