@@ -1050,6 +1050,9 @@ class SmokeRunner:
         assert "/adaptive-interface/schema" in html, html[:300]
         assert "/adaptive-interface/preview" in html, html[:300]
         assert "/debug/adaptive-interface-status" in html, html[:300]
+        assert "/ambient-workspace/schema" in html, html[:300]
+        assert "/ambient-workspace/preview" in html, html[:300]
+        assert "/debug/ambient-workspace-status" in html, html[:300]
         assert "/support/registry" in html, html[:300]
         assert "/support/preview" in html, html[:300]
         assert "/debug/support-status" in html, html[:300]
@@ -3239,6 +3242,104 @@ class SmokeRunner:
         assert finality.get("recommended_surface") == "finality_closure_surface", finality
         return "adaptive interface preview"
 
+    def check_ambient_workspace_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/ambient-workspace/schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert schema.get("layer") == "22.5", schema
+        assert schema.get("status") == "schema_ready", schema
+        assert schema.get("read_only") is True, schema
+        assert "report_workspace" in schema.get("workspace_modes", []), schema
+        assert "block_stack" in schema.get("ambient_layouts", []), schema
+        assert "command_block_hidden_from_export" in schema.get("block_priorities", []), schema
+
+        status_response = client.get("/debug/ambient-workspace-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "ambient_workspace_preview_ready", status
+        assert status.get("read_only") is True, status
+        for key in [
+            "real_workspace_modified",
+            "real_editor_changed",
+            "real_ui_changed",
+            "frontend_runtime_modified",
+            "static_index_modified",
+            "file_created",
+            "export_performed",
+            "send_performed",
+            "print_performed",
+            "memory_write_performed",
+            "db_write_performed",
+            "action_performed",
+        ]:
+            assert status.get(key) is False, status
+
+        def preview(command: str, artifact_type: str = "", **extra: str) -> dict:
+            response = client.post(
+                "/ambient-workspace/preview",
+                json={
+                    "command": command,
+                    "workspace_context": "smoke ambient workspace preview",
+                    "artifact_type": artifact_type,
+                    "user_goal": "quiet organization",
+                    "current_blocks": [],
+                    "desired_output": extra.get("desired_output", ""),
+                    "risk_level": extra.get("risk_level", "normal"),
+                    "focus_mode": extra.get("focus_mode", ""),
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            for key in [
+                "real_workspace_modified",
+                "real_editor_changed",
+                "real_ui_changed",
+                "frontend_runtime_modified",
+                "static_index_modified",
+                "file_created",
+                "export_performed",
+                "send_performed",
+                "print_performed",
+                "memory_write_performed",
+                "db_write_performed",
+                "action_performed",
+            ]:
+                assert payload.get(key) is False, payload
+            assert payload.get("detected_workspace_mode"), payload
+            assert payload.get("recommended_layout"), payload
+            assert payload.get("block_priorities"), payload
+            return payload
+
+        report = preview("Bu rapor icin Workspace'i duzenle", "report")
+        assert report.get("detected_workspace_mode") == "report_workspace" or report.get("recommended_layout") == "block_stack", report
+
+        cv = preview("CV icin temiz bir calisma alani oner", "cv")
+        assert cv.get("detected_workspace_mode") == "cv_workspace", cv
+
+        codex = preview("Codex ciktisini kontrol edecegim, alani ona gore hazirla", "codex")
+        assert codex.get("detected_workspace_mode") == "codex_review_workspace", codex
+
+        visual = preview("Gorsel prompt yaziyorum, stil alanlarini one cikar", "visual")
+        assert visual.get("detected_workspace_mode") == "visual_prompt_workspace" or visual.get("recommended_layout") == "visual_style_panel", visual
+
+        source = preview("Kaynak uydurmayi engelleyen alani goster")
+        assert source.get("source_guard_needed") is True, source
+
+        export = preview("Export'e girmeyecek komut bloklarini ayir")
+        hidden = export.get("hidden_from_export_blocks", [])
+        assert "command_block_hidden_from_export" in hidden, export
+        assert "ai_note_hidden_from_export" in hidden, export
+        return "ambient workspace preview"
+
     def check_background_support_registry_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3940,6 +4041,7 @@ class SmokeRunner:
             ("layer22_candidate_scoring_preview", self.check_layer22_candidate_scoring_preview),
             ("finality_sense_preview", self.check_finality_sense_preview),
             ("adaptive_interface_preview", self.check_adaptive_interface_preview),
+            ("ambient_workspace_preview", self.check_ambient_workspace_preview),
             ("background_support_registry_preview", self.check_background_support_registry_preview),
             ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview),
             ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview),

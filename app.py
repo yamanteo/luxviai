@@ -31,6 +31,7 @@ from learning.cost_logger import CostLogger, estimate_tokens
 from learning.efficiency_router import EfficiencyRouter
 from learning.token_budget_policy import TokenBudgetPolicy
 from adaptive_interface_preview import adaptive_interface_schema, adaptive_interface_status, preview_adaptive_interface
+from ambient_workspace_preview import ambient_workspace_schema, ambient_workspace_status, preview_ambient_workspace
 from audio_privacy_boundary import preview_audio_privacy_boundary
 from audio_signal_schema import audio_signal_schema, audio_status_snapshot, preview_audio_signal
 from agent_decision_trace import build_agent_decision_trace
@@ -517,6 +518,17 @@ class AdaptiveInterfacePreviewRequest(BaseModel):
     environment: str = Field(default="", max_length=100)
     risk_level: str = Field(default="", max_length=50)
     desired_output: str = Field(default="", max_length=500)
+
+
+class AmbientWorkspacePreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    workspace_context: str = Field(default="", max_length=8000)
+    artifact_type: str = Field(default="", max_length=100)
+    user_goal: str = Field(default="", max_length=1000)
+    current_blocks: List[Dict[str, Any]] = Field(default_factory=list)
+    desired_output: str = Field(default="", max_length=500)
+    risk_level: str = Field(default="", max_length=50)
+    focus_mode: str = Field(default="", max_length=100)
 
 
 # =========================================================
@@ -7039,6 +7051,30 @@ async def debug_adaptive_interface_status():
     return adaptive_interface_status()
 
 
+@app.get("/ambient-workspace/schema")
+async def ambient_workspace_schema_endpoint():
+    return ambient_workspace_schema()
+
+
+@app.post("/ambient-workspace/preview")
+async def ambient_workspace_preview_endpoint(payload: AmbientWorkspacePreviewRequest):
+    return preview_ambient_workspace(
+        payload.command,
+        payload.workspace_context,
+        payload.artifact_type,
+        payload.user_goal,
+        payload.current_blocks,
+        payload.desired_output,
+        payload.risk_level,
+        payload.focus_mode,
+    )
+
+
+@app.get("/debug/ambient-workspace-status")
+async def debug_ambient_workspace_status():
+    return ambient_workspace_status()
+
+
 @app.get("/support/registry")
 async def support_registry_endpoint():
     return support_registry()
@@ -7647,6 +7683,23 @@ async def debug_agent_panel():
       <button data-adaptive-command="Cihaz k\u00f6pr\u00fcs\u00fc i\u00e7in uygun y\u00fczey ne?" data-adaptive-task="device_bridge">Cihaz k\u00f6pr\u00fcs\u00fc i\u00e7in uygun y\u00fczey ne?</button>
       <button data-adaptive-command="Uzun rapor i\u00e7in deep work y\u00fczeyi \u00f6ner" data-adaptive-task="workspace" data-adaptive-output="deep work">Uzun rapor i\u00e7in deep work y\u00fczeyi \u00f6ner</button>
       <button data-adaptive-command="Sunum haz\u0131rlama y\u00fczeyi \u00f6ner" data-adaptive-task="presentation">Sunum haz\u0131rlama y\u00fczeyi \u00f6ner</button>
+    </div>
+    <h2>Ambient Workspace</h2>
+    <div class="bar">
+      <button data-endpoint="/ambient-workspace/schema">Ambient Workspace Schema</button>
+      <button data-endpoint="/debug/ambient-workspace-status">Ambient Workspace Status</button>
+    </div>
+    <div class="bar">
+      <button data-ambient-command="Bu rapor i\u00e7in Workspace'i d\u00fczenle" data-ambient-artifact="report">Bu rapor i\u00e7in Workspace'i d\u00fczenle</button>
+      <button data-ambient-command="CV i\u00e7in temiz bir \u00e7al\u0131\u015fma alan\u0131 \u00f6ner" data-ambient-artifact="cv">CV i\u00e7in temiz bir \u00e7al\u0131\u015fma alan\u0131 \u00f6ner</button>
+      <button data-ambient-command="Codex \u00e7\u0131kt\u0131s\u0131n\u0131 kontrol edece\u011fim, alan\u0131 ona g\u00f6re haz\u0131rla" data-ambient-artifact="codex">Codex \u00e7\u0131kt\u0131s\u0131n\u0131 kontrol edece\u011fim</button>
+      <button data-ambient-command="G\u00f6rsel prompt yaz\u0131yorum, stil alanlar\u0131n\u0131 \u00f6ne \u00e7\u0131kar" data-ambient-artifact="visual">G\u00f6rsel prompt yaz\u0131yorum</button>
+      <button data-ambient-command="Karar vermem i\u00e7in Workspace'i sadele\u015ftir" data-ambient-artifact="decision">Karar vermem i\u00e7in sadele\u015ftir</button>
+      <button data-ambient-command="Kaynak uydurmay\u0131 engelleyen alan\u0131 g\u00f6ster">Kaynak uydurmay\u0131 engelleyen alan\u0131 g\u00f6ster</button>
+      <button data-ambient-command="Export'e girmeyecek komut bloklar\u0131n\u0131 ay\u0131r">Export'e girmeyecek komut bloklar\u0131n\u0131 ay\u0131r</button>
+      <button data-ambient-command="Bu i\u015fi bitirme ekran\u0131 gibi d\u00fczenle" data-ambient-artifact="finality">Bu i\u015fi bitirme ekran\u0131 gibi d\u00fczenle</button>
+      <button data-ambient-command="Odak modu a\u00e7 ama ger\u00e7ek UI de\u011fi\u015ftirme" data-ambient-focus="calm deep work">Odak modu a\u00e7 ama ger\u00e7ek UI de\u011fi\u015ftirme</button>
+      <button data-ambient-command="Da\u011f\u0131n\u0131kl\u0131\u011f\u0131 azalt">Da\u011f\u0131n\u0131kl\u0131\u011f\u0131 azalt</button>
     </div>
     <h2>Background Support</h2>
     <div class="bar">
@@ -8599,6 +8652,32 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadAmbientWorkspacePreview(command, artifactType, focusMode) {
+      statusEl.textContent = "Loading ambient workspace preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/ambient-workspace/preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            workspace_context: "debug panel read-only ambient workspace sample",
+            artifact_type: artifactType || "",
+            user_goal: "quiet workspace organization",
+            current_blocks: [],
+            desired_output: "",
+            risk_level: "normal",
+            focus_mode: focusMode || ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded ambient workspace preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -8775,6 +8854,13 @@ async def debug_agent_panel():
         button.dataset.adaptiveAttention,
         button.dataset.adaptiveEnvironment,
         button.dataset.adaptiveOutput
+      ));
+    });
+    document.querySelectorAll("button[data-ambient-command]").forEach((button) => {
+      button.addEventListener("click", () => loadAmbientWorkspacePreview(
+        button.dataset.ambientCommand,
+        button.dataset.ambientArtifact,
+        button.dataset.ambientFocus
       ));
     });
   </script>
