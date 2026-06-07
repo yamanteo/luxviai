@@ -32,6 +32,7 @@ from learning.efficiency_router import EfficiencyRouter
 from learning.token_budget_policy import TokenBudgetPolicy
 from adaptive_interface_preview import adaptive_interface_schema, adaptive_interface_status, preview_adaptive_interface
 from ambient_workspace_preview import ambient_workspace_schema, ambient_workspace_status, preview_ambient_workspace
+from autonomy_dial_preview import autonomy_dial_schema, autonomy_dial_status, preview_autonomy_dial
 from audio_privacy_boundary import preview_audio_privacy_boundary
 from audio_signal_schema import audio_signal_schema, audio_status_snapshot, preview_audio_signal
 from agent_decision_trace import build_agent_decision_trace
@@ -542,6 +543,17 @@ class IntentionTimelinePreviewRequest(BaseModel):
     energy_state: str = Field(default="", max_length=100)
     priority_level: str = Field(default="", max_length=100)
     risk_level: str = Field(default="", max_length=50)
+
+
+class AutonomyDialPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    task_type: str = Field(default="", max_length=100)
+    requested_action: str = Field(default="", max_length=500)
+    user_permission_state: str = Field(default="", max_length=100)
+    risk_domain: str = Field(default="", max_length=100)
+    desired_autonomy_level: str = Field(default="", max_length=100)
+    context_text: str = Field(default="", max_length=8000)
+    sensitivity: str = Field(default="", max_length=100)
 
 
 # =========================================================
@@ -7113,6 +7125,30 @@ async def debug_intention_timeline_status():
     return intention_timeline_status()
 
 
+@app.get("/autonomy-dial/schema")
+async def autonomy_dial_schema_endpoint():
+    return autonomy_dial_schema()
+
+
+@app.post("/autonomy-dial/preview")
+async def autonomy_dial_preview_endpoint(payload: AutonomyDialPreviewRequest):
+    return preview_autonomy_dial(
+        payload.command,
+        payload.task_type,
+        payload.requested_action,
+        payload.user_permission_state,
+        payload.risk_domain,
+        payload.desired_autonomy_level,
+        payload.context_text,
+        payload.sensitivity,
+    )
+
+
+@app.get("/debug/autonomy-dial-status")
+async def debug_autonomy_dial_status():
+    return autonomy_dial_status()
+
+
 @app.get("/support/registry")
 async def support_registry_endpoint():
     return support_registry()
@@ -7755,6 +7791,23 @@ async def debug_agent_panel():
       <button data-intention-command="Bunu bitince tekrar a\u00e7al\u0131m" data-intention-timeframe="after_completion">Bunu bitince tekrar a\u00e7al\u0131m</button>
       <button data-intention-command="Takip gerekiyor mu?">Takip gerekiyor mu?</button>
       <button data-intention-command="Bunu kapatal\u0131m m\u0131, sonra m\u0131 devam edelim?">Bunu kapatal\u0131m m\u0131, sonra m\u0131 devam edelim?</button>
+    </div>
+    <h2>Autonomy Dial</h2>
+    <div class="bar">
+      <button data-endpoint="/autonomy-dial/schema">Autonomy Dial Schema</button>
+      <button data-endpoint="/debug/autonomy-dial-status">Autonomy Dial Status</button>
+    </div>
+    <div class="bar">
+      <button data-autonomy-command="Sadece \u00f6ner, hi\u00e7bir \u015fey haz\u0131rlama" data-autonomy-level="suggest_only">Sadece \u00f6ner</button>
+      <button data-autonomy-command="Taslak haz\u0131rla ama g\u00f6nderme" data-autonomy-level="draft_only">Taslak haz\u0131rla ama g\u00f6nderme</button>
+      <button data-autonomy-command="G\u00f6ndermeye haz\u0131rla, son onay\u0131 benden al" data-autonomy-level="prepare_with_confirmation" data-autonomy-risk="message_send">G\u00f6ndermeye haz\u0131rla</button>
+      <button data-autonomy-command="Bana ad\u0131m ad\u0131m yapt\u0131r" data-autonomy-level="guided_step_by_step">Bana ad\u0131m ad\u0131m yapt\u0131r</button>
+      <button data-autonomy-command="Bunu otomatik hallet" data-autonomy-level="semi_autonomous_preview">Bunu otomatik hallet</button>
+      <button data-autonomy-command="Bu maili g\u00f6nder" data-autonomy-risk="email_send">Bu maili g\u00f6nder</button>
+      <button data-autonomy-command="PDF'e \u00e7evir ve kaydet" data-autonomy-risk="file_export">PDF'e \u00e7evir ve kaydet</button>
+      <button data-autonomy-command="Haf\u0131zaya kaydet" data-autonomy-risk="memory_write">Haf\u0131zaya kaydet</button>
+      <button data-autonomy-command="Cihaz\u0131 kontrol et" data-autonomy-risk="device_control">Cihaz\u0131 kontrol et</button>
+      <button data-autonomy-command="Bu \u00f6zel bilgileri arka planda takip et" data-autonomy-risk="private_data" data-autonomy-sensitivity="high">Bu \u00f6zel bilgileri arka planda takip et</button>
     </div>
     <h2>Background Support</h2>
     <div class="bar">
@@ -8760,6 +8813,32 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadAutonomyDialPreview(command, desiredLevel, riskDomain, sensitivity) {
+      statusEl.textContent = "Loading autonomy dial preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/autonomy-dial/preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            task_type: "debug_preview",
+            requested_action: command,
+            user_permission_state: "not_granted",
+            risk_domain: riskDomain || "",
+            desired_autonomy_level: desiredLevel || "",
+            context_text: "debug panel read-only autonomy dial sample",
+            sensitivity: sensitivity || "normal"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded autonomy dial preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -8951,6 +9030,14 @@ async def debug_agent_panel():
         button.dataset.intentionTimeframe,
         button.dataset.intentionEnergy,
         button.dataset.intentionProject
+      ));
+    });
+    document.querySelectorAll("button[data-autonomy-command]").forEach((button) => {
+      button.addEventListener("click", () => loadAutonomyDialPreview(
+        button.dataset.autonomyCommand,
+        button.dataset.autonomyLevel,
+        button.dataset.autonomyRisk,
+        button.dataset.autonomySensitivity
       ));
     });
   </script>

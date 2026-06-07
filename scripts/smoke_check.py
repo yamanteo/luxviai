@@ -1056,6 +1056,9 @@ class SmokeRunner:
         assert "/intention-timeline/schema" in html, html[:300]
         assert "/intention-timeline/preview" in html, html[:300]
         assert "/debug/intention-timeline-status" in html, html[:300]
+        assert "/autonomy-dial/schema" in html, html[:300]
+        assert "/autonomy-dial/preview" in html, html[:300]
+        assert "/debug/autonomy-dial-status" in html, html[:300]
         assert "/support/registry" in html, html[:300]
         assert "/support/preview" in html, html[:300]
         assert "/debug/support-status" in html, html[:300]
@@ -3437,6 +3440,114 @@ class SmokeRunner:
         assert follow.get("detected_timeline_intent") == "follow_up_needed" or follow.get("follow_up_needed") is True, follow
         return "intention timeline preview"
 
+    def check_autonomy_dial_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/autonomy-dial/schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert schema.get("layer") == "22.7", schema
+        assert schema.get("status") == "schema_ready", schema
+        assert schema.get("read_only") is True, schema
+        assert "suggest_only" in schema.get("autonomy_levels", []), schema
+        assert "email_send" in schema.get("risk_domains", []), schema
+
+        status_response = client.get("/debug/autonomy-dial-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "autonomy_dial_preview_ready", status
+        assert status.get("read_only") is True, status
+        for key in [
+            "real_action_enabled",
+            "action_performed",
+            "message_sent",
+            "email_sent",
+            "file_created",
+            "export_performed",
+            "print_performed",
+            "calendar_write_performed",
+            "reminder_created",
+            "task_created",
+            "memory_write_performed",
+            "db_write_performed",
+            "device_control_performed",
+            "screen_control_performed",
+            "microphone_access_performed",
+            "location_read_performed",
+        ]:
+            assert status.get(key) is False, status
+
+        def preview(command: str, **extra: str) -> dict:
+            response = client.post(
+                "/autonomy-dial/preview",
+                json={
+                    "command": command,
+                    "task_type": extra.get("task_type", "smoke"),
+                    "requested_action": extra.get("requested_action", command),
+                    "user_permission_state": extra.get("user_permission_state", "not_granted"),
+                    "risk_domain": extra.get("risk_domain", ""),
+                    "desired_autonomy_level": extra.get("desired_autonomy_level", ""),
+                    "context_text": "smoke read-only autonomy dial preview",
+                    "sensitivity": extra.get("sensitivity", "normal"),
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            for key in [
+                "real_action_enabled",
+                "action_performed",
+                "message_sent",
+                "email_sent",
+                "file_created",
+                "export_performed",
+                "print_performed",
+                "calendar_write_performed",
+                "reminder_created",
+                "task_created",
+                "memory_write_performed",
+                "db_write_performed",
+                "device_control_performed",
+                "screen_control_performed",
+                "microphone_access_performed",
+                "location_read_performed",
+            ]:
+                assert payload.get(key) is False, payload
+            assert payload.get("recommended_autonomy_level"), payload
+            assert payload.get("detected_risk_domain"), payload
+            assert payload.get("safe_alternative"), payload
+            return payload
+
+        suggest = preview("Sadece oner, hicbir sey hazirlama")
+        assert suggest.get("recommended_autonomy_level") == "suggest_only", suggest
+
+        draft = preview("Taslak hazirla ama gonderme")
+        assert draft.get("recommended_autonomy_level") == "draft_only", draft
+
+        prepare = preview("Gondermeye hazirla, son onayi benden al", risk_domain="message_send")
+        assert prepare.get("recommended_autonomy_level") == "prepare_with_confirmation", prepare
+        assert prepare.get("final_confirmation_required") is True, prepare
+
+        guided = preview("Bana adim adim yaptir")
+        assert guided.get("recommended_autonomy_level") == "guided_step_by_step", guided
+
+        mail = preview("Bu maili gonder")
+        assert mail.get("recommended_autonomy_level") == "blocked_requires_permission" or mail.get("detected_risk_domain") in {"email_send", "message_send"}, mail
+        assert mail.get("permission_required") is True, mail
+        assert mail.get("final_confirmation_required") is True, mail
+
+        memory = preview("Hafizaya kaydet")
+        assert memory.get("detected_risk_domain") == "memory_write" or memory.get("recommended_autonomy_level") == "blocked_requires_permission", memory
+        assert memory.get("permission_required") is True, memory
+        assert memory.get("final_confirmation_required") is True, memory
+        return "autonomy dial preview"
+
     def check_background_support_registry_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4140,6 +4251,7 @@ class SmokeRunner:
             ("adaptive_interface_preview", self.check_adaptive_interface_preview),
             ("ambient_workspace_preview", self.check_ambient_workspace_preview),
             ("intention_timeline_preview", self.check_intention_timeline_preview),
+            ("autonomy_dial_preview", self.check_autonomy_dial_preview),
             ("background_support_registry_preview", self.check_background_support_registry_preview),
             ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview),
             ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview),
