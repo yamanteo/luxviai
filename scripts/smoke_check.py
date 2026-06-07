@@ -1047,6 +1047,9 @@ class SmokeRunner:
         assert "/finality/schema" in html, html[:300]
         assert "/finality/preview" in html, html[:300]
         assert "/debug/finality-status" in html, html[:300]
+        assert "/adaptive-interface/schema" in html, html[:300]
+        assert "/adaptive-interface/preview" in html, html[:300]
+        assert "/debug/adaptive-interface-status" in html, html[:300]
         assert "/support/registry" in html, html[:300]
         assert "/support/preview" in html, html[:300]
         assert "/debug/support-status" in html, html[:300]
@@ -3145,6 +3148,97 @@ class SmokeRunner:
         assert ship.get("ship_ready") is True or ship.get("risk_check_needed") is True, ship
         return "finality sense preview"
 
+    def check_adaptive_interface_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/adaptive-interface/schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert schema.get("layer") == "22.4", schema
+        assert schema.get("status") == "schema_ready", schema
+        assert schema.get("read_only") is True, schema
+        assert "workspace_surface" in schema.get("adaptive_surfaces", []), schema
+        assert "minimal" in schema.get("ui_densities", []), schema
+        assert "contextual_bubble" in schema.get("interaction_styles", []), schema
+
+        status_response = client.get("/debug/adaptive-interface-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "adaptive_interface_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("real_ui_changed") is False, status
+        assert status.get("frontend_runtime_modified") is False, status
+        assert status.get("css_modified") is False, status
+        assert status.get("dom_modified") is False, status
+        assert status.get("static_index_modified") is False, status
+        assert status.get("real_action_enabled") is False, status
+        assert status.get("action_performed") is False, status
+        assert status.get("memory_write_performed") is False, status
+        assert status.get("db_write_performed") is False, status
+        assert status.get("file_created") is False, status
+        assert status.get("export_performed") is False, status
+        assert status.get("device_control_performed") is False, status
+
+        def preview(command: str, task_type: str = "", **extra: str) -> dict:
+            response = client.post(
+                "/adaptive-interface/preview",
+                json={
+                    "command": command,
+                    "user_context": "smoke adaptive interface preview",
+                    "task_type": task_type,
+                    "energy_state": extra.get("energy_state", ""),
+                    "attention_state": extra.get("attention_state", ""),
+                    "device_context": extra.get("device_context", ""),
+                    "environment": extra.get("environment", ""),
+                    "risk_level": extra.get("risk_level", "normal"),
+                    "desired_output": extra.get("desired_output", ""),
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("real_ui_changed") is False, payload
+            assert payload.get("frontend_runtime_modified") is False, payload
+            assert payload.get("css_modified") is False, payload
+            assert payload.get("dom_modified") is False, payload
+            assert payload.get("static_index_modified") is False, payload
+            assert payload.get("real_action_enabled") is False, payload
+            assert payload.get("action_performed") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            assert payload.get("db_write_performed") is False, payload
+            assert payload.get("file_created") is False, payload
+            assert payload.get("export_performed") is False, payload
+            assert payload.get("device_control_performed") is False, payload
+            assert payload.get("recommended_surface"), payload
+            assert payload.get("ui_density"), payload
+            assert payload.get("interaction_style"), payload
+            return payload
+
+        compact = preview("Bunu sade ekranda goster", "compact_summary")
+        assert compact.get("ui_density") in {"minimal", "ultra_minimal"}, compact
+        assert compact.get("recommended_surface") == "compact_summary_surface", compact
+
+        workspace = preview("Workspace gibi duzenle", "workspace")
+        assert workspace.get("recommended_surface") == "workspace_surface", workspace
+        assert workspace.get("interaction_style") == "workspace_blocks", workspace
+
+        night = preview("Gece sakin modda cevapla", "night_calm", environment="night")
+        assert night.get("recommended_surface") == "night_calm_surface", night
+
+        drive = preview("Suruste kullanilacak yuzeyi goster", "drive", attention_state="driving")
+        assert drive.get("recommended_surface") == "drive_minimal_surface", drive
+        assert drive.get("ui_density") == "ultra_minimal", drive
+
+        finality = preview("Bu is bitti mi ekrani gibi goster", "finality")
+        assert finality.get("recommended_surface") == "finality_closure_surface", finality
+        return "adaptive interface preview"
+
     def check_background_support_registry_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3845,6 +3939,7 @@ class SmokeRunner:
             ("layer22_future_candidates_preview", self.check_layer22_future_candidates_preview),
             ("layer22_candidate_scoring_preview", self.check_layer22_candidate_scoring_preview),
             ("finality_sense_preview", self.check_finality_sense_preview),
+            ("adaptive_interface_preview", self.check_adaptive_interface_preview),
             ("background_support_registry_preview", self.check_background_support_registry_preview),
             ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview),
             ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview),

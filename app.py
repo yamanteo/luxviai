@@ -30,6 +30,7 @@ from learning.pipeline import LearningPipeline
 from learning.cost_logger import CostLogger, estimate_tokens
 from learning.efficiency_router import EfficiencyRouter
 from learning.token_budget_policy import TokenBudgetPolicy
+from adaptive_interface_preview import adaptive_interface_schema, adaptive_interface_status, preview_adaptive_interface
 from audio_privacy_boundary import preview_audio_privacy_boundary
 from audio_signal_schema import audio_signal_schema, audio_status_snapshot, preview_audio_signal
 from agent_decision_trace import build_agent_decision_trace
@@ -504,6 +505,18 @@ class FinalityPreviewRequest(BaseModel):
     user_goal: str = Field(default="", max_length=1000)
     risk_level: str = Field(default="", max_length=50)
     desired_depth: str = Field(default="concise", max_length=50)
+
+
+class AdaptiveInterfacePreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    user_context: str = Field(default="", max_length=4000)
+    task_type: str = Field(default="", max_length=100)
+    energy_state: str = Field(default="", max_length=100)
+    attention_state: str = Field(default="", max_length=100)
+    device_context: str = Field(default="", max_length=100)
+    environment: str = Field(default="", max_length=100)
+    risk_level: str = Field(default="", max_length=50)
+    desired_output: str = Field(default="", max_length=500)
 
 
 # =========================================================
@@ -7001,6 +7014,31 @@ async def debug_finality_status():
     return finality_status()
 
 
+@app.get("/adaptive-interface/schema")
+async def adaptive_interface_schema_endpoint():
+    return adaptive_interface_schema()
+
+
+@app.post("/adaptive-interface/preview")
+async def adaptive_interface_preview_endpoint(payload: AdaptiveInterfacePreviewRequest):
+    return preview_adaptive_interface(
+        payload.command,
+        payload.user_context,
+        payload.task_type,
+        payload.energy_state,
+        payload.attention_state,
+        payload.device_context,
+        payload.environment,
+        payload.risk_level,
+        payload.desired_output,
+    )
+
+
+@app.get("/debug/adaptive-interface-status")
+async def debug_adaptive_interface_status():
+    return adaptive_interface_status()
+
+
 @app.get("/support/registry")
 async def support_registry_endpoint():
     return support_registry()
@@ -7592,6 +7630,23 @@ async def debug_agent_panel():
       <button data-finality-command="Son bir kapan\u0131\u015f \u00f6zeti ver">Son bir kapan\u0131\u015f \u00f6zeti ver</button>
       <button data-finality-command="Burada dural\u0131m, sonra devam ederiz">Burada dural\u0131m, sonra devam ederiz</button>
       <button data-finality-command="Karar vermem gerekiyor mu?">Karar vermem gerekiyor mu?</button>
+    </div>
+    <h2>Adaptive Interface</h2>
+    <div class="bar">
+      <button data-endpoint="/adaptive-interface/schema">Adaptive Interface Schema</button>
+      <button data-endpoint="/debug/adaptive-interface-status">Adaptive Interface Status</button>
+    </div>
+    <div class="bar">
+      <button data-adaptive-command="Bunu sade ekranda g\u00f6ster" data-adaptive-task="compact_summary">Bunu sade ekranda g\u00f6ster</button>
+      <button data-adaptive-command="Workspace gibi d\u00fczenle" data-adaptive-task="workspace">Workspace gibi d\u00fczenle</button>
+      <button data-adaptive-command="Gece sakin modda cevapla" data-adaptive-task="night_calm" data-adaptive-environment="night">Gece sakin modda cevapla</button>
+      <button data-adaptive-command="S\u00fcr\u00fc\u015fte kullan\u0131lacak y\u00fczeyi g\u00f6ster" data-adaptive-task="drive" data-adaptive-attention="driving">S\u00fcr\u00fc\u015fte kullan\u0131lacak y\u00fczeyi g\u00f6ster</button>
+      <button data-adaptive-command="Bu karar i\u00e7in \u00f6zel y\u00fczey \u00f6ner" data-adaptive-task="decision">Bu karar i\u00e7in \u00f6zel y\u00fczey \u00f6ner</button>
+      <button data-adaptive-command="Bu i\u015f bitti mi ekran\u0131 gibi g\u00f6ster" data-adaptive-task="finality">Bu i\u015f bitti mi ekran\u0131 gibi g\u00f6ster</button>
+      <button data-adaptive-command="Se\u00e7ti\u011fim \u015feyin yan\u0131nda k\u00fc\u00e7\u00fck baloncuk \u00f6ner" data-adaptive-task="pointer">Se\u00e7ti\u011fim \u015feyin yan\u0131nda k\u00fc\u00e7\u00fck baloncuk \u00f6ner</button>
+      <button data-adaptive-command="Cihaz k\u00f6pr\u00fcs\u00fc i\u00e7in uygun y\u00fczey ne?" data-adaptive-task="device_bridge">Cihaz k\u00f6pr\u00fcs\u00fc i\u00e7in uygun y\u00fczey ne?</button>
+      <button data-adaptive-command="Uzun rapor i\u00e7in deep work y\u00fczeyi \u00f6ner" data-adaptive-task="workspace" data-adaptive-output="deep work">Uzun rapor i\u00e7in deep work y\u00fczeyi \u00f6ner</button>
+      <button data-adaptive-command="Sunum haz\u0131rlama y\u00fczeyi \u00f6ner" data-adaptive-task="presentation">Sunum haz\u0131rlama y\u00fczeyi \u00f6ner</button>
     </div>
     <h2>Background Support</h2>
     <div class="bar">
@@ -8517,6 +8572,33 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadAdaptiveInterfacePreview(command, taskType, attentionState, environment, desiredOutput) {
+      statusEl.textContent = "Loading adaptive interface preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/adaptive-interface/preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            user_context: "debug panel read-only adaptive interface sample",
+            task_type: taskType || "",
+            energy_state: "",
+            attention_state: attentionState || "",
+            device_context: "",
+            environment: environment || "",
+            risk_level: "normal",
+            desired_output: desiredOutput || ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded adaptive interface preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -8684,6 +8766,15 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadFinalityPreview(
         button.dataset.finalityCommand,
         button.dataset.finalityArtifact
+      ));
+    });
+    document.querySelectorAll("button[data-adaptive-command]").forEach((button) => {
+      button.addEventListener("click", () => loadAdaptiveInterfacePreview(
+        button.dataset.adaptiveCommand,
+        button.dataset.adaptiveTask,
+        button.dataset.adaptiveAttention,
+        button.dataset.adaptiveEnvironment,
+        button.dataset.adaptiveOutput
       ));
     });
   </script>
