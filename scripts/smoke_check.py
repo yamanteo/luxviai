@@ -1053,6 +1053,9 @@ class SmokeRunner:
         assert "/ambient-workspace/schema" in html, html[:300]
         assert "/ambient-workspace/preview" in html, html[:300]
         assert "/debug/ambient-workspace-status" in html, html[:300]
+        assert "/intention-timeline/schema" in html, html[:300]
+        assert "/intention-timeline/preview" in html, html[:300]
+        assert "/debug/intention-timeline-status" in html, html[:300]
         assert "/support/registry" in html, html[:300]
         assert "/support/preview" in html, html[:300]
         assert "/debug/support-status" in html, html[:300]
@@ -3340,6 +3343,100 @@ class SmokeRunner:
         assert "ai_note_hidden_from_export" in hidden, export
         return "ambient workspace preview"
 
+    def check_intention_timeline_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/intention-timeline/schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert schema.get("layer") == "22.6", schema
+        assert schema.get("status") == "schema_ready", schema
+        assert schema.get("read_only") is True, schema
+        assert "park_for_later" in schema.get("timeline_intents", []), schema
+        assert "today" in schema.get("timeline_slots", []), schema
+
+        status_response = client.get("/debug/intention-timeline-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "intention_timeline_preview_ready", status
+        assert status.get("read_only") is True, status
+        for key in [
+            "real_calendar_write_performed",
+            "real_reminder_created",
+            "real_task_created",
+            "real_memory_write_performed",
+            "db_write_performed",
+            "file_created",
+            "export_performed",
+            "send_performed",
+            "print_performed",
+            "action_performed",
+        ]:
+            assert status.get(key) is False, status
+
+        def preview(command: str, **extra: str) -> dict:
+            response = client.post(
+                "/intention-timeline/preview",
+                json={
+                    "command": command,
+                    "context_text": "smoke read-only intention timeline preview",
+                    "project_name": extra.get("project_name", "Layer 22"),
+                    "user_goal": "plan without real writes",
+                    "current_stage": extra.get("current_stage", "preview"),
+                    "desired_timeframe": extra.get("desired_timeframe", ""),
+                    "energy_state": extra.get("energy_state", ""),
+                    "priority_level": extra.get("priority_level", ""),
+                    "risk_level": "normal",
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            for key in [
+                "real_calendar_write_performed",
+                "real_reminder_created",
+                "real_task_created",
+                "real_memory_write_performed",
+                "db_write_performed",
+                "file_created",
+                "export_performed",
+                "send_performed",
+                "print_performed",
+                "action_performed",
+            ]:
+                assert payload.get(key) is False, payload
+            assert payload.get("detected_timeline_intent"), payload
+            assert payload.get("detected_time_slot"), payload
+            assert payload.get("next_step"), payload
+            assert "resume_trigger" in payload, payload
+            assert "parked_context" in payload, payload
+            return payload
+
+        parked = preview("Bunu sonra devam etmek uzere park et")
+        assert parked.get("detected_timeline_intent") == "park_for_later" or parked.get("detected_time_slot") == "parked", parked
+
+        next_step = preview("Siradaki adimi zaman cizgisine koy")
+        assert next_step.get("detected_timeline_intent") == "plan_next_step", next_step
+
+        today = preview("Bugun sadece buna odaklanalim", desired_timeframe="today")
+        assert today.get("detected_timeline_intent") == "today_focus" or today.get("detected_time_slot") == "today", today
+
+        decision = preview("Karar vermem gereken noktayi isaretle")
+        assert decision.get("detected_timeline_intent") == "decision_checkpoint", decision
+
+        energy = preview("Enerjim dusuk, buna gore planla", energy_state="low")
+        assert energy.get("detected_timeline_intent") == "energy_based_planning", energy
+
+        follow = preview("Takip gerekiyor mu?")
+        assert follow.get("detected_timeline_intent") == "follow_up_needed" or follow.get("follow_up_needed") is True, follow
+        return "intention timeline preview"
+
     def check_background_support_registry_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4042,6 +4139,7 @@ class SmokeRunner:
             ("finality_sense_preview", self.check_finality_sense_preview),
             ("adaptive_interface_preview", self.check_adaptive_interface_preview),
             ("ambient_workspace_preview", self.check_ambient_workspace_preview),
+            ("intention_timeline_preview", self.check_intention_timeline_preview),
             ("background_support_registry_preview", self.check_background_support_registry_preview),
             ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview),
             ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview),

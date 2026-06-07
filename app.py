@@ -43,6 +43,7 @@ from drive_mode_preview import drive_mode_schema, drive_mode_status, preview_dri
 from emotional_reflection_support import emotional_reflection_registry, emotional_status, preview_emotional_reflection
 from endpoint_coverage_matrix import endpoint_coverage_matrix
 from finality_sense_preview import finality_schema, finality_status, preview_finality
+from intention_timeline_preview import intention_timeline_schema, intention_timeline_status, preview_intention_timeline
 from layer21_status import layer21_status_snapshot
 from layer22_candidate_scoring import candidate_scoring_matrix, layer22_scoring_status, preview_candidate_score
 from layer22_future_candidates import future_candidates_registry, layer22_status_snapshot, preview_future_candidate
@@ -529,6 +530,18 @@ class AmbientWorkspacePreviewRequest(BaseModel):
     desired_output: str = Field(default="", max_length=500)
     risk_level: str = Field(default="", max_length=50)
     focus_mode: str = Field(default="", max_length=100)
+
+
+class IntentionTimelinePreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    context_text: str = Field(default="", max_length=8000)
+    project_name: str = Field(default="", max_length=200)
+    user_goal: str = Field(default="", max_length=1000)
+    current_stage: str = Field(default="", max_length=200)
+    desired_timeframe: str = Field(default="", max_length=100)
+    energy_state: str = Field(default="", max_length=100)
+    priority_level: str = Field(default="", max_length=100)
+    risk_level: str = Field(default="", max_length=50)
 
 
 # =========================================================
@@ -7075,6 +7088,31 @@ async def debug_ambient_workspace_status():
     return ambient_workspace_status()
 
 
+@app.get("/intention-timeline/schema")
+async def intention_timeline_schema_endpoint():
+    return intention_timeline_schema()
+
+
+@app.post("/intention-timeline/preview")
+async def intention_timeline_preview_endpoint(payload: IntentionTimelinePreviewRequest):
+    return preview_intention_timeline(
+        payload.command,
+        payload.context_text,
+        payload.project_name,
+        payload.user_goal,
+        payload.current_stage,
+        payload.desired_timeframe,
+        payload.energy_state,
+        payload.priority_level,
+        payload.risk_level,
+    )
+
+
+@app.get("/debug/intention-timeline-status")
+async def debug_intention_timeline_status():
+    return intention_timeline_status()
+
+
 @app.get("/support/registry")
 async def support_registry_endpoint():
     return support_registry()
@@ -7700,6 +7738,23 @@ async def debug_agent_panel():
       <button data-ambient-command="Bu i\u015fi bitirme ekran\u0131 gibi d\u00fczenle" data-ambient-artifact="finality">Bu i\u015fi bitirme ekran\u0131 gibi d\u00fczenle</button>
       <button data-ambient-command="Odak modu a\u00e7 ama ger\u00e7ek UI de\u011fi\u015ftirme" data-ambient-focus="calm deep work">Odak modu a\u00e7 ama ger\u00e7ek UI de\u011fi\u015ftirme</button>
       <button data-ambient-command="Da\u011f\u0131n\u0131kl\u0131\u011f\u0131 azalt">Da\u011f\u0131n\u0131kl\u0131\u011f\u0131 azalt</button>
+    </div>
+    <h2>Intention Timeline</h2>
+    <div class="bar">
+      <button data-endpoint="/intention-timeline/schema">Intention Timeline Schema</button>
+      <button data-endpoint="/debug/intention-timeline-status">Intention Timeline Status</button>
+    </div>
+    <div class="bar">
+      <button data-intention-command="Bunu sonra devam etmek \u00fczere park et">Bunu sonra devam etmek \u00fczere park et</button>
+      <button data-intention-command="S\u0131radaki ad\u0131m\u0131 zaman \u00e7izgisine koy">S\u0131radaki ad\u0131m\u0131 zaman \u00e7izgisine koy</button>
+      <button data-intention-command="Bug\u00fcn sadece buna odaklanal\u0131m" data-intention-timeframe="today">Bug\u00fcn sadece buna odaklanal\u0131m</button>
+      <button data-intention-command="Bunu haftaya b\u0131rak" data-intention-timeframe="next_week">Bunu haftaya b\u0131rak</button>
+      <button data-intention-command="Karar vermem gereken noktay\u0131 i\u015faretle">Karar vermem gereken noktay\u0131 i\u015faretle</button>
+      <button data-intention-command="Bu proje i\u00e7in milestone \u00e7\u0131kar" data-intention-project="Layer 22">Bu proje i\u00e7in milestone \u00e7\u0131kar</button>
+      <button data-intention-command="Enerjim d\u00fc\u015f\u00fck, buna g\u00f6re planla" data-intention-energy="low">Enerjim d\u00fc\u015f\u00fck, buna g\u00f6re planla</button>
+      <button data-intention-command="Bunu bitince tekrar a\u00e7al\u0131m" data-intention-timeframe="after_completion">Bunu bitince tekrar a\u00e7al\u0131m</button>
+      <button data-intention-command="Takip gerekiyor mu?">Takip gerekiyor mu?</button>
+      <button data-intention-command="Bunu kapatal\u0131m m\u0131, sonra m\u0131 devam edelim?">Bunu kapatal\u0131m m\u0131, sonra m\u0131 devam edelim?</button>
     </div>
     <h2>Background Support</h2>
     <div class="bar">
@@ -8678,6 +8733,33 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadIntentionTimelinePreview(command, desiredTimeframe, energyState, projectName) {
+      statusEl.textContent = "Loading intention timeline preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/intention-timeline/preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            context_text: "debug panel read-only intention timeline sample",
+            project_name: projectName || "",
+            user_goal: "place intention without creating real tasks",
+            current_stage: "debug_preview",
+            desired_timeframe: desiredTimeframe || "",
+            energy_state: energyState || "",
+            priority_level: "",
+            risk_level: "normal"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded intention timeline preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -8861,6 +8943,14 @@ async def debug_agent_panel():
         button.dataset.ambientCommand,
         button.dataset.ambientArtifact,
         button.dataset.ambientFocus
+      ));
+    });
+    document.querySelectorAll("button[data-intention-command]").forEach((button) => {
+      button.addEventListener("click", () => loadIntentionTimelinePreview(
+        button.dataset.intentionCommand,
+        button.dataset.intentionTimeframe,
+        button.dataset.intentionEnergy,
+        button.dataset.intentionProject
       ));
     });
   </script>
