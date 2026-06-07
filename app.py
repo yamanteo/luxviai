@@ -40,6 +40,7 @@ from device_bridge_preview import device_bridge_schema, device_bridge_status, pr
 from drive_mode_preview import drive_mode_schema, drive_mode_status, preview_drive_mode
 from emotional_reflection_support import emotional_reflection_registry, emotional_status, preview_emotional_reflection
 from endpoint_coverage_matrix import endpoint_coverage_matrix
+from layer21_status import layer21_status_snapshot
 from live_readiness_checklist import live_readiness_checklist
 from master_status_summary import master_status_summary
 from meta_intelligence_core import meta_core_registry, meta_status, preview_meta_quality
@@ -6899,6 +6900,11 @@ async def debug_master_status():
     return master_status_summary()
 
 
+@app.get("/debug/layer21-status")
+async def debug_layer21_status():
+    return layer21_status_snapshot()
+
+
 @app.get("/support/registry")
 async def support_registry_endpoint():
     return support_registry()
@@ -7443,6 +7449,7 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/system-control-audit">System Control Audit</button>
       <button data-endpoint="/debug/endpoint-coverage">Endpoint Coverage</button>
       <button data-endpoint="/debug/live-readiness">Live Readiness</button>
+      <button data-endpoint="/debug/layer21-status">Layer 21 status snapshot</button>
       <button data-endpoint="/debug/production-hardening-status">Production Hardening Status</button>
       <button data-endpoint="/debug/backlog-registry">Backlog Registry</button>
     </div>

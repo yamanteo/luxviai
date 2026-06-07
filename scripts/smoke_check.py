@@ -1037,6 +1037,7 @@ class SmokeRunner:
         assert "/debug/endpoint-coverage" in html, html[:300]
         assert "/debug/live-readiness" in html, html[:300]
         assert "/debug/master-status" in html, html[:300]
+        assert "/debug/layer21-status" in html, html[:300]
         assert "/support/registry" in html, html[:300]
         assert "/support/preview" in html, html[:300]
         assert "/debug/support-status" in html, html[:300]
@@ -2831,6 +2832,54 @@ class SmokeRunner:
         assert payload.get("file_write_performed") is False, payload
         return "master status summary"
 
+    def check_layer21_status_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/debug/layer21-status")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload.get("layer") == "21", payload
+        assert payload.get("status") == "layer_21_preview_complete", payload
+        assert payload.get("read_only") is True, payload
+        completed = payload.get("completed_items", [])
+        assert len(completed) == 8, payload
+        assert "wake_sonic_registry" in completed, payload
+        assert "background_support_registry" in completed, payload
+        assert "drive_mode_preview" in completed, payload
+        commits = payload.get("completed_commits", {})
+        assert "21.8" in commits and "wake sonic" in commits["21.8"].lower(), payload
+        endpoint_groups = payload.get("endpoint_groups", {})
+        assert "21.8_wake_sonic" in endpoint_groups, payload
+        assert "GET /wake-sonic/registry" in endpoint_groups.get("21.8_wake_sonic", []), payload
+        safety = payload.get("safety_boundaries", {})
+        assert safety.get("read_only") is True, payload
+        assert safety.get("real_action_enabled") is False, payload
+        assert safety.get("action_performed") is False, payload
+        assert safety.get("real_send_performed") is False, payload
+        assert safety.get("real_export_performed") is False, payload
+        assert safety.get("real_print_performed") is False, payload
+        assert safety.get("real_file_created") is False, payload
+        assert safety.get("real_device_control_performed") is False, payload
+        assert safety.get("real_cross_page_read_performed") is False, payload
+        assert safety.get("real_screen_read_performed") is False, payload
+        assert safety.get("real_vehicle_connection_performed") is False, payload
+        assert safety.get("real_microphone_recording_performed") is False, payload
+        assert safety.get("real_wake_detection_performed") is False, payload
+        assert safety.get("memory_write_performed") is False, payload
+        assert safety.get("db_write_performed") is False, payload
+        assert safety.get("raw_sensitive_content_returned") is False, payload
+        summary = payload.get("layer21_capability_summary", "").lower()
+        assert "invisible intelligent support layer" in summary, payload
+        assert "Layer 22" in payload.get("next_recommended_step", ""), payload
+        future = " ".join(payload.get("future_candidates", []))
+        assert "Lux Time Twin" in future, payload
+        return "layer 21 status snapshot"
+
     def check_background_support_registry_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3527,6 +3576,7 @@ class SmokeRunner:
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
             ("master_status_summary_preview", self.check_master_status_summary_preview),
+            ("layer21_status_snapshot", self.check_layer21_status_snapshot),
             ("background_support_registry_preview", self.check_background_support_registry_preview),
             ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview),
             ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview),
