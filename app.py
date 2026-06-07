@@ -37,6 +37,7 @@ from background_support_registry import preview_background_support, support_regi
 from context_bridge_preview import context_bridge_schema, context_bridge_status, preview_context_bridge
 from cost_privacy_policy import cost_privacy_policy, preview_cost_privacy
 from device_bridge_preview import device_bridge_schema, device_bridge_status, preview_device_bridge
+from drive_mode_preview import drive_mode_schema, drive_mode_status, preview_drive_mode
 from emotional_reflection_support import emotional_reflection_registry, emotional_status, preview_emotional_reflection
 from endpoint_coverage_matrix import endpoint_coverage_matrix
 from live_readiness_checklist import live_readiness_checklist
@@ -452,6 +453,16 @@ class PointerPreviewActionRequest(BaseModel):
     source_app: str = Field(default="", max_length=100)
     target_intent: str = Field(default="", max_length=200)
     sensitivity: str = Field(default="normal", max_length=50)
+
+
+class DriveModePreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    vehicle_state: str = Field(default="", max_length=100)
+    motion_state: str = Field(default="moving", max_length=100)
+    user_attention_state: str = Field(default="driving", max_length=100)
+    requested_action: str = Field(default="", max_length=200)
+    risk_level: str = Field(default="normal", max_length=50)
+    surface_type: str = Field(default="", max_length=100)
 
 
 # =========================================================
@@ -6990,6 +7001,29 @@ async def debug_pointer_status():
     return pointer_status()
 
 
+@app.get("/drive-mode/schema")
+async def drive_mode_schema_endpoint():
+    return drive_mode_schema()
+
+
+@app.post("/drive-mode/preview")
+async def drive_mode_preview_endpoint(payload: DriveModePreviewRequest):
+    return preview_drive_mode(
+        payload.command,
+        payload.vehicle_state,
+        payload.motion_state,
+        payload.user_attention_state,
+        payload.requested_action,
+        payload.risk_level,
+        payload.surface_type,
+    )
+
+
+@app.get("/debug/drive-mode-status")
+async def debug_drive_mode_status():
+    return drive_mode_status()
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -7462,6 +7496,23 @@ async def debug_agent_panel():
       <button data-pointer-command="Bu ürünü diğer seçeneklerle karşılaştır" data-pointer-hint="product">Bu ürünü diğer seçeneklerle karşılaştır</button>
       <button data-pointer-command="Bunu PDF'e hazırla ama export etme" data-pointer-selected="Seçili paragraf">Bunu PDF'e hazırla ama export etme</button>
       <button data-pointer-command="Bunu yazdırmaya hazırla ama yazdırma" data-pointer-selected="Seçili çıktı metni">Bunu yazdırmaya hazırla ama yazdırma</button>
+    </div>
+    <h2>Drive Mode</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/drive-mode-status">Drive Mode Status</button>
+      <button data-endpoint="/drive-mode/schema">Drive Mode Schema</button>
+    </div>
+    <div class="bar">
+      <button data-drive-command="Sürüş modunu aç">Sürüş modunu aç</button>
+      <button data-drive-command="Bunu not al, varınca devam edelim">Bunu not al, varınca devam edelim</button>
+      <button data-drive-command="Bu mesaja cevap taslağı hazırla">Bu mesaja cevap taslağı hazırla</button>
+      <button data-drive-command="Acil olanları söyle, diğerlerini sonra özetle">Acil olanları söyle, diğerlerini sonra özetle</button>
+      <button data-drive-command="Toplantıdan önce kısa brief hazırla">Toplantıdan önce kısa brief hazırla</button>
+      <button data-drive-command="Şimdi uzun raporu göster">Şimdi uzun raporu göster</button>
+      <button data-drive-command="Varınca bunu aç">Varınca bunu aç</button>
+      <button data-drive-command="Arama hazırlığı yap ama arama başlatma">Arama hazırlığı yap ama arama başlatma</button>
+      <button data-drive-command="Hatırlatıcı hazırla">Hatırlatıcı hazırla</button>
+      <button data-drive-command="Bu işi eller serbest kuyruğa al">Bu işi eller serbest kuyruğa al</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -8144,6 +8195,31 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadDriveModePreview(command) {
+      statusEl.textContent = "Loading drive mode preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/drive-mode/preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            vehicle_state: "preview vehicle",
+            motion_state: "moving",
+            user_attention_state: "driving",
+            requested_action: "",
+            risk_level: "normal",
+            surface_type: "minimal drive surface"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded drive mode preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -8290,6 +8366,9 @@ async def debug_agent_panel():
         button.dataset.pointerSelected,
         button.dataset.pointerHint
       ));
+    });
+    document.querySelectorAll("button[data-drive-command]").forEach((button) => {
+      button.addEventListener("click", () => loadDriveModePreview(button.dataset.driveCommand));
     });
   </script>
 </body>

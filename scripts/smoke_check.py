@@ -1055,6 +1055,9 @@ class SmokeRunner:
         assert "/pointer/schema" in html, html[:300]
         assert "/pointer/preview-action" in html, html[:300]
         assert "/debug/pointer-status" in html, html[:300]
+        assert "/drive-mode/schema" in html, html[:300]
+        assert "/drive-mode/preview" in html, html[:300]
+        assert "/debug/drive-mode-status" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
         assert "/luxway/permission-model" in html, html[:300]
@@ -3254,6 +3257,96 @@ class SmokeRunner:
         preview("Bunu yazdirmaya hazirla ama yazdirma", {"text_selection", "paragraph"}, {"print_ready_preview"}, selected_text="Secili cikti metni")
         return "pointer context preview"
 
+    def check_drive_mode_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/drive-mode/schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert schema.get("status") == "drive_mode_schema_ready", schema
+        assert schema.get("read_only") is True, schema
+        assert schema.get("can_execute_now") is False, schema
+        intent_ids = {item.get("id") for item in schema.get("intent_groups", [])}
+        assert {
+            "drive_safe_minimal_response",
+            "voice_note_capture_preview",
+            "message_reply_draft_preview",
+            "call_prepare_preview",
+            "unsafe_visual_task_block",
+            "arrival_resume_context",
+        } <= intent_ids, schema
+        assert schema.get("real_vehicle_connection_performed") is False, schema
+        assert schema.get("real_location_read_performed") is False, schema
+        assert schema.get("real_microphone_recording_performed") is False, schema
+        assert schema.get("real_message_sent") is False, schema
+        assert schema.get("real_call_started") is False, schema
+
+        status_response = client.get("/debug/drive-mode-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("real_vehicle_connection_performed") is False, status
+        assert status.get("real_location_read_performed") is False, status
+        assert status.get("real_microphone_recording_performed") is False, status
+        assert status.get("real_message_sent") is False, status
+        assert status.get("real_call_started") is False, status
+        assert status.get("real_device_control_performed") is False, status
+        assert status.get("real_file_created") is False, status
+        assert status.get("memory_read_performed") is False, status
+        assert status.get("memory_write_performed") is False, status
+        assert status.get("motion_ui_rules", {}).get("long_text_blocked") is True, status
+        assert status.get("motion_ui_rules", {}).get("list_ui_blocked") is True, status
+        assert status.get("motion_ui_rules", {}).get("scroll_ui_blocked") is True, status
+
+        def preview(command: str, expected_ids: set[str]) -> dict:
+            response = client.post(
+                "/drive-mode/preview",
+                json={
+                    "command": command,
+                    "vehicle_state": "smoke vehicle",
+                    "motion_state": "moving",
+                    "user_attention_state": "driving",
+                    "requested_action": "",
+                    "risk_level": "normal",
+                    "surface_type": "minimal drive surface",
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("can_execute_now") is False, payload
+            assert payload.get("long_text_blocked") is True, payload
+            assert payload.get("list_ui_blocked") is True, payload
+            assert payload.get("scroll_ui_blocked") is True, payload
+            assert payload.get("real_vehicle_connection_performed") is False, payload
+            assert payload.get("real_location_read_performed") is False, payload
+            assert payload.get("real_microphone_recording_performed") is False, payload
+            assert payload.get("real_message_sent") is False, payload
+            assert payload.get("real_call_started") is False, payload
+            assert payload.get("real_device_control_performed") is False, payload
+            assert payload.get("real_file_created") is False, payload
+            assert payload.get("memory_read_performed") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            detected = set(payload.get("detected_drive_intent", {}).get("intent_ids", []))
+            assert expected_ids & detected, payload
+            assert payload.get("minimal_ui_state", {}).get("large_text_allowed") is False, payload
+            assert payload.get("safe_drive_plan", {}).get("not_navigation_app") is True, payload
+            return payload
+
+        preview("Surus modunu ac", {"drive_safe_minimal_response"})
+        preview("Bunu not al, varinca devam edelim", {"voice_note_capture_preview", "arrival_resume_context"})
+        preview("Bu mesaja cevap taslagi hazirla", {"message_reply_draft_preview", "two_step_confirmation_preview"})
+        preview("Simdi uzun raporu goster", {"unsafe_visual_task_block"})
+        preview("Arama hazirligi yap ama arama baslatma", {"call_prepare_preview"})
+        return "drive mode preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -3345,6 +3438,7 @@ class SmokeRunner:
             ("context_bridge_preview", self.check_context_bridge_preview),
             ("device_bridge_preview", self.check_device_bridge_preview),
             ("pointer_context_preview", self.check_pointer_context_preview),
+            ("drive_mode_preview", self.check_drive_mode_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),
