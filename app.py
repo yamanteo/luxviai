@@ -7801,6 +7801,7 @@ async def debug_agent_panel():
     <h2>Production / Backlog</h2>
     <div class="bar">
       <button data-endpoint="/debug/master-status">Master Status</button>
+      <button data-endpoint="/debug/lux-character-status">Lux Character Status</button>
       <button data-endpoint="/debug/system-control-audit">System Control Audit</button>
       <button data-endpoint="/debug/endpoint-coverage">Endpoint Coverage</button>
       <button data-endpoint="/debug/live-readiness">Live Readiness</button>

@@ -1073,6 +1073,7 @@ class SmokeRunner:
         assert "/debug/endpoint-coverage" in html, html[:300]
         assert "/debug/live-readiness" in html, html[:300]
         assert "/debug/master-status" in html, html[:300]
+        assert "/debug/lux-character-status" in html, html[:300]
         assert "/debug/layer21-status" in html, html[:300]
         assert "/future/candidates" in html, html[:300]
         assert "/future/preview" in html, html[:300]
