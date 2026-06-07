@@ -33,6 +33,7 @@ from learning.token_budget_policy import TokenBudgetPolicy
 from audio_privacy_boundary import preview_audio_privacy_boundary
 from audio_signal_schema import audio_signal_schema, audio_status_snapshot, preview_audio_signal
 from agent_decision_trace import build_agent_decision_trace
+from background_support_registry import preview_background_support, support_registry, support_status
 from cost_privacy_policy import cost_privacy_policy, preview_cost_privacy
 from endpoint_coverage_matrix import endpoint_coverage_matrix
 from live_readiness_checklist import live_readiness_checklist
@@ -397,6 +398,13 @@ class RoutingSimulationPreviewRequest(BaseModel):
     task_type: str = Field(default="", max_length=80)
     sensitivity: str = Field(default="normal", max_length=50)
     response_size: str = Field(default="medium", max_length=50)
+
+
+class SupportPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    context: str = Field(default="", max_length=8000)
+    source_area: str = Field(default="general", max_length=50)
+    sensitivity: str = Field(default="normal", max_length=50)
 
 
 # =========================================================
@@ -6823,6 +6831,21 @@ async def debug_master_status():
     return master_status_summary()
 
 
+@app.get("/support/registry")
+async def support_registry_endpoint():
+    return support_registry()
+
+
+@app.post("/support/preview")
+async def support_preview_endpoint(payload: SupportPreviewRequest):
+    return preview_background_support(payload.command, payload.context, payload.source_area, payload.sensitivity)
+
+
+@app.get("/debug/support-status")
+async def debug_support_status():
+    return support_status()
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -7207,6 +7230,21 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/live-readiness">Live Readiness</button>
       <button data-endpoint="/debug/production-hardening-status">Production Hardening Status</button>
       <button data-endpoint="/debug/backlog-registry">Backlog Registry</button>
+    </div>
+    <h2>Background Support</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/support-status">Support Status</button>
+      <button data-endpoint="/support/registry">Support Registry</button>
+    </div>
+    <div class="bar">
+      <button data-support-command="bunu göndermeden kontrol et" data-support-source="message">bunu göndermeden kontrol et</button>
+      <button data-support-command="nazik hayır yaz" data-support-source="message">nazik hayır yaz</button>
+      <button data-support-command="bu garip duruyor mu" data-support-source="social">bu garip duruyor mu</button>
+      <button data-support-command="tek nefeslik özet çıkar" data-support-source="workspace">tek nefeslik özet çıkar</button>
+      <button data-support-command="micro brief yap" data-support-source="workspace">micro brief yap</button>
+      <button data-support-command="enerjim düşük kolay plan yap" data-support-source="general">enerjim düşük kolay plan yap</button>
+      <button data-support-command="şuna isim bul" data-support-source="workspace">şuna isim bul</button>
+      <button data-support-command="bu beni nasıl gösteriyor" data-support-source="social">bu beni nasıl gösteriyor</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7750,6 +7788,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadSupportPreview(command, sourceArea) {
+      statusEl.textContent = "Loading background support preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/support/preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            context: "debug panel read-only support sample",
+            source_area: sourceArea || "general",
+            sensitivity: "normal"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded background support preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -7863,6 +7923,12 @@ async def debug_agent_panel():
         button.dataset.routingTask,
         button.dataset.routingSensitivity,
         button.dataset.routingSize
+      ));
+    });
+    document.querySelectorAll("button[data-support-command]").forEach((button) => {
+      button.addEventListener("click", () => loadSupportPreview(
+        button.dataset.supportCommand,
+        button.dataset.supportSource
       ));
     });
   </script>

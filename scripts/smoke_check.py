@@ -1037,6 +1037,9 @@ class SmokeRunner:
         assert "/debug/endpoint-coverage" in html, html[:300]
         assert "/debug/live-readiness" in html, html[:300]
         assert "/debug/master-status" in html, html[:300]
+        assert "/support/registry" in html, html[:300]
+        assert "/support/preview" in html, html[:300]
+        assert "/debug/support-status" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
         assert "/luxway/permission-model" in html, html[:300]
@@ -2806,6 +2809,68 @@ class SmokeRunner:
         assert payload.get("file_write_performed") is False, payload
         return "master status summary"
 
+    def check_background_support_registry_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        registry_response = client.get("/support/registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("read_only") is True, registry
+        assert registry.get("real_action_enabled") is False, registry
+        assert registry.get("support_count") == 20, registry
+        support_names = {item.get("name") for item in registry.get("supports", [])}
+        assert "Before You Send" in support_names, registry
+        assert "Micro-Brief" in support_names, registry
+
+        status_response = client.get("/debug/support-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("support_count") == 20, status
+        assert status.get("read_only") is True, status
+        assert status.get("real_action_enabled") is False, status
+        assert status.get("message_sent") is False, status
+        assert status.get("memory_write_performed") is False, status
+        assert status.get("db_write_performed") is False, status
+
+        def preview(command: str, expected_name: str, source_area: str = "general") -> dict:
+            response = client.post(
+                "/support/preview",
+                json={
+                    "command": command,
+                    "context": "smoke read-only support preview",
+                    "source_area": source_area,
+                    "sensitivity": "normal",
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("real_action_enabled") is False, payload
+            assert payload.get("action_performed") is False, payload
+            assert payload.get("message_sent") is False, payload
+            assert payload.get("data_saved") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            assert payload.get("db_write_performed") is False, payload
+            recommended = payload.get("recommended_support", {})
+            assert recommended.get("name") == expected_name, payload
+            assert payload.get("detected_supports"), payload
+            return payload
+
+        preview("bunu göndermeden kontrol et", "Before You Send", "message")
+        preview("nazik hayır yaz", "Polite No Generator", "message")
+        preview("tek nefeslik özet çıkar", "One Breath Summary", "workspace")
+        preview("micro brief yap", "Micro-Brief", "workspace")
+        preview("enerjim düşük kolay plan yap", "Energy-Safe Plan", "general")
+        preview("şuna isim bul", "Name This Thing", "workspace")
+        return "background support registry"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2891,6 +2956,7 @@ class SmokeRunner:
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
             ("master_status_summary_preview", self.check_master_status_summary_preview),
+            ("background_support_registry_preview", self.check_background_support_registry_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),
