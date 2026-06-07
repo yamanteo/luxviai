@@ -1046,6 +1046,9 @@ class SmokeRunner:
         assert "/emotional/reflection-registry" in html, html[:300]
         assert "/emotional/reflection-preview" in html, html[:300]
         assert "/debug/emotional-status" in html, html[:300]
+        assert "/context-bridge/schema" in html, html[:300]
+        assert "/context-bridge/preview" in html, html[:300]
+        assert "/debug/context-bridge-status" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
         assert "/luxway/permission-model" in html, html[:300]
@@ -3007,6 +3010,77 @@ class SmokeRunner:
         preview("rüyamdaki sembol ne hissettiriyor", {"Rüya / Sembol / İç Durum Bağlantısı"}, "visual")
         return "emotional reflection support"
 
+    def check_context_bridge_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/context-bridge/schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert schema.get("status") == "context_bridge_schema_ready", schema
+        assert schema.get("read_only") is True, schema
+        assert schema.get("retrieval_allowed") is False, schema
+        mode_ids = {item.get("id") for item in schema.get("transfer_modes", [])}
+        assert {
+            "silent_continue",
+            "compact_summary",
+            "detailed_transfer",
+            "exact_full_transfer_request",
+            "topic_specific_retrieval",
+            "whole_page_transfer",
+            "scattered_topic_extraction",
+        } <= mode_ids, schema
+
+        status_response = client.get("/debug/context-bridge-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("real_cross_page_read_performed") is False, status
+        assert status.get("memory_read_performed") is False, status
+        assert status.get("memory_write_performed") is False, status
+        assert status.get("raw_sensitive_content_returned") is False, status
+
+        def preview(command: str, expected_mode: set[str], topic: str = "") -> dict:
+            response = client.post(
+                "/context-bridge/preview",
+                json={
+                    "command": command,
+                    "source_label": "smoke source page",
+                    "target_topic": topic,
+                    "transfer_mode": "",
+                    "sensitivity": "normal",
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("retrieval_allowed") is False, payload
+            assert payload.get("real_cross_page_read_performed") is False, payload
+            assert payload.get("memory_read_performed") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            assert payload.get("raw_sensitive_content_returned") is False, payload
+            assert payload.get("db_write_performed") is False, payload
+            assert payload.get("file_write_performed") is False, payload
+            mode = payload.get("detected_transfer_mode", {}).get("id")
+            assert mode in expected_mode, payload
+            assert payload.get("safe_transfer_plan", {}).get("steps"), payload
+            assert payload.get("privacy_boundary", {}).get("no_hidden_history_search") is True, payload
+            return payload
+
+        preview("eksiksiz aktar", {"exact_full_transfer_request", "detailed_transfer"})
+        preview("gorsel stil kararlarini kisa ozetle", {"compact_summary"})
+        luxway = preview("sadece Luxway kismini getir", {"topic_specific_retrieval"})
+        assert luxway.get("target_topic") == "Luxway", luxway
+        preview("ozetleme sadece oku ve devam et", {"silent_continue"})
+        preview("Layer 16 gorsel kurallarini cikar", {"scattered_topic_extraction", "topic_specific_retrieval"})
+        return "context bridge preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -3095,6 +3169,7 @@ class SmokeRunner:
             ("background_support_registry_preview", self.check_background_support_registry_preview),
             ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview),
             ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview),
+            ("context_bridge_preview", self.check_context_bridge_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),

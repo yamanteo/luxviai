@@ -34,6 +34,7 @@ from audio_privacy_boundary import preview_audio_privacy_boundary
 from audio_signal_schema import audio_signal_schema, audio_status_snapshot, preview_audio_signal
 from agent_decision_trace import build_agent_decision_trace
 from background_support_registry import preview_background_support, support_registry, support_status
+from context_bridge_preview import context_bridge_schema, context_bridge_status, preview_context_bridge
 from cost_privacy_policy import cost_privacy_policy, preview_cost_privacy
 from emotional_reflection_support import emotional_reflection_registry, emotional_status, preview_emotional_reflection
 from endpoint_coverage_matrix import endpoint_coverage_matrix
@@ -420,6 +421,14 @@ class EmotionalReflectionPreviewRequest(BaseModel):
     command: str = Field(default="", max_length=4000)
     context: str = Field(default="", max_length=8000)
     source_area: str = Field(default="general", max_length=50)
+    sensitivity: str = Field(default="normal", max_length=50)
+
+
+class ContextBridgePreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    source_label: str = Field(default="", max_length=500)
+    target_topic: str = Field(default="", max_length=500)
+    transfer_mode: str = Field(default="", max_length=100)
     sensitivity: str = Field(default="normal", max_length=50)
 
 
@@ -6892,6 +6901,27 @@ async def debug_emotional_status():
     return emotional_status()
 
 
+@app.get("/context-bridge/schema")
+async def context_bridge_schema_endpoint():
+    return context_bridge_schema()
+
+
+@app.post("/context-bridge/preview")
+async def context_bridge_preview_endpoint(payload: ContextBridgePreviewRequest):
+    return preview_context_bridge(
+        payload.command,
+        payload.source_label,
+        payload.target_topic,
+        payload.transfer_mode,
+        payload.sensitivity,
+    )
+
+
+@app.get("/debug/context-bridge-status")
+async def debug_context_bridge_status():
+    return context_bridge_status()
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -7319,6 +7349,19 @@ async def debug_agent_panel():
       <button data-emotional-command="hız mı kalite mi bilmiyorum" data-emotional-source="workspace">hız mı kalite mi bilmiyorum</button>
       <button data-emotional-command="bu mesaj beni yordu" data-emotional-source="social">bu mesaj beni yordu</button>
       <button data-emotional-command="rüyamdaki sembol ne hissettiriyor" data-emotional-source="visual">rüyamdaki sembol ne hissettiriyor</button>
+    </div>
+    <h2>Context Bridge</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/context-bridge-status">Context Bridge Status</button>
+      <button data-endpoint="/context-bridge/schema">Context Bridge Schema</button>
+    </div>
+    <div class="bar">
+      <button data-context-bridge-command="A sayfasındaki LuxWorkspace konusunu oku">A sayfasındaki LuxWorkspace konusunu oku</button>
+      <button data-context-bridge-command="görsel stil kararlarını kısa özetle">görsel stil kararlarını kısa özetle</button>
+      <button data-context-bridge-command="özetleme sadece oku ve devam et">özetleme sadece oku ve devam et</button>
+      <button data-context-bridge-command="eksiksiz aktar">eksiksiz aktar</button>
+      <button data-context-bridge-command="sadece Luxway kısmını getir">sadece Luxway kısmını getir</button>
+      <button data-context-bridge-command="Layer 16 görsel kurallarını çıkar">Layer 16 görsel kurallarını çıkar</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7928,6 +7971,29 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadContextBridgePreview(command) {
+      statusEl.textContent = "Loading context bridge preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/context-bridge/preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            source_label: "debug panel sample source",
+            target_topic: "",
+            transfer_mode: "",
+            sensitivity: "normal"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded context bridge preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -8061,6 +8127,9 @@ async def debug_agent_panel():
         button.dataset.emotionalCommand,
         button.dataset.emotionalSource
       ));
+    });
+    document.querySelectorAll("button[data-context-bridge-command]").forEach((button) => {
+      button.addEventListener("click", () => loadContextBridgePreview(button.dataset.contextBridgeCommand));
     });
   </script>
 </body>
