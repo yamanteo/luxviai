@@ -4273,6 +4273,15 @@ function appendMergedText(base, addition) {
   return /\s$/.test(base) || /^\s|^[.,;:!?)]/.test(addition) ? base + addition : base + " " + addition;
 }
 
+function cleanInterruptedPartialText(text) {
+  let clean = String(text || "").replace(/\s+$/g, "");
+  // If stop lands exactly after the next item marker, remove that orphan marker.
+  clean = clean.replace(/(?:\s|\n)+(?:[-*•]|\d+[\.)])\s*$/g, "");
+  // If the marker leaked onto the end of the previous line, trim it too.
+  clean = clean.replace(/(\S)\s+(?:\d+[\.)])\s*$/g, "$1");
+  return clean.trim();
+}
+
 function trimRepeatedContinuationStart(baseText, incomingText) {
   const base = String(baseText || "");
   const incoming = String(incomingText || "");
@@ -4403,7 +4412,7 @@ async function continueInterruptedResponse(targetAiEl) {
   }
   markRunStarted(continueRunId);
   const resumeContext = cleanBaseText.slice(-1200);
-  const bridgeMessage = `${continuePromptText()}\n\nKullanıcının önceki isteği: ${state.userText || ""}\nKaldığın son güvenli bölüm: ${resumeContext}\n\nYalnızca bu son bölümün doğal devamını yaz. Baştan alma, aynı maddeyi/başlığı/cümleyi tekrar etme. Madde/listede kaldıysan bir sonraki madde veya tamamlanmamış cümlenin devamından sürdür.`;
+  const bridgeMessage = `${continuePromptText()}\n\nKullanıcının önceki isteği: ${state.userText || ""}\nEkranda zaten görünen metin, aynen korunacak:\n${resumeContext}\n\nSadece bu metne eklenecek devam kısmını üret. Ekrandaki metni tekrar yazma. Baştan alma, aynı maddeyi/başlığı/cümleyi tekrar etme. Madde/listede kaldıysan bir sonraki madde veya tamamlanmamış cümlenin devamından sürdür. Eğer metin \"Lev\" gibi yarım bir isimle bitiyorsa önce onu doğal biçimde tamamla, sonra sonraki maddeye geç.`;
   stopStreamRequested = false;
   setResponseLock(true);
   const writer = createPacedWriter(targetAiEl, 0.9, continueRunId);
@@ -4632,7 +4641,8 @@ async function sendMessageLive(customText) {
         : (aiDiv.innerText || "");
       writer.stop();
       hardCancelActiveTransport(runId, true);
-      if (partialText.trim()) aiDiv.innerText = partialText;
+      const safePartialText = cleanInterruptedPartialText(partialText);
+      if (safePartialText) aiDiv.innerText = safePartialText;
       else if (!aiDiv.innerText.trim()) aiDiv.innerText = stoppedFallback();
       aiDiv.dataset.streamState = "cancelled";
       if (shouldShowResume) {
@@ -4640,7 +4650,7 @@ async function sendMessageLive(customText) {
           conversationId,
           mode: currentMode,
           userText: text,
-          partialText: aiDiv.innerText || "",
+          partialText: safePartialText || aiDiv.innerText || "",
           messageEl: aiDiv
         };
       } else {

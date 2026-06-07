@@ -338,8 +338,10 @@ class SmokeRunner:
         html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
         assert "function isContinueCommand" in html
         assert "cleanBaseText.slice(-1200)" in html
+        assert "function cleanInterruptedPartialText" in html
+        assert "safePartialText" in html
         assert "resumeUnavailableFallback" in html
-        assert "Yalnızca bu son bölümün doğal devamını yaz" in html
+        assert "Ekranda zaten görünen metin, aynen korunacak" in html
         assert "interruptedState && isContinueCommand(text)" in html
         assert "if (interruptedState) {\n    clearInterruptedState(true);" in html
         assert '"devam et ama yeni konu' not in html
@@ -369,6 +371,7 @@ class SmokeRunner:
         assert 'reject(new Error("stale_run"))' in html
         assert "continueInterruptedResponse(targetAiEl)" in html
         assert "Madde/listede kaldıysan bir sonraki madde" in html
+        assert "Sadece bu metne eklenecek devam kısmını üret" in html
         return "safe resume/hard-stop context"
 
     def check_cost_logger_privacy(self) -> str:
