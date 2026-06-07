@@ -40,6 +40,7 @@ from device_bridge_preview import device_bridge_schema, device_bridge_status, pr
 from drive_mode_preview import drive_mode_schema, drive_mode_status, preview_drive_mode
 from emotional_reflection_support import emotional_reflection_registry, emotional_status, preview_emotional_reflection
 from endpoint_coverage_matrix import endpoint_coverage_matrix
+from finality_sense_preview import finality_schema, finality_status, preview_finality
 from layer21_status import layer21_status_snapshot
 from layer22_candidate_scoring import candidate_scoring_matrix, layer22_scoring_status, preview_candidate_score
 from layer22_future_candidates import future_candidates_registry, layer22_status_snapshot, preview_future_candidate
@@ -493,6 +494,16 @@ class FutureScorePreviewRequest(BaseModel):
     focus: str = Field(default="", max_length=80)
     risk_tolerance: str = Field(default="", max_length=80)
     implementation_goal: str = Field(default="", max_length=200)
+
+
+class FinalityPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    context_text: str = Field(default="", max_length=12000)
+    artifact_type: str = Field(default="unknown", max_length=100)
+    project_stage: str = Field(default="", max_length=200)
+    user_goal: str = Field(default="", max_length=1000)
+    risk_level: str = Field(default="", max_length=50)
+    desired_depth: str = Field(default="concise", max_length=50)
 
 
 # =========================================================
@@ -6967,6 +6978,29 @@ async def debug_layer22_scoring_status():
     return layer22_scoring_status()
 
 
+@app.get("/finality/schema")
+async def finality_schema_endpoint():
+    return finality_schema()
+
+
+@app.post("/finality/preview")
+async def finality_preview_endpoint(payload: FinalityPreviewRequest):
+    return preview_finality(
+        payload.command,
+        payload.context_text,
+        payload.artifact_type,
+        payload.project_stage,
+        payload.user_goal,
+        payload.risk_level,
+        payload.desired_depth,
+    )
+
+
+@app.get("/debug/finality-status")
+async def debug_finality_status():
+    return finality_status()
+
+
 @app.get("/support/registry")
 async def support_registry_endpoint():
     return support_registry()
@@ -7541,6 +7575,23 @@ async def debug_agent_panel():
       <button data-future-score-command="Riskli fikirleri ay\u0131r" data-future-score-focus="privacy_review">Riskli fikirleri ay\u0131r</button>
       <button data-future-score-command="Finality Sense puan\u0131n\u0131 g\u00f6ster" data-future-score-candidate="finality_sense">Finality Sense puan\u0131n\u0131 g\u00f6ster</button>
       <button data-future-score-command="Time Twin neden hemen yap\u0131lmamal\u0131?" data-future-score-candidate="lux_time_twin">Time Twin neden hemen yap\u0131lmamal\u0131?</button>
+    </div>
+    <h2>Finality Sense</h2>
+    <div class="bar">
+      <button data-endpoint="/finality/schema">Finality Schema</button>
+      <button data-endpoint="/debug/finality-status">Finality Status</button>
+    </div>
+    <div class="bar">
+      <button data-finality-command="Bu i\u015f tamam m\u0131?">Bu i\u015f tamam m\u0131?</button>
+      <button data-finality-command="Bunu kapatabilir miyiz?">Bunu kapatabilir miyiz?</button>
+      <button data-finality-command="S\u0131radaki ad\u0131m ne?">S\u0131radaki ad\u0131m ne?</button>
+      <button data-finality-command="Bu Codex \u00e7\u0131kt\u0131s\u0131 yeterli mi?" data-finality-artifact="codex_output">Bu Codex \u00e7\u0131kt\u0131s\u0131 yeterli mi?</button>
+      <button data-finality-command="Eksik bir \u015fey kald\u0131 m\u0131?">Eksik bir \u015fey kald\u0131 m\u0131?</button>
+      <button data-finality-command="Bunu art\u0131k uzatmayal\u0131m">Bunu art\u0131k uzatmayal\u0131m</button>
+      <button data-finality-command="Ship edilebilir mi?">Ship edilebilir mi?</button>
+      <button data-finality-command="Son bir kapan\u0131\u015f \u00f6zeti ver">Son bir kapan\u0131\u015f \u00f6zeti ver</button>
+      <button data-finality-command="Burada dural\u0131m, sonra devam ederiz">Burada dural\u0131m, sonra devam ederiz</button>
+      <button data-finality-command="Karar vermem gerekiyor mu?">Karar vermem gerekiyor mu?</button>
     </div>
     <h2>Background Support</h2>
     <div class="bar">
@@ -8441,6 +8492,31 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadFinalityPreview(command, artifactType) {
+      statusEl.textContent = "Loading finality preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/finality/preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            context_text: "debug panel read-only finality sample; no hidden source is read",
+            artifact_type: artifactType || "unknown",
+            project_stage: "debug_preview",
+            user_goal: "close or continue safely",
+            risk_level: "normal",
+            desired_depth: "concise"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded finality preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -8602,6 +8678,12 @@ async def debug_agent_panel():
         button.dataset.futureScoreCommand,
         button.dataset.futureScoreFocus,
         button.dataset.futureScoreCandidate
+      ));
+    });
+    document.querySelectorAll("button[data-finality-command]").forEach((button) => {
+      button.addEventListener("click", () => loadFinalityPreview(
+        button.dataset.finalityCommand,
+        button.dataset.finalityArtifact
       ));
     });
   </script>

@@ -1044,6 +1044,9 @@ class SmokeRunner:
         assert "/future/scoring-matrix" in html, html[:300]
         assert "/future/score-preview" in html, html[:300]
         assert "/debug/layer22-scoring-status" in html, html[:300]
+        assert "/finality/schema" in html, html[:300]
+        assert "/finality/preview" in html, html[:300]
+        assert "/debug/finality-status" in html, html[:300]
         assert "/support/registry" in html, html[:300]
         assert "/support/preview" in html, html[:300]
         assert "/debug/support-status" in html, html[:300]
@@ -3051,6 +3054,97 @@ class SmokeRunner:
         assert (finality.get("matched_candidate") or {}).get("name") == "Finality Sense", finality
         return "layer 22 candidate scoring matrix"
 
+    def check_finality_sense_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/finality/schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert schema.get("layer") == "22.3", schema
+        assert schema.get("status") == "schema_ready", schema
+        assert schema.get("read_only") is True, schema
+        assert "ready_to_ship" in schema.get("finality_states", []), schema
+        assert "codex_output" in schema.get("artifact_types", []), schema
+
+        status_response = client.get("/debug/finality-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "finality_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("real_action_enabled") is False, status
+        assert status.get("action_performed") is False, status
+        assert status.get("task_completed_performed") is False, status
+        assert status.get("message_sent") is False, status
+        assert status.get("file_created") is False, status
+        assert status.get("export_performed") is False, status
+        assert status.get("calendar_write_performed") is False, status
+        assert status.get("memory_write_performed") is False, status
+        assert status.get("db_write_performed") is False, status
+        assert status.get("device_control_performed") is False, status
+
+        def preview(command: str, artifact_type: str = "unknown", context_text: str = "") -> dict:
+            response = client.post(
+                "/finality/preview",
+                json={
+                    "command": command,
+                    "context_text": context_text or "smoke finality preview context only",
+                    "artifact_type": artifact_type,
+                    "project_stage": "smoke",
+                    "user_goal": "safe closeout",
+                    "risk_level": "normal",
+                    "desired_depth": "concise",
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("real_action_enabled") is False, payload
+            assert payload.get("action_performed") is False, payload
+            assert payload.get("task_completed_performed") is False, payload
+            assert payload.get("message_sent") is False, payload
+            assert payload.get("file_created") is False, payload
+            assert payload.get("export_performed") is False, payload
+            assert payload.get("calendar_write_performed") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            assert payload.get("db_write_performed") is False, payload
+            assert payload.get("device_control_performed") is False, payload
+            score = payload.get("completion_score")
+            assert isinstance(score, int) and 0 <= score <= 100, payload
+            assert payload.get("detected_finality_state"), payload
+            assert payload.get("recommended_next_step"), payload
+            return payload
+
+        complete = preview("Bu is tamam mi?")
+        assert complete.get("detected_finality_state") in {"almost_complete", "complete", "needs_review"}, complete
+
+        next_step = preview("Siradaki adim ne?")
+        assert next_step.get("next_step_needed") is True or next_step.get("recommended_next_step"), next_step
+
+        codex = preview(
+            "Bu Codex ciktisi yeterli mi?",
+            artifact_type="codex_output",
+            context_text="commit var, degisen dosyalar var, endpointler var, test sonucu PASS, chat/stream typewriter dokunulmadi, static/index dokunulmadi",
+        )
+        assert codex.get("detected_artifact_type") == "codex_output", codex
+        assert codex.get("detected_finality_state") in {"ready_to_ship", "needs_review", "risk_check_needed"}, codex
+
+        missing = preview("Eksik bir sey kaldi mi?")
+        assert missing.get("missing_items"), missing
+
+        overbuilt = preview("Bunu artik uzatmayalim")
+        assert overbuilt.get("detected_finality_state") in {"overbuilt", "should_pause"}, overbuilt
+
+        ship = preview("Ship edilebilir mi?")
+        assert ship.get("detected_finality_state") in {"ready_to_ship", "risk_check_needed", "needs_review"}, ship
+        assert ship.get("ship_ready") is True or ship.get("risk_check_needed") is True, ship
+        return "finality sense preview"
+
     def check_background_support_registry_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3750,6 +3844,7 @@ class SmokeRunner:
             ("layer21_status_snapshot", self.check_layer21_status_snapshot),
             ("layer22_future_candidates_preview", self.check_layer22_future_candidates_preview),
             ("layer22_candidate_scoring_preview", self.check_layer22_candidate_scoring_preview),
+            ("finality_sense_preview", self.check_finality_sense_preview),
             ("background_support_registry_preview", self.check_background_support_registry_preview),
             ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview),
             ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview),
