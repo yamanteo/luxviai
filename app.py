@@ -38,6 +38,7 @@ from cost_privacy_policy import cost_privacy_policy, preview_cost_privacy
 from endpoint_coverage_matrix import endpoint_coverage_matrix
 from live_readiness_checklist import live_readiness_checklist
 from master_status_summary import master_status_summary
+from meta_intelligence_core import meta_core_registry, meta_status, preview_meta_quality
 from luxway_capabilities import luxway_capability_registry, luxway_status_snapshot, preview_luxway_command
 from luxway_data_preview import preview_luxway_data
 from luxway_device_safety import preview_luxway_device_safety
@@ -405,6 +406,13 @@ class SupportPreviewRequest(BaseModel):
     context: str = Field(default="", max_length=8000)
     source_area: str = Field(default="general", max_length=50)
     sensitivity: str = Field(default="normal", max_length=50)
+
+
+class MetaQualityPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    draft_output: str = Field(default="", max_length=12000)
+    source_area: str = Field(default="general", max_length=50)
+    user_priority: str = Field(default="", max_length=50)
 
 
 # =========================================================
@@ -6846,6 +6854,21 @@ async def debug_support_status():
     return support_status()
 
 
+@app.get("/meta/core-registry")
+async def meta_core_registry_endpoint():
+    return meta_core_registry()
+
+
+@app.post("/meta/quality-preview")
+async def meta_quality_preview_endpoint(payload: MetaQualityPreviewRequest):
+    return preview_meta_quality(payload.command, payload.draft_output, payload.source_area, payload.user_priority)
+
+
+@app.get("/debug/meta-status")
+async def debug_meta_status():
+    return meta_status()
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -7245,6 +7268,20 @@ async def debug_agent_panel():
       <button data-support-command="enerjim düşük kolay plan yap" data-support-source="general">enerjim düşük kolay plan yap</button>
       <button data-support-command="şuna isim bul" data-support-source="workspace">şuna isim bul</button>
       <button data-support-command="bu beni nasıl gösteriyor" data-support-source="social">bu beni nasıl gösteriyor</button>
+    </div>
+    <h2>Meta Intelligence</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/meta-status">Meta Status</button>
+      <button data-endpoint="/meta/core-registry">Meta Core Registry</button>
+    </div>
+    <div class="bar">
+      <button data-meta-command="CV hazırla" data-meta-source="workspace">CV hazırla</button>
+      <button data-meta-command="eksiksiz aktar" data-meta-source="workspace" data-meta-priority="complete">eksiksiz aktar</button>
+      <button data-meta-command="sahneyi bozma" data-meta-source="visual">sahneyi bozma</button>
+      <button data-meta-command="kaynak uydurma" data-meta-source="workspace" data-meta-priority="low_risk">kaynak uydurma</button>
+      <button data-meta-command="çok sade ama detaylı olsun" data-meta-source="workspace">çok sade ama detaylı olsun</button>
+      <button data-meta-command="çok soru sorma" data-meta-source="support" data-meta-priority="low_stress">çok soru sorma</button>
+      <button data-meta-command="bu çıktı temiz mi" data-meta-source="general">bu çıktı temiz mi</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7810,6 +7847,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadMetaQualityPreview(command, sourceArea, userPriority) {
+      statusEl.textContent = "Loading meta quality preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/meta/quality-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            draft_output: "debug panel read-only meta quality sample",
+            source_area: sourceArea || "general",
+            user_priority: userPriority || ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded meta quality preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -7929,6 +7988,13 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadSupportPreview(
         button.dataset.supportCommand,
         button.dataset.supportSource
+      ));
+    });
+    document.querySelectorAll("button[data-meta-command]").forEach((button) => {
+      button.addEventListener("click", () => loadMetaQualityPreview(
+        button.dataset.metaCommand,
+        button.dataset.metaSource,
+        button.dataset.metaPriority
       ));
     });
   </script>

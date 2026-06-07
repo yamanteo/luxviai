@@ -1040,6 +1040,9 @@ class SmokeRunner:
         assert "/support/registry" in html, html[:300]
         assert "/support/preview" in html, html[:300]
         assert "/debug/support-status" in html, html[:300]
+        assert "/meta/core-registry" in html, html[:300]
+        assert "/meta/quality-preview" in html, html[:300]
+        assert "/debug/meta-status" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
         assert "/luxway/permission-model" in html, html[:300]
@@ -2871,6 +2874,68 @@ class SmokeRunner:
         preview("şuna isim bul", "Name This Thing", "workspace")
         return "background support registry"
 
+    def check_meta_intelligence_core_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        registry_response = client.get("/meta/core-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("read_only") is True, registry
+        assert registry.get("real_pipeline_change") is False, registry
+        assert registry.get("memory_write_performed") is False, registry
+        assert registry.get("db_write_performed") is False, registry
+        assert registry.get("core_count") == 20, registry
+        core_names = {item.get("name") for item in registry.get("cores", [])}
+        assert "Lux Priority Lock" in core_names, registry
+        assert "Lux Do Not Invent Guard" in core_names, registry
+
+        status_response = client.get("/debug/meta-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("core_count") == 20, status
+        assert status.get("read_only") is True, status
+        assert status.get("real_pipeline_change") is False, status
+        assert status.get("memory_write_performed") is False, status
+        assert status.get("db_write_performed") is False, status
+
+        def preview(command: str, expected_names: set[str], source_area: str = "general", priority: str = "") -> dict:
+            response = client.post(
+                "/meta/quality-preview",
+                json={
+                    "command": command,
+                    "draft_output": "smoke read-only meta preview",
+                    "source_area": source_area,
+                    "user_priority": priority,
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("real_pipeline_change") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            assert payload.get("db_write_performed") is False, payload
+            assert payload.get("file_write_performed") is False, payload
+            detected = {item.get("name") for item in payload.get("detected_meta_cores", [])}
+            assert expected_names & detected, payload
+            return payload
+
+        preview("eksiksiz aktar", {"Lux Priority Lock", "Lux Professional Memory Pack"}, "workspace", "complete")
+        preview("sahneyi bozma", {"Lux Rebuild Prevention"}, "visual")
+        source_guard = preview("kaynak uydurma", {"Lux Do Not Invent Guard"}, "workspace", "low_risk")
+        assert source_guard.get("truthfulness_guard", {}).get("do_not_invent_guard_active") is True, source_guard
+        preview("CV hazırla", {"Lux Intent Depth", "Lux Minimal Question Engine"}, "workspace")
+        burden = preview("çok soru sorma", {"Lux User Burden Meter", "Lux Minimal Question Engine"}, "support", "low_stress")
+        assert burden.get("user_burden_preview", {}).get("active") is True, burden
+        preview("bu çıktı temiz mi", {"Lux Output Cleanliness Score"}, "general")
+        return "meta intelligence core"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2957,6 +3022,7 @@ class SmokeRunner:
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
             ("master_status_summary_preview", self.check_master_status_summary_preview),
             ("background_support_registry_preview", self.check_background_support_registry_preview),
+            ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),
