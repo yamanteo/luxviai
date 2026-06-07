@@ -1043,6 +1043,9 @@ class SmokeRunner:
         assert "/meta/core-registry" in html, html[:300]
         assert "/meta/quality-preview" in html, html[:300]
         assert "/debug/meta-status" in html, html[:300]
+        assert "/emotional/reflection-registry" in html, html[:300]
+        assert "/emotional/reflection-preview" in html, html[:300]
+        assert "/debug/emotional-status" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
         assert "/luxway/permission-model" in html, html[:300]
@@ -2936,6 +2939,74 @@ class SmokeRunner:
         preview("bu çıktı temiz mi", {"Lux Output Cleanliness Score"}, "general")
         return "meta intelligence core"
 
+    def check_emotional_reflection_support_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        registry_response = client.get("/emotional/reflection-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("read_only") is True, registry
+        assert registry.get("clinical_diagnosis_allowed") is False, registry
+        assert registry.get("therapy_claim_made") is False, registry
+        assert registry.get("memory_write_performed") is False, registry
+        assert registry.get("db_write_performed") is False, registry
+        assert registry.get("support_count") == 12, registry
+        support_names = {item.get("name") for item in registry.get("supports", [])}
+        assert "Emotional Signal Map" in support_names, registry
+        assert "İç Ses Editörü" in support_names, registry
+        assert "Değer Pusulası" in support_names, registry
+
+        status_response = client.get("/debug/emotional-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("support_count") == 12, status
+        assert status.get("read_only") is True, status
+        assert status.get("clinical_diagnosis_performed") is False, status
+        assert status.get("therapy_claim_made") is False, status
+        assert status.get("memory_write_performed") is False, status
+        assert status.get("db_write_performed") is False, status
+
+        def preview(command: str, expected_names: set[str], source_area: str = "general") -> dict:
+            response = client.post(
+                "/emotional/reflection-preview",
+                json={
+                    "command": command,
+                    "context": "smoke read-only emotional reflection preview",
+                    "source_area": source_area,
+                    "sensitivity": "normal",
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("clinical_diagnosis_performed") is False, payload
+            assert payload.get("therapy_claim_made") is False, payload
+            assert payload.get("crisis_handling_performed") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            assert payload.get("db_write_performed") is False, payload
+            assert payload.get("file_write_performed") is False, payload
+            detected = {item.get("name") for item in payload.get("detected_supports", [])}
+            assert expected_names & detected, payload
+            assert payload.get("safe_next_step"), payload
+            return payload
+
+        energy = preview("enerjim düşük", {"Emotional Signal Map"}, "general")
+        assert energy.get("energy_signal_preview", {}).get("active") is True, energy
+        preview("iç sesim çok sert", {"İç Ses Editörü"}, "voice")
+        value = preview("hız mı kalite mi bilmiyorum", {"Değer Pusulası"}, "workspace")
+        assert value.get("value_conflict_preview", {}).get("active") is True, value
+        preview("bugün ne yaptım toparla", {"Reflection Layer"}, "general")
+        preview("hep aynı yerde takılıyorum", {"Personal Pattern Review"}, "general")
+        preview("rüyamdaki sembol ne hissettiriyor", {"Rüya / Sembol / İç Durum Bağlantısı"}, "visual")
+        return "emotional reflection support"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -3023,6 +3094,7 @@ class SmokeRunner:
             ("master_status_summary_preview", self.check_master_status_summary_preview),
             ("background_support_registry_preview", self.check_background_support_registry_preview),
             ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview),
+            ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),

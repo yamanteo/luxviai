@@ -35,6 +35,7 @@ from audio_signal_schema import audio_signal_schema, audio_status_snapshot, prev
 from agent_decision_trace import build_agent_decision_trace
 from background_support_registry import preview_background_support, support_registry, support_status
 from cost_privacy_policy import cost_privacy_policy, preview_cost_privacy
+from emotional_reflection_support import emotional_reflection_registry, emotional_status, preview_emotional_reflection
 from endpoint_coverage_matrix import endpoint_coverage_matrix
 from live_readiness_checklist import live_readiness_checklist
 from master_status_summary import master_status_summary
@@ -413,6 +414,13 @@ class MetaQualityPreviewRequest(BaseModel):
     draft_output: str = Field(default="", max_length=12000)
     source_area: str = Field(default="general", max_length=50)
     user_priority: str = Field(default="", max_length=50)
+
+
+class EmotionalReflectionPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    context: str = Field(default="", max_length=8000)
+    source_area: str = Field(default="general", max_length=50)
+    sensitivity: str = Field(default="normal", max_length=50)
 
 
 # =========================================================
@@ -6869,6 +6877,21 @@ async def debug_meta_status():
     return meta_status()
 
 
+@app.get("/emotional/reflection-registry")
+async def emotional_reflection_registry_endpoint():
+    return emotional_reflection_registry()
+
+
+@app.post("/emotional/reflection-preview")
+async def emotional_reflection_preview_endpoint(payload: EmotionalReflectionPreviewRequest):
+    return preview_emotional_reflection(payload.command, payload.context, payload.source_area, payload.sensitivity)
+
+
+@app.get("/debug/emotional-status")
+async def debug_emotional_status():
+    return emotional_status()
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -7282,6 +7305,20 @@ async def debug_agent_panel():
       <button data-meta-command="çok sade ama detaylı olsun" data-meta-source="workspace">çok sade ama detaylı olsun</button>
       <button data-meta-command="çok soru sorma" data-meta-source="support" data-meta-priority="low_stress">çok soru sorma</button>
       <button data-meta-command="bu çıktı temiz mi" data-meta-source="general">bu çıktı temiz mi</button>
+    </div>
+    <h2>Emotional Reflection</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/emotional-status">Emotional Status</button>
+      <button data-endpoint="/emotional/reflection-registry">Emotional Registry</button>
+    </div>
+    <div class="bar">
+      <button data-emotional-command="enerjim düşük" data-emotional-source="general">enerjim düşük</button>
+      <button data-emotional-command="bugün ne yaptım toparla" data-emotional-source="general">bugün ne yaptım toparla</button>
+      <button data-emotional-command="hep aynı yerde takılıyorum" data-emotional-source="general">hep aynı yerde takılıyorum</button>
+      <button data-emotional-command="iç sesim çok sert" data-emotional-source="voice">iç sesim çok sert</button>
+      <button data-emotional-command="hız mı kalite mi bilmiyorum" data-emotional-source="workspace">hız mı kalite mi bilmiyorum</button>
+      <button data-emotional-command="bu mesaj beni yordu" data-emotional-source="social">bu mesaj beni yordu</button>
+      <button data-emotional-command="rüyamdaki sembol ne hissettiriyor" data-emotional-source="visual">rüyamdaki sembol ne hissettiriyor</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7869,6 +7906,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadEmotionalReflectionPreview(command, sourceArea) {
+      statusEl.textContent = "Loading emotional reflection preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/emotional/reflection-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            context: "debug panel read-only emotional reflection sample",
+            source_area: sourceArea || "general",
+            sensitivity: "normal"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded emotional reflection preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -7995,6 +8054,12 @@ async def debug_agent_panel():
         button.dataset.metaCommand,
         button.dataset.metaSource,
         button.dataset.metaPriority
+      ));
+    });
+    document.querySelectorAll("button[data-emotional-command]").forEach((button) => {
+      button.addEventListener("click", () => loadEmotionalReflectionPreview(
+        button.dataset.emotionalCommand,
+        button.dataset.emotionalSource
       ));
     });
   </script>
