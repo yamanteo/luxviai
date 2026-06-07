@@ -49,6 +49,7 @@ from intention_timeline_preview import intention_timeline_schema, intention_time
 from layer21_status import layer21_status_snapshot
 from layer22_candidate_scoring import candidate_scoring_matrix, layer22_scoring_status, preview_candidate_score
 from layer22_future_candidates import future_candidates_registry, layer22_status_snapshot, preview_future_candidate
+from layer22_status_snapshot import layer22_full_status_snapshot
 from live_readiness_checklist import live_readiness_checklist
 from master_status_summary import master_status_summary
 from meta_intelligence_core import meta_core_registry, meta_status, preview_meta_quality
@@ -7040,6 +7041,11 @@ async def debug_layer22_scoring_status():
     return layer22_scoring_status()
 
 
+@app.get("/debug/layer22-full-status")
+async def debug_layer22_full_status():
+    return layer22_full_status_snapshot()
+
+
 @app.get("/finality/schema")
 async def finality_schema_endpoint():
     return finality_schema()
@@ -7731,6 +7737,7 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/live-readiness">Live Readiness</button>
       <button data-endpoint="/debug/layer21-status">Layer 21 status snapshot</button>
       <button data-endpoint="/debug/layer22-status">Layer 22 status snapshot</button>
+      <button data-endpoint="/debug/layer22-full-status">Layer 22 full status snapshot</button>
       <button data-endpoint="/debug/production-hardening-status">Production Hardening Status</button>
       <button data-endpoint="/debug/backlog-registry">Backlog Registry</button>
     </div>
@@ -7738,6 +7745,7 @@ async def debug_agent_panel():
     <div class="bar">
       <button data-endpoint="/future/candidates">T\u00fcm future candidates</button>
       <button data-endpoint="/debug/layer22-status">Layer 22 Status</button>
+      <button data-endpoint="/debug/layer22-full-status">Layer 22 Full Status</button>
     </div>
     <div class="bar">
       <button data-future-command="Time Twin fikrini a\u00e7">Time Twin fikrini a\u00e7</button>
