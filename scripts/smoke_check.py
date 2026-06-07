@@ -1035,6 +1035,7 @@ class SmokeRunner:
         assert "/debug/backlog-registry" in html, html[:300]
         assert "/debug/system-control-audit" in html, html[:300]
         assert "/debug/endpoint-coverage" in html, html[:300]
+        assert "/debug/live-readiness" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
         assert "/luxway/permission-model" in html, html[:300]
@@ -2734,6 +2735,39 @@ class SmokeRunner:
         assert "/debug/endpoint-coverage" in production_paths, payload
         return "endpoint coverage matrix"
 
+    def check_live_readiness_checklist_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/debug/live-readiness")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload.get("status") == "readiness_preview_ready", payload
+        assert payload.get("read_only") is True, payload
+        assert payload.get("real_fix_performed") is False, payload
+        backlog = " ".join(str(item).lower() for item in payload.get("known_backlog_items", []))
+        assert "stop/durdur final block leak" in backlog, payload
+        preview = " ".join(str(item).lower() for item in payload.get("preview_only_items", []))
+        assert "real image api not enabled" in preview, payload
+        assert "real voice not enabled" in preview, payload
+        assert "real luxway platform not enabled" in preview, payload
+        assert "real model routing not enabled" in preview, payload
+        manual = " ".join(str(item).lower() for item in payload.get("manual_check_items", []))
+        assert "live /health" in manual, payload
+        assert "live /debug/live-readiness" in manual, payload
+        blocked = " ".join(str(item).lower() for item in payload.get("blocked_for_real_launch_items", []))
+        assert "real export not enabled" in blocked, payload
+        assert payload.get("chat_stream_touched") is False, payload
+        assert payload.get("typewriter_runtime_touched") is False, payload
+        assert payload.get("db_write_performed") is False, payload
+        assert payload.get("memory_write_performed") is False, payload
+        assert payload.get("file_write_performed") is False, payload
+        return "live readiness checklist"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2817,6 +2851,7 @@ class SmokeRunner:
             ("production_hardening_backlog_registry", self.check_production_hardening_backlog_registry),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
+            ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),
