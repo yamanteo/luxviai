@@ -1382,6 +1382,43 @@ def trim_self_answer_after_question(response: str) -> str:
     return text
 
 
+BAD_PUNCTUATION_PAIRS = (
+    ("..,", "."),
+    (".,", "."),
+    (",.", "."),
+    (",,", ","),
+    (";,", ";"),
+)
+
+
+def looks_like_code_or_structured_output(text: str) -> bool:
+    stripped = str(text or "").strip()
+    if not stripped:
+        return False
+    if "```" in stripped:
+        return True
+    if stripped[0] in "{[":
+        return True
+    code_markers = (
+        "def ", "class ", "function ", "const ", "let ", "var ", "import ",
+        "from ", "SELECT ", "INSERT ", "UPDATE ", "DELETE ", "<html", "<script",
+    )
+    return any(marker in stripped for marker in code_markers)
+
+
+def cleanup_natural_language_output(response: str) -> str:
+    text = str(response or "")
+    if not text or looks_like_code_or_structured_output(text):
+        return text
+    cleaned = text
+    for bad, good in BAD_PUNCTUATION_PAIRS:
+        cleaned = cleaned.replace(bad, good)
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    cleaned = re.sub(r"[ \t]+\n", "\n", cleaned)
+    cleaned = re.sub(r"\n[ \t]+", "\n", cleaned)
+    return cleaned.strip()
+
+
 COUNT_NUMBER_WORDS = {
     "tek": 1,
     "bir": 1,
@@ -3615,6 +3652,16 @@ BİÇİM:
 - Gerektiğinde liste kullan
 - Tek blok halinde sıkıştırma
 - Gereksiz teknik dil kullanma
+
+FORMAT / COUNT DISCIPLINE:
+- Kullanıcı açık sayı verdiyse bu sayı öncelikli şarttır.
+- "5 satır" istendiyse tam 5 fiziksel satır üret; her satırı ayrı newline ile ver.
+- "50 madde" istendiyse tam 50 madde üret; fazladan giriş/kapanış ekleme.
+- "3 paragraf, her biri 5 cümle" istendiyse her paragraf tam 5 cümle olsun.
+- "Tam sayfa uzunluğunda 5 satır" gibi karışık isteklerde satır sayısı önceliklidir; satırları daha uzun ve dengeli yaz.
+- Cümle/madde/satır sayısını sessizce kontrol etmeden cevap verme.
+- Hatalı noktalama birleşimleri üretme: ".,", ",.", "..,", ",,", ";,".
+- Kullanıcı "sadece liste", "sadece satır" veya "sadece prompt" dediyse gereksiz açıklama ekleme.
 
 HAFIZA İPUÇLARI:
 {memory_block}
@@ -9354,6 +9401,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
     response_text = trim_self_answer_after_question(response_text)
     response_text = enforce_count_guard(plan, response_text)
     response_text = enforce_line_format_guard(plan, response_text)
+    response_text = cleanup_natural_language_output(response_text)
     if not plan.get("count_constraints"):
         response_text = apply_background_nudges(plan, response_text)
     finalize_start = perf_counter()
@@ -9604,6 +9652,7 @@ async def ws_chat(websocket: WebSocket):
                 response_text = trim_self_answer_after_question(response_text)
                 response_text = enforce_count_guard(plan, response_text)
                 response_text = enforce_line_format_guard(plan, response_text)
+                response_text = cleanup_natural_language_output(response_text)
                 if not count_guarded:
                     response_text = apply_background_nudges(plan, response_text)
                 if count_guarded:
@@ -9681,6 +9730,7 @@ async def ws_chat(websocket: WebSocket):
                 response_text = trim_self_answer_after_question(response_text)
                 response_text = enforce_count_guard(plan, response_text)
                 response_text = enforce_line_format_guard(plan, response_text)
+                response_text = cleanup_natural_language_output(response_text)
                 if not plan.get("count_constraints"):
                     response_text = apply_background_nudges(plan, response_text)
                 finalize_start = perf_counter()

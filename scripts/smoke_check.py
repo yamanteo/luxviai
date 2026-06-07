@@ -242,6 +242,32 @@ class SmokeRunner:
         assert "---" not in repaired, repaired
         return "paragraph/long-line exact"
 
+    def check_format_prompt_and_cleanup(self) -> str:
+        luxapp = self.import_app()
+        prompt = luxapp.build_system_prompt(
+            luxapp.default_profile(),
+            {},
+            "luxviai",
+            [],
+            {},
+            "Konum paylaşılmadı",
+        )
+        assert "FORMAT / COUNT DISCIPLINE" in prompt, prompt[-1200:]
+        assert "tam 5 fiziksel satır" in prompt, prompt[-1200:]
+        assert "50 madde" in prompt, prompt[-1200:]
+        assert "Hatalı noktalama" in prompt, prompt[-1200:]
+
+        cleaned = luxapp.cleanup_natural_language_output("Merhaba., dünya,. test.., tamam,, olur;, bitti.")
+        for bad in (".,", ",.", "..,", ",,", ";,"):
+            assert bad not in cleaned, cleaned
+        assert "  " not in luxapp.cleanup_natural_language_output("Iki  bosluk")
+
+        code = "```python\ntext = '.,'\n```"
+        assert luxapp.cleanup_natural_language_output(code) == code
+        structured = '{"punct": ".,", "ok": true}'
+        assert luxapp.cleanup_natural_language_output(structured) == structured
+        return "format prompt/punctuation cleanup"
+
     def check_identity_guard(self) -> str:
         luxapp = self.import_app()
         profile = luxapp.default_profile()
@@ -314,7 +340,8 @@ class SmokeRunner:
         assert "cleanBaseText.slice(-1200)" in html
         assert "resumeUnavailableFallback" in html
         assert "Yalnızca bu son bölümün doğal devamını yaz" in html
-        assert "interruptedState && isContinueCommand(text)" in html
+        assert "interruptedState && isContinueCommand(text)" not in html
+        assert "if (interruptedState) {\n    clearInterruptedState(true);" in html
         assert '"devam et ama yeni konu' not in html
         assert '"kaldığın yerden devam et"' in html
         assert '"sürdür"' in html
@@ -331,7 +358,16 @@ class SmokeRunner:
         assert "isRunActive(runId)" in html
         assert "activeFetchController.abort" in html
         assert 'dataset.streamState = "cancelled"' in html
-        assert "if (interruptedState && !isContinueCommand(messageInput.value))" in html
+        assert "streamAbort({ showResume: false })" in html
+        assert "const shouldShowResume = options.showResume !== false" in html
+        assert "if (shouldShowResume) appendResumeButton(aiDiv)" in html
+        assert "else clearInterruptedState(true)" in html
+        assert "btn.disabled = true" in html
+        assert "createPacedWriter(aiDiv, 0.9, runId)" in html
+        assert "createPacedWriter(targetAiEl, 0.9, continueRunId)" in html
+        assert "if (stopped || !chunk || !runStillActive()) return" in html
+        assert 'reject(new Error("stale_run"))' in html
+        assert "if (interruptedState && !isContinueCommand(messageInput.value))" not in html
         return "safe resume/hard-stop context"
 
     def check_cost_logger_privacy(self) -> str:
@@ -4362,6 +4398,7 @@ class SmokeRunner:
             ("health_shape_16_layers", self.check_health_shape),
             ("count_guard", self.check_count_guard),
             ("line_format_guard", self.check_line_format_guard),
+            ("format_prompt_cleanup", self.check_format_prompt_and_cleanup),
             ("identity_guard", self.check_identity_guard),
             ("double_response_trim", self.check_double_response_trim),
             ("frontend_resume_scaffold", self.check_frontend_resume_scaffold),
