@@ -1033,6 +1033,7 @@ class SmokeRunner:
         assert "/debug/model-router-status" in html, html[:300]
         assert "/debug/production-hardening-status" in html, html[:300]
         assert "/debug/backlog-registry" in html, html[:300]
+        assert "/debug/system-control-audit" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
         assert "/luxway/permission-model" in html, html[:300]
@@ -2654,6 +2655,45 @@ class SmokeRunner:
 
         return "production hardening backlog registry"
 
+    def check_system_control_audit_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/debug/system-control-audit")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload.get("system_name") == "Luxviai", payload
+        assert payload.get("status") == "scaffold_audit_ready", payload
+        assert payload.get("read_only") is True, payload
+        assert payload.get("real_fix_performed") is False, payload
+        checked_layers = {
+            str(item.get("layer"))
+            for item in payload.get("checked_layers", [])
+            if isinstance(item, dict)
+        }
+        assert {"14", "15", "16", "17", "18", "19", "20"} <= checked_layers, payload
+        endpoints = set(payload.get("available_status_endpoints", []))
+        assert "/debug/layer14-status" in endpoints, payload
+        assert "/debug/model-router-full-status" in endpoints, payload
+        assert "/debug/backlog-registry" in endpoints, payload
+        backlog_summary = payload.get("backlog_summary", {})
+        backlog_text = " ".join(str(item).lower() for item in backlog_summary.get("items", []))
+        assert "stop/durdur final block leak" in backlog_text, payload
+        assert backlog_summary.get("stop_durdur_status") == "backlog_only", payload
+        future = " ".join(str(item).lower() for item in payload.get("missing_or_future_integrations", []))
+        assert "real image api later" in future, payload
+        assert "real model routing later" in future, payload
+        assert payload.get("chat_stream_touched") is False, payload
+        assert payload.get("typewriter_runtime_touched") is False, payload
+        assert payload.get("db_write_performed") is False, payload
+        assert payload.get("memory_write_performed") is False, payload
+        assert payload.get("file_write_performed") is False, payload
+        return "system control audit"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -2735,6 +2775,7 @@ class SmokeRunner:
             ("routing_simulation_preview", self.check_routing_simulation_preview),
             ("model_router_full_status_snapshot", self.check_model_router_full_status_snapshot),
             ("production_hardening_backlog_registry", self.check_production_hardening_backlog_registry),
+            ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),

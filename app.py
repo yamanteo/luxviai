@@ -66,6 +66,7 @@ from production_hardening_registry import backlog_registry, production_hardening
 from router_scaffold import preview_router_decision
 from routing_simulation import preview_routing_simulation
 from safe_memory_retrieval import preview_safe_memory_retrieval, safe_memory_policy
+from system_control_audit import system_control_audit
 from workspace_builder_preview import build_workspace_builder_preview
 from workspace_command_parser import parse_workspace_command
 from workspace_context_notes import preview_workspace_context_note
@@ -6799,6 +6800,11 @@ async def debug_backlog_registry():
     return backlog_registry()
 
 
+@app.get("/debug/system-control-audit")
+async def debug_system_control_audit():
+    return system_control_audit()
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -7177,6 +7183,7 @@ async def debug_agent_panel():
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
+      <button data-endpoint="/debug/system-control-audit">System Control Audit</button>
       <button data-endpoint="/debug/production-hardening-status">Production Hardening Status</button>
       <button data-endpoint="/debug/backlog-registry">Backlog Registry</button>
     </div>
