@@ -41,6 +41,7 @@ from drive_mode_preview import drive_mode_schema, drive_mode_status, preview_dri
 from emotional_reflection_support import emotional_reflection_registry, emotional_status, preview_emotional_reflection
 from endpoint_coverage_matrix import endpoint_coverage_matrix
 from layer21_status import layer21_status_snapshot
+from layer22_future_candidates import future_candidates_registry, layer22_status_snapshot, preview_future_candidate
 from live_readiness_checklist import live_readiness_checklist
 from master_status_summary import master_status_summary
 from meta_intelligence_core import meta_core_registry, meta_status, preview_meta_quality
@@ -474,6 +475,15 @@ class WakeSonicPreviewRequest(BaseModel):
     environment: str = Field(default="", max_length=100)
     sensitivity: str = Field(default="normal", max_length=50)
     user_permission_state: str = Field(default="not_granted", max_length=100)
+
+
+class FutureCandidatePreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    candidate_id: str = Field(default="", max_length=100)
+    category: str = Field(default="", max_length=100)
+    user_goal: str = Field(default="", max_length=1000)
+    risk_level: str = Field(default="", max_length=50)
+    implementation_depth: str = Field(default="", max_length=100)
 
 
 # =========================================================
@@ -6905,6 +6915,28 @@ async def debug_layer21_status():
     return layer21_status_snapshot()
 
 
+@app.get("/future/candidates")
+async def future_candidates_endpoint():
+    return future_candidates_registry()
+
+
+@app.post("/future/preview")
+async def future_preview_endpoint(payload: FutureCandidatePreviewRequest):
+    return preview_future_candidate(
+        payload.command,
+        payload.candidate_id,
+        payload.category,
+        payload.user_goal,
+        payload.risk_level,
+        payload.implementation_depth,
+    )
+
+
+@app.get("/debug/layer22-status")
+async def debug_layer22_status():
+    return layer22_status_snapshot()
+
+
 @app.get("/support/registry")
 async def support_registry_endpoint():
     return support_registry()
@@ -7450,8 +7482,21 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/endpoint-coverage">Endpoint Coverage</button>
       <button data-endpoint="/debug/live-readiness">Live Readiness</button>
       <button data-endpoint="/debug/layer21-status">Layer 21 status snapshot</button>
+      <button data-endpoint="/debug/layer22-status">Layer 22 status snapshot</button>
       <button data-endpoint="/debug/production-hardening-status">Production Hardening Status</button>
       <button data-endpoint="/debug/backlog-registry">Backlog Registry</button>
+    </div>
+    <h2>Layer 22 Future Candidates</h2>
+    <div class="bar">
+      <button data-endpoint="/future/candidates">T\u00fcm future candidates</button>
+      <button data-endpoint="/debug/layer22-status">Layer 22 Status</button>
+    </div>
+    <div class="bar">
+      <button data-future-command="Time Twin fikrini a\u00e7">Time Twin fikrini a\u00e7</button>
+      <button data-future-command="Reklam de\u011feri y\u00fcksek fikirleri g\u00f6ster">Reklam de\u011feri y\u00fcksek fikirleri g\u00f6ster</button>
+      <button data-future-command="En pratik fikirleri g\u00f6ster">En pratik fikirleri g\u00f6ster</button>
+      <button data-future-command="G\u00fcvenlik riski y\u00fcksek olanlar\u0131 ay\u0131r">G\u00fcvenlik riski y\u00fcksek olanlar\u0131 ay\u0131r</button>
+      <button data-future-command="Lux'u en \u00f6zel yapan fikirleri s\u0131rala">Lux'u en \u00f6zel yapan fikirleri s\u0131rala</button>
     </div>
     <h2>Background Support</h2>
     <div class="bar">
@@ -8305,6 +8350,30 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadFuturePreview(command) {
+      statusEl.textContent = "Loading future candidate preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/future/preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            candidate_id: "",
+            category: "",
+            user_goal: "debug panel future candidate sample",
+            risk_level: "",
+            implementation_depth: "registry_preview_only"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded future candidate preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -8457,6 +8526,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-wake-sonic-command]").forEach((button) => {
       button.addEventListener("click", () => loadWakeSonicPreview(button.dataset.wakeSonicCommand));
+    });
+    document.querySelectorAll("button[data-future-command]").forEach((button) => {
+      button.addEventListener("click", () => loadFuturePreview(button.dataset.futureCommand));
     });
   </script>
 </body>

@@ -1038,6 +1038,9 @@ class SmokeRunner:
         assert "/debug/live-readiness" in html, html[:300]
         assert "/debug/master-status" in html, html[:300]
         assert "/debug/layer21-status" in html, html[:300]
+        assert "/future/candidates" in html, html[:300]
+        assert "/future/preview" in html, html[:300]
+        assert "/debug/layer22-status" in html, html[:300]
         assert "/support/registry" in html, html[:300]
         assert "/support/preview" in html, html[:300]
         assert "/debug/support-status" in html, html[:300]
@@ -2880,6 +2883,75 @@ class SmokeRunner:
         assert "Lux Time Twin" in future, payload
         return "layer 21 status snapshot"
 
+    def check_layer22_future_candidates_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        registry_response = client.get("/future/candidates")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "22", registry
+        assert registry.get("status") == "future_candidates_ready", registry
+        assert registry.get("candidate_count") == 20, registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("real_action_enabled") is False, registry
+        candidate_names = {item.get("name") for item in registry.get("candidates", [])}
+        assert "Lux Time Twin" in candidate_names, registry
+        assert "Finality Sense" in candidate_names, registry
+
+        status_response = client.get("/debug/layer22-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "22", status
+        assert status.get("status") == "future_candidates_ready", status
+        assert status.get("candidate_count") == 20, status
+        assert status.get("read_only") is True, status
+        safety = status.get("safety_boundaries", {})
+        assert safety.get("real_action_enabled") is False, status
+        assert safety.get("action_performed") is False, status
+        assert safety.get("memory_write_performed") is False, status
+        assert safety.get("db_write_performed") is False, status
+        assert safety.get("file_created") is False, status
+        assert safety.get("export_performed") is False, status
+        assert safety.get("device_control_performed") is False, status
+        assert safety.get("chat_stream_touched") is False, status
+        assert safety.get("typewriter_runtime_touched") is False, status
+
+        preview_response = client.post(
+            "/future/preview",
+            json={
+                "command": "Time Twin fikrini ac",
+                "candidate_id": "",
+                "category": "",
+                "user_goal": "smoke preview",
+                "risk_level": "",
+                "implementation_depth": "registry_preview_only",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("read_only") is True, preview
+        assert preview.get("real_action_enabled") is False, preview
+        assert preview.get("action_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("file_created") is False, preview
+        assert preview.get("export_performed") is False, preview
+        assert preview.get("device_control_performed") is False, preview
+        matched = preview.get("matched_candidate") or {}
+        assert matched.get("name") == "Lux Time Twin", preview
+
+        ranking_response = client.post("/future/preview", json={"command": "Reklam degeri yuksek fikirleri goster"})
+        assert ranking_response.status_code == 200, ranking_response.text
+        ranking = ranking_response.json().get("candidate_ranking_preview", [])
+        assert ranking, ranking_response.json()
+        return "layer 22 future candidates"
+
     def check_background_support_registry_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3577,6 +3649,7 @@ class SmokeRunner:
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
             ("master_status_summary_preview", self.check_master_status_summary_preview),
             ("layer21_status_snapshot", self.check_layer21_status_snapshot),
+            ("layer22_future_candidates_preview", self.check_layer22_future_candidates_preview),
             ("background_support_registry_preview", self.check_background_support_registry_preview),
             ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview),
             ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview),
