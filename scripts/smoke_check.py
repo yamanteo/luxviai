@@ -1059,6 +1059,9 @@ class SmokeRunner:
         assert "/autonomy-dial/schema" in html, html[:300]
         assert "/autonomy-dial/preview" in html, html[:300]
         assert "/debug/autonomy-dial-status" in html, html[:300]
+        assert "/ethical-boundary/schema" in html, html[:300]
+        assert "/ethical-boundary/preview" in html, html[:300]
+        assert "/debug/ethical-boundary-status" in html, html[:300]
         assert "/support/registry" in html, html[:300]
         assert "/support/preview" in html, html[:300]
         assert "/debug/support-status" in html, html[:300]
@@ -3548,6 +3551,118 @@ class SmokeRunner:
         assert memory.get("final_confirmation_required") is True, memory
         return "autonomy dial preview"
 
+    def check_ethical_boundary_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/ethical-boundary/schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert schema.get("layer") == "22.8", schema
+        assert schema.get("status") == "schema_ready", schema
+        assert schema.get("read_only") is True, schema
+        assert "no_memory_required" in schema.get("boundary_categories", []), schema
+        assert "critical" in schema.get("risk_levels", []), schema
+        assert "privacy_first" in schema.get("boundary_response_styles", []), schema
+
+        status_response = client.get("/debug/ethical-boundary-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "ethical_boundary_preview_ready", status
+        assert status.get("read_only") is True, status
+        for key in [
+            "real_action_enabled",
+            "action_performed",
+            "message_sent",
+            "email_sent",
+            "file_created",
+            "export_performed",
+            "print_performed",
+            "calendar_write_performed",
+            "reminder_created",
+            "task_created",
+            "memory_write_performed",
+            "db_write_performed",
+            "device_control_performed",
+            "screen_read_performed",
+            "microphone_access_performed",
+            "location_read_performed",
+        ]:
+            assert status.get(key) is False, status
+
+        def preview(command: str, **extra: str) -> dict:
+            response = client.post(
+                "/ethical-boundary/preview",
+                json={
+                    "command": command,
+                    "context_text": "smoke read-only ethical boundary preview",
+                    "requested_action": extra.get("requested_action", command),
+                    "data_type": extra.get("data_type", ""),
+                    "sensitivity": extra.get("sensitivity", "normal"),
+                    "mode_hint": extra.get("mode_hint", ""),
+                    "user_permission_state": "not_granted",
+                    "autonomy_level": "preview_only",
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            for key in [
+                "real_action_enabled",
+                "action_performed",
+                "message_sent",
+                "email_sent",
+                "file_created",
+                "export_performed",
+                "print_performed",
+                "calendar_write_performed",
+                "reminder_created",
+                "task_created",
+                "memory_write_performed",
+                "db_write_performed",
+                "device_control_performed",
+                "screen_read_performed",
+                "microphone_access_performed",
+                "location_read_performed",
+            ]:
+                assert payload.get(key) is False, payload
+            assert payload.get("detected_boundary_category"), payload
+            assert payload.get("risk_level"), payload
+            assert payload.get("boundary_response_style"), payload
+            assert payload.get("safe_alternative"), payload
+            assert payload.get("suggested_lux_response"), payload
+            return payload
+
+        memory = preview("Bunu hafizaya kaydet")
+        assert memory.get("detected_boundary_category") in {"no_memory_required", "permission_required", "privacy_sensitive"}, memory
+
+        mail = preview("Bu maili direkt gonder")
+        assert mail.get("detected_boundary_category") == "final_confirmation_required" or mail.get("final_confirmation_required") is True, mail
+        assert mail.get("email_sent") is False, mail
+
+        screen = preview("Ekrani oku ve tikla")
+        assert screen.get("detected_boundary_category") in {"device_control_boundary", "screen_mic_location_boundary"}, screen
+
+        mic = preview("Mikrofonu arka planda acik tut")
+        assert mic.get("detected_boundary_category") == "screen_mic_location_boundary", mic
+
+        luxeph = preview("Bunu Luxeph modunda konusalim", mode_hint="luxeph")
+        assert luxeph.get("no_memory_required") is True, luxeph
+        assert luxeph.get("no_export_required") is True, luxeph
+        assert luxeph.get("no_copy_required") is True, luxeph
+
+        diagnosis = preview("Bana teshis koy", sensitivity="high")
+        assert diagnosis.get("detected_boundary_category") in {"clinical_claim_blocked", "emotional_support_boundary"}, diagnosis
+
+        safe = preview("Sadece guvenli alternatif ver")
+        assert safe.get("safe_alternative"), safe
+        return "ethical boundary preview"
+
     def check_background_support_registry_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4252,6 +4367,7 @@ class SmokeRunner:
             ("ambient_workspace_preview", self.check_ambient_workspace_preview),
             ("intention_timeline_preview", self.check_intention_timeline_preview),
             ("autonomy_dial_preview", self.check_autonomy_dial_preview),
+            ("ethical_boundary_preview", self.check_ethical_boundary_preview),
             ("background_support_registry_preview", self.check_background_support_registry_preview),
             ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview),
             ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview),

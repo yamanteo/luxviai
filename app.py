@@ -42,6 +42,7 @@ from cost_privacy_policy import cost_privacy_policy, preview_cost_privacy
 from device_bridge_preview import device_bridge_schema, device_bridge_status, preview_device_bridge
 from drive_mode_preview import drive_mode_schema, drive_mode_status, preview_drive_mode
 from emotional_reflection_support import emotional_reflection_registry, emotional_status, preview_emotional_reflection
+from ethical_boundary_soul_preview import ethical_boundary_schema, ethical_boundary_status, preview_ethical_boundary
 from endpoint_coverage_matrix import endpoint_coverage_matrix
 from finality_sense_preview import finality_schema, finality_status, preview_finality
 from intention_timeline_preview import intention_timeline_schema, intention_timeline_status, preview_intention_timeline
@@ -554,6 +555,17 @@ class AutonomyDialPreviewRequest(BaseModel):
     desired_autonomy_level: str = Field(default="", max_length=100)
     context_text: str = Field(default="", max_length=8000)
     sensitivity: str = Field(default="", max_length=100)
+
+
+class EthicalBoundaryPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    context_text: str = Field(default="", max_length=8000)
+    requested_action: str = Field(default="", max_length=500)
+    data_type: str = Field(default="", max_length=100)
+    sensitivity: str = Field(default="", max_length=100)
+    mode_hint: str = Field(default="", max_length=100)
+    user_permission_state: str = Field(default="", max_length=100)
+    autonomy_level: str = Field(default="", max_length=100)
 
 
 # =========================================================
@@ -7149,6 +7161,30 @@ async def debug_autonomy_dial_status():
     return autonomy_dial_status()
 
 
+@app.get("/ethical-boundary/schema")
+async def ethical_boundary_schema_endpoint():
+    return ethical_boundary_schema()
+
+
+@app.post("/ethical-boundary/preview")
+async def ethical_boundary_preview_endpoint(payload: EthicalBoundaryPreviewRequest):
+    return preview_ethical_boundary(
+        payload.command,
+        payload.context_text,
+        payload.requested_action,
+        payload.data_type,
+        payload.sensitivity,
+        payload.mode_hint,
+        payload.user_permission_state,
+        payload.autonomy_level,
+    )
+
+
+@app.get("/debug/ethical-boundary-status")
+async def debug_ethical_boundary_status():
+    return ethical_boundary_status()
+
+
 @app.get("/support/registry")
 async def support_registry_endpoint():
     return support_registry()
@@ -7808,6 +7844,23 @@ async def debug_agent_panel():
       <button data-autonomy-command="Haf\u0131zaya kaydet" data-autonomy-risk="memory_write">Haf\u0131zaya kaydet</button>
       <button data-autonomy-command="Cihaz\u0131 kontrol et" data-autonomy-risk="device_control">Cihaz\u0131 kontrol et</button>
       <button data-autonomy-command="Bu \u00f6zel bilgileri arka planda takip et" data-autonomy-risk="private_data" data-autonomy-sensitivity="high">Bu \u00f6zel bilgileri arka planda takip et</button>
+    </div>
+    <h2>Ethical Boundary Soul</h2>
+    <div class="bar">
+      <button data-endpoint="/ethical-boundary/schema">Ethical Boundary Schema</button>
+      <button data-endpoint="/debug/ethical-boundary-status">Ethical Boundary Status</button>
+    </div>
+    <div class="bar">
+      <button data-ethical-command="Bunu haf\u0131zaya kaydet" data-ethical-data="memory">Bunu haf\u0131zaya kaydet</button>
+      <button data-ethical-command="Bu maili direkt g\u00f6nder" data-ethical-action="send_email">Bu maili direkt g\u00f6nder</button>
+      <button data-ethical-command="Bu dosyay\u0131 PDF yap ve kaydet" data-ethical-action="export_file">Bu dosyay\u0131 PDF yap ve kaydet</button>
+      <button data-ethical-command="Ekran\u0131 oku ve t\u0131kla" data-ethical-action="screen_click">Ekran\u0131 oku ve t\u0131kla</button>
+      <button data-ethical-command="Mikrofonu arka planda a\u00e7\u0131k tut" data-ethical-action="microphone_background">Mikrofonu arka planda a\u00e7\u0131k tut</button>
+      <button data-ethical-command="Bunu Luxeph modunda konu\u015fal\u0131m" data-ethical-mode="luxeph">Bunu Luxeph modunda konu\u015fal\u0131m</button>
+      <button data-ethical-command="Bana te\u015fhis koy" data-ethical-sensitivity="high">Bana te\u015fhis koy</button>
+      <button data-ethical-command="Bu \u00f6zel bilgileri sakla" data-ethical-data="private" data-ethical-sensitivity="high">Bu \u00f6zel bilgileri sakla</button>
+      <button data-ethical-command="Bunu g\u00f6ndermeye haz\u0131rla ama g\u00f6nderme" data-ethical-action="prepare_send">Bunu g\u00f6ndermeye haz\u0131rla ama g\u00f6nderme</button>
+      <button data-ethical-command="Sadece g\u00fcvenli alternatif ver">Sadece g\u00fcvenli alternatif ver</button>
     </div>
     <h2>Background Support</h2>
     <div class="bar">
@@ -8839,6 +8892,32 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadEthicalBoundaryPreview(command, requestedAction, dataType, sensitivity, modeHint) {
+      statusEl.textContent = "Loading ethical boundary preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/ethical-boundary/preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            context_text: "debug panel read-only ethical boundary sample",
+            requested_action: requestedAction || command,
+            data_type: dataType || "",
+            sensitivity: sensitivity || "normal",
+            mode_hint: modeHint || "",
+            user_permission_state: "not_granted",
+            autonomy_level: "preview_only"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded ethical boundary preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -9038,6 +9117,15 @@ async def debug_agent_panel():
         button.dataset.autonomyLevel,
         button.dataset.autonomyRisk,
         button.dataset.autonomySensitivity
+      ));
+    });
+    document.querySelectorAll("button[data-ethical-command]").forEach((button) => {
+      button.addEventListener("click", () => loadEthicalBoundaryPreview(
+        button.dataset.ethicalCommand,
+        button.dataset.ethicalAction,
+        button.dataset.ethicalData,
+        button.dataset.ethicalSensitivity,
+        button.dataset.ethicalMode
       ));
     });
   </script>
