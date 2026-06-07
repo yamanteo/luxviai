@@ -34,6 +34,7 @@ from audio_privacy_boundary import preview_audio_privacy_boundary
 from audio_signal_schema import audio_signal_schema, audio_status_snapshot, preview_audio_signal
 from agent_decision_trace import build_agent_decision_trace
 from cost_privacy_policy import cost_privacy_policy, preview_cost_privacy
+from endpoint_coverage_matrix import endpoint_coverage_matrix
 from luxway_capabilities import luxway_capability_registry, luxway_status_snapshot, preview_luxway_command
 from luxway_data_preview import preview_luxway_data
 from luxway_device_safety import preview_luxway_device_safety
@@ -6805,6 +6806,11 @@ async def debug_system_control_audit():
     return system_control_audit()
 
 
+@app.get("/debug/endpoint-coverage")
+async def debug_endpoint_coverage():
+    return endpoint_coverage_matrix()
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -7184,6 +7190,7 @@ async def debug_agent_panel():
     <h2>Production / Backlog</h2>
     <div class="bar">
       <button data-endpoint="/debug/system-control-audit">System Control Audit</button>
+      <button data-endpoint="/debug/endpoint-coverage">Endpoint Coverage</button>
       <button data-endpoint="/debug/production-hardening-status">Production Hardening Status</button>
       <button data-endpoint="/debug/backlog-registry">Backlog Registry</button>
     </div>
