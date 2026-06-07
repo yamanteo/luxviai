@@ -36,6 +36,7 @@ from agent_decision_trace import build_agent_decision_trace
 from background_support_registry import preview_background_support, support_registry, support_status
 from context_bridge_preview import context_bridge_schema, context_bridge_status, preview_context_bridge
 from cost_privacy_policy import cost_privacy_policy, preview_cost_privacy
+from device_bridge_preview import device_bridge_schema, device_bridge_status, preview_device_bridge
 from emotional_reflection_support import emotional_reflection_registry, emotional_status, preview_emotional_reflection
 from endpoint_coverage_matrix import endpoint_coverage_matrix
 from live_readiness_checklist import live_readiness_checklist
@@ -430,6 +431,16 @@ class ContextBridgePreviewRequest(BaseModel):
     target_topic: str = Field(default="", max_length=500)
     transfer_mode: str = Field(default="", max_length=100)
     sensitivity: str = Field(default="normal", max_length=50)
+
+
+class DeviceBridgePreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    source_device: str = Field(default="", max_length=200)
+    target_device: str = Field(default="", max_length=200)
+    surface_type: str = Field(default="", max_length=100)
+    content_type: str = Field(default="", max_length=100)
+    requested_output: str = Field(default="", max_length=200)
+    risk_level: str = Field(default="normal", max_length=50)
 
 
 # =========================================================
@@ -6922,6 +6933,29 @@ async def debug_context_bridge_status():
     return context_bridge_status()
 
 
+@app.get("/device-bridge/schema")
+async def device_bridge_schema_endpoint():
+    return device_bridge_schema()
+
+
+@app.post("/device-bridge/preview")
+async def device_bridge_preview_endpoint(payload: DeviceBridgePreviewRequest):
+    return preview_device_bridge(
+        payload.command,
+        payload.source_device,
+        payload.target_device,
+        payload.surface_type,
+        payload.content_type,
+        payload.requested_output,
+        payload.risk_level,
+    )
+
+
+@app.get("/debug/device-bridge-status")
+async def debug_device_bridge_status():
+    return device_bridge_status()
+
+
 @app.get("/luxway/capabilities")
 async def luxway_capabilities_endpoint():
     return luxway_capability_registry()
@@ -7362,6 +7396,21 @@ async def debug_agent_panel():
       <button data-context-bridge-command="eksiksiz aktar">eksiksiz aktar</button>
       <button data-context-bridge-command="sadece Luxway kısmını getir">sadece Luxway kısmını getir</button>
       <button data-context-bridge-command="Layer 16 görsel kurallarını çıkar">Layer 16 görsel kurallarını çıkar</button>
+    </div>
+    <h2>Device Bridge</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/device-bridge-status">Device Bridge Status</button>
+      <button data-endpoint="/device-bridge/schema">Device Bridge Schema</button>
+    </div>
+    <div class="bar">
+      <button data-device-bridge-command="Telefondan bilgisayardaki Lux oturumunu yönet">Telefondan bilgisayardaki Lux oturumunu yönet</button>
+      <button data-device-bridge-command="YouTube videosunu takip et ve not çıkar">YouTube videosunu takip et ve not çıkar</button>
+      <button data-device-bridge-command="Canlı yayından tek sayfalık rapor hazırla">Canlı yayından tek sayfalık rapor hazırla</button>
+      <button data-device-bridge-command="Videoyu 20 saniye geri al ve devam et">Videoyu 20 saniye geri al ve devam et</button>
+      <button data-device-bridge-command="Notları temizle PDF'e hazırla">Notları temizle PDF'e hazırla</button>
+      <button data-device-bridge-command="Mail olarak göndermeye hazırla ama gönderme">Mail olarak göndermeye hazırla ama gönderme</button>
+      <button data-device-bridge-command="Yakındaki yazıcıdan çıktı almaya hazırla">Yakındaki yazıcıdan çıktı almaya hazırla</button>
+      <button data-device-bridge-command="Bilgisayarda açık sayfayı telefondan devam ettir">Bilgisayarda açık sayfayı telefondan devam ettir</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/agent/sample-email">Email Sample</button>
@@ -7994,6 +8043,31 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadDeviceBridgePreview(command) {
+      statusEl.textContent = "Loading device bridge preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/device-bridge/preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            source_device: "debug panel phone command center",
+            target_device: "",
+            surface_type: "",
+            content_type: "",
+            requested_output: "prepared-state preview",
+            risk_level: "normal"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded device bridge preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });
@@ -8130,6 +8204,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-context-bridge-command]").forEach((button) => {
       button.addEventListener("click", () => loadContextBridgePreview(button.dataset.contextBridgeCommand));
+    });
+    document.querySelectorAll("button[data-device-bridge-command]").forEach((button) => {
+      button.addEventListener("click", () => loadDeviceBridgePreview(button.dataset.deviceBridgeCommand));
     });
   </script>
 </body>

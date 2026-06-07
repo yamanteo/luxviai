@@ -1049,6 +1049,9 @@ class SmokeRunner:
         assert "/context-bridge/schema" in html, html[:300]
         assert "/context-bridge/preview" in html, html[:300]
         assert "/debug/context-bridge-status" in html, html[:300]
+        assert "/device-bridge/schema" in html, html[:300]
+        assert "/device-bridge/preview" in html, html[:300]
+        assert "/debug/device-bridge-status" in html, html[:300]
         assert "/luxway/capabilities" in html, html[:300]
         assert "/luxway/preview-command" in html, html[:300]
         assert "/luxway/permission-model" in html, html[:300]
@@ -3081,6 +3084,93 @@ class SmokeRunner:
         preview("Layer 16 gorsel kurallarini cikar", {"scattered_topic_extraction", "topic_specific_retrieval"})
         return "context bridge preview"
 
+    def check_device_bridge_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        schema_response = client.get("/device-bridge/schema")
+        assert schema_response.status_code == 200, schema_response.text
+        schema = schema_response.json()
+        assert schema.get("status") == "device_bridge_schema_ready", schema
+        assert schema.get("read_only") is True, schema
+        assert schema.get("can_execute_now") is False, schema
+        capability_ids = {item.get("id") for item in schema.get("capability_groups", [])}
+        assert {
+            "phone_to_pc_session",
+            "youtube_video_follow",
+            "live_stream_follow",
+            "extract_notes",
+            "one_page_summary",
+            "report_builder",
+            "send_ready_preview",
+            "export_ready_preview",
+            "print_ready_preview",
+            "nearby_printer_preview",
+            "app_handoff_preview",
+        } <= capability_ids, schema
+
+        status_response = client.get("/debug/device-bridge-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("real_device_control_performed") is False, status
+        assert status.get("real_pairing_performed") is False, status
+        assert status.get("real_screen_read_performed") is False, status
+        assert status.get("real_video_read_performed") is False, status
+        assert status.get("real_file_created") is False, status
+        assert status.get("real_export_performed") is False, status
+        assert status.get("real_send_performed") is False, status
+        assert status.get("real_print_performed") is False, status
+        assert status.get("memory_read_performed") is False, status
+        assert status.get("memory_write_performed") is False, status
+
+        def preview(command: str, expected_ids: set[str]) -> dict:
+            response = client.post(
+                "/device-bridge/preview",
+                json={
+                    "command": command,
+                    "source_device": "smoke phone",
+                    "target_device": "",
+                    "surface_type": "",
+                    "content_type": "",
+                    "requested_output": "smoke prepared-state",
+                    "risk_level": "normal",
+                },
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload.get("read_only") is True, payload
+            assert payload.get("can_execute_now") is False, payload
+            assert payload.get("real_device_control_performed") is False, payload
+            assert payload.get("real_pairing_performed") is False, payload
+            assert payload.get("real_screen_read_performed") is False, payload
+            assert payload.get("real_video_read_performed") is False, payload
+            assert payload.get("real_file_created") is False, payload
+            assert payload.get("real_export_performed") is False, payload
+            assert payload.get("real_send_performed") is False, payload
+            assert payload.get("real_print_performed") is False, payload
+            assert payload.get("memory_read_performed") is False, payload
+            assert payload.get("memory_write_performed") is False, payload
+            detected = set(payload.get("detected_bridge_intent", {}).get("capability_ids", []))
+            assert expected_ids & detected, payload
+            assert payload.get("safe_device_plan", {}).get("steps"), payload
+            assert payload.get("prepared_state", {}).get("file_created") is False, payload
+            return payload
+
+        preview("YouTube videosunu takip et ve not cikar", {"youtube_video_follow", "extract_notes"})
+        preview("Canli yayindan tek sayfalik rapor hazirla", {"live_stream_follow", "one_page_summary", "report_builder"})
+        preview("Mail olarak gondermeye hazirla ama gonderme", {"send_ready_preview"})
+        preview("Yakindaki yazicidan cikti almaya hazirla", {"print_ready_preview", "nearby_printer_preview"})
+        preview("Telefondan bilgisayardaki Lux oturumunu yonet", {"phone_to_pc_session"})
+        preview("Bilgisayarda acik sayfayi telefondan devam ettir", {"app_handoff_preview", "browser_surface"})
+        return "device bridge preview"
+
     def check_live_server_health(self) -> str:
         base_url = os.environ.get("SMOKE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         try:
@@ -3170,6 +3260,7 @@ class SmokeRunner:
             ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview),
             ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview),
             ("context_bridge_preview", self.check_context_bridge_preview),
+            ("device_bridge_preview", self.check_device_bridge_preview),
             ("luxway_capability_preview", self.check_luxway_capability_preview),
             ("luxway_permission_model_preview", self.check_luxway_permission_model_preview),
             ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview),
