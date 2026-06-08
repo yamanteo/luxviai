@@ -4381,6 +4381,21 @@ function mergeContinuationText(baseText, incomingFullText) {
   return appendMergedText(base, trimRepeatedContinuationStart(base, incoming));
 }
 
+function armContinuationSuffix(baseText, generatedAnswerBuffer) {
+  const base = String(baseText || "").trim();
+  const full = String(generatedAnswerBuffer || "").trim();
+  if (!base || !full || full.length <= base.length) return "";
+  if (full.startsWith(base)) return full.slice(base.length);
+
+  const untrimmedBase = String(baseText || "");
+  const untrimmedFull = String(generatedAnswerBuffer || "");
+  if (untrimmedBase && untrimmedFull.startsWith(untrimmedBase) && untrimmedFull.length > untrimmedBase.length) {
+    return untrimmedFull.slice(untrimmedBase.length);
+  }
+
+  return "";
+}
+
 function showMiniToast(text) {
   if (!toastMini) return;
   toastMini.innerText = text || "";
@@ -4449,10 +4464,6 @@ async function continueInterruptedResponse(targetAiEl) {
     return;
   }
   markRunStarted(continueRunId);
-  const resumeContext = cleanBaseText.slice(-1200);
-  const continuationBoundary = analyzeContinuationBoundary(cleanBaseText);
-  const boundaryInstruction = buildContinuationBoundaryInstruction(continuationBoundary);
-  const bridgeMessage = `${continuePromptText()}\n\nKullanıcının önceki isteği: ${state.userText || ""}\nEkranda zaten görünen metin, aynen korunacak:\n${resumeContext}\n\nKesilme analizi:\n${boundaryInstruction || "Belirgin liste/cümle sınırı yok; son görünen metnin doğal devamını üret."}\n\nSadece bu metne eklenecek devam kısmını üret. Ekrandaki metni tekrar yazma. Baştan alma, aynı maddeyi/başlığı/cümleyi tekrar etme. Madde/listede kaldıysan bir sonraki madde veya tamamlanmamış cümlenin devamından sürdür. Eğer metin yarım bir isim/kelime ile bitiyorsa önce onu doğal biçimde tamamla, sonra sonraki maddeye geç.`;
   stopStreamRequested = false;
   setResponseLock(true);
   const writer = createPacedWriter(targetAiEl, 0.9, continueRunId);
@@ -4460,6 +4471,41 @@ async function continueInterruptedResponse(targetAiEl) {
   activeGeneration = { runId: continueRunId, conversationId, messageEl: targetAiEl, writer, kind: "continue" };
   setPendingState({ conversationId, runId: continueRunId, kind: "continue" });
   writer.setExact(cleanBaseText);
+  const armSuffix = armContinuationSuffix(cleanBaseText, state.generatedAnswerBuffer);
+  if (armSuffix) {
+    try {
+      writer.push(armSuffix);
+      await writer.waitIdle();
+      if (!isRunActive(continueRunId)) {
+        setPendingState(null);
+        return;
+      }
+      const fullArmText = String(state.generatedAnswerBuffer || "").trim();
+      if (fullArmText && targetAiEl.innerText !== fullArmText) {
+        forceFinalVisibleText(writer, targetAiEl, fullArmText, continueRunId);
+      }
+      addMessageToHistoryForConversation(conversationId, "assistant", targetAiEl.innerText || fullArmText);
+      setPendingState(null);
+      clearInterruptedState(true);
+      resetTypingSignals();
+      return;
+    } catch (_) {
+      setPendingState(null);
+      discardLateOutput(continueRunId, "arm_continue_catch");
+    } finally {
+      if (activeGeneration && activeGeneration.runId === continueRunId) {
+        activeGeneration = null;
+        if (activeRunId === continueRunId) activeRunId = null;
+        if (activeRunState && activeRunState.id === continueRunId) activeRunState = null;
+        setResponseLock(false);
+      }
+    }
+    return;
+  }
+  const resumeContext = cleanBaseText.slice(-1200);
+  const continuationBoundary = analyzeContinuationBoundary(cleanBaseText);
+  const boundaryInstruction = buildContinuationBoundaryInstruction(continuationBoundary);
+  const bridgeMessage = `${continuePromptText()}\n\nKullanıcının önceki isteği: ${state.userText || ""}\nEkranda zaten görünen metin, aynen korunacak:\n${resumeContext}\n\nKesilme analizi:\n${boundaryInstruction || "Belirgin liste/cümle sınırı yok; son görünen metnin doğal devamını üret."}\n\nSadece bu metne eklenecek devam kısmını üret. Ekrandaki metni tekrar yazma. Baştan alma, aynı maddeyi/başlığı/cümleyi tekrar etme. Madde/listede kaldıysan bir sonraki madde veya tamamlanmamış cümlenin devamından sürdür. Eğer metin yarım bir isim/kelime ile bitiyorsa önce onu doğal biçimde tamamla, sonra sonraki maddeye geç.`;
   let continuedRawText = "";
   const applyContinueChunk = (chunk) => {
     if (!isRunActive(continueRunId)) return;
@@ -4679,6 +4725,9 @@ async function sendMessageLive(customText) {
       const partialText = (writer && typeof writer.visibleText === "function")
         ? writer.visibleText()
         : (aiDiv.innerText || "");
+      const generatedAnswerBuffer = (writer && typeof writer.expectedText === "function")
+        ? writer.expectedText()
+        : partialText;
       writer.stop();
       hardCancelActiveTransport(runId, true);
       const safePartialText = cleanInterruptedPartialText(partialText);
@@ -4691,6 +4740,7 @@ async function sendMessageLive(customText) {
           mode: currentMode,
           userText: text,
           partialText: safePartialText || aiDiv.innerText || "",
+          generatedAnswerBuffer,
           messageEl: aiDiv
         };
       } else {

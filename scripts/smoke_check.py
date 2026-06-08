@@ -356,6 +356,10 @@ class SmokeRunner:
         assert "lastNumber" in html
         assert "nextNumber" in html
         assert "safePartialText" in html
+        assert "generatedAnswerBuffer" in html
+        assert "function armContinuationSuffix" in html
+        assert "const armSuffix = armContinuationSuffix(cleanBaseText, state.generatedAnswerBuffer)" in html
+        assert "writer.push(armSuffix)" in html
         assert "resumeUnavailableFallback" in html
         assert "Ekranda zaten görünen metin, aynen korunacak" in html
         assert "interruptedState && isContinueCommand(text)" in html
