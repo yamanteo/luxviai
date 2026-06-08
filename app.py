@@ -69,6 +69,11 @@ from repeated_pattern_detector_preview import (
     repeated_pattern_registry,
     repeated_pattern_status,
 )
+from investigation_starter_preview import (
+    build_investigation_starter_preview,
+    investigation_starter_registry,
+    investigation_starter_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -714,6 +719,13 @@ class RepeatedPatternPreviewRequest(BaseModel):
     pattern_name: Optional[str] = Field(default=None, max_length=120)
     command: str = Field(default="", max_length=2000)
     issue_title: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class InvestigationStarterPreviewRequest(BaseModel):
+    issue_title: Optional[str] = Field(default=None, max_length=200)
+    symptom: str = Field(default="", max_length=2000)
+    command: str = Field(default="", max_length=2000)
     related_layer: Optional[str] = Field(default=None, max_length=120)
 
 
@@ -7832,6 +7844,26 @@ async def debug_repeated_pattern_preview(payload: RepeatedPatternPreviewRequest)
     )
 
 
+@app.get("/debug/investigation-starter-status")
+async def debug_investigation_starter_status():
+    return investigation_starter_status()
+
+
+@app.get("/debug/investigation-starter-registry")
+async def debug_investigation_starter_registry():
+    return investigation_starter_registry()
+
+
+@app.post("/debug/investigation-starter-preview")
+async def debug_investigation_starter_preview(payload: InvestigationStarterPreviewRequest):
+    return build_investigation_starter_preview(
+        issue_title=payload.issue_title,
+        symptom=payload.symptom,
+        command=payload.command,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8622,6 +8654,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/knowledge-extractor-registry">Knowledge Extractor Kayıt</button>
       <button data-endpoint="/debug/repeated-pattern-status">Repeated Pattern Durum</button>
       <button data-endpoint="/debug/repeated-pattern-registry">Repeated Pattern Kayıt</button>
+      <button data-endpoint="/debug/investigation-starter-status">Investigation Starter Durum</button>
+      <button data-endpoint="/debug/investigation-starter-registry">Investigation Starter Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -8639,6 +8673,12 @@ async def debug_agent_panel():
       <button data-repeated-pattern="state_source_conflict">Desen: state_source_conflict</button>
       <button data-repeated-pattern="event_leak">Desen: event_leak</button>
       <button data-repeated-pattern="permission_conflict">Desen: permission_conflict</button>
+    </div>
+    <div class="bar">
+      <button data-investigation-starter-command="stop continue ikinci devam calismiyor" data-investigation-starter-title="stop_continue">Başlangıç: Stop/Continue</button>
+      <button data-investigation-starter-command="workspace export dosya yazma riski" data-investigation-starter-title="workspace_export">Başlangıç: Workspace Export</button>
+      <button data-investigation-starter-command="websocket stream tab degisiminde duruyor" data-investigation-starter-title="websocket_stream">Başlangıç: Websocket</button>
+      <button data-investigation-starter-command="luxway izin akisi karisiyor" data-investigation-starter-title="luxway_permission">Başlangıç: Luxway izin</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -9641,6 +9681,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadInvestigationStarterPreview(issueTitle, command) {
+      statusEl.textContent = "Loading investigation starter preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/investigation-starter-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            issue_title: issueTitle,
+            symptom: command,
+            command,
+            related_layer: ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded investigation starter preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -9961,6 +10023,12 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-repeated-pattern]").forEach((button) => {
       button.addEventListener("click", () => loadRepeatedPatternPreview(button.dataset.repeatedPattern));
+    });
+    document.querySelectorAll("button[data-investigation-starter-command]").forEach((button) => {
+      button.addEventListener("click", () => loadInvestigationStarterPreview(
+        button.dataset.investigationStarterTitle,
+        button.dataset.investigationStarterCommand
+      ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));

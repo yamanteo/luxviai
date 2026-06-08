@@ -11,6 +11,7 @@ from investigation_context_preview import build_investigation_context_preview
 from investigation_timeline_preview import build_investigation_timeline_preview
 from knowledge_extractor_preview import build_knowledge_extractor_preview
 from repeated_pattern_detector_preview import build_repeated_pattern_preview, repeated_pattern_registry
+from investigation_starter_preview import build_investigation_starter_preview, investigation_starter_registry
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -430,6 +431,29 @@ def _fault_report_repeated_patterns() -> List[Dict[str, Any]]:
     return output
 
 
+def _fault_report_investigation_starters() -> List[Dict[str, Any]]:
+    registry = investigation_starter_registry()
+    starters = registry.get("starters", [])
+    output: List[Dict[str, Any]] = []
+    for starter in starters[:4]:
+        preview = build_investigation_starter_preview(
+            issue_title=str(starter.get("id", "")),
+            command=str(starter.get("id", "")),
+        )
+        output.append(
+            {
+                "issue_title": preview.get("issue_title"),
+                "similar_previous_issues": preview.get("similar_previous_issues", []),
+                "recommended_starting_checks": preview.get("recommended_starting_checks", []),
+                "recommended_layers": preview.get("recommended_layers", []),
+                "recommended_files": preview.get("recommended_files", []),
+                "recommended_tests": preview.get("recommended_tests", []),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -752,6 +776,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "resolved_issues": [_attach_knowledge_preview(_attach_timeline_preview(dict(item))) for item in RESOLVED_ISSUES],
             "issue_archive": ARCHIVE,
             "repeated_patterns": _fault_report_repeated_patterns(),
+            "investigation_starters": _fault_report_investigation_starters(),
         },
         "related_integrations": {
             "future_ready": [
@@ -826,6 +851,7 @@ def build_fault_report_preview(
             "resolved_issues": filtered_resolved,
             "issue_archive": ARCHIVE[:2],
             "repeated_patterns": _fault_report_repeated_patterns(),
+            "investigation_starters": _fault_report_investigation_starters(),
         },
         "fallback_used": fallback,
         "read_only": True,

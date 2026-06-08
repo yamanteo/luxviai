@@ -120,6 +120,9 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/repeated-pattern-status", "GET", "24.5", "repeated pattern status"),
         _endpoint("/debug/repeated-pattern-registry", "GET", "24.5", "repeated pattern registry"),
         _endpoint("/debug/repeated-pattern-preview", "POST", "24.5", "repeated pattern preview"),
+        _endpoint("/debug/investigation-starter-status", "GET", "24.6", "investigation starter status"),
+        _endpoint("/debug/investigation-starter-registry", "GET", "24.6", "investigation starter registry"),
+        _endpoint("/debug/investigation-starter-preview", "POST", "24.6", "investigation starter preview"),
     ],
 }
 
