@@ -41,6 +41,7 @@ from context_bridge_preview import context_bridge_schema, context_bridge_status,
 from codex_handoff_builder_preview import build_codex_handoff_preview, codex_handoff_registry, codex_handoff_status
 from cost_privacy_policy import cost_privacy_policy, preview_cost_privacy
 from credit_saver_engine import credit_saver_registry, credit_saver_status, build_credit_saver_preview
+from debug_intelligence_core import intelligence_registry, intelligence_status, build_intelligence_preview as intelligence_preview
 from device_bridge_preview import device_bridge_schema, device_bridge_status, preview_device_bridge
 from drive_mode_preview import drive_mode_schema, drive_mode_status, preview_drive_mode
 from emotional_reflection_support import emotional_reflection_registry, emotional_status, preview_emotional_reflection
@@ -617,6 +618,14 @@ class CodexHandoffPreviewRequest(BaseModel):
 
 
 class BugIntakePreviewRequest(BaseModel):
+    behavior: Optional[str] = Field(default=None, max_length=80)
+    symptom: str = Field(default="", max_length=2000)
+    expected_result: str = Field(default="", max_length=2000)
+    actual_result: str = Field(default="", max_length=2000)
+    command: str = Field(default="", max_length=2000)
+
+
+class IntelligencePreviewRequest(BaseModel):
     behavior: Optional[str] = Field(default=None, max_length=80)
     symptom: str = Field(default="", max_length=2000)
     expected_result: str = Field(default="", max_length=2000)
@@ -7572,6 +7581,27 @@ async def debug_credit_saver_registry():
 @app.post("/debug/credit-saver-preview")
 async def debug_credit_saver_preview(payload: CreditSaverPreviewRequest):
     return build_credit_saver_preview(
+        behavior=payload.behavior,
+        symptom=payload.symptom,
+        expected_result=payload.expected_result,
+        actual_result=payload.actual_result,
+        command=payload.command,
+    )
+
+
+@app.get("/debug/intelligence-status")
+async def debug_intelligence_status():
+    return intelligence_status()
+
+
+@app.get("/debug/intelligence-registry")
+async def debug_intelligence_registry():
+    return intelligence_registry()
+
+
+@app.post("/debug/intelligence-preview")
+async def debug_intelligence_preview(payload: IntelligencePreviewRequest):
+    return intelligence_preview(
         behavior=payload.behavior,
         symptom=payload.symptom,
         expected_result=payload.expected_result,

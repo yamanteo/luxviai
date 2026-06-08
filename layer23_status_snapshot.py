@@ -20,6 +20,9 @@ def layer23_status_snapshot() -> Dict[str, Any]:
         "/debug/credit-saver-status",
         "/debug/credit-saver-registry",
         "/debug/credit-saver-preview",
+        "/debug/intelligence-status",
+        "/debug/intelligence-registry",
+        "/debug/intelligence-preview",
         "/debug/layer23-status",
     ]
     completed_parts = [
@@ -28,6 +31,7 @@ def layer23_status_snapshot() -> Dict[str, Any]:
         "codex_handoff_builder",
         "bug_intake_investigation_planner",
         "credit_saver_engine",
+        "debug_intelligence_core",
     ]
     return {
         "layer": "23",
@@ -59,7 +63,7 @@ def layer23_status_snapshot() -> Dict[str, Any]:
         "real_fix_performed": False,
         "chat_stream_touched": False,
         "typewriter_runtime_touched": False,
-        "next_recommended_layer": "23.6 regression memory-free diagnosis preview",
+        "next_recommended_layer": "23.7 debug intelligence memory graph integration",
         "future_direction": [
             "23.5 credit saver engine",
             "23.6 regression memory-free diagnosis preview",

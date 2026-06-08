@@ -3265,6 +3265,80 @@ class SmokeRunner:
         assert preview.get("auto_fix_performed") is False, preview
         return "credit saver engine preview"
 
+    def check_debug_intelligence_core_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        status_response = client.get("/debug/intelligence-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "23.6", status
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("name") == "Debug Intelligence Core Preview", status
+        assert status.get("read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("file_write_performed") is False, status
+        assert status.get("memory_write_performed") is False, status
+        assert status.get("db_write_performed") is False, status
+        assert status.get("git_write_performed") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("real_fix_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+        completed_parts = set(status.get("completed_parts", []))
+        assert {"root_flow_auditor", "safe_self_check_runner", "codex_handoff_builder", "bug_intake_investigation_planner", "credit_saver_engine", "debug_intelligence_core"} <= completed_parts, status
+
+        registry_response = client.get("/debug/intelligence-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "23.6", registry
+        assert registry.get("status") == "registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("analysis_only") is True, registry
+        behavior_categories = set(registry.get("behavior_categories", []))
+        assert {"stop_continue", "stream", "websocket", "workspace", "visual", "ui"} <= behavior_categories, registry
+        assert registry.get("connected_components"), registry
+
+        preview_response = client.post(
+            "/debug/intelligence-preview",
+            json={
+                "behavior": "stop_continue",
+                "symptom": "devam et sadece bir kere çalışıyor",
+                "expected_result": "birden fazla dur/devam döngüsü çalışmalı ve listedeki sonraki maddeler tamamlanmalı",
+                "actual_result": "ikinci devam et isteğinde düğme görünmüyor",
+                "command": "Bana 10 maddelik liste yaz, dur deyince devam et",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("behavior") == "stop_continue", preview
+        assert preview.get("anomaly_detected") is True, preview
+        assert preview.get("investigation_recommended") is True, preview
+        assert preview.get("repeated_failure_detected") is True, preview
+        assert preview.get("risk_level") in {"low", "medium", "high", "critical"}, preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("recommended_checks", []), list), preview
+        assert preview.get("recommended_next_step"), preview
+        assert preview.get("recommended_layer"), preview
+        assert preview.get("root_flow_audit"), preview
+        assert preview.get("self_check_preview"), preview
+        assert preview.get("bug_intake_preview"), preview
+        assert preview.get("codex_handoff_preview"), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("real_fix_performed") is False, preview
+
+        return "debug intelligence core preview"
+
     def check_layer23_status_snapshot(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3287,6 +3361,7 @@ class SmokeRunner:
             "codex_handoff_builder",
             "bug_intake_investigation_planner",
             "credit_saver_engine",
+            "debug_intelligence_core",
         } <= completed, payload
         endpoints = set(payload.get("available_endpoints", []))
         assert "/debug/root-flow-auditor-status" in endpoints, payload
@@ -3296,6 +3371,9 @@ class SmokeRunner:
         assert "/debug/credit-saver-status" in endpoints, payload
         assert "/debug/credit-saver-registry" in endpoints, payload
         assert "/debug/credit-saver-preview" in endpoints, payload
+        assert "/debug/intelligence-status" in endpoints, payload
+        assert "/debug/intelligence-registry" in endpoints, payload
+        assert "/debug/intelligence-preview" in endpoints, payload
         assert "/debug/layer23-status" in endpoints, payload
         assert payload.get("read_only") is True, payload
         assert payload.get("analysis_only") is True, payload
@@ -3321,7 +3399,7 @@ class SmokeRunner:
         assert payload.get("typewriter_runtime_touched") is False, payload
         assert payload.get("next_recommended_layer"), payload
         future = " ".join(str(item).lower() for item in payload.get("future_direction", []))
-        assert "23.5" in future, payload
+        assert "23.6" in future, payload
 
         return "layer 23 status snapshot"
 
@@ -5189,6 +5267,7 @@ class SmokeRunner:
             ("codex_handoff_builder_preview", self.check_codex_handoff_builder_preview),
             ("bug_intake_investigation_planner_preview", self.check_bug_intake_investigation_planner_preview),
             ("credit_saver_engine_preview", self.check_credit_saver_engine_preview),
+            ("debug_intelligence_core_preview", self.check_debug_intelligence_core_preview),
             ("layer23_status_snapshot", self.check_layer23_status_snapshot),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
