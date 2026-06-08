@@ -360,6 +360,10 @@ class SmokeRunner:
         assert "function armContinuationSuffix" in html
         assert "const armSuffix = armContinuationSuffix(cleanBaseText, state.generatedAnswerBuffer)" in html
         assert "writer.push(armSuffix)" in html
+        assert "align-self: flex-end" in html
+        assert "margin: 8px 0 18px auto" in html
+        assert "const previousBuffer = String(state.generatedAnswerBuffer || \"\")" in html
+        assert "appendResumeButton(targetAiEl)" in html
         assert "resumeUnavailableFallback" in html
         assert "Ekranda zaten görünen metin, aynen korunacak" in html
         assert "interruptedState && isContinueCommand(text)" in html

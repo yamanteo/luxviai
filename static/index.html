@@ -333,10 +333,8 @@ body.luxta-mode .msg.ai { color: #F2EBDD; }
 .resume-btn {
   display: inline-flex;
   align-items: center;
-  position: sticky;
-  bottom: 110px;
-  z-index: 12;
-  margin: 8px 0 18px 0;
+  align-self: flex-end;
+  margin: 8px 0 18px auto;
   padding: 6px 12px;
   border: 1px solid rgba(237,145,7,.44);
   border-radius: 999px;
@@ -349,9 +347,6 @@ body.luxta-mode .msg.ai { color: #F2EBDD; }
   white-space: nowrap;
 }
 .resume-btn:hover { color: #ED9107; border-color: #ED9107; }
-@media (min-width: 721px) {
-  .resume-btn { margin-left: 200px; }
-}
 .toast-mini {
   position: fixed;
   left: 50%;
@@ -4471,6 +4466,42 @@ async function continueInterruptedResponse(targetAiEl) {
   activeGeneration = { runId: continueRunId, conversationId, messageEl: targetAiEl, writer, kind: "continue" };
   setPendingState({ conversationId, runId: continueRunId, kind: "continue" });
   writer.setExact(cleanBaseText);
+  streamAbort = (options = {}) => {
+    if (!activeGeneration || activeGeneration.runId !== continueRunId) return;
+    const shouldShowResume = options.showResume !== false;
+    const partialText = (writer && typeof writer.visibleText === "function")
+      ? writer.visibleText()
+      : (targetAiEl.innerText || "");
+    const expectedText = (writer && typeof writer.expectedText === "function")
+      ? writer.expectedText()
+      : partialText;
+    const previousBuffer = String(state.generatedAnswerBuffer || "");
+    const generatedAnswerBuffer = previousBuffer && previousBuffer.length >= expectedText.length
+      ? previousBuffer
+      : expectedText;
+    writer.stop();
+    hardCancelActiveTransport(continueRunId, true);
+    const safePartialText = cleanInterruptedPartialText(partialText);
+    if (safePartialText) targetAiEl.innerText = safePartialText;
+    else if (!targetAiEl.innerText.trim()) targetAiEl.innerText = stoppedFallback();
+    targetAiEl.dataset.streamState = "cancelled";
+    if (shouldShowResume) {
+      interruptedState = {
+        conversationId,
+        mode: currentMode,
+        userText: state.userText || "",
+        partialText: safePartialText || targetAiEl.innerText || "",
+        generatedAnswerBuffer,
+        messageEl: targetAiEl
+      };
+    } else {
+      interruptedState = null;
+    }
+    setPendingState(null);
+    if (shouldShowResume) appendResumeButton(targetAiEl);
+    else clearInterruptedState(true);
+    activeAiDiv = null;
+  };
   const armSuffix = armContinuationSuffix(cleanBaseText, state.generatedAnswerBuffer);
   if (armSuffix) {
     try {
@@ -4494,6 +4525,7 @@ async function continueInterruptedResponse(targetAiEl) {
       discardLateOutput(continueRunId, "arm_continue_catch");
     } finally {
       if (activeGeneration && activeGeneration.runId === continueRunId) {
+        streamAbort = null;
         activeGeneration = null;
         if (activeRunId === continueRunId) activeRunId = null;
         if (activeRunState && activeRunState.id === continueRunId) activeRunState = null;
@@ -4565,6 +4597,7 @@ async function continueInterruptedResponse(targetAiEl) {
     discardLateOutput(continueRunId, "continue_catch");
   } finally {
     if (activeGeneration && activeGeneration.runId === continueRunId) {
+      streamAbort = null;
       activeGeneration = null;
       if (activeRunId === continueRunId) activeRunId = null;
       if (activeRunState && activeRunState.id === continueRunId) activeRunState = null;
