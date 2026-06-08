@@ -85,6 +85,7 @@ from permission_boundary import preview_permission_boundary
 from pointer_context_preview import pointer_schema, pointer_status, preview_pointer_action
 from production_hardening_registry import backlog_registry, production_hardening_status
 from router_scaffold import preview_router_decision
+from root_flow_auditor_preview import build_codex_fix_plan, build_root_flow_audit, root_flow_auditor_status
 from routing_simulation import preview_routing_simulation
 from safe_memory_retrieval import preview_safe_memory_retrieval, safe_memory_policy
 from system_control_audit import system_control_audit
@@ -579,6 +580,14 @@ class EthicalBoundaryPreviewRequest(BaseModel):
     mode_hint: str = Field(default="", max_length=100)
     user_permission_state: str = Field(default="", max_length=100)
     autonomy_level: str = Field(default="", max_length=100)
+
+
+class RootFlowAuditRequest(BaseModel):
+    command: str = Field(default="", max_length=2000)
+    behavior: Optional[str] = Field(default=None, max_length=80)
+    observed_behavior: Optional[str] = Field(default=None, max_length=2000)
+    expected_behavior: Optional[str] = Field(default=None, max_length=2000)
+    smoke_tests: List[str] = Field(default_factory=list)
 
 
 # =========================================================
@@ -7415,6 +7424,33 @@ async def debug_model_router_full_status():
 @app.get("/debug/production-hardening-status")
 async def debug_production_hardening_status():
     return production_hardening_status()
+
+
+@app.get("/debug/root-flow-auditor-status")
+async def debug_root_flow_auditor_status():
+    return root_flow_auditor_status()
+
+
+@app.post("/debug/root-flow-audit")
+async def debug_root_flow_audit(payload: RootFlowAuditRequest):
+    return build_root_flow_audit(
+        command=payload.command,
+        behavior=payload.behavior,
+        observed_behavior=payload.observed_behavior,
+        expected_behavior=payload.expected_behavior,
+        smoke_tests=payload.smoke_tests,
+    )
+
+
+@app.post("/debug/codex-fix-plan")
+async def debug_codex_fix_plan(payload: RootFlowAuditRequest):
+    return build_codex_fix_plan(
+        command=payload.command,
+        behavior=payload.behavior,
+        observed_behavior=payload.observed_behavior,
+        expected_behavior=payload.expected_behavior,
+        smoke_tests=payload.smoke_tests,
+    )
 
 
 @app.get("/debug/backlog-registry")

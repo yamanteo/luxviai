@@ -2756,6 +2756,97 @@ class SmokeRunner:
 
         return "production hardening backlog registry"
 
+    def check_root_flow_auditor_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        status_response = client.get("/debug/root-flow-auditor-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "23.1", status
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("file_write_performed") is False, status
+        assert status.get("memory_write_performed") is False, status
+        assert status.get("db_write_performed") is False, status
+        assert status.get("git_performed") is False, status
+        assert status.get("commit_performed") is False, status
+        assert status.get("push_performed") is False, status
+        assert status.get("deploy_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+        owners = status.get("behavior_owners", {})
+        assert owners.get("stop_continue", {}).get("owner") == "Lux ARM", owners
+        assert owners.get("workspace_export", {}).get("owner") == "Export Core", owners
+        assert owners.get("visual_scene", {}).get("owner") == "Scene Lock", owners
+        assert owners.get("luxway_action", {}).get("owner") == "Permission Boundary", owners
+        assert owners.get("model_routing", {}).get("owner") == "Router Core", owners
+        categories = set(status.get("root_cause_categories", []))
+        assert {"duplicate_branch", "stale_fallback", "state_source_conflict", "event_leak", "incomplete_test_coverage"} <= categories, status
+
+        audit_response = client.post(
+            "/debug/root-flow-audit",
+            json={
+                "command": "stop continue ARM list repeats after item 3",
+                "behavior": "stop_continue",
+                "observed_behavior": "late final block appears and resume restarts",
+                "expected_behavior": "continue item 3 then write items 4-10",
+                "smoke_tests": [],
+            },
+        )
+        assert audit_response.status_code == 200, audit_response.text
+        audit = audit_response.json()
+        assert audit.get("detected_behavior") == "stop_continue", audit
+        assert audit.get("behavior_owner", {}).get("owner") == "Lux ARM", audit
+        root_causes = {item.get("id") for item in audit.get("possible_root_causes", [])}
+        assert "state_source_conflict" in root_causes, audit
+        assert "event_leak" in root_causes, audit
+        assert "incomplete_test_coverage" in root_causes, audit
+        assert "app.py" in audit.get("recommended_files", []), audit
+        assert "static/index.html" in audit.get("recommended_files", []), audit
+        assert audit.get("manual_tests"), audit
+        smoke = audit.get("smoke_gap_detector", {})
+        assert "Bu davranışı doğrulayan smoke testi var mı?" in smoke.get("question", ""), smoke
+        assert smoke.get("missing_smoke_coverage"), smoke
+        assert audit.get("risk_level") == "high", audit
+        assert audit.get("confidence_score", 0) > 0, audit
+        assert audit.get("read_only") is True, audit
+        assert audit.get("file_write_performed") is False, audit
+        assert audit.get("git_performed") is False, audit
+        assert audit.get("deploy_performed") is False, audit
+
+        plan_response = client.post(
+            "/debug/codex-fix-plan",
+            json={
+                "command": "stop continue ARM list repeats after item 3",
+                "behavior": "stop_continue",
+                "observed_behavior": "resume restarts or only completes one word",
+                "expected_behavior": "complete item 3 and continue numbered items",
+            },
+        )
+        assert plan_response.status_code == 200, plan_response.text
+        plan = plan_response.json()
+        assert plan.get("plan_id") == "codex_fix_plan_stop_continue", plan
+        plan_text = " ".join(str(item).lower() for item in plan.get("technical_plan", []))
+        assert "lux arm" in plan_text, plan
+        assert "late stream" in plan_text or "websocket" in plan_text or "event guards" in plan_text, plan
+        assert "10 item list" in plan_text, plan
+        assert plan.get("read_only") is True, plan
+        assert plan.get("file_write_performed") is False, plan
+        assert plan.get("memory_write_performed") is False, plan
+        assert plan.get("db_write_performed") is False, plan
+        assert plan.get("git_performed") is False, plan
+        assert plan.get("commit_performed") is False, plan
+        assert plan.get("push_performed") is False, plan
+        assert plan.get("deploy_performed") is False, plan
+
+        return "root flow auditor preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4615,6 +4706,7 @@ class SmokeRunner:
             ("routing_simulation_preview", self.check_routing_simulation_preview),
             ("model_router_full_status_snapshot", self.check_model_router_full_status_snapshot),
             ("production_hardening_backlog_registry", self.check_production_hardening_backlog_registry),
+            ("root_flow_auditor_preview", self.check_root_flow_auditor_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
