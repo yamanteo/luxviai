@@ -3171,6 +3171,100 @@ class SmokeRunner:
 
         return "bug intake investigation planner preview"
 
+    def check_credit_saver_engine_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        status_response = client.get("/debug/credit-saver-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "23.5", status
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("name") == "Credit Saver Engine Preview", status
+        assert status.get("read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("git_write_enabled") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("root_flow_auditor_connected") is True, status
+        assert status.get("self_check_connected") is True, status
+        assert status.get("handoff_connected") is True, status
+        assert status.get("bug_intake_connected") is True, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+        assert status.get("real_fix_performed") is False, status
+        assert status.get("file_write_performed") is False, status
+        assert status.get("memory_write_performed") is False, status
+        assert status.get("db_write_performed") is False, status
+        assert status.get("git_write_performed") is False, status
+        assert status.get("commit_performed") is False, status
+        assert status.get("push_performed") is False, status
+        assert status.get("deploy_performed") is False, status
+
+        registry_response = client.get("/debug/credit-saver-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "23.5", registry
+        assert registry.get("status") == "registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("analysis_only") is True, registry
+        assert {"typo", "missing_helper", "duplicate_branch", "stream_refactor", "architecture_redesign"} <= set(
+            registry.get("supported_bug_categories", [])
+        ), registry
+        paths = {item.get("id") for item in registry.get("supported_paths", [])}
+        assert {"lux_only", "lux_first_then_codex", "codex_direct", "manual_investigation_first"} <= paths, registry
+        safety = registry.get("safety_flags", {})
+        assert safety.get("file_write") is False, safety
+        assert safety.get("memory_write") is False, safety
+        assert safety.get("db_write") is False, safety
+        assert safety.get("git_write") is False, safety
+        assert safety.get("auto_fix") is False, safety
+
+        preview_response = client.post(
+            "/debug/credit-saver-preview",
+            json={
+                "behavior": "stop_continue",
+                "symptom": "devam et sadece bir kere çalışıyor",
+                "expected_result": "birden fazla stop/continue döngüsü listeyi bitirmeli",
+                "actual_result": "ikinci devam et isteğinde buton geri gelmiyor",
+                "command": "10 maddelik liste yaz, dur, devam et",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("bug_category") in {"stop_continue", "stream_refactor", "websocket"}, preview
+        assert preview.get("recommended_path") in {"lux_first_then_codex", "codex_direct", "manual_investigation_first"}, preview
+        assert preview.get("estimated_complexity") in {"low", "medium", "high", "critical"}, preview
+        assert preview.get("risk_level") in {"low", "medium", "high", "critical"}, preview
+        assert isinstance(preview.get("confidence_score", 0), (int, float)), preview
+        assert preview.get("estimated_credit_saving", 0) >= 0, preview
+        assert preview.get("lux_can_handle"), preview
+        assert preview.get("codex_needed_for") is not None, preview
+        assert preview.get("recommended_self_checks"), preview
+        assert preview.get("root_flow_audit"), preview
+        assert preview.get("self_check_preview"), preview
+        assert preview.get("codex_handoff_preview"), preview
+        assert preview.get("bug_intake_preview"), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("real_fix_performed") is False, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        return "credit saver engine preview"
+
     def check_layer23_status_snapshot(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3192,12 +3286,16 @@ class SmokeRunner:
             "safe_self_check_runner",
             "codex_handoff_builder",
             "bug_intake_investigation_planner",
+            "credit_saver_engine",
         } <= completed, payload
         endpoints = set(payload.get("available_endpoints", []))
         assert "/debug/root-flow-auditor-status" in endpoints, payload
         assert "/debug/self-check-status" in endpoints, payload
         assert "/debug/codex-handoff-status" in endpoints, payload
         assert "/debug/bug-intake-status" in endpoints, payload
+        assert "/debug/credit-saver-status" in endpoints, payload
+        assert "/debug/credit-saver-registry" in endpoints, payload
+        assert "/debug/credit-saver-preview" in endpoints, payload
         assert "/debug/layer23-status" in endpoints, payload
         assert payload.get("read_only") is True, payload
         assert payload.get("analysis_only") is True, payload
@@ -3221,7 +3319,7 @@ class SmokeRunner:
         assert payload.get("real_fix_performed") is False, payload
         assert payload.get("chat_stream_touched") is False, payload
         assert payload.get("typewriter_runtime_touched") is False, payload
-        assert payload.get("next_recommended_layer") == "bug_intake_investigation_planner", payload
+        assert payload.get("next_recommended_layer"), payload
         future = " ".join(str(item).lower() for item in payload.get("future_direction", []))
         assert "23.5" in future, payload
 
@@ -5090,6 +5188,7 @@ class SmokeRunner:
             ("safe_self_check_runner_preview", self.check_safe_self_check_runner_preview),
             ("codex_handoff_builder_preview", self.check_codex_handoff_builder_preview),
             ("bug_intake_investigation_planner_preview", self.check_bug_intake_investigation_planner_preview),
+            ("credit_saver_engine_preview", self.check_credit_saver_engine_preview),
             ("layer23_status_snapshot", self.check_layer23_status_snapshot),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),

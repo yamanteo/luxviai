@@ -17,6 +17,9 @@ def layer23_status_snapshot() -> Dict[str, Any]:
         "/debug/bug-intake-status",
         "/debug/bug-intake-registry",
         "/debug/bug-intake-preview",
+        "/debug/credit-saver-status",
+        "/debug/credit-saver-registry",
+        "/debug/credit-saver-preview",
         "/debug/layer23-status",
     ]
     completed_parts = [
@@ -24,6 +27,7 @@ def layer23_status_snapshot() -> Dict[str, Any]:
         "safe_self_check_runner",
         "codex_handoff_builder",
         "bug_intake_investigation_planner",
+        "credit_saver_engine",
     ]
     return {
         "layer": "23",
@@ -55,12 +59,12 @@ def layer23_status_snapshot() -> Dict[str, Any]:
         "real_fix_performed": False,
         "chat_stream_touched": False,
         "typewriter_runtime_touched": False,
-        "next_recommended_layer": "bug_intake_investigation_planner",
+        "next_recommended_layer": "23.6 regression memory-free diagnosis preview",
         "future_direction": [
-            "23.4 bug intake investigation planner",
-            "23.5 targeted manual scenario planner",
+            "23.5 credit saver engine",
             "23.6 regression memory-free diagnosis preview",
             "future Lux Dev Agent handoff automation",
+            "future cost-aware execution planning",
         ],
         "safety_note": "Layer 23 status only. No code modification, file write, git write, deploy, auto-fix, memory write, or db write is performed.",
     }
