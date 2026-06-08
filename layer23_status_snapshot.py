@@ -1,0 +1,62 @@
+from __future__ import annotations
+
+from typing import Any, Dict
+
+
+def layer23_status_snapshot() -> Dict[str, Any]:
+    available_endpoints = [
+        "/debug/root-flow-auditor-status",
+        "/debug/root-flow-audit",
+        "/debug/codex-fix-plan",
+        "/debug/self-check-status",
+        "/debug/self-check-registry",
+        "/debug/self-check-preview",
+        "/debug/codex-handoff-status",
+        "/debug/codex-handoff-registry",
+        "/debug/codex-handoff-preview",
+        "/debug/layer23-status",
+    ]
+    completed_parts = [
+        "root_flow_auditor",
+        "safe_self_check_runner",
+        "codex_handoff_builder",
+    ]
+    return {
+        "layer": "23",
+        "name": "Debug Intelligence Core",
+        "layer23_status": "active",
+        "status": "debug_intelligence_ready",
+        "debug_intelligence_enabled": True,
+        "completed_parts": completed_parts,
+        "available_endpoints": available_endpoints,
+        "read_only": True,
+        "analysis_only": True,
+        "can_modify_code": False,
+        "can_commit": False,
+        "can_push": False,
+        "can_deploy": False,
+        "can_auto_fix": False,
+        "file_write_enabled": False,
+        "memory_write_enabled": False,
+        "db_write_enabled": False,
+        "git_write_enabled": False,
+        "auto_fix_enabled": False,
+        "file_write_performed": False,
+        "memory_write_performed": False,
+        "db_write_performed": False,
+        "git_write_performed": False,
+        "commit_performed": False,
+        "push_performed": False,
+        "deploy_performed": False,
+        "real_fix_performed": False,
+        "chat_stream_touched": False,
+        "typewriter_runtime_touched": False,
+        "next_recommended_layer": "bug_intake_investigation_planner",
+        "future_direction": [
+            "23.4 bug intake investigation planner",
+            "23.5 targeted manual scenario planner",
+            "23.6 regression memory-free diagnosis preview",
+            "future Lux Dev Agent handoff automation",
+        ],
+        "safety_note": "Layer 23 status only. No code modification, file write, git write, deploy, auto-fix, memory write, or db write is performed.",
+    }

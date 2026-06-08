@@ -51,6 +51,7 @@ from layer21_status import layer21_status_snapshot
 from layer22_candidate_scoring import candidate_scoring_matrix, layer22_scoring_status, preview_candidate_score
 from layer22_future_candidates import future_candidates_registry, layer22_status_snapshot, preview_future_candidate
 from layer22_status_snapshot import layer22_full_status_snapshot
+from layer23_status_snapshot import layer23_status_snapshot
 from live_readiness_checklist import live_readiness_checklist
 from lux_character_core import build_complete_lux_character_core, lux_character_status_payload
 from master_status_summary import master_status_summary
@@ -7513,6 +7514,11 @@ async def debug_codex_handoff_preview(payload: CodexHandoffPreviewRequest):
         command=payload.command,
         requested_checks=payload.requested_checks,
     )
+
+
+@app.get("/debug/layer23-status")
+async def debug_layer23_status():
+    return layer23_status_snapshot()
 
 
 @app.get("/debug/backlog-registry")

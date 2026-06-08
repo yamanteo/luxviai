@@ -3067,6 +3067,60 @@ class SmokeRunner:
 
         return "codex handoff builder preview"
 
+    def check_layer23_status_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/debug/layer23-status")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload.get("layer") == "23", payload
+        assert payload.get("layer23_status") == "active", payload
+        assert payload.get("status") == "debug_intelligence_ready", payload
+        assert payload.get("debug_intelligence_enabled") is True, payload
+        completed = set(payload.get("completed_parts", []))
+        assert {
+            "root_flow_auditor",
+            "safe_self_check_runner",
+            "codex_handoff_builder",
+        } <= completed, payload
+        endpoints = set(payload.get("available_endpoints", []))
+        assert "/debug/root-flow-auditor-status" in endpoints, payload
+        assert "/debug/self-check-status" in endpoints, payload
+        assert "/debug/codex-handoff-status" in endpoints, payload
+        assert "/debug/layer23-status" in endpoints, payload
+        assert payload.get("read_only") is True, payload
+        assert payload.get("analysis_only") is True, payload
+        assert payload.get("can_modify_code") is False, payload
+        assert payload.get("can_commit") is False, payload
+        assert payload.get("can_push") is False, payload
+        assert payload.get("can_deploy") is False, payload
+        assert payload.get("can_auto_fix") is False, payload
+        assert payload.get("file_write_enabled") is False, payload
+        assert payload.get("memory_write_enabled") is False, payload
+        assert payload.get("db_write_enabled") is False, payload
+        assert payload.get("git_write_enabled") is False, payload
+        assert payload.get("auto_fix_enabled") is False, payload
+        assert payload.get("file_write_performed") is False, payload
+        assert payload.get("memory_write_performed") is False, payload
+        assert payload.get("db_write_performed") is False, payload
+        assert payload.get("git_write_performed") is False, payload
+        assert payload.get("commit_performed") is False, payload
+        assert payload.get("push_performed") is False, payload
+        assert payload.get("deploy_performed") is False, payload
+        assert payload.get("real_fix_performed") is False, payload
+        assert payload.get("chat_stream_touched") is False, payload
+        assert payload.get("typewriter_runtime_touched") is False, payload
+        assert payload.get("next_recommended_layer") == "bug_intake_investigation_planner", payload
+        future = " ".join(str(item).lower() for item in payload.get("future_direction", []))
+        assert "23.4" in future, payload
+
+        return "layer 23 status snapshot"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4929,6 +4983,7 @@ class SmokeRunner:
             ("root_flow_auditor_preview", self.check_root_flow_auditor_preview),
             ("safe_self_check_runner_preview", self.check_safe_self_check_runner_preview),
             ("codex_handoff_builder_preview", self.check_codex_handoff_builder_preview),
+            ("layer23_status_snapshot", self.check_layer23_status_snapshot),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
