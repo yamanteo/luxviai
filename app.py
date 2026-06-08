@@ -88,6 +88,7 @@ from router_scaffold import preview_router_decision
 from root_flow_auditor_preview import build_codex_fix_plan, build_root_flow_audit, root_flow_auditor_status
 from routing_simulation import preview_routing_simulation
 from safe_memory_retrieval import preview_safe_memory_retrieval, safe_memory_policy
+from safe_self_check_runner_preview import build_self_check_preview, self_check_registry, self_check_status
 from system_control_audit import system_control_audit
 from workspace_builder_preview import build_workspace_builder_preview
 from workspace_command_parser import parse_workspace_command
@@ -588,6 +589,14 @@ class RootFlowAuditRequest(BaseModel):
     observed_behavior: Optional[str] = Field(default=None, max_length=2000)
     expected_behavior: Optional[str] = Field(default=None, max_length=2000)
     smoke_tests: List[str] = Field(default_factory=list)
+
+
+class SelfCheckPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=2000)
+    behavior: Optional[str] = Field(default=None, max_length=80)
+    observed_behavior: Optional[str] = Field(default=None, max_length=2000)
+    expected_behavior: Optional[str] = Field(default=None, max_length=2000)
+    requested_checks: List[str] = Field(default_factory=list)
 
 
 # =========================================================
@@ -7450,6 +7459,27 @@ async def debug_codex_fix_plan(payload: RootFlowAuditRequest):
         observed_behavior=payload.observed_behavior,
         expected_behavior=payload.expected_behavior,
         smoke_tests=payload.smoke_tests,
+    )
+
+
+@app.get("/debug/self-check-status")
+async def debug_self_check_status():
+    return self_check_status()
+
+
+@app.get("/debug/self-check-registry")
+async def debug_self_check_registry():
+    return self_check_registry()
+
+
+@app.post("/debug/self-check-preview")
+async def debug_self_check_preview(payload: SelfCheckPreviewRequest):
+    return build_self_check_preview(
+        command=payload.command,
+        behavior=payload.behavior,
+        observed_behavior=payload.observed_behavior,
+        expected_behavior=payload.expected_behavior,
+        requested_checks=payload.requested_checks,
     )
 
 

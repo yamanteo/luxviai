@@ -2882,6 +2882,88 @@ class SmokeRunner:
 
         return "root flow auditor preview"
 
+    def check_safe_self_check_runner_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        status_response = client.get("/debug/self-check-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "23.2", status
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("real_check_executed") is False, status
+        assert status.get("file_write_performed") is False, status
+        assert status.get("memory_write_performed") is False, status
+        assert status.get("db_write_performed") is False, status
+        assert status.get("git_write_performed") is False, status
+        assert status.get("commit_performed") is False, status
+        assert status.get("push_performed") is False, status
+        assert status.get("deploy_performed") is False, status
+        assert status.get("real_fix_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+        assert status.get("root_flow_auditor_connected") is True, status
+
+        registry_response = client.get("/debug/self-check-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        check_ids = {item.get("id") for item in registry.get("checks", [])}
+        expected = {
+            "py_compile_check",
+            "smoke_check",
+            "endpoint_health_check",
+            "route_existence_check",
+            "behavior_owner_check",
+            "missing_helper_check",
+            "undefined_variable_check",
+            "duplicate_branch_check",
+            "stale_fallback_check",
+            "manual_scenario_check",
+        }
+        assert expected <= check_ids, registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("git_write_performed") is False, registry
+
+        preview_response = client.post(
+            "/debug/self-check-preview",
+            json={
+                "command": "stop continue ARM only completes item 5",
+                "behavior": "stop_continue",
+                "observed_behavior": "resume only completes one item and stops",
+                "expected_behavior": "continue through remaining list items",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("preview_id") == "self_check_stop_continue", preview
+        checks_run = {item.get("id") for item in preview.get("checks_run", [])}
+        assert "behavior_owner_check" in checks_run, preview
+        assert "manual_scenario_check" in checks_run, preview
+        assert "smoke_check" in checks_run, preview
+        assert preview.get("possible_findings"), preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert preview.get("codex_required") is True, preview
+        assert preview.get("lux_can_handle"), preview
+        assert preview.get("codex_recommended_for"), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("real_check_executed") is False, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("real_fix_performed") is False, preview
+
+        return "safe self-check runner preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4742,6 +4824,7 @@ class SmokeRunner:
             ("model_router_full_status_snapshot", self.check_model_router_full_status_snapshot),
             ("production_hardening_backlog_registry", self.check_production_hardening_backlog_registry),
             ("root_flow_auditor_preview", self.check_root_flow_auditor_preview),
+            ("safe_self_check_runner_preview", self.check_safe_self_check_runner_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
