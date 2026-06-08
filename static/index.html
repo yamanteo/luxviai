@@ -4039,6 +4039,7 @@ function createPacedWriter(targetEl, speedFactor = 0.9, runId = null) {
   let timer = null;
   let current = "";
   let stopped = false;
+  let lastPumpAt = 0;
   let idleResolvers = [];
 
   const resolveIdle = () => {
@@ -4048,6 +4049,20 @@ function createPacedWriter(targetEl, speedFactor = 0.9, runId = null) {
   };
 
   const runStillActive = () => runId === null || isRunActive(runId);
+
+  const writeQueuedChars = (count) => {
+    let take = Math.min(Math.max(1, count || 1), queue.length);
+    while (take > 0 && queue.length) {
+      current += queue.shift();
+      take -= 1;
+    }
+  };
+
+  const renderCurrent = () => {
+    targetEl.innerText = current;
+    if (scrollState.autoFollow) scrollBottom();
+    else notifyIncomingWhileReading();
+  };
 
   const pump = () => {
     if (stopped || !runStillActive()) {
@@ -4061,10 +4076,11 @@ function createPacedWriter(targetEl, speedFactor = 0.9, runId = null) {
       resolveIdle();
       return;
     }
-    current += queue.shift();
-    targetEl.innerText = current;
-    if (scrollState.autoFollow) scrollBottom();
-    else notifyIncomingWhileReading();
+    const now = Date.now();
+    const elapsed = lastPumpAt ? Math.max(delay, now - lastPumpAt) : delay;
+    lastPumpAt = now;
+    writeQueuedChars(Math.floor(elapsed / delay));
+    renderCurrent();
     timer = setTimeout(pump, delay);
   };
 
@@ -4072,19 +4088,21 @@ function createPacedWriter(targetEl, speedFactor = 0.9, runId = null) {
     push(chunk) {
       if (stopped || !chunk || !runStillActive()) return;
       for (const ch of chunk) queue.push(ch);
-      if (!timer) pump();
+      if (!timer) {
+        lastPumpAt = Date.now();
+        pump();
+      }
     },
     setExact(text) {
       if (stopped || !runStillActive()) return;
       queue.length = 0;
       current = text || "";
+      lastPumpAt = Date.now();
       if (timer) {
         clearTimeout(timer);
         timer = null;
       }
-      targetEl.innerText = current;
-      if (scrollState.autoFollow) scrollBottom();
-      else notifyIncomingWhileReading();
+      renderCurrent();
       resolveIdle();
     },
     waitIdle() {
@@ -4096,6 +4114,24 @@ function createPacedWriter(targetEl, speedFactor = 0.9, runId = null) {
     },
     visibleText() {
       return current;
+    },
+    catchUp() {
+      if (stopped || !queue.length || !runStillActive()) return;
+      const now = Date.now();
+      const elapsed = lastPumpAt ? Math.max(0, now - lastPumpAt) : 0;
+      if (elapsed < delay) return;
+      lastPumpAt = now;
+      writeQueuedChars(Math.floor(elapsed / delay));
+      renderCurrent();
+      if (!queue.length) {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+        resolveIdle();
+      } else if (!timer) {
+        timer = setTimeout(pump, delay);
+      }
     },
     stop() {
       stopped = true;
@@ -4111,6 +4147,20 @@ function createPacedWriter(targetEl, speedFactor = 0.9, runId = null) {
     }
   };
 }
+
+function catchUpActiveWriter() {
+  if (
+    activeGeneration &&
+    activeGeneration.writer &&
+    typeof activeGeneration.writer.catchUp === "function"
+  ) {
+    try { activeGeneration.writer.catchUp(); } catch (_) {}
+  }
+}
+
+document.addEventListener("visibilitychange", catchUpActiveWriter);
+window.addEventListener("focus", catchUpActiveWriter);
+window.addEventListener("pageshow", catchUpActiveWriter);
 
 function isRunStopped(runId) {
   return runId === null || runId === undefined || stoppedRunIds.has(runId);

@@ -364,6 +364,10 @@ class SmokeRunner:
         assert "margin: 8px 0 18px auto" in html
         assert "const previousBuffer = String(state.generatedAnswerBuffer || \"\")" in html
         assert "appendResumeButton(targetAiEl)" in html
+        assert "function catchUpActiveWriter" in html
+        assert "document.addEventListener(\"visibilitychange\", catchUpActiveWriter)" in html
+        assert "window.addEventListener(\"focus\", catchUpActiveWriter)" in html
+        assert "writer.catchUp" in html
         assert "resumeUnavailableFallback" in html
         assert "Ekranda zaten görünen metin, aynen korunacak" in html
         assert "interruptedState && isContinueCommand(text)" in html
