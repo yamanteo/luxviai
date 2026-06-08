@@ -54,6 +54,11 @@ from layer22_candidate_scoring import candidate_scoring_matrix, layer22_scoring_
 from layer22_future_candidates import future_candidates_registry, layer22_status_snapshot, preview_future_candidate
 from layer22_status_snapshot import layer22_full_status_snapshot
 from layer23_status_snapshot import layer23_status_snapshot
+from investigation_context_preview import (
+    build_investigation_context_preview,
+    investigation_context_registry,
+    investigation_context_status,
+)
 from lux_fault_report import (
     build_fault_report_preview,
     build_fault_report_intelligence_preview,
@@ -662,6 +667,17 @@ class FaultReportIntelligencePreviewRequest(BaseModel):
     related_layer: Optional[str] = Field(default=None, max_length=80)
     behavior: Optional[str] = Field(default=None, max_length=120)
     issue_title: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+
+
+class InvestigationContextPreviewRequest(BaseModel):
+    active_task: Optional[str] = Field(default=None, max_length=80)
+    goal: Optional[str] = Field(default=None, max_length=200)
+    completed_steps: List[str] = Field(default_factory=list)
+    remaining_steps: List[str] = Field(default_factory=list)
+    do_not_touch: List[str] = Field(default_factory=list)
+    expected_result: str = Field(default="", max_length=1200)
+    risk_level: Optional[str] = Field(default=None, max_length=40)
     command: str = Field(default="", max_length=2000)
 
 
@@ -7696,6 +7712,30 @@ async def debug_fault_report_intelligence_preview(payload: FaultReportIntelligen
     )
 
 
+@app.get("/debug/investigation-context-status")
+async def debug_investigation_context_status():
+    return investigation_context_status()
+
+
+@app.get("/debug/investigation-context-registry")
+async def debug_investigation_context_registry():
+    return investigation_context_registry()
+
+
+@app.post("/debug/investigation-context-preview")
+async def debug_investigation_context_preview(payload: InvestigationContextPreviewRequest):
+    return build_investigation_context_preview(
+        active_task=payload.active_task,
+        goal=payload.goal,
+        completed_steps=payload.completed_steps,
+        remaining_steps=payload.remaining_steps,
+        do_not_touch=payload.do_not_touch,
+        expected_result=payload.expected_result,
+        risk_level=payload.risk_level,
+        command=payload.command,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8468,6 +8508,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/fault-report-registry">Lux Hata Raporu Kayıtları</button>
       <button data-endpoint="/debug/fault-report-intelligence-status">Hata Rapor Intelligence Durum</button>
       <button data-endpoint="/debug/fault-report-intelligence-registry">Hata Rapor Intelligence Kayıt</button>
+      <button data-endpoint="/debug/investigation-context-status">İnceleme Bağlamı Durum</button>
+      <button data-endpoint="/debug/investigation-context-registry">İnceleme Bağlamı Kayıt</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/fault-report-preview?focus=open">Önizleme: Açık sorunlar</button>
@@ -8476,6 +8518,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/fault-report-preview?status=kritik">Önizleme: Kritik</button>
       <button data-fault-report-intelligence-command="Dur/Devam sistemi">İstihbarat: Dur/Devam</button>
       <button data-fault-report-intelligence-command="Websocket canlılık drift">İstihbarat: Websocket drift</button>
+      <button data-investigation-context-command="Dur/Devam sistemi">İnceleme: Dur/Devam</button>
+      <button data-investigation-context-command="Workspace: belge devam akışı">İnceleme: Workspace akışı</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -9392,6 +9436,26 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadInvestigationContextPreview(command) {
+      statusEl.textContent = "Loading investigation context preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/investigation-context-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            expected_result: "active investigation context should be deterministic and read-only"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded investigation context preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -9697,6 +9761,9 @@ async def debug_agent_panel():
     }
     document.querySelectorAll("button[data-fault-report-intelligence-command]").forEach((button) => {
       button.addEventListener("click", () => loadFaultReportIntelligencePreview(button.dataset.faultReportIntelligenceCommand));
+    });
+    document.querySelectorAll("button[data-investigation-context-command]").forEach((button) => {
+      button.addEventListener("click", () => loadInvestigationContextPreview(button.dataset.investigationContextCommand));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));

@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from bug_intake_planner import build_bug_intake_preview
 from codex_handoff_builder_preview import build_codex_handoff_preview
 from credit_saver_engine import build_credit_saver_preview
+from investigation_context_preview import build_investigation_context_preview
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -237,6 +238,21 @@ LAYER23_ANALYSIS_LINKS = {
         "layer": "23.6",
         "focus": "anomaly + recommendation preview",
     },
+    "/debug/investigation-context-status": {
+        "name": "Active Investigation Context Status",
+        "layer": "24.2",
+        "focus": "active task + readiness guardrails",
+    },
+    "/debug/investigation-context-registry": {
+        "name": "Investigation Context Registry",
+        "layer": "24.2",
+        "focus": "task-based continuation and owner checkpoints",
+    },
+    "/debug/investigation-context-preview": {
+        "name": "Investigation Context Preview",
+        "layer": "24.2",
+        "focus": "live active investigation payload",
+    },
 }
 
 
@@ -373,8 +389,15 @@ def fault_report_intelligence_status() -> Dict[str, Any]:
             "/debug/credit-saver-status",
             "/debug/intelligence-status",
             "/debug/codex-handoff-status",
+            "/debug/investigation-context-status",
+            "/debug/investigation-context-registry",
         ],
         "recent_readiness": "single issue cards are linked to Layer 23 analysis previews",
+        "connected_layer24": [
+            "/debug/investigation-context-status",
+            "/debug/investigation-context-registry",
+            "/debug/investigation-context-preview",
+        ],
         "real_fix_performed": False,
         "analysis_performed": False,
         "chat_stream_touched": False,
@@ -423,6 +446,9 @@ def fault_report_intelligence_registry() -> Dict[str, Any]:
             "recommended": DEFAULT_INTELLIGENCE_ENDPOINTS + [
                 "/debug/root-flow-audit",
                 "/debug/self-check-preview",
+                "/debug/investigation-context-status",
+                "/debug/investigation-context-registry",
+                "/debug/investigation-context-preview",
             ],
         },
         "safety_flags": {
@@ -489,6 +515,15 @@ def build_fault_report_intelligence_preview(
         actual_result=issue.get("notes", ""),
         command=summary_for_analysis,
     )
+    investigation_context = build_investigation_context_preview(
+        active_task=detected_behavior,
+        goal="keep issue investigation actionable and non-destructive",
+        command=summary_for_analysis,
+        expected_result="issue loop must be resumable with clear next steps",
+        risk_level="medium",
+        completed_steps=["initial selection", "layer linkage"],
+        remaining_steps=["smoke refresh", "manual scenario run", "owner confirmation"],
+    )
     credit = build_credit_saver_preview(
         behavior=detected_behavior,
         symptom=issue.get("summary", ""),
@@ -533,6 +568,7 @@ def build_fault_report_intelligence_preview(
         "behavior": behavior,
         "command": command,
         "selected_issue": issue,
+        "active_investigation_context": investigation_context,
         "son_analiz": latest_possible_causes[:3] if latest_possible_causes else ["state_source_conflict"],
         "risk": root_flow.get("risk_level", "medium"),
         "confidence_score": root_flow.get("confidence_score", 0.55),
@@ -548,6 +584,11 @@ def build_fault_report_intelligence_preview(
             str(item.get("name")) for item in root_flow.get("manual_tests", []) if isinstance(item, dict)
         ] or ["manual stop/continue regression scenario"],
         "related_layer23_endpoints": related_layer23_endpoints,
+        "related_layer24_endpoints": [
+            "/debug/investigation-context-status",
+            "/debug/investigation-context-registry",
+            "/debug/investigation-context-preview",
+        ],
         "behavior_owner": {
             "id": detected_behavior,
             "owner": root_flow.get("behavior_owner", {}).get("owner", "unknown"),

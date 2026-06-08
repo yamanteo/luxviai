@@ -3525,6 +3525,68 @@ class SmokeRunner:
         assert intelligence_preview.get("behavior_owner", {}).get("owner"), intelligence_preview
         return "lux fault report preview"
 
+    def check_investigation_context_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/investigation-context-status")
+        assert status_response.status_code == 200, status_response.text
+        status_payload = status_response.json()
+        assert status_payload.get("layer") == "24.2", status_payload
+        assert status_payload.get("name") == "Active Investigation Context Preview", status_payload
+        assert status_payload.get("status") == "preview_ready", status_payload
+        assert status_payload.get("read_only") is True, status_payload
+        assert status_payload.get("analysis_only") is True, status_payload
+        assert status_payload.get("real_file_write_performed") is False, status_payload
+        assert status_payload.get("real_memory_write_performed") is False, status_payload
+        assert status_payload.get("real_db_write_performed") is False, status_payload
+        assert status_payload.get("chat_stream_touched") is False, status_payload
+        assert status_payload.get("typewriter_runtime_touched") is False, status_payload
+
+        registry_response = client.get("/debug/investigation-context-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "24.2", registry
+        assert registry.get("status") == "registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("analysis_only") is True, registry
+        assert registry.get("task_count", 0) >= 5, registry
+        tasks = registry.get("tasks", [])
+        assert isinstance(tasks, list), registry
+        assert any(item.get("active_task") for item in tasks), registry
+
+        preview_response = client.post(
+            "/debug/investigation-context-preview",
+            json={
+                "active_task": "stop_continue",
+                "goal": "multiple continue cycles support",
+                "command": "dur 3. maddede devam et",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("active_task") == "stop_continue", preview
+        assert preview.get("goal"), preview
+        assert preview.get("risk_level"), preview
+        assert isinstance(preview.get("current_findings"), list), preview
+        assert isinstance(preview.get("completed_steps"), list), preview
+        assert isinstance(preview.get("remaining_steps"), list), preview
+        assert isinstance(preview.get("do_not_touch"), list), preview
+        assert preview.get("recommended_next_step"), preview
+        assert isinstance(preview.get("confidence_score"), (int, float)), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("real_action_performed") is False, preview
+        assert preview.get("real_file_write_performed") is False, preview
+        assert preview.get("real_memory_write_performed") is False, preview
+        assert preview.get("real_db_write_performed") is False, preview
+
+        return "investigation context preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3606,6 +3668,9 @@ class SmokeRunner:
         assert "/debug/fault-report-intelligence-status" in development_paths, payload
         assert "/debug/fault-report-intelligence-registry" in development_paths, payload
         assert "/debug/fault-report-intelligence-preview" in development_paths, payload
+        assert "/debug/investigation-context-status" in development_paths, payload
+        assert "/debug/investigation-context-registry" in development_paths, payload
+        assert "/debug/investigation-context-preview" in development_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -5397,6 +5462,7 @@ class SmokeRunner:
             ("debug_intelligence_core_preview", self.check_debug_intelligence_core_preview),
             ("layer23_status_snapshot", self.check_layer23_status_snapshot),
             ("lux_fault_report_preview", self.check_lux_fault_report_preview),
+            ("investigation_context_preview", self.check_investigation_context_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),

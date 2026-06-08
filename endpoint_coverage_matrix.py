@@ -108,6 +108,9 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/fault-report-intelligence-status", "GET", "24", "fault report intelligence status"),
         _endpoint("/debug/fault-report-intelligence-registry", "GET", "24", "fault report intelligence registry"),
         _endpoint("/debug/fault-report-intelligence-preview", "POST", "24", "fault report intelligence preview"),
+        _endpoint("/debug/investigation-context-status", "GET", "24.2", "investigation context status"),
+        _endpoint("/debug/investigation-context-registry", "GET", "24.2", "investigation context registry"),
+        _endpoint("/debug/investigation-context-preview", "POST", "24.2", "investigation context preview"),
     ],
 }
 
