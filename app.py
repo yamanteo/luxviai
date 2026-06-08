@@ -56,6 +56,9 @@ from layer22_status_snapshot import layer22_full_status_snapshot
 from layer23_status_snapshot import layer23_status_snapshot
 from lux_fault_report import (
     build_fault_report_preview,
+    build_fault_report_intelligence_preview,
+    fault_report_intelligence_registry,
+    fault_report_intelligence_status,
     fault_report_registry,
     fault_report_status,
 )
@@ -650,6 +653,15 @@ class FaultReportPreviewRequest(BaseModel):
     focus: str = Field(default="", max_length=200)
     status: Optional[str] = Field(default=None, max_length=80)
     related_layer: Optional[str] = Field(default=None, max_length=80)
+    command: str = Field(default="", max_length=2000)
+
+
+class FaultReportIntelligencePreviewRequest(BaseModel):
+    focus: str = Field(default="", max_length=200)
+    status: Optional[str] = Field(default=None, max_length=80)
+    related_layer: Optional[str] = Field(default=None, max_length=80)
+    behavior: Optional[str] = Field(default=None, max_length=120)
+    issue_title: Optional[str] = Field(default=None, max_length=200)
     command: str = Field(default="", max_length=2000)
 
 
@@ -7662,6 +7674,28 @@ async def debug_fault_report_preview(payload: FaultReportPreviewRequest):
     )
 
 
+@app.get("/debug/fault-report-intelligence-status")
+async def debug_fault_report_intelligence_status():
+    return fault_report_intelligence_status()
+
+
+@app.get("/debug/fault-report-intelligence-registry")
+async def debug_fault_report_intelligence_registry():
+    return fault_report_intelligence_registry()
+
+
+@app.post("/debug/fault-report-intelligence-preview")
+async def debug_fault_report_intelligence_preview(payload: FaultReportIntelligencePreviewRequest):
+    return build_fault_report_intelligence_preview(
+        focus=payload.focus,
+        status=payload.status,
+        related_layer=payload.related_layer,
+        behavior=payload.behavior,
+        issue_title=payload.issue_title,
+        command=payload.command,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8432,12 +8466,16 @@ async def debug_agent_panel():
     <div class="bar">
       <button data-endpoint="/debug/fault-report-status">Lux Hata Raporu Durum</button>
       <button data-endpoint="/debug/fault-report-registry">Lux Hata Raporu Kayıtları</button>
+      <button data-endpoint="/debug/fault-report-intelligence-status">Hata Rapor Intelligence Durum</button>
+      <button data-endpoint="/debug/fault-report-intelligence-registry">Hata Rapor Intelligence Kayıt</button>
     </div>
     <div class="bar">
       <button data-endpoint="/debug/fault-report-preview?focus=open">Önizleme: Açık sorunlar</button>
       <button data-endpoint="/debug/fault-report-preview?focus=deferred">Önizleme: Ertelenenler</button>
       <button data-endpoint="/debug/fault-report-preview?focus=resolved">Önizleme: Çözülenler</button>
       <button data-endpoint="/debug/fault-report-preview?status=kritik">Önizleme: Kritik</button>
+      <button data-fault-report-intelligence-command="Dur/Devam sistemi">İstihbarat: Dur/Devam</button>
+      <button data-fault-report-intelligence-command="Websocket canlılık drift">İstihbarat: Websocket drift</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -9334,6 +9372,26 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadFaultReportIntelligencePreview(issueTitle) {
+      statusEl.textContent = "Loading fault report intelligence preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/fault-report-intelligence-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            issue_title: issueTitle,
+            command: issueTitle
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded fault report intelligence preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -9637,6 +9695,9 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    document.querySelectorAll("button[data-fault-report-intelligence-command]").forEach((button) => {
+      button.addEventListener("click", () => loadFaultReportIntelligencePreview(button.dataset.faultReportIntelligenceCommand));
+    });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
     });

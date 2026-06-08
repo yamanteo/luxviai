@@ -1077,6 +1077,8 @@ class SmokeRunner:
             "/debug/agent-decision-trace",
             "/debug/fault-report-status",
             "/debug/fault-report-registry",
+            "/debug/fault-report-intelligence-status",
+            "/debug/fault-report-intelligence-registry",
             "/debug/fault-report-preview?focus=open",
         ]:
             assert endpoint in html, endpoint
@@ -3476,6 +3478,51 @@ class SmokeRunner:
         assert post_payload.get("raw_command"), post_payload
         assert post_payload.get("focus") == "open", post_payload
         assert isinstance(post_payload.get("sections", {}).get("open_issues", []), list), post_payload
+
+        intelligence_status_response = client.get("/debug/fault-report-intelligence-status")
+        assert intelligence_status_response.status_code == 200, intelligence_status_response.text
+        intelligence_status = intelligence_status_response.json()
+        assert intelligence_status.get("status") == "preview_ready", intelligence_status
+        assert intelligence_status.get("read_only") is True, intelligence_status
+        assert intelligence_status.get("analysis_only") is True, intelligence_status
+        assert intelligence_status.get("connected_layer") == "23", intelligence_status
+        assert intelligence_status.get("file_write_enabled") is False, intelligence_status
+        assert intelligence_status.get("memory_write_enabled") is False, intelligence_status
+        assert intelligence_status.get("db_write_enabled") is False, intelligence_status
+        assert intelligence_status.get("chat_stream_touched") is False, intelligence_status
+        assert intelligence_status.get("typewriter_runtime_touched") is False, intelligence_status
+
+        intelligence_registry_response = client.get("/debug/fault-report-intelligence-registry")
+        assert intelligence_registry_response.status_code == 200, intelligence_registry_response.text
+        intelligence_registry = intelligence_registry_response.json()
+        assert intelligence_registry.get("layer") == "24.1", intelligence_registry
+        assert intelligence_registry.get("status") == "intelligence_link_ready", intelligence_registry
+        assert intelligence_registry.get("read_only") is True, intelligence_registry
+        assert intelligence_registry.get("issue_count", 0) >= 1, intelligence_registry
+        assert "/debug/root-flow-audit" in intelligence_registry.get("related_endpoints", {}).get("recommended", []), intelligence_registry
+
+        intelligence_preview_response = client.post(
+            "/debug/fault-report-intelligence-preview",
+            json={
+                "issue_title": "Dur/Devam sistemi",
+                "behavior": "stop_continue",
+                "command": "Dur/Devam sistemi",
+            },
+        )
+        assert intelligence_preview_response.status_code == 200, intelligence_preview_response.text
+        intelligence_preview = intelligence_preview_response.json()
+        assert intelligence_preview.get("read_only") is True, intelligence_preview
+        assert intelligence_preview.get("analysis_only") is True, intelligence_preview
+        assert intelligence_preview.get("real_action_performed") is False, intelligence_preview
+        assert intelligence_preview.get("real_file_write_performed") is False, intelligence_preview
+        assert intelligence_preview.get("real_db_write_performed") is False, intelligence_preview
+        assert intelligence_preview.get("real_memory_write_performed") is False, intelligence_preview
+        assert intelligence_preview.get("selected_issue", {}).get("title"), intelligence_preview
+        assert intelligence_preview.get("son_analiz"), intelligence_preview
+        assert intelligence_preview.get("recommended_checks"), intelligence_preview
+        assert intelligence_preview.get("recommended_files"), intelligence_preview
+        assert intelligence_preview.get("recommended_tests"), intelligence_preview
+        assert intelligence_preview.get("behavior_owner", {}).get("owner"), intelligence_preview
         return "lux fault report preview"
 
     def check_system_control_audit_preview(self) -> str:
@@ -3555,6 +3602,10 @@ class SmokeRunner:
         assert payload.get("typewriter_runtime_touched") is False, payload
         production_paths = {item.get("path") for item in groups.get("production_layer_20", [])}
         assert "/debug/endpoint-coverage" in production_paths, payload
+        development_paths = {item.get("path") for item in groups.get("development_layer_24", [])}
+        assert "/debug/fault-report-intelligence-status" in development_paths, payload
+        assert "/debug/fault-report-intelligence-registry" in development_paths, payload
+        assert "/debug/fault-report-intelligence-preview" in development_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:

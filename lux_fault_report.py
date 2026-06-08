@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
+from bug_intake_planner import build_bug_intake_preview
+from codex_handoff_builder_preview import build_codex_handoff_preview
+from credit_saver_engine import build_credit_saver_preview
+from root_flow_auditor_preview import build_root_flow_audit
+from safe_self_check_runner_preview import build_self_check_preview
 
 
 def _to_iso(date_value: datetime) -> str:
@@ -139,6 +146,191 @@ ARCHIVE = [
 ]
 
 
+LAYER23_ANALYSIS_LINKS = {
+    "/debug/root-flow-auditor-status": {
+        "name": "Root Flow Auditor Preview",
+        "layer": "23.1",
+        "focus": "behavior ownership + root causes",
+    },
+    "/debug/root-flow-audit": {
+        "name": "Root Flow Audit",
+        "layer": "23.1",
+        "focus": "authoritative analysis + invariant check",
+    },
+    "/debug/codex-fix-plan": {
+        "name": "Codex Fix Plan",
+        "layer": "23.1",
+        "focus": "technical plan generation",
+    },
+    "/debug/self-check-status": {
+        "name": "Self Check Status",
+        "layer": "23.2",
+        "focus": "safe check registry",
+    },
+    "/debug/self-check-registry": {
+        "name": "Self Check Registry",
+        "layer": "23.2",
+        "focus": "check catalog",
+    },
+    "/debug/self-check-preview": {
+        "name": "Self Check Preview",
+        "layer": "23.2",
+        "focus": "diagnostic preview",
+    },
+    "/debug/codex-handoff-status": {
+        "name": "Codex Handoff Status",
+        "layer": "23.3",
+        "focus": "handoff readiness",
+    },
+    "/debug/codex-handoff-registry": {
+        "name": "Codex Handoff Registry",
+        "layer": "23.3",
+        "focus": "handoff templates",
+    },
+    "/debug/codex-handoff-preview": {
+        "name": "Codex Handoff Preview",
+        "layer": "23.3",
+        "focus": "task packet prep",
+    },
+    "/debug/bug-intake-status": {
+        "name": "Bug Intake Status",
+        "layer": "23.4",
+        "focus": "common bug schema",
+    },
+    "/debug/bug-intake-registry": {
+        "name": "Bug Intake Registry",
+        "layer": "23.4",
+        "focus": "category catalog",
+    },
+    "/debug/bug-intake-preview": {
+        "name": "Bug Intake Preview",
+        "layer": "23.4",
+        "focus": "triage planning",
+    },
+    "/debug/credit-saver-status": {
+        "name": "Credit Saver Status",
+        "layer": "23.5",
+        "focus": "lux/codex split",
+    },
+    "/debug/credit-saver-registry": {
+        "name": "Credit Saver Registry",
+        "layer": "23.5",
+        "focus": "task complexity paths",
+    },
+    "/debug/credit-saver-preview": {
+        "name": "Credit Saver Preview",
+        "layer": "23.5",
+        "focus": "triage decision preview",
+    },
+    "/debug/intelligence-status": {
+        "name": "Debug Intelligence Status",
+        "layer": "23.6",
+        "focus": "core anomaly analysis",
+    },
+    "/debug/intelligence-registry": {
+        "name": "Debug Intelligence Registry",
+        "layer": "23.6",
+        "focus": "repeated failure categories",
+    },
+    "/debug/intelligence-preview": {
+        "name": "Debug Intelligence Preview",
+        "layer": "23.6",
+        "focus": "anomaly + recommendation preview",
+    },
+}
+
+
+DEFAULT_INTELLIGENCE_ENDPOINTS = [
+    "/debug/root-flow-auditor-status",
+    "/debug/self-check-status",
+    "/debug/bug-intake-status",
+    "/debug/intelligence-status",
+]
+
+
+def _normalize(value: Optional[str]) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip().lower()
+
+
+def _iter_all_issues() -> List[Dict[str, Any]]:
+    items: List[Dict[str, Any]] = []
+    for item in OPEN_ISSUES:
+        issue = dict(item)
+        issue["source_section"] = "open_issues"
+        items.append(issue)
+    for item in DEFERRED_ISSUES:
+        issue = dict(item)
+        issue["source_section"] = "deferred_issues"
+        items.append(issue)
+    for item in RESOLVED_ISSUES:
+        issue = dict(item)
+        issue["source_section"] = "resolved_issues"
+        items.append(issue)
+    for item in ARCHIVE:
+        issue = dict(item)
+        issue["source_section"] = "issue_archive"
+        items.append(issue)
+    return items
+
+
+def _pick_issue(
+    issue_title: Optional[str] = None,
+    focus: Optional[str] = None,
+    status: Optional[str] = None,
+    related_layer: Optional[str] = None,
+    command: str = "",
+) -> Dict[str, Any]:
+    normalized_title = _normalize(issue_title)
+    normalized_focus = _normalize(focus)
+    normalized_status = _normalize(status)
+    normalized_layer = _normalize(related_layer)
+    normalized_command = _normalize(command)
+
+    candidates = _iter_all_issues()
+    for item in candidates:
+        if normalized_title and normalized_title in _normalize(item.get("title")):
+            return item
+        if normalized_focus:
+            summary_text = _normalize(item.get("summary", ""))
+            if normalized_focus in summary_text or normalized_focus in _normalize(item.get("title", "")):
+                return item
+        if normalized_status and _normalize(item.get("priority")) == normalized_status:
+            return item
+        layer_hits = " ".join(str(x) for x in item.get("related_layers", []))
+        if normalized_layer and normalized_layer in _normalize(layer_hits):
+            return item
+
+    if normalized_command:
+        if "dur" in normalized_command or "devam" in normalized_command or "continue" in normalized_command:
+            for item in candidates:
+                if "dur" in _normalize(item.get("title", "")) or "devam" in _normalize(item.get("title", "")):
+                    return item
+        if "websocket" in normalized_command or "stream" in normalized_command:
+            for item in candidates:
+                if "websocket" in _normalize(item.get("title", "")) or "canli" in _normalize(item.get("title", "")):
+                    return item
+
+    return candidates[0] if candidates else {"title": "Unknown issue", "status": "Bilinmiyor", "priority": "Orta", "summary": "Önceki kart bulunamadı", "related_layers": ["Layer 23"]}
+
+
+def _trim_text(value: Optional[str], limit: int = 120) -> str:
+    text = str(value or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3].rstrip() + "..."
+
+
+def _safe_unique(items: List[str]) -> List[str]:
+    seen = set()
+    output: List[str] = []
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        output.append(item)
+    return output
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -162,6 +354,240 @@ def fault_report_status() -> Dict[str, Any]:
         "safety_note": (
             "Developer/debug preview only. No chat/stream/websocket/typewriter changes, "
             "no real actions, writes, or memory persistence."
+        ),
+    }
+
+
+def fault_report_intelligence_status() -> Dict[str, Any]:
+    return {
+        "layer": "24",
+        "name": "Lux Fault Report Intelligence Preview",
+        "status": "preview_ready",
+        "read_only": True,
+        "analysis_only": True,
+        "connected_layer": "23",
+        "connected_components": [
+            "/debug/root-flow-auditor-status",
+            "/debug/self-check-status",
+            "/debug/bug-intake-status",
+            "/debug/credit-saver-status",
+            "/debug/intelligence-status",
+            "/debug/codex-handoff-status",
+        ],
+        "recent_readiness": "single issue cards are linked to Layer 23 analysis previews",
+        "real_fix_performed": False,
+        "analysis_performed": False,
+        "chat_stream_touched": False,
+        "typewriter_runtime_touched": False,
+        "file_write_performed": False,
+        "file_write_enabled": False,
+        "memory_write_performed": False,
+        "memory_write_enabled": False,
+        "db_write_performed": False,
+        "db_write_enabled": False,
+        "real_code_fix_performed": False,
+        "safety_note": (
+            "This endpoint only links fault cards to Layer 23 diagnostics. "
+            "No runtime behavior, code, file, memory, db, or stream/write changes."
+        ),
+    }
+
+
+def fault_report_intelligence_registry() -> Dict[str, Any]:
+    issue_list = [
+        {
+            "id": _normalize(item["title"]),
+            "title": item["title"],
+            "source_section": item.get("source_section", "manual"),
+            "status": item.get("status"),
+            "priority": item.get("priority"),
+            "related_layers": item.get("related_layers", []),
+            "default_layer23_references": {
+                "status": "ready",
+                "recommended_endpoints": DEFAULT_INTELLIGENCE_ENDPOINTS,
+            },
+        }
+        for item in _iter_all_issues()
+    ]
+
+    return {
+        "layer": "24.1",
+        "status": "intelligence_link_ready",
+        "read_only": True,
+        "analysis_ready": True,
+        "issue_count": len(issue_list),
+        "issues": issue_list,
+        "layer23_analysis_endpoints": DEFAULT_INTELLIGENCE_ENDPOINTS,
+        "related_endpoints": {
+            "status": list(LAYER23_ANALYSIS_LINKS.keys()),
+            "recommended": DEFAULT_INTELLIGENCE_ENDPOINTS + [
+                "/debug/root-flow-audit",
+                "/debug/self-check-preview",
+            ],
+        },
+        "safety_flags": {
+            "file_write": False,
+            "memory_write": False,
+            "db_write": False,
+            "chat_stream_touched": False,
+            "typewriter_runtime_touched": False,
+        },
+    }
+
+
+def build_fault_report_intelligence_preview(
+    focus: Optional[str] = None,
+    status: Optional[str] = None,
+    related_layer: Optional[str] = None,
+    behavior: Optional[str] = None,
+    issue_title: Optional[str] = None,
+    command: str = "",
+) -> Dict[str, Any]:
+    issue = _pick_issue(
+        issue_title=issue_title,
+        focus=focus,
+        status=status,
+        related_layer=related_layer,
+        command=command,
+    )
+    summary_for_analysis = " ".join(
+        [
+            issue.get("title", ""),
+            issue.get("summary", ""),
+            issue.get("notes", ""),
+            str(issue.get("priority", "")),
+        ]
+    )
+
+    root_flow = build_root_flow_audit(
+        command=summary_for_analysis,
+        behavior=behavior,
+        observed_behavior=issue.get("notes", ""),
+        expected_behavior="issue card must stay aligned with diagnostic owner and continuation safety",
+        smoke_tests=[],
+    )
+
+    detected_behavior = str(root_flow.get("detected_behavior", behavior or "endpoint_regression"))
+    self_check = build_self_check_preview(
+        command=summary_for_analysis,
+        behavior=detected_behavior,
+        observed_behavior=issue.get("notes", ""),
+        expected_behavior="safe continuation + no duplicate branch + no stale fallback",
+        requested_checks=[],
+    )
+    bug_intake = build_bug_intake_preview(
+        behavior=detected_behavior,
+        symptom=issue.get("summary", ""),
+        expected_result="kartın tekrar eden regresyonlarında stabil çözüm",
+        actual_result=issue.get("notes", ""),
+        command=summary_for_analysis,
+    )
+    handoff = build_codex_handoff_preview(
+        behavior=detected_behavior,
+        symptom=issue.get("summary", ""),
+        expected_result="kartın gerçek davranışa göre güvenli şekilde kapatılabilir plan",
+        actual_result=issue.get("notes", ""),
+        command=summary_for_analysis,
+    )
+    credit = build_credit_saver_preview(
+        behavior=detected_behavior,
+        symptom=issue.get("summary", ""),
+        expected_result="en ucuz ve güvenli analiz rotası",
+        actual_result=issue.get("notes", ""),
+        command=summary_for_analysis,
+    )
+
+    latest_possible_causes = [str(item.get("id")) for item in root_flow.get("possible_root_causes", []) if isinstance(item, dict)]
+    suggested_checks = []
+    for item in self_check.get("checks_run", []):
+        if isinstance(item, dict) and item.get("id"):
+            suggested_checks.append(str(item["id"]))
+    if not suggested_checks:
+        suggested_checks = ["behavior_owner_check", "manual_scenario_check"]
+    suggested_checks = _safe_unique(suggested_checks)
+
+    related_layers = issue.get("related_layers", [])
+    related_layer23_endpoints = [
+        "/debug/root-flow-auditor-status",
+        "/debug/self-check-status",
+        "/debug/bug-intake-status",
+        "/debug/intelligence-status",
+    ]
+    if "stop_continue" in _normalize(issue.get("title")) or "durdur" in _normalize(issue.get("title")):
+        related_layer23_endpoints = [
+            "/debug/root-flow-audit",
+            "/debug/self-check-preview",
+            "/debug/codex-handoff-preview",
+            "/debug/credit-saver-preview",
+        ]
+    if issue.get("status", "").lower() == "açık".lower():
+        related_layer23_endpoints.append("/debug/layer23-status")
+
+    related_layer23_endpoints = _safe_unique(related_layer23_endpoints)
+
+    return {
+        "raw_issue_title": issue_title or "",
+        "focus": focus,
+        "status_filter": status,
+        "related_layer_filter": related_layer,
+        "behavior": behavior,
+        "command": command,
+        "selected_issue": issue,
+        "son_analiz": latest_possible_causes[:3] if latest_possible_causes else ["state_source_conflict"],
+        "risk": root_flow.get("risk_level", "medium"),
+        "confidence_score": root_flow.get("confidence_score", 0.55),
+        "recommended_investigation": {
+            "first": "root_flow_audit",
+            "suggested": ["self_check_preview", "bug_intake_preview"],
+        },
+        "recommended_checks": suggested_checks,
+        "recommended_files": _safe_unique(
+            [str(item) for item in root_flow.get("recommended_files", [])] + bug_intake.get("recommended_files", [])
+        ),
+        "recommended_tests": [
+            str(item.get("name")) for item in root_flow.get("manual_tests", []) if isinstance(item, dict)
+        ] or ["manual stop/continue regression scenario"],
+        "related_layer23_endpoints": related_layer23_endpoints,
+        "behavior_owner": {
+            "id": detected_behavior,
+            "owner": root_flow.get("behavior_owner", {}).get("owner", "unknown"),
+            "scope": root_flow.get("behavior_owner", {}).get("scope"),
+            "possible_root_causes": latest_possible_causes,
+        },
+        "state_source": {
+            "state_owner": root_flow.get("behavior_owner", {}).get("owner"),
+            "source_recommendation": "ARM Runtime State" if "stop" in _normalize(issue.get("title")) else "Active command context",
+        },
+        "recommended_layer": "root_flow_auditor" if "stop_continue" in _normalize(issue.get("title", "")) else "safe_self_check_runner",
+        "last_analysis": {
+            "root_flow": root_flow,
+            "self_check": self_check,
+            "bug_intake": {
+                "behavior": bug_intake.get("detected_behavior"),
+                "severity": bug_intake.get("severity"),
+                "investigation_priority": bug_intake.get("investigation_priority"),
+            },
+            "codex_handoff": {
+                "recommended_files": handoff.get("recommended_files", []),
+                "recommended_checks": handoff.get("recommended_checks", []),
+                "risk_level": handoff.get("risk_level"),
+            },
+            "credit_saver": {
+                "recommended_path": credit.get("recommended_path"),
+                "lux_can_handle": credit.get("lux_can_handle", []),
+                "codex_needed_for": credit.get("codex_needed_for", []),
+            },
+        },
+        "read_only": True,
+        "analysis_only": True,
+        "real_action_performed": False,
+        "real_write_performed": False,
+        "real_file_write_performed": False,
+        "real_db_write_performed": False,
+        "real_memory_write_performed": False,
+        "safe_next_step": (
+            "Kart icin önerilen Layer 23 analizi calistirilip manual scenario ile "
+            "durdurma/devam davranisi dogrulanmali."
         ),
     }
 
