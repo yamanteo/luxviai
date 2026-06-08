@@ -100,6 +100,12 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/system-control-audit", "GET", "20", "system control audit"),
         _endpoint("/debug/endpoint-coverage", "GET", "20", "endpoint coverage matrix"),
     ],
+    "development_layer_24": [
+        _endpoint("/debug/fault-report-status", "GET", "24", "Lux fault report status"),
+        _endpoint("/debug/fault-report-registry", "GET", "24", "Lux fault report registry"),
+        _endpoint("/debug/fault-report-preview", "GET", "24", "Lux fault report preview"),
+        _endpoint("/debug/fault-report-preview", "POST", "24", "fault report filtered preview"),
+    ],
 }
 
 

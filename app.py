@@ -54,6 +54,11 @@ from layer22_candidate_scoring import candidate_scoring_matrix, layer22_scoring_
 from layer22_future_candidates import future_candidates_registry, layer22_status_snapshot, preview_future_candidate
 from layer22_status_snapshot import layer22_full_status_snapshot
 from layer23_status_snapshot import layer23_status_snapshot
+from lux_fault_report import (
+    build_fault_report_preview,
+    fault_report_registry,
+    fault_report_status,
+)
 from live_readiness_checklist import live_readiness_checklist
 from lux_character_core import build_complete_lux_character_core, lux_character_status_payload
 from master_status_summary import master_status_summary
@@ -638,6 +643,13 @@ class CreditSaverPreviewRequest(BaseModel):
     symptom: str = Field(default="", max_length=2000)
     expected_result: str = Field(default="", max_length=2000)
     actual_result: str = Field(default="", max_length=2000)
+    command: str = Field(default="", max_length=2000)
+
+
+class FaultReportPreviewRequest(BaseModel):
+    focus: str = Field(default="", max_length=200)
+    status: Optional[str] = Field(default=None, max_length=80)
+    related_layer: Optional[str] = Field(default=None, max_length=80)
     command: str = Field(default="", max_length=2000)
 
 
@@ -7615,6 +7627,41 @@ async def debug_layer23_status():
     return layer23_status_snapshot()
 
 
+@app.get("/debug/fault-report-status")
+async def debug_fault_report_status():
+    return fault_report_status()
+
+
+@app.get("/debug/fault-report-registry")
+async def debug_fault_report_registry():
+    return fault_report_registry()
+
+
+@app.get("/debug/fault-report-preview")
+async def debug_fault_report_preview_get(
+    focus: str = "",
+    status: Optional[str] = None,
+    related_layer: Optional[str] = None,
+    command: str = "",
+):
+    return build_fault_report_preview(
+        focus=focus,
+        status=status,
+        related_layer=related_layer,
+        command=command,
+    )
+
+
+@app.post("/debug/fault-report-preview")
+async def debug_fault_report_preview(payload: FaultReportPreviewRequest):
+    return build_fault_report_preview(
+        focus=payload.focus,
+        status=payload.status,
+        related_layer=payload.related_layer,
+        command=payload.command,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8380,6 +8427,17 @@ async def debug_agent_panel():
       <button data-routing-simulation-command="Luxway telefon raporu" data-routing-task="luxway">Sim: Luxway</button>
       <button data-routing-simulation-command="Luxeph ge\u00e7mi\u015fini getir" data-routing-task="privacy_sensitive" data-routing-sensitivity="privacy">Sim: Luxeph memory</button>
       <button data-routing-simulation-command="\u00f6zel mesaj\u0131m\u0131 \u00f6zetle" data-routing-task="permission_boundary" data-routing-sensitivity="privacy">Sim: \u00f6zel mesaj</button>
+    </div>
+    <h2>Lux Fault Report</h2>
+    <div class="bar">
+      <button data-endpoint="/debug/fault-report-status">Lux Hata Raporu Durum</button>
+      <button data-endpoint="/debug/fault-report-registry">Lux Hata Raporu Kayıtları</button>
+    </div>
+    <div class="bar">
+      <button data-endpoint="/debug/fault-report-preview?focus=open">Önizleme: Açık sorunlar</button>
+      <button data-endpoint="/debug/fault-report-preview?focus=deferred">Önizleme: Ertelenenler</button>
+      <button data-endpoint="/debug/fault-report-preview?focus=resolved">Önizleme: Çözülenler</button>
+      <button data-endpoint="/debug/fault-report-preview?status=kritik">Önizleme: Kritik</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">

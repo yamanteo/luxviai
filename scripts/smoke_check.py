@@ -1075,6 +1075,9 @@ class SmokeRunner:
             "/debug/mode-preview",
             "/debug/permission-preview",
             "/debug/agent-decision-trace",
+            "/debug/fault-report-status",
+            "/debug/fault-report-registry",
+            "/debug/fault-report-preview?focus=open",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -3403,6 +3406,78 @@ class SmokeRunner:
 
         return "layer 23 status snapshot"
 
+    def check_lux_fault_report_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/fault-report-status")
+        assert status_response.status_code == 200, status_response.text
+        status_payload = status_response.json()
+        assert status_payload.get("layer") == "24", status_payload
+        assert status_payload.get("name") == "Lux Fault Report", status_payload
+        assert status_payload.get("status") == "read_only_preview", status_payload
+        assert status_payload.get("read_only") is True, status_payload
+        assert status_payload.get("real_fix_performed") is False, status_payload
+        assert status_payload.get("chat_stream_touched") is False, status_payload
+        assert status_payload.get("typewriter_runtime_touched") is False, status_payload
+        summary = status_payload.get("summary_cards", {})
+        assert isinstance(summary.get("open_issues"), int), status_payload
+        assert isinstance(summary.get("under_review"), int), status_payload
+        assert isinstance(summary.get("resolved"), int), status_payload
+        assert isinstance(summary.get("deferred"), int), status_payload
+        assert summary["open_issues"] >= 1, status_payload
+        assert summary["resolved"] >= 1, status_payload
+        assert summary["deferred"] >= 1, status_payload
+
+        registry_response = client.get("/debug/fault-report-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "24", registry
+        assert registry.get("status") == "registry_ready", registry
+        sections = registry.get("sections", {})
+        assert set(sections) >= {
+            "open_issues",
+            "deferred_issues",
+            "resolved_issues",
+            "issue_archive",
+        }, registry
+        assert isinstance(sections["open_issues"], list), registry
+        assert isinstance(sections["deferred_issues"], list), registry
+        assert isinstance(sections["resolved_issues"], list), registry
+        assert isinstance(sections["issue_archive"], list), registry
+        preview = client.get(
+            "/debug/fault-report-preview",
+            params={"focus": "critical", "status": "kritik", "command": "önceki stop continue sorunu"},
+        )
+        assert preview.status_code == 200, preview.text
+        preview_payload = preview.json()
+        assert preview_payload.get("read_only") is True, preview_payload
+        assert preview_payload.get("real_action_performed") is False, preview_payload
+        assert preview_payload.get("real_db_write_performed") is False, preview_payload
+        assert preview_payload.get("safe_next_step"), preview_payload
+        preview_sections = preview_payload.get("sections", {})
+        assert isinstance(preview_sections, dict), preview_payload
+        assert set(preview_sections) >= {"open_issues", "deferred_issues", "resolved_issues", "issue_archive"}, preview_payload
+        post_preview = client.post(
+            "/debug/fault-report-preview",
+            json={
+                "focus": "open",
+                "status": "inceleniyor",
+                "related_layer": "layer23",
+                "command": "dur devam testleri",
+            },
+        )
+        assert post_preview.status_code == 200, post_preview.text
+        post_payload = post_preview.json()
+        assert post_payload.get("raw_command"), post_payload
+        assert post_payload.get("focus") == "open", post_payload
+        assert isinstance(post_payload.get("sections", {}).get("open_issues", []), list), post_payload
+        return "lux fault report preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3465,6 +3540,7 @@ class SmokeRunner:
             "luxway_layer_18",
             "model_router_layer_19",
             "production_layer_20",
+            "development_layer_24",
         }
         assert expected_groups <= set(groups), payload
         assert payload.get("total_endpoint_count", 0) >= len(expected_groups), payload
@@ -5269,6 +5345,7 @@ class SmokeRunner:
             ("credit_saver_engine_preview", self.check_credit_saver_engine_preview),
             ("debug_intelligence_core_preview", self.check_debug_intelligence_core_preview),
             ("layer23_status_snapshot", self.check_layer23_status_snapshot),
+            ("lux_fault_report_preview", self.check_lux_fault_report_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
