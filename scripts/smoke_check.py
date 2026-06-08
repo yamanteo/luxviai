@@ -1080,6 +1080,8 @@ class SmokeRunner:
             "/debug/fault-report-intelligence-status",
             "/debug/fault-report-intelligence-registry",
             "/debug/fault-report-preview?focus=open",
+            "/debug/knowledge-extractor-status",
+            "/debug/knowledge-extractor-registry",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -3657,6 +3659,78 @@ class SmokeRunner:
 
         return "investigation timeline preview"
 
+    def check_knowledge_extractor_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/knowledge-extractor-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "24.4", status
+        assert status.get("name") == "Knowledge Extractor Preview", status
+        assert status.get("status") == "knowledge_extractor_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("real_action_performed") is False, status
+        assert status.get("real_file_write_performed") is False, status
+        assert status.get("real_memory_write_performed") is False, status
+        assert status.get("real_db_write_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/knowledge-extractor-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "24.4", registry
+        assert registry.get("name") == "Knowledge Extractor Registry", registry
+        assert registry.get("status") == "knowledge_registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("analysis_only") is True, registry
+        assert registry.get("knowledge_item_count", 0) >= 1, registry
+        assert isinstance(registry.get("knowledge_items"), list), registry
+
+        preview_response = client.post(
+            "/debug/knowledge-extractor-preview",
+            json={
+                "issue_title": "ARM Stop Continue",
+                "resolution_summary": "duplicate resume branch kaldirildi",
+                "command": "ARM stop continue",
+                "related_layer": "Layer 23",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("issue_title") == "ARM Stop Continue", preview
+        assert preview.get("resolution_summary"), preview
+        assert isinstance(preview.get("lessons_learned"), list), preview
+        assert preview.get("lessons_learned"), preview
+        assert "duplicate_branch_check" in preview.get("recommended_future_checks", []), preview
+        assert "resume_flow" in preview.get("related_patterns", []), preview
+        assert isinstance(preview.get("recommended_layers"), list), preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("timeline_source_preview"), dict), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("real_action_performed") is False, preview
+        assert preview.get("real_file_write_performed") is False, preview
+        assert preview.get("real_memory_write_performed") is False, preview
+        assert preview.get("real_db_write_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "resolved"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        resolved = report.get("sections", {}).get("resolved_issues", [])
+        assert resolved, report
+        assert isinstance(resolved[0].get("knowledge_extraction"), dict), report
+        assert resolved[0]["knowledge_extraction"].get("lessons_learned") is not None, report
+
+        return "knowledge extractor preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3744,6 +3818,9 @@ class SmokeRunner:
         assert "/debug/investigation-timeline-status" in development_paths, payload
         assert "/debug/investigation-timeline-registry" in development_paths, payload
         assert "/debug/investigation-timeline-preview" in development_paths, payload
+        assert "/debug/knowledge-extractor-status" in development_paths, payload
+        assert "/debug/knowledge-extractor-registry" in development_paths, payload
+        assert "/debug/knowledge-extractor-preview" in development_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -5537,6 +5614,7 @@ class SmokeRunner:
             ("lux_fault_report_preview", self.check_lux_fault_report_preview),
             ("investigation_context_preview", self.check_investigation_context_preview),
             ("investigation_timeline_preview", self.check_investigation_timeline_preview),
+            ("knowledge_extractor_preview", self.check_knowledge_extractor_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),

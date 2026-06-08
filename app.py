@@ -59,6 +59,11 @@ from investigation_timeline_preview import (
     investigation_timeline_registry,
     investigation_timeline_status,
 )
+from knowledge_extractor_preview import (
+    build_knowledge_extractor_preview,
+    knowledge_extractor_registry,
+    knowledge_extractor_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -691,6 +696,13 @@ class InvestigationTimelinePreviewRequest(BaseModel):
     command: str = Field(default="", max_length=2000)
     current_status: Optional[str] = Field(default=None, max_length=80)
     command_behavior: Optional[str] = Field(default=None, max_length=120)
+
+
+class KnowledgeExtractorPreviewRequest(BaseModel):
+    issue_title: Optional[str] = Field(default=None, max_length=200)
+    resolution_summary: str = Field(default="", max_length=2000)
+    command: str = Field(default="", max_length=2000)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
 
 
 # =========================================================
@@ -7768,6 +7780,26 @@ async def debug_investigation_timeline_preview(payload: InvestigationTimelinePre
     )
 
 
+@app.get("/debug/knowledge-extractor-status")
+async def debug_knowledge_extractor_status():
+    return knowledge_extractor_status()
+
+
+@app.get("/debug/knowledge-extractor-registry")
+async def debug_knowledge_extractor_registry():
+    return knowledge_extractor_registry()
+
+
+@app.post("/debug/knowledge-extractor-preview")
+async def debug_knowledge_extractor_preview(payload: KnowledgeExtractorPreviewRequest):
+    return build_knowledge_extractor_preview(
+        issue_title=payload.issue_title,
+        resolution_summary=payload.resolution_summary,
+        command=payload.command,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8554,12 +8586,19 @@ async def debug_agent_panel():
       <button data-investigation-context-command="Workspace: belge devam akışı">İnceleme: Workspace akışı</button>
       <button data-endpoint="/debug/investigation-timeline-status">İnceleme Zaman Çizelgesi Durum</button>
       <button data-endpoint="/debug/investigation-timeline-registry">İnceleme Zaman Çizelgesi Kayıt</button>
+      <button data-endpoint="/debug/knowledge-extractor-status">Knowledge Extractor Durum</button>
+      <button data-endpoint="/debug/knowledge-extractor-registry">Knowledge Extractor Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
       <button data-investigation-timeline-command="Websocket canlılık drift">Timeline: Websocket drift</button>
       <button data-investigation-timeline-command="Workspace belge akışı">Timeline: Workspace akışı</button>
       <button data-investigation-timeline-command="UI render senaryosu">Timeline: UI render</button>
+    </div>
+    <div class="bar">
+      <button data-knowledge-extractor-command="ARM Stop Continue" data-knowledge-resolution="Duplicate resume branch kaldirildi">Öğrenilenler: ARM Stop Continue</button>
+      <button data-knowledge-extractor-command="Layer 24 Fault Report" data-knowledge-resolution="Fault Report debug intelligence baglantilari hazirlandi">Öğrenilenler: Fault Report</button>
+      <button data-knowledge-extractor-command="Workspace Export" data-knowledge-resolution="Export gercek dosya yazmadan preview-only tutuldu">Öğrenilenler: Workspace Export</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -9518,6 +9557,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadKnowledgeExtractorPreview(command, resolutionSummary) {
+      statusEl.textContent = "Loading knowledge extractor preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/knowledge-extractor-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            issue_title: command,
+            command,
+            resolution_summary: resolutionSummary || "",
+            related_layer: ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded knowledge extractor preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -9829,6 +9890,12 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-investigation-timeline-command]").forEach((button) => {
       button.addEventListener("click", () => loadInvestigationTimelinePreview(button.dataset.investigationTimelineCommand));
+    });
+    document.querySelectorAll("button[data-knowledge-extractor-command]").forEach((button) => {
+      button.addEventListener("click", () => loadKnowledgeExtractorPreview(
+        button.dataset.knowledgeExtractorCommand,
+        button.dataset.knowledgeResolution
+      ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));

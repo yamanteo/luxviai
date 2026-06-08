@@ -9,6 +9,7 @@ from codex_handoff_builder_preview import build_codex_handoff_preview
 from credit_saver_engine import build_credit_saver_preview
 from investigation_context_preview import build_investigation_context_preview
 from investigation_timeline_preview import build_investigation_timeline_preview
+from knowledge_extractor_preview import build_knowledge_extractor_preview
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -375,6 +376,37 @@ def _attach_timeline_preview(item: Dict[str, Any]) -> Dict[str, Any]:
     return item
 
 
+def _attach_knowledge_preview(item: Dict[str, Any]) -> Dict[str, Any]:
+    title = item.get("title", "")
+    resolution_summary = item.get("outcome") or item.get("closure_note") or item.get("summary", "")
+    try:
+        knowledge_payload = build_knowledge_extractor_preview(
+            issue_title=title,
+            resolution_summary=str(resolution_summary),
+            command=str(title),
+            related_layer=", ".join(str(layer) for layer in item.get("related_layers", [])),
+        )
+        item["knowledge_extraction"] = {
+            "issue_title": knowledge_payload.get("issue_title"),
+            "resolution_summary": knowledge_payload.get("resolution_summary"),
+            "lessons_learned": knowledge_payload.get("lessons_learned", []),
+            "recommended_future_checks": knowledge_payload.get("recommended_future_checks", []),
+            "related_patterns": knowledge_payload.get("related_patterns", []),
+            "recommended_layers": knowledge_payload.get("recommended_layers", []),
+            "confidence_score": knowledge_payload.get("confidence_score"),
+        }
+    except Exception:
+        item["knowledge_extraction"] = {
+            "issue_title": title,
+            "resolution_summary": str(resolution_summary),
+            "lessons_learned": [],
+            "recommended_future_checks": [],
+            "related_patterns": [],
+            "recommended_layers": item.get("related_layers", []),
+        }
+    return item
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -694,7 +726,7 @@ def fault_report_registry() -> Dict[str, Any]:
         "sections": {
             "open_issues": OPEN_ISSUES,
             "deferred_issues": DEFERRED_ISSUES,
-            "resolved_issues": RESOLVED_ISSUES,
+            "resolved_issues": [_attach_knowledge_preview(_attach_timeline_preview(dict(item))) for item in RESOLVED_ISSUES],
             "issue_archive": ARCHIVE,
         },
         "related_integrations": {
@@ -742,12 +774,19 @@ def build_fault_report_preview(
 
     filtered_open = [_attach_timeline_preview(dict(item)) for item in OPEN_ISSUES if _matches(item)]
     filtered_deferred = [_attach_timeline_preview(dict(item)) for item in DEFERRED_ISSUES if _matches(item)]
-    filtered_resolved = [_attach_timeline_preview(dict(item)) for item in RESOLVED_ISSUES if _matches(item)]
+    filtered_resolved = [
+        _attach_knowledge_preview(_attach_timeline_preview(dict(item)))
+        for item in RESOLVED_ISSUES
+        if _matches(item)
+    ]
 
     if not any([filtered_open, filtered_deferred, filtered_resolved]):
         filtered_open = [_attach_timeline_preview(dict(item)) for item in OPEN_ISSUES[:1]]
         filtered_deferred = [_attach_timeline_preview(dict(item)) for item in DEFERRED_ISSUES[:1]]
-        filtered_resolved = [_attach_timeline_preview(dict(item)) for item in RESOLVED_ISSUES[:1]]
+        filtered_resolved = [
+            _attach_knowledge_preview(_attach_timeline_preview(dict(item)))
+            for item in RESOLVED_ISSUES[:1]
+        ]
         fallback = True
     else:
         fallback = False
