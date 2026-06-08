@@ -3587,6 +3587,76 @@ class SmokeRunner:
 
         return "investigation context preview"
 
+    def check_investigation_timeline_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/investigation-timeline-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "24.3", status
+        assert status.get("name") == "Investigation Timeline Preview", status
+        assert status.get("status") == "timeline_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("real_action_performed") is False, status
+        assert status.get("real_file_write_performed") is False, status
+        assert status.get("real_memory_write_performed") is False, status
+        assert status.get("real_db_write_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+        related_layers = set(status.get("related_layers", []))
+        assert {"/debug/bug-intake-status", "/debug/root-flow-auditor-status", "/debug/self-check-status"} <= related_layers, status
+
+        registry_response = client.get("/debug/investigation-timeline-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "24.3", registry
+        assert registry.get("name") == "Investigation Timeline Registry", registry
+        assert registry.get("status") == "timeline_registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("analysis_only") is True, registry
+        assert registry.get("timeline_issue_count", 0) >= 1, registry
+        assert len(registry.get("timeline_event_types", [])) >= 10, registry
+
+        preview_response = client.post(
+            "/debug/investigation-timeline-preview",
+            json={
+                "issue_title": "Dur/Devam sistemi",
+                "command": "dur 3. maddede devam et",
+                "current_status": "Inceleniyor",
+                "command_behavior": "stop_continue",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("issue_title") == "Dur/Devam sistemi", preview
+        assert isinstance(preview.get("current_status"), str), preview
+        assert preview.get("current_status"), preview
+        timeline_entries = preview.get("timeline_entries", [])
+        assert isinstance(timeline_entries, list), preview
+        assert len(timeline_entries) >= 1, preview
+        event_types = {entry.get("event") for entry in timeline_entries}
+        assert {"issue_created", "audit_started"} <= event_types, preview
+        assert preview.get("latest_finding"), preview
+        assert preview.get("recommended_next_step"), preview
+        assert isinstance(preview.get("related_layers"), list), preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("active_investigation_context"), dict), preview
+        assert preview.get("active_investigation_context", {}).get("active_task"), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("real_action_performed") is False, preview
+        assert preview.get("real_file_write_performed") is False, preview
+        assert preview.get("real_memory_write_performed") is False, preview
+        assert preview.get("real_db_write_performed") is False, preview
+
+        return "investigation timeline preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3671,6 +3741,9 @@ class SmokeRunner:
         assert "/debug/investigation-context-status" in development_paths, payload
         assert "/debug/investigation-context-registry" in development_paths, payload
         assert "/debug/investigation-context-preview" in development_paths, payload
+        assert "/debug/investigation-timeline-status" in development_paths, payload
+        assert "/debug/investigation-timeline-registry" in development_paths, payload
+        assert "/debug/investigation-timeline-preview" in development_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -5463,6 +5536,7 @@ class SmokeRunner:
             ("layer23_status_snapshot", self.check_layer23_status_snapshot),
             ("lux_fault_report_preview", self.check_lux_fault_report_preview),
             ("investigation_context_preview", self.check_investigation_context_preview),
+            ("investigation_timeline_preview", self.check_investigation_timeline_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),

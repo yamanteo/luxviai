@@ -8,6 +8,7 @@ from bug_intake_planner import build_bug_intake_preview
 from codex_handoff_builder_preview import build_codex_handoff_preview
 from credit_saver_engine import build_credit_saver_preview
 from investigation_context_preview import build_investigation_context_preview
+from investigation_timeline_preview import build_investigation_timeline_preview
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -347,6 +348,33 @@ def _safe_unique(items: List[str]) -> List[str]:
     return output
 
 
+def _attach_timeline_preview(item: Dict[str, Any]) -> Dict[str, Any]:
+    title = item.get("title", "")
+    try:
+        timeline_payload = build_investigation_timeline_preview(
+            issue_title=title,
+            command=str(title),
+            current_status=item.get("status"),
+            command_behavior="stop_continue" if "dur" in (title or "").lower() else None,
+        )
+        item["investigation_timeline"] = {
+            "issue_title": timeline_payload.get("issue_title"),
+            "current_status": timeline_payload.get("current_status"),
+            "latest_finding": timeline_payload.get("latest_finding"),
+            "timeline_entries": timeline_payload.get("timeline_entries", []),
+            "recommended_next_step": timeline_payload.get("recommended_next_step"),
+            "active_investigation_context": timeline_payload.get("active_investigation_context"),
+        }
+    except Exception:
+        item["investigation_timeline"] = {
+            "issue_title": title,
+            "current_status": item.get("status"),
+            "timeline_entries": [],
+            "recommended_next_step": "investigation context check",
+        }
+    return item
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -432,6 +460,19 @@ def fault_report_intelligence_registry() -> Dict[str, Any]:
         }
         for item in _iter_all_issues()
     ]
+    for item in issue_list:
+        item["investigation_timeline"] = {
+            "issue_title": item.get("title", ""),
+            "current_status": item.get("status", ""),
+            "recommended_next_step": "open fault card and validate timeline continuity",
+            "recommended_endpoint": "/debug/investigation-timeline-preview",
+            "active_investigation_context": build_investigation_context_preview(
+                active_task="stop_continue" if "dur" in _normalize(item["title"]) or "devam" in _normalize(item["title"]) else "",
+                goal="verify timeline continuity and repeatability",
+                command=f"issue:{item['title']}",
+                expected_result="investigation timeline should remain deterministic",
+            ),
+        }
 
     return {
         "layer": "24.1",
@@ -559,6 +600,11 @@ def build_fault_report_intelligence_preview(
         related_layer23_endpoints.append("/debug/layer23-status")
 
     related_layer23_endpoints = _safe_unique(related_layer23_endpoints)
+    timeline_payload = build_investigation_timeline_preview(
+        issue_title=issue["title"],
+        command=summary_for_analysis,
+        command_behavior=detected_behavior,
+    )
 
     return {
         "raw_issue_title": issue_title or "",
@@ -569,6 +615,14 @@ def build_fault_report_intelligence_preview(
         "command": command,
         "selected_issue": issue,
         "active_investigation_context": investigation_context,
+        "investigation_timeline": {
+            "issue_title": timeline_payload.get("issue_title"),
+            "current_status": timeline_payload.get("current_status"),
+            "latest_finding": timeline_payload.get("latest_finding"),
+            "recommended_next_step": timeline_payload.get("recommended_next_step"),
+            "timeline_entries": timeline_payload.get("timeline_entries", []),
+            "related_layers": timeline_payload.get("related_layers", []),
+        },
         "son_analiz": latest_possible_causes[:3] if latest_possible_causes else ["state_source_conflict"],
         "risk": root_flow.get("risk_level", "medium"),
         "confidence_score": root_flow.get("confidence_score", 0.55),
@@ -686,14 +740,14 @@ def build_fault_report_preview(
             return False
         return True
 
-    filtered_open = [item for item in OPEN_ISSUES if _matches(item)]
-    filtered_deferred = [item for item in DEFERRED_ISSUES if _matches(item)]
-    filtered_resolved = [item for item in RESOLVED_ISSUES if _matches(item)]
+    filtered_open = [_attach_timeline_preview(dict(item)) for item in OPEN_ISSUES if _matches(item)]
+    filtered_deferred = [_attach_timeline_preview(dict(item)) for item in DEFERRED_ISSUES if _matches(item)]
+    filtered_resolved = [_attach_timeline_preview(dict(item)) for item in RESOLVED_ISSUES if _matches(item)]
 
     if not any([filtered_open, filtered_deferred, filtered_resolved]):
-        filtered_open = OPEN_ISSUES[:1]
-        filtered_deferred = DEFERRED_ISSUES[:1]
-        filtered_resolved = RESOLVED_ISSUES[:1]
+        filtered_open = [_attach_timeline_preview(dict(item)) for item in OPEN_ISSUES[:1]]
+        filtered_deferred = [_attach_timeline_preview(dict(item)) for item in DEFERRED_ISSUES[:1]]
+        filtered_resolved = [_attach_timeline_preview(dict(item)) for item in RESOLVED_ISSUES[:1]]
         fallback = True
     else:
         fallback = False

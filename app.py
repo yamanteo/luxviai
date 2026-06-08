@@ -54,6 +54,11 @@ from layer22_candidate_scoring import candidate_scoring_matrix, layer22_scoring_
 from layer22_future_candidates import future_candidates_registry, layer22_status_snapshot, preview_future_candidate
 from layer22_status_snapshot import layer22_full_status_snapshot
 from layer23_status_snapshot import layer23_status_snapshot
+from investigation_timeline_preview import (
+    build_investigation_timeline_preview,
+    investigation_timeline_registry,
+    investigation_timeline_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -679,6 +684,13 @@ class InvestigationContextPreviewRequest(BaseModel):
     expected_result: str = Field(default="", max_length=1200)
     risk_level: Optional[str] = Field(default=None, max_length=40)
     command: str = Field(default="", max_length=2000)
+
+
+class InvestigationTimelinePreviewRequest(BaseModel):
+    issue_title: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    current_status: Optional[str] = Field(default=None, max_length=80)
+    command_behavior: Optional[str] = Field(default=None, max_length=120)
 
 
 # =========================================================
@@ -7736,6 +7748,26 @@ async def debug_investigation_context_preview(payload: InvestigationContextPrevi
     )
 
 
+@app.get("/debug/investigation-timeline-status")
+async def debug_investigation_timeline_status():
+    return investigation_timeline_status()
+
+
+@app.get("/debug/investigation-timeline-registry")
+async def debug_investigation_timeline_registry():
+    return investigation_timeline_registry()
+
+
+@app.post("/debug/investigation-timeline-preview")
+async def debug_investigation_timeline_preview(payload: InvestigationTimelinePreviewRequest):
+    return build_investigation_timeline_preview(
+        issue_title=payload.issue_title,
+        command=payload.command,
+        current_status=payload.current_status,
+        command_behavior=payload.command_behavior,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8520,6 +8552,14 @@ async def debug_agent_panel():
       <button data-fault-report-intelligence-command="Websocket canlılık drift">İstihbarat: Websocket drift</button>
       <button data-investigation-context-command="Dur/Devam sistemi">İnceleme: Dur/Devam</button>
       <button data-investigation-context-command="Workspace: belge devam akışı">İnceleme: Workspace akışı</button>
+      <button data-endpoint="/debug/investigation-timeline-status">İnceleme Zaman Çizelgesi Durum</button>
+      <button data-endpoint="/debug/investigation-timeline-registry">İnceleme Zaman Çizelgesi Kayıt</button>
+    </div>
+    <div class="bar">
+      <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
+      <button data-investigation-timeline-command="Websocket canlılık drift">Timeline: Websocket drift</button>
+      <button data-investigation-timeline-command="Workspace belge akışı">Timeline: Workspace akışı</button>
+      <button data-investigation-timeline-command="UI render senaryosu">Timeline: UI render</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -9456,6 +9496,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadInvestigationTimelinePreview(command) {
+      statusEl.textContent = "Loading investigation timeline preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/investigation-timeline-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            issue_title: command,
+            current_status: "",
+            command_behavior: ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded investigation timeline preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -9764,6 +9826,9 @@ async def debug_agent_panel():
     });
     document.querySelectorAll("button[data-investigation-context-command]").forEach((button) => {
       button.addEventListener("click", () => loadInvestigationContextPreview(button.dataset.investigationContextCommand));
+    });
+    document.querySelectorAll("button[data-investigation-timeline-command]").forEach((button) => {
+      button.addEventListener("click", () => loadInvestigationTimelinePreview(button.dataset.investigationTimelineCommand));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));
