@@ -125,6 +125,18 @@ class SmokeRunner:
                 3,
             ),
             (
+                "on listelik günlük plan yaz",
+                "1. Bir\n2. Iki\n3. Uc\n4. Dort\n5. Bes\n6. Alti\n7. Yedi\n8. Sekiz\n9. Dokuz\n10. On\n11. Fazla",
+                "bullet",
+                10,
+            ),
+            (
+                "10'luk liste yap",
+                "1. Bir\n2. Iki\n3. Uc\n4. Dort\n5. Bes\n6. Alti\n7. Yedi\n8. Sekiz\n9. Dokuz\n10. On\n11. Fazla",
+                "bullet",
+                10,
+            ),
+            (
                 "tek cumle cevap ver",
                 "Birinci cumle. Ikinci cumle.",
                 "sentence",
@@ -479,6 +491,17 @@ class SmokeRunner:
         luxapp = self.import_app()
         plan = {"kind": "model", "skip_save": False, "mode": "luxviai", "message": "uzun rapor yaz", "count_constraints": []}
         assert luxapp.should_auto_continue_response("length", "Bitmemis cevap", plan) is True
+        parsed = luxapp.extract_count_constraints("on listelik günlük plan yaz")
+        assert parsed and parsed[0]["kind"] == "bullet" and parsed[0]["target"] == 10
+        partial_ten = "\n".join(f"{i}. Madde {i}" for i in range(1, 6))
+        ten_plan = {
+            "kind": "model",
+            "skip_save": False,
+            "mode": "luxviai",
+            "message": "on listelik günlük plan yaz",
+            "count_constraints": [{"kind": "bullet", "target": 10, "limit": "exact"}],
+        }
+        assert luxapp.should_auto_continue_response("stop", partial_ten, ten_plan) is True
         bullets = "\n".join(f"- Madde {i}" for i in range(1, 21))
         count_plan = {
             "kind": "model",
@@ -488,7 +511,7 @@ class SmokeRunner:
             "count_constraints": [{"kind": "bullet", "target": 20, "limit": "exact"}],
         }
         assert luxapp.should_auto_continue_response("length", bullets, count_plan) is False
-        return "length simulation/count stop"
+        return "length simulation/count stop/list resume target"
 
     def patch_app_for_api(self) -> Any:
         luxapp = self.import_app()

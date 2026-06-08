@@ -1482,7 +1482,7 @@ COUNT_UNIT_LABELS = {
 COUNT_KEYWORD_PATTERNS = [
     ("subheading", r"\balt\s+baslik\w*|\bsubheading\w*"),
     ("paragraph", r"\bparagraf\w*|\bparagraphs?\b"),
-    ("bullet", r"\bmadde\w*|\bitems?\b|\bbullets?\b"),
+    ("bullet", r"\bmadde\w*|\bliste\w*|\blistelik\b|\blistesi\b|\blist\s+of\b|\bitems?\b|\bbullets?\b"),
     ("heading", r"\bbaslik\w*|\bheadings?\b|\btitles?\b"),
     ("slide", r"\bslayt\w*|\bslides?\b"),
     ("option", r"\bsecenek\w*|\bopsiyon\w*|\boptions?\b"),
@@ -1516,8 +1516,8 @@ def _nearest_count_before(text: str, start: int) -> Optional[int]:
     prefix = text[max(0, start - 55):start]
     matches = list(re.finditer(rf"\b((?:{COUNT_NUMBER_PATTERN})(?:\s+(?:{COUNT_NUMBER_PATTERN}))?)\b", prefix))
     for match in reversed(matches):
-        tail = prefix[match.end():].strip()
-        if not tail or re.fullmatch(r"(?:tane|adet|kadar|yaklasik|civarinda|rastgele|random|kisa|uzun|farkli|ayri|\s)+", tail):
+        tail = re.sub(r"['’]", "", prefix[match.end():].strip())
+        if not tail or re.fullmatch(r"(?:luk|lik|lu|li|tane|adet|kadar|yaklasik|civarinda|rastgele|random|kisa|uzun|farkli|ayri|\s)+", tail):
             return parse_count_number(match.group(1))
     return None
 
