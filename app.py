@@ -64,6 +64,11 @@ from knowledge_extractor_preview import (
     knowledge_extractor_registry,
     knowledge_extractor_status,
 )
+from repeated_pattern_detector_preview import (
+    build_repeated_pattern_preview,
+    repeated_pattern_registry,
+    repeated_pattern_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -702,6 +707,13 @@ class KnowledgeExtractorPreviewRequest(BaseModel):
     issue_title: Optional[str] = Field(default=None, max_length=200)
     resolution_summary: str = Field(default="", max_length=2000)
     command: str = Field(default="", max_length=2000)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class RepeatedPatternPreviewRequest(BaseModel):
+    pattern_name: Optional[str] = Field(default=None, max_length=120)
+    command: str = Field(default="", max_length=2000)
+    issue_title: Optional[str] = Field(default=None, max_length=200)
     related_layer: Optional[str] = Field(default=None, max_length=120)
 
 
@@ -7800,6 +7812,26 @@ async def debug_knowledge_extractor_preview(payload: KnowledgeExtractorPreviewRe
     )
 
 
+@app.get("/debug/repeated-pattern-status")
+async def debug_repeated_pattern_status():
+    return repeated_pattern_status()
+
+
+@app.get("/debug/repeated-pattern-registry")
+async def debug_repeated_pattern_registry():
+    return repeated_pattern_registry()
+
+
+@app.post("/debug/repeated-pattern-preview")
+async def debug_repeated_pattern_preview(payload: RepeatedPatternPreviewRequest):
+    return build_repeated_pattern_preview(
+        pattern_name=payload.pattern_name,
+        command=payload.command,
+        issue_title=payload.issue_title,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8588,6 +8620,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/investigation-timeline-registry">İnceleme Zaman Çizelgesi Kayıt</button>
       <button data-endpoint="/debug/knowledge-extractor-status">Knowledge Extractor Durum</button>
       <button data-endpoint="/debug/knowledge-extractor-registry">Knowledge Extractor Kayıt</button>
+      <button data-endpoint="/debug/repeated-pattern-status">Repeated Pattern Durum</button>
+      <button data-endpoint="/debug/repeated-pattern-registry">Repeated Pattern Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -8599,6 +8633,12 @@ async def debug_agent_panel():
       <button data-knowledge-extractor-command="ARM Stop Continue" data-knowledge-resolution="Duplicate resume branch kaldirildi">Öğrenilenler: ARM Stop Continue</button>
       <button data-knowledge-extractor-command="Layer 24 Fault Report" data-knowledge-resolution="Fault Report debug intelligence baglantilari hazirlandi">Öğrenilenler: Fault Report</button>
       <button data-knowledge-extractor-command="Workspace Export" data-knowledge-resolution="Export gercek dosya yazmadan preview-only tutuldu">Öğrenilenler: Workspace Export</button>
+    </div>
+    <div class="bar">
+      <button data-repeated-pattern="duplicate_branch">Desen: duplicate_branch</button>
+      <button data-repeated-pattern="state_source_conflict">Desen: state_source_conflict</button>
+      <button data-repeated-pattern="event_leak">Desen: event_leak</button>
+      <button data-repeated-pattern="permission_conflict">Desen: permission_conflict</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -9579,6 +9619,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadRepeatedPatternPreview(patternName) {
+      statusEl.textContent = "Loading repeated pattern preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/repeated-pattern-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pattern_name: patternName,
+            command: patternName,
+            issue_title: "",
+            related_layer: ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded repeated pattern preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -9896,6 +9958,9 @@ async def debug_agent_panel():
         button.dataset.knowledgeExtractorCommand,
         button.dataset.knowledgeResolution
       ));
+    });
+    document.querySelectorAll("button[data-repeated-pattern]").forEach((button) => {
+      button.addEventListener("click", () => loadRepeatedPatternPreview(button.dataset.repeatedPattern));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
       button.addEventListener("click", () => loadSample(button.dataset.endpoint));

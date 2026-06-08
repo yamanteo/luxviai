@@ -10,6 +10,7 @@ from credit_saver_engine import build_credit_saver_preview
 from investigation_context_preview import build_investigation_context_preview
 from investigation_timeline_preview import build_investigation_timeline_preview
 from knowledge_extractor_preview import build_knowledge_extractor_preview
+from repeated_pattern_detector_preview import build_repeated_pattern_preview, repeated_pattern_registry
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -407,6 +408,28 @@ def _attach_knowledge_preview(item: Dict[str, Any]) -> Dict[str, Any]:
     return item
 
 
+def _fault_report_repeated_patterns() -> List[Dict[str, Any]]:
+    registry = repeated_pattern_registry()
+    patterns = registry.get("patterns", [])
+    output: List[Dict[str, Any]] = []
+    for pattern in patterns[:5]:
+        preview = build_repeated_pattern_preview(
+            pattern_name=pattern.get("pattern_name"),
+            command=str(pattern.get("pattern_name", "")),
+        )
+        output.append(
+            {
+                "pattern_name": preview.get("pattern_name"),
+                "occurrence_count": preview.get("occurrence_count"),
+                "risk_trend": preview.get("risk_trend"),
+                "related_issues": preview.get("related_issues", []),
+                "recommended_attention_level": preview.get("recommended_attention_level"),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -728,6 +751,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "deferred_issues": DEFERRED_ISSUES,
             "resolved_issues": [_attach_knowledge_preview(_attach_timeline_preview(dict(item))) for item in RESOLVED_ISSUES],
             "issue_archive": ARCHIVE,
+            "repeated_patterns": _fault_report_repeated_patterns(),
         },
         "related_integrations": {
             "future_ready": [
@@ -801,6 +825,7 @@ def build_fault_report_preview(
             "deferred_issues": filtered_deferred,
             "resolved_issues": filtered_resolved,
             "issue_archive": ARCHIVE[:2],
+            "repeated_patterns": _fault_report_repeated_patterns(),
         },
         "fallback_used": fallback,
         "read_only": True,

@@ -1082,6 +1082,8 @@ class SmokeRunner:
             "/debug/fault-report-preview?focus=open",
             "/debug/knowledge-extractor-status",
             "/debug/knowledge-extractor-registry",
+            "/debug/repeated-pattern-status",
+            "/debug/repeated-pattern-registry",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -3731,6 +3733,79 @@ class SmokeRunner:
 
         return "knowledge extractor preview"
 
+    def check_repeated_pattern_detector_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/repeated-pattern-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "24.5", status
+        assert status.get("name") == "Repeated Pattern Detector Preview", status
+        assert status.get("status") == "repeated_pattern_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("real_action_performed") is False, status
+        assert status.get("real_file_write_performed") is False, status
+        assert status.get("real_memory_write_performed") is False, status
+        assert status.get("real_db_write_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+        supported = set(status.get("supported_patterns", []))
+        assert {"duplicate_branch", "state_source_conflict", "event_leak"} <= supported, status
+
+        registry_response = client.get("/debug/repeated-pattern-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "24.5", registry
+        assert registry.get("name") == "Repeated Pattern Detector Registry", registry
+        assert registry.get("status") == "repeated_pattern_registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("analysis_only") is True, registry
+        assert registry.get("pattern_count", 0) >= 10, registry
+        assert isinstance(registry.get("patterns"), list), registry
+
+        preview_response = client.post(
+            "/debug/repeated-pattern-preview",
+            json={
+                "pattern_name": "duplicate_branch",
+                "command": "dur devam duplicate branch",
+                "issue_title": "Dur/Devam sistemi",
+                "related_layer": "Layer 23",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("pattern_name") == "duplicate_branch", preview
+        assert preview.get("occurrence_count", 0) >= 1, preview
+        assert isinstance(preview.get("related_issues"), list), preview
+        assert isinstance(preview.get("related_layers"), list), preview
+        assert preview.get("risk_trend"), preview
+        assert preview.get("recommended_attention_level") in {"low", "medium", "high"}, preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("timeline_signal_preview"), dict), preview
+        assert isinstance(preview.get("knowledge_signal_preview"), dict), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("real_action_performed") is False, preview
+        assert preview.get("real_file_write_performed") is False, preview
+        assert preview.get("real_memory_write_performed") is False, preview
+        assert preview.get("real_db_write_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "resolved"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        repeated = report.get("sections", {}).get("repeated_patterns", [])
+        assert repeated, report
+        assert repeated[0].get("pattern_name"), report
+
+        return "repeated pattern detector preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3821,6 +3896,9 @@ class SmokeRunner:
         assert "/debug/knowledge-extractor-status" in development_paths, payload
         assert "/debug/knowledge-extractor-registry" in development_paths, payload
         assert "/debug/knowledge-extractor-preview" in development_paths, payload
+        assert "/debug/repeated-pattern-status" in development_paths, payload
+        assert "/debug/repeated-pattern-registry" in development_paths, payload
+        assert "/debug/repeated-pattern-preview" in development_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -5615,6 +5693,7 @@ class SmokeRunner:
             ("investigation_context_preview", self.check_investigation_context_preview),
             ("investigation_timeline_preview", self.check_investigation_timeline_preview),
             ("knowledge_extractor_preview", self.check_knowledge_extractor_preview),
+            ("repeated_pattern_detector_preview", self.check_repeated_pattern_detector_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),

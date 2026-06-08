@@ -117,6 +117,9 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/knowledge-extractor-status", "GET", "24.4", "knowledge extractor status"),
         _endpoint("/debug/knowledge-extractor-registry", "GET", "24.4", "knowledge extractor registry"),
         _endpoint("/debug/knowledge-extractor-preview", "POST", "24.4", "knowledge extractor preview"),
+        _endpoint("/debug/repeated-pattern-status", "GET", "24.5", "repeated pattern status"),
+        _endpoint("/debug/repeated-pattern-registry", "GET", "24.5", "repeated pattern registry"),
+        _endpoint("/debug/repeated-pattern-preview", "POST", "24.5", "repeated pattern preview"),
     ],
 }
 
