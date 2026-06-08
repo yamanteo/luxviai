@@ -14,12 +14,16 @@ def layer23_status_snapshot() -> Dict[str, Any]:
         "/debug/codex-handoff-status",
         "/debug/codex-handoff-registry",
         "/debug/codex-handoff-preview",
+        "/debug/bug-intake-status",
+        "/debug/bug-intake-registry",
+        "/debug/bug-intake-preview",
         "/debug/layer23-status",
     ]
     completed_parts = [
         "root_flow_auditor",
         "safe_self_check_runner",
         "codex_handoff_builder",
+        "bug_intake_investigation_planner",
     ]
     return {
         "layer": "23",

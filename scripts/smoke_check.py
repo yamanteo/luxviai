@@ -3067,6 +3067,110 @@ class SmokeRunner:
 
         return "codex handoff builder preview"
 
+    def check_bug_intake_investigation_planner_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        status_response = client.get("/debug/bug-intake-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "23.4", status
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("file_write_performed") is False, status
+        assert status.get("memory_write_performed") is False, status
+        assert status.get("db_write_performed") is False, status
+        assert status.get("git_write_performed") is False, status
+        assert status.get("commit_performed") is False, status
+        assert status.get("push_performed") is False, status
+        assert status.get("deploy_performed") is False, status
+        assert status.get("auto_fix_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+        assert status.get("root_flow_auditor_connected") is True, status
+        assert status.get("self_check_connected") is True, status
+        assert status.get("handoff_connected") is True, status
+        endpoints = set(status.get("available_endpoints", []))
+        assert "/debug/bug-intake-status" in endpoints, status
+        assert "/debug/bug-intake-registry" in endpoints, status
+        assert "/debug/bug-intake-preview" in endpoints, status
+
+        registry_response = client.get("/debug/bug-intake-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "23.4", registry
+        assert registry.get("status") == "registry_ready", registry
+        categories = {item.get("id") for item in registry.get("categories", [])}
+        expected_categories = {
+            "stop_continue",
+            "stream",
+            "websocket",
+            "workspace",
+            "visual",
+            "luxway",
+            "model_router",
+            "memory",
+            "endpoint",
+            "ui",
+            "permission_flow",
+            "future_dev_agent",
+        }
+        assert expected_categories <= categories, registry
+        assert registry.get("read_only") is True, registry
+        safety_flags = registry.get("safety_flags", {})
+        assert safety_flags.get("file_write") is False, safety_flags
+        assert safety_flags.get("memory_write") is False, safety_flags
+        assert safety_flags.get("db_write") is False, safety_flags
+        assert safety_flags.get("git_write") is False, safety_flags
+        assert safety_flags.get("commit") is False, safety_flags
+        assert safety_flags.get("push") is False, safety_flags
+        assert safety_flags.get("deploy") is False, safety_flags
+        assert safety_flags.get("auto_fix") is False, safety_flags
+
+        preview_response = client.post(
+            "/debug/bug-intake-preview",
+            json={
+                "behavior": "stop_continue",
+                "symptom": "devam et tuşu ikinci kez görünmüyor",
+                "expected_result": "çoklu stop/continue döngüsü çalışmalı",
+                "actual_result": "ikinci devam et isteğinde düğme geri gelmiyor",
+                "command": "liste 10 madde üret; dur ve devam et",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("behavior") == "stop_continue", preview
+        assert preview.get("symptom"), preview
+        assert preview.get("expected_result"), preview
+        assert preview.get("actual_result"), preview
+        assert preview.get("severity") in {"low", "medium", "high"}, preview
+        assert preview.get("investigation_priority") in {"p1", "p2", "p3"}, preview
+        assert "root_flow_audit" in preview.get("recommended_audit", []), preview
+        assert preview.get("recommended_self_checks"), preview
+        assert preview.get("recommended_files"), preview
+        assert "app.py" in set(preview.get("recommended_files", [])), preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert preview.get("root_flow_audit", {}).get("read_only") is True, preview
+        assert preview.get("safe_self_check", {}).get("read_only") is True, preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+
+        return "bug intake investigation planner preview"
+
     def check_layer23_status_snapshot(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3087,11 +3191,13 @@ class SmokeRunner:
             "root_flow_auditor",
             "safe_self_check_runner",
             "codex_handoff_builder",
+            "bug_intake_investigation_planner",
         } <= completed, payload
         endpoints = set(payload.get("available_endpoints", []))
         assert "/debug/root-flow-auditor-status" in endpoints, payload
         assert "/debug/self-check-status" in endpoints, payload
         assert "/debug/codex-handoff-status" in endpoints, payload
+        assert "/debug/bug-intake-status" in endpoints, payload
         assert "/debug/layer23-status" in endpoints, payload
         assert payload.get("read_only") is True, payload
         assert payload.get("analysis_only") is True, payload
@@ -3117,7 +3223,7 @@ class SmokeRunner:
         assert payload.get("typewriter_runtime_touched") is False, payload
         assert payload.get("next_recommended_layer") == "bug_intake_investigation_planner", payload
         future = " ".join(str(item).lower() for item in payload.get("future_direction", []))
-        assert "23.4" in future, payload
+        assert "23.5" in future, payload
 
         return "layer 23 status snapshot"
 
@@ -4983,6 +5089,7 @@ class SmokeRunner:
             ("root_flow_auditor_preview", self.check_root_flow_auditor_preview),
             ("safe_self_check_runner_preview", self.check_safe_self_check_runner_preview),
             ("codex_handoff_builder_preview", self.check_codex_handoff_builder_preview),
+            ("bug_intake_investigation_planner_preview", self.check_bug_intake_investigation_planner_preview),
             ("layer23_status_snapshot", self.check_layer23_status_snapshot),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),

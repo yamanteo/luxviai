@@ -88,6 +88,11 @@ from pointer_context_preview import pointer_schema, pointer_status, preview_poin
 from production_hardening_registry import backlog_registry, production_hardening_status
 from router_scaffold import preview_router_decision
 from root_flow_auditor_preview import build_codex_fix_plan, build_root_flow_audit, root_flow_auditor_status
+from bug_intake_planner import (
+    bug_intake_status,
+    bug_intake_registry,
+    build_bug_intake_preview,
+)
 from routing_simulation import preview_routing_simulation
 from safe_memory_retrieval import preview_safe_memory_retrieval, safe_memory_policy
 from safe_self_check_runner_preview import build_self_check_preview, self_check_registry, self_check_status
@@ -608,6 +613,14 @@ class CodexHandoffPreviewRequest(BaseModel):
     actual_result: str = Field(default="", max_length=2000)
     command: str = Field(default="", max_length=2000)
     requested_checks: List[str] = Field(default_factory=list)
+
+
+class BugIntakePreviewRequest(BaseModel):
+    behavior: Optional[str] = Field(default=None, max_length=80)
+    symptom: str = Field(default="", max_length=2000)
+    expected_result: str = Field(default="", max_length=2000)
+    actual_result: str = Field(default="", max_length=2000)
+    command: str = Field(default="", max_length=2000)
 
 
 # =========================================================
@@ -7513,6 +7526,27 @@ async def debug_codex_handoff_preview(payload: CodexHandoffPreviewRequest):
         actual_result=payload.actual_result,
         command=payload.command,
         requested_checks=payload.requested_checks,
+    )
+
+
+@app.get("/debug/bug-intake-status")
+async def debug_bug_intake_status():
+    return bug_intake_status()
+
+
+@app.get("/debug/bug-intake-registry")
+async def debug_bug_intake_registry():
+    return bug_intake_registry()
+
+
+@app.post("/debug/bug-intake-preview")
+async def debug_bug_intake_preview(payload: BugIntakePreviewRequest):
+    return build_bug_intake_preview(
+        behavior=payload.behavior,
+        symptom=payload.symptom,
+        expected_result=payload.expected_result,
+        actual_result=payload.actual_result,
+        command=payload.command,
     )
 
 
