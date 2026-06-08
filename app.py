@@ -38,6 +38,7 @@ from audio_signal_schema import audio_signal_schema, audio_status_snapshot, prev
 from agent_decision_trace import build_agent_decision_trace
 from background_support_registry import preview_background_support, support_registry, support_status
 from context_bridge_preview import context_bridge_schema, context_bridge_status, preview_context_bridge
+from codex_handoff_builder_preview import build_codex_handoff_preview, codex_handoff_registry, codex_handoff_status
 from cost_privacy_policy import cost_privacy_policy, preview_cost_privacy
 from device_bridge_preview import device_bridge_schema, device_bridge_status, preview_device_bridge
 from drive_mode_preview import drive_mode_schema, drive_mode_status, preview_drive_mode
@@ -596,6 +597,15 @@ class SelfCheckPreviewRequest(BaseModel):
     behavior: Optional[str] = Field(default=None, max_length=80)
     observed_behavior: Optional[str] = Field(default=None, max_length=2000)
     expected_behavior: Optional[str] = Field(default=None, max_length=2000)
+    requested_checks: List[str] = Field(default_factory=list)
+
+
+class CodexHandoffPreviewRequest(BaseModel):
+    behavior: Optional[str] = Field(default=None, max_length=80)
+    symptom: str = Field(default="", max_length=2000)
+    expected_result: str = Field(default="", max_length=2000)
+    actual_result: str = Field(default="", max_length=2000)
+    command: str = Field(default="", max_length=2000)
     requested_checks: List[str] = Field(default_factory=list)
 
 
@@ -7479,6 +7489,28 @@ async def debug_self_check_preview(payload: SelfCheckPreviewRequest):
         behavior=payload.behavior,
         observed_behavior=payload.observed_behavior,
         expected_behavior=payload.expected_behavior,
+        requested_checks=payload.requested_checks,
+    )
+
+
+@app.get("/debug/codex-handoff-status")
+async def debug_codex_handoff_status():
+    return codex_handoff_status()
+
+
+@app.get("/debug/codex-handoff-registry")
+async def debug_codex_handoff_registry():
+    return codex_handoff_registry()
+
+
+@app.post("/debug/codex-handoff-preview")
+async def debug_codex_handoff_preview(payload: CodexHandoffPreviewRequest):
+    return build_codex_handoff_preview(
+        behavior=payload.behavior,
+        symptom=payload.symptom,
+        expected_result=payload.expected_result,
+        actual_result=payload.actual_result,
+        command=payload.command,
         requested_checks=payload.requested_checks,
     )
 

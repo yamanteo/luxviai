@@ -2964,6 +2964,109 @@ class SmokeRunner:
 
         return "safe self-check runner preview"
 
+    def check_codex_handoff_builder_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+
+        status_response = client.get("/debug/codex-handoff-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "23.3", status
+        assert status.get("status") == "scaffold_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("root_flow_auditor_connected") is True, status
+        assert status.get("safe_self_check_connected") is True, status
+        assert status.get("file_write") is False, status
+        assert status.get("memory_write") is False, status
+        assert status.get("db_write") is False, status
+        assert status.get("git_write") is False, status
+        assert status.get("commit") is False, status
+        assert status.get("push") is False, status
+        assert status.get("deploy") is False, status
+        assert status.get("auto_fix") is False, status
+        assert status.get("file_write_performed") is False, status
+        assert status.get("git_write_performed") is False, status
+        assert status.get("real_fix_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/codex-handoff-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("status") == "registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        intake_fields = set(registry.get("bug_intake_fields", []))
+        assert {"behavior", "symptom", "expected_result", "actual_result"} <= intake_fields, registry
+        handoff_fields = set(registry.get("handoff_fields", []))
+        expected_handoff_fields = {
+            "behavior",
+            "symptom",
+            "possible_root_causes",
+            "recommended_files",
+            "recommended_checks",
+            "manual_scenarios",
+            "codex_task_summary",
+            "confidence_score",
+            "risk_level",
+        }
+        assert expected_handoff_fields <= handoff_fields, registry
+        assert "stop_continue" in set(registry.get("supported_behaviors", [])), registry
+        assert "manual_scenario_check" in set(registry.get("supported_self_checks", [])), registry
+        assert registry.get("auto_fix") is False, registry
+        assert registry.get("patch_applied") is False, registry
+
+        preview_response = client.post(
+            "/debug/codex-handoff-preview",
+            json={
+                "behavior": "stop_continue",
+                "symptom": "continue only works once",
+                "actual_result": "second stop does not show the continue button",
+                "expected_result": "multiple stop/continue cycles work until the answer completes",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("handoff_id") == "codex_handoff_stop_continue", preview
+        assert preview.get("behavior") == "stop_continue", preview
+        assert "continue" in str(preview.get("symptom", "")).lower(), preview
+        root_causes = set(preview.get("possible_root_causes", []))
+        assert {"state_source_conflict", "event_leak"} & root_causes, preview
+        assert "app.py" in set(preview.get("recommended_files", [])), preview
+        checks = set(preview.get("recommended_checks", []))
+        assert "behavior_owner_check" in checks, preview
+        assert "manual_scenario_check" in checks, preview
+        assert preview.get("manual_scenarios"), preview
+        task_summary = str(preview.get("codex_task_summary", "")).lower()
+        assert "arm" in task_summary or "resume" in task_summary, preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert preview.get("risk_level") == "high", preview
+        assert preview.get("lux_can_handle"), preview
+        assert preview.get("codex_needed_for"), preview
+        assert preview.get("root_flow_audit", {}).get("read_only") is True, preview
+        assert preview.get("safe_self_check", {}).get("read_only") is True, preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("file_write") is False, preview
+        assert preview.get("memory_write") is False, preview
+        assert preview.get("db_write") is False, preview
+        assert preview.get("git_write") is False, preview
+        assert preview.get("commit") is False, preview
+        assert preview.get("push") is False, preview
+        assert preview.get("deploy") is False, preview
+        assert preview.get("auto_fix") is False, preview
+        assert preview.get("patch_applied") is False, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("real_fix_performed") is False, preview
+
+        return "codex handoff builder preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4825,6 +4928,7 @@ class SmokeRunner:
             ("production_hardening_backlog_registry", self.check_production_hardening_backlog_registry),
             ("root_flow_auditor_preview", self.check_root_flow_auditor_preview),
             ("safe_self_check_runner_preview", self.check_safe_self_check_runner_preview),
+            ("codex_handoff_builder_preview", self.check_codex_handoff_builder_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
