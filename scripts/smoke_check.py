@@ -1115,6 +1115,8 @@ class SmokeRunner:
             "/debug/planner-agent-registry",
             "/debug/verifier-agent-status",
             "/debug/verifier-agent-registry",
+            "/debug/evidence-store-status",
+            "/debug/evidence-store-registry",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -5209,6 +5211,106 @@ class SmokeRunner:
 
         return "verifier agent preview"
 
+    def check_evidence_store_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/evidence-store-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "26.6", status
+        assert status.get("name") == "Evidence Store Preview", status
+        assert status.get("status") == "evidence_store_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("real_storage_performed") is False, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("git_write_enabled") is False, status
+        assert status.get("commit_enabled") is False, status
+        assert status.get("push_enabled") is False, status
+        assert status.get("deploy_enabled") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("patch_apply_enabled") is False, status
+        assert status.get("subprocess_execution_enabled") is False, status
+        assert status.get("real_data_stored") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/evidence-store-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "26.6", registry
+        assert registry.get("name") == "Evidence Store Registry", registry
+        assert registry.get("status") == "evidence_store_registry_ready", registry
+        assert registry.get("finding_count", 0) >= 4, registry
+        assert "explorer" in registry.get("related_agents", []), registry
+        assert registry.get("safety_flags", {}).get("real_data_storage") is False, registry
+        assert registry.get("safety_flags", {}).get("file_write") is False, registry
+        assert registry.get("safety_flags", {}).get("memory_write") is False, registry
+
+        preview_response = client.post(
+            "/debug/evidence-store-preview",
+            json={
+                "finding": "state_source_conflict",
+                "command": "stop continue state source conflict kanitlarini goster",
+                "project_area": "stop_continue",
+                "related_layer": "Layer 26",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("finding") == "state_source_conflict", preview
+        assert preview.get("evidence_items"), preview
+        assert preview.get("supporting_signals"), preview
+        assert "explorer" in preview.get("related_agents", []), preview
+        assert "planner" in preview.get("related_agents", []), preview
+        assert "verifier" in preview.get("related_agents", []), preview
+        assert preview.get("confidence_reasoning"), preview
+        assert preview.get("risk_reasoning"), preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("constitution_signal"), dict), preview
+        assert isinstance(preview.get("project_rules_signal"), dict), preview
+        assert isinstance(preview.get("explorer_signal"), dict), preview
+        assert isinstance(preview.get("planner_signal"), dict), preview
+        assert isinstance(preview.get("verifier_signal"), dict), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("strict_read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("real_storage_performed") is False, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        assert preview.get("patch_apply_performed") is False, preview
+        assert preview.get("subprocess_execution_performed") is False, preview
+        assert preview.get("real_data_stored") is False, preview
+        assert preview.get("chat_stream_touched") is False, preview
+        assert preview.get("typewriter_runtime_touched") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        evidence = report.get("sections", {}).get("evidence_store", {})
+        assert evidence.get("finding") == "state_source_conflict", report
+        assert evidence.get("evidence_items"), report
+        assert evidence.get("supporting_signals"), report
+        assert evidence.get("related_agents"), report
+        assert evidence.get("confidence_reasoning"), report
+        assert evidence.get("risk_reasoning"), report
+
+        return "evidence store preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -5349,6 +5451,9 @@ class SmokeRunner:
         assert "/debug/verifier-agent-status" in multi_agent_paths, payload
         assert "/debug/verifier-agent-registry" in multi_agent_paths, payload
         assert "/debug/verifier-agent-preview" in multi_agent_paths, payload
+        assert "/debug/evidence-store-status" in multi_agent_paths, payload
+        assert "/debug/evidence-store-registry" in multi_agent_paths, payload
+        assert "/debug/evidence-store-preview" in multi_agent_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -7159,6 +7264,7 @@ class SmokeRunner:
             ("explorer_agent_preview", self.check_explorer_agent_preview),
             ("planner_agent_preview", self.check_planner_agent_preview),
             ("verifier_agent_preview", self.check_verifier_agent_preview),
+            ("evidence_store_preview", self.check_evidence_store_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),

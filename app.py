@@ -144,6 +144,11 @@ from verifier_agent_preview import (
     verifier_agent_registry,
     verifier_agent_status,
 )
+from evidence_store_preview import (
+    build_evidence_store_preview,
+    evidence_store_registry,
+    evidence_store_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -875,6 +880,13 @@ class PlannerAgentPreviewRequest(BaseModel):
 
 
 class VerifierAgentPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class EvidenceStorePreviewRequest(BaseModel):
+    finding: Optional[str] = Field(default=None, max_length=200)
     command: str = Field(default="", max_length=2000)
     project_area: Optional[str] = Field(default=None, max_length=200)
     related_layer: Optional[str] = Field(default=None, max_length=120)
@@ -8280,6 +8292,26 @@ async def debug_verifier_agent_preview(payload: VerifierAgentPreviewRequest):
     )
 
 
+@app.get("/debug/evidence-store-status")
+async def debug_evidence_store_status():
+    return evidence_store_status()
+
+
+@app.get("/debug/evidence-store-registry")
+async def debug_evidence_store_registry():
+    return evidence_store_registry()
+
+
+@app.post("/debug/evidence-store-preview")
+async def debug_evidence_store_preview(payload: EvidenceStorePreviewRequest):
+    return build_evidence_store_preview(
+        finding=payload.finding,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -9101,6 +9133,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/planner-agent-registry">Planner Agent Kayıt</button>
       <button data-endpoint="/debug/verifier-agent-status">Verifier Agent Durum</button>
       <button data-endpoint="/debug/verifier-agent-registry">Verifier Agent Kayıt</button>
+      <button data-endpoint="/debug/evidence-store-status">Evidence Store Durum</button>
+      <button data-endpoint="/debug/evidence-store-registry">Evidence Store Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -9202,6 +9236,12 @@ async def debug_agent_panel():
       <button data-verifier-agent-command="websocket stream icin regresyon kontrollerini denetle" data-verifier-agent-area="websocket_stream">Verifier Agent: Websocket</button>
       <button data-verifier-agent-command="workspace export icin basari kriterlerini kontrol et" data-verifier-agent-area="workspace_export">Verifier Agent: Workspace Export</button>
       <button data-verifier-agent-command="luxway permission icin risk validasyonunu denetle" data-verifier-agent-area="luxway_permission">Verifier Agent: Luxway izin</button>
+    </div>
+    <div class="bar">
+      <button data-evidence-store-finding="state_source_conflict" data-evidence-store-command="stop continue state source conflict kanitlarini goster" data-evidence-store-area="stop_continue">Evidence: State Conflict</button>
+      <button data-evidence-store-finding="duplicate_branch" data-evidence-store-command="duplicate branch dayanaklarini goster" data-evidence-store-area="debug_intelligence">Evidence: Duplicate Branch</button>
+      <button data-evidence-store-finding="permission_boundary" data-evidence-store-command="luxway permission boundary kanitlarini goster" data-evidence-store-area="luxway_permission">Evidence: Permission</button>
+      <button data-evidence-store-finding="validation_gap" data-evidence-store-command="validation gap dayanaklarini goster" data-evidence-store-area="websocket_stream">Evidence: Validation Gap</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -10502,6 +10542,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadEvidenceStorePreview(finding, projectArea, command) {
+      statusEl.textContent = "Loading evidence store preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/evidence-store-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            finding,
+            command,
+            project_area: projectArea,
+            related_layer: "Layer 26"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded evidence store preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10905,6 +10967,13 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadVerifierAgentPreview(
         button.dataset.verifierAgentArea,
         button.dataset.verifierAgentCommand
+      ));
+    });
+    document.querySelectorAll("button[data-evidence-store-command]").forEach((button) => {
+      button.addEventListener("click", () => loadEvidenceStorePreview(
+        button.dataset.evidenceStoreFinding,
+        button.dataset.evidenceStoreArea,
+        button.dataset.evidenceStoreCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {

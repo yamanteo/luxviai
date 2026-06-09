@@ -169,6 +169,9 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/verifier-agent-status", "GET", "26.5", "verifier agent status"),
         _endpoint("/debug/verifier-agent-registry", "GET", "26.5", "verifier agent registry"),
         _endpoint("/debug/verifier-agent-preview", "POST", "26.5", "verifier agent preview"),
+        _endpoint("/debug/evidence-store-status", "GET", "26.6", "evidence store status"),
+        _endpoint("/debug/evidence-store-registry", "GET", "26.6", "evidence store registry"),
+        _endpoint("/debug/evidence-store-preview", "POST", "26.6", "evidence store preview"),
     ],
 }
 

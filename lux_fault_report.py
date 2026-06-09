@@ -26,6 +26,7 @@ from project_rules_loader_preview import build_project_rules_preview, project_ru
 from explorer_agent_preview import build_explorer_agent_preview
 from planner_agent_preview import build_planner_agent_preview
 from verifier_agent_preview import build_verifier_agent_preview
+from evidence_store_preview import build_evidence_store_preview
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -766,6 +767,24 @@ def _fault_report_verifier_agent() -> Dict[str, Any]:
     }
 
 
+def _fault_report_evidence_store() -> Dict[str, Any]:
+    preview = build_evidence_store_preview(
+        finding="state_source_conflict",
+        command="stop continue state source conflict kanitlarini goster",
+        project_area="stop_continue",
+        related_layer="Layer 26",
+    )
+    return {
+        "finding": preview.get("finding"),
+        "evidence_items": preview.get("evidence_items", []),
+        "supporting_signals": preview.get("supporting_signals", []),
+        "related_agents": preview.get("related_agents", []),
+        "confidence_reasoning": preview.get("confidence_reasoning"),
+        "risk_reasoning": preview.get("risk_reasoning"),
+        "confidence_score": preview.get("confidence_score"),
+    }
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -1103,6 +1122,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "explorer_agent": _fault_report_explorer_agent(),
             "planner_agent": _fault_report_planner_agent(),
             "verifier_agent": _fault_report_verifier_agent(),
+            "evidence_store": _fault_report_evidence_store(),
         },
         "related_integrations": {
             "future_ready": [
@@ -1192,6 +1212,7 @@ def build_fault_report_preview(
             "explorer_agent": _fault_report_explorer_agent(),
             "planner_agent": _fault_report_planner_agent(),
             "verifier_agent": _fault_report_verifier_agent(),
+            "evidence_store": _fault_report_evidence_store(),
         },
         "fallback_used": fallback,
         "read_only": True,
