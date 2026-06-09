@@ -18,6 +18,7 @@ from dev_agent_explorer_preview import build_dev_agent_explorer_preview, dev_age
 from dependency_mapper_preview import build_dependency_mapper_preview, dependency_mapper_registry
 from impact_analyzer_preview import build_impact_analyzer_preview, impact_analyzer_registry
 from safe_change_boundary_preview import build_change_boundary_preview, change_boundary_registry
+from safe_patch_planner_preview import build_patch_planner_preview, patch_planner_registry
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -604,6 +605,31 @@ def _fault_report_change_boundary() -> List[Dict[str, Any]]:
     return output
 
 
+def _fault_report_patch_plans() -> List[Dict[str, Any]]:
+    registry = patch_planner_registry()
+    plans = registry.get("patch_plans", [])
+    output: List[Dict[str, Any]] = []
+    for plan in plans[:5]:
+        preview = build_patch_planner_preview(
+            target_issue=str(plan.get("id", "")),
+            command=str(plan.get("id", "")),
+        )
+        output.append(
+            {
+                "target_issue": preview.get("target_issue"),
+                "recommended_change_areas": preview.get("recommended_change_areas", []),
+                "recommended_patch_scope": preview.get("recommended_patch_scope"),
+                "risk_assessment": preview.get("risk_assessment"),
+                "required_tests": preview.get("required_tests", []),
+                "recommended_validation_steps": preview.get("recommended_validation_steps", []),
+                "approval_required": preview.get("approval_required"),
+                "estimated_complexity": preview.get("estimated_complexity"),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -933,6 +959,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "dependency_map": _fault_report_dependency_map(),
             "impact_analysis": _fault_report_impact_analysis(),
             "change_boundary": _fault_report_change_boundary(),
+            "patch_plans": _fault_report_patch_plans(),
         },
         "related_integrations": {
             "future_ready": [
@@ -1014,6 +1041,7 @@ def build_fault_report_preview(
             "dependency_map": _fault_report_dependency_map(),
             "impact_analysis": _fault_report_impact_analysis(),
             "change_boundary": _fault_report_change_boundary(),
+            "patch_plans": _fault_report_patch_plans(),
         },
         "fallback_used": fallback,
         "read_only": True,

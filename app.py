@@ -104,6 +104,11 @@ from safe_change_boundary_preview import (
     change_boundary_registry,
     change_boundary_status,
 )
+from safe_patch_planner_preview import (
+    build_patch_planner_preview,
+    patch_planner_registry,
+    patch_planner_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -793,6 +798,12 @@ class ImpactAnalyzerPreviewRequest(BaseModel):
 
 class ChangeBoundaryPreviewRequest(BaseModel):
     target_area: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchPlannerPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
     command: str = Field(default="", max_length=2000)
     related_layer: Optional[str] = Field(default=None, max_length=120)
 
@@ -8048,6 +8059,25 @@ async def debug_change_boundary_preview(payload: ChangeBoundaryPreviewRequest):
     )
 
 
+@app.get("/debug/patch-planner-status")
+async def debug_patch_planner_status():
+    return patch_planner_status()
+
+
+@app.get("/debug/patch-planner-registry")
+async def debug_patch_planner_registry():
+    return patch_planner_registry()
+
+
+@app.post("/debug/patch-planner-preview")
+async def debug_patch_planner_preview(payload: PatchPlannerPreviewRequest):
+    return build_patch_planner_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8852,6 +8882,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/impact-analyzer-registry">Impact Analyzer Kayıt</button>
       <button data-endpoint="/debug/change-boundary-status">Change Boundary Durum</button>
       <button data-endpoint="/debug/change-boundary-registry">Change Boundary Kayıt</button>
+      <button data-endpoint="/debug/patch-planner-status">Patch Planner Durum</button>
+      <button data-endpoint="/debug/patch-planner-registry">Patch Planner Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -8911,6 +8943,12 @@ async def debug_agent_panel():
       <button data-change-boundary-command="websocket stream typewriter protected boundary" data-change-boundary-target="websocket_stream">Sınır: Websocket</button>
       <button data-change-boundary-command="workspace export file write boundary" data-change-boundary-target="workspace_export">Sınır: Workspace Export</button>
       <button data-change-boundary-command="luxway permission private data boundary" data-change-boundary-target="luxway_permission">Sınır: Luxway izin</button>
+    </div>
+    <div class="bar">
+      <button data-patch-planner-command="stop continue resume flow patch plan" data-patch-planner-target="stop_continue">Patch Planı: Stop/Continue</button>
+      <button data-patch-planner-command="websocket stream typewriter patch plan" data-patch-planner-target="websocket_stream">Patch Planı: Websocket</button>
+      <button data-patch-planner-command="workspace export file guard patch plan" data-patch-planner-target="workspace_export">Patch Planı: Workspace Export</button>
+      <button data-patch-planner-command="luxway permission private data patch plan" data-patch-planner-target="luxway_permission">Patch Planı: Luxway izin</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -10063,6 +10101,27 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadPatchPlannerPreview(targetIssue, command) {
+      statusEl.textContent = "Loading patch planner preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/patch-planner-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            target_issue: targetIssue,
+            command,
+            related_layer: ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded patch planner preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10424,6 +10483,12 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadChangeBoundaryPreview(
         button.dataset.changeBoundaryTarget,
         button.dataset.changeBoundaryCommand
+      ));
+    });
+    document.querySelectorAll("button[data-patch-planner-command]").forEach((button) => {
+      button.addEventListener("click", () => loadPatchPlannerPreview(
+        button.dataset.patchPlannerTarget,
+        button.dataset.patchPlannerCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {

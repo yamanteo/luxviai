@@ -1098,6 +1098,8 @@ class SmokeRunner:
             "/debug/impact-analyzer-registry",
             "/debug/change-boundary-status",
             "/debug/change-boundary-registry",
+            "/debug/patch-planner-status",
+            "/debug/patch-planner-registry",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -4414,6 +4416,100 @@ class SmokeRunner:
 
         return "change boundary preview"
 
+    def check_patch_planner_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/patch-planner-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "25.5", status
+        assert status.get("name") == "Safe Patch Planner Preview", status
+        assert status.get("status") == "patch_planner_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("git_write_enabled") is False, status
+        assert status.get("commit_enabled") is False, status
+        assert status.get("push_enabled") is False, status
+        assert status.get("deploy_enabled") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("patch_apply_enabled") is False, status
+        assert status.get("subprocess_execution_enabled") is False, status
+        assert status.get("repo_scan_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/patch-planner-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "25.5", registry
+        assert registry.get("name") == "Safe Patch Planner Registry", registry
+        assert registry.get("status") == "patch_planner_registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("strict_read_only") is True, registry
+        assert registry.get("analysis_only") is True, registry
+        assert registry.get("plan_count", 0) >= 1, registry
+        assert isinstance(registry.get("patch_plans"), list), registry
+        assert registry.get("safety_flags", {}).get("patch_apply") is False, registry
+        assert registry.get("safety_flags", {}).get("subprocess_execution") is False, registry
+
+        preview_response = client.post(
+            "/debug/patch-planner-preview",
+            json={
+                "target_issue": "stop_continue",
+                "command": "dur devam resume flow patch plan",
+                "related_layer": "Layer 25",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("target_issue") == "stop_continue", preview
+        assert "resume_flow" in preview.get("recommended_change_areas", []), preview
+        assert preview.get("recommended_patch_scope") == "small", preview
+        assert preview.get("risk_assessment") == "medium", preview
+        assert "smoke_check" in preview.get("required_tests", []), preview
+        assert "py_compile" in preview.get("required_tests", []), preview
+        assert "root_flow_audit" in preview.get("recommended_validation_steps", []), preview
+        assert preview.get("approval_required") is True, preview
+        assert preview.get("estimated_complexity") == "medium", preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("boundary_signal"), dict), preview
+        assert isinstance(preview.get("impact_signal"), dict), preview
+        assert isinstance(preview.get("dependency_signal"), dict), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("strict_read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        assert preview.get("patch_apply_performed") is False, preview
+        assert preview.get("subprocess_execution_performed") is False, preview
+        assert preview.get("repo_scan_performed") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        plans = report.get("sections", {}).get("patch_plans", [])
+        assert plans, report
+        assert plans[0].get("recommended_change_areas"), report
+        assert plans[0].get("required_tests"), report
+        assert plans[0].get("approval_required") is not None, report
+
+        return "patch planner preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4529,6 +4625,9 @@ class SmokeRunner:
         assert "/debug/change-boundary-status" in dev_agent_paths, payload
         assert "/debug/change-boundary-registry" in dev_agent_paths, payload
         assert "/debug/change-boundary-preview" in dev_agent_paths, payload
+        assert "/debug/patch-planner-status" in dev_agent_paths, payload
+        assert "/debug/patch-planner-registry" in dev_agent_paths, payload
+        assert "/debug/patch-planner-preview" in dev_agent_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -6331,6 +6430,7 @@ class SmokeRunner:
             ("dependency_mapper_preview", self.check_dependency_mapper_preview),
             ("impact_analyzer_preview", self.check_impact_analyzer_preview),
             ("change_boundary_preview", self.check_change_boundary_preview),
+            ("patch_planner_preview", self.check_patch_planner_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
