@@ -1111,6 +1111,8 @@ class SmokeRunner:
             "/debug/project-rules-registry",
             "/debug/explorer-agent-status",
             "/debug/explorer-agent-registry",
+            "/debug/planner-agent-status",
+            "/debug/planner-agent-registry",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -4994,6 +4996,112 @@ class SmokeRunner:
 
         return "explorer agent preview"
 
+    def check_planner_agent_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/planner-agent-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "26.4", status
+        assert status.get("name") == "Planner Agent Preview", status
+        assert status.get("status") == "planner_agent_preview_ready", status
+        assert status.get("agent_role") == "planner", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert "task_planning" in status.get("allowed_capabilities", []), status
+        assert "risk_analysis" in status.get("allowed_capabilities", []), status
+        assert "validation_planning" in status.get("allowed_capabilities", []), status
+        assert "patch_execution" in status.get("blocked_capabilities", []), status
+        assert "test_execution" in status.get("blocked_capabilities", []), status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("git_write_enabled") is False, status
+        assert status.get("commit_enabled") is False, status
+        assert status.get("push_enabled") is False, status
+        assert status.get("deploy_enabled") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("patch_apply_enabled") is False, status
+        assert status.get("subprocess_execution_enabled") is False, status
+        assert status.get("repo_scan_performed") is False, status
+        assert status.get("test_execution_enabled") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/planner-agent-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "26.4", registry
+        assert registry.get("name") == "Planner Agent Registry", registry
+        assert registry.get("status") == "planner_agent_registry_ready", registry
+        assert registry.get("agent_role") == "planner", registry
+        assert registry.get("role_contract", {}).get("can_create_solution_plan") is True, registry
+        assert registry.get("role_contract", {}).get("can_apply_patch") is False, registry
+        assert registry.get("role_contract", {}).get("can_run_tests") is False, registry
+        assert registry.get("role_contract", {}).get("can_commit") is False, registry
+        assert registry.get("safety_flags", {}).get("patch_apply") is False, registry
+        assert registry.get("safety_flags", {}).get("subprocess_execution") is False, registry
+
+        preview_response = client.post(
+            "/debug/planner-agent-preview",
+            json={
+                "command": "stop continue icin cozum plani ve dogrulama stratejisi olustur",
+                "project_area": "stop_continue",
+                "related_layer": "Layer 26",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("agent_role") == "planner", preview
+        assert "task_planning" in preview.get("allowed_capabilities", []), preview
+        assert "patch_execution" in preview.get("blocked_capabilities", []), preview
+        assert "test_execution" in preview.get("blocked_capabilities", []), preview
+        assert preview.get("recommended_plan"), preview
+        assert preview.get("recommended_task_order"), preview
+        assert isinstance(preview.get("risk_considerations"), dict), preview
+        assert isinstance(preview.get("recommended_validation_strategy"), dict), preview
+        assert preview.get("recommended_validation_strategy", {}).get("recommended_manual_tests"), preview
+        assert isinstance(preview.get("constitution_signal"), dict), preview
+        assert isinstance(preview.get("project_rules_signal"), dict), preview
+        assert isinstance(preview.get("explorer_signal"), dict), preview
+        assert isinstance(preview.get("patch_plan_signal"), dict), preview
+        assert isinstance(preview.get("verification_signal"), dict), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("strict_read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        assert preview.get("patch_apply_performed") is False, preview
+        assert preview.get("subprocess_execution_performed") is False, preview
+        assert preview.get("repo_scan_performed") is False, preview
+        assert preview.get("test_execution_performed") is False, preview
+        assert preview.get("chat_stream_touched") is False, preview
+        assert preview.get("typewriter_runtime_touched") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        planner = report.get("sections", {}).get("planner_agent", {})
+        assert planner.get("agent_role") == "planner", report
+        assert planner.get("recommended_plan"), report
+        assert planner.get("recommended_task_order"), report
+        assert planner.get("risk_considerations"), report
+        assert planner.get("recommended_validation_strategy"), report
+
+        return "planner agent preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -5128,6 +5236,9 @@ class SmokeRunner:
         assert "/debug/explorer-agent-status" in multi_agent_paths, payload
         assert "/debug/explorer-agent-registry" in multi_agent_paths, payload
         assert "/debug/explorer-agent-preview" in multi_agent_paths, payload
+        assert "/debug/planner-agent-status" in multi_agent_paths, payload
+        assert "/debug/planner-agent-registry" in multi_agent_paths, payload
+        assert "/debug/planner-agent-preview" in multi_agent_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -6936,6 +7047,7 @@ class SmokeRunner:
             ("agent_constitution_engine_preview", self.check_agent_constitution_engine_preview),
             ("project_rules_loader_preview", self.check_project_rules_loader_preview),
             ("explorer_agent_preview", self.check_explorer_agent_preview),
+            ("planner_agent_preview", self.check_planner_agent_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),

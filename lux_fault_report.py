@@ -24,6 +24,7 @@ from dev_agent_readiness_snapshot import layer25_status_snapshot
 from agent_constitution_engine_preview import build_constitution_preview, constitution_registry
 from project_rules_loader_preview import build_project_rules_preview, project_rules_registry
 from explorer_agent_preview import build_explorer_agent_preview
+from planner_agent_preview import build_planner_agent_preview
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -732,6 +733,22 @@ def _fault_report_explorer_agent() -> Dict[str, Any]:
     }
 
 
+def _fault_report_planner_agent() -> Dict[str, Any]:
+    preview = build_planner_agent_preview(
+        command="stop continue icin cozum plani ve dogrulama stratejisi olustur",
+        project_area="stop_continue",
+        related_layer="Layer 26",
+    )
+    return {
+        "agent_role": preview.get("agent_role"),
+        "recommended_plan": preview.get("recommended_plan", []),
+        "recommended_task_order": preview.get("recommended_task_order", []),
+        "risk_considerations": preview.get("risk_considerations", {}),
+        "recommended_validation_strategy": preview.get("recommended_validation_strategy", {}),
+        "confidence_score": preview.get("confidence_score"),
+    }
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -1067,6 +1084,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "constitution_engine": _fault_report_constitution_engine(),
             "project_rules": _fault_report_project_rules(),
             "explorer_agent": _fault_report_explorer_agent(),
+            "planner_agent": _fault_report_planner_agent(),
         },
         "related_integrations": {
             "future_ready": [
@@ -1154,6 +1172,7 @@ def build_fault_report_preview(
             "constitution_engine": _fault_report_constitution_engine(),
             "project_rules": _fault_report_project_rules(),
             "explorer_agent": _fault_report_explorer_agent(),
+            "planner_agent": _fault_report_planner_agent(),
         },
         "fallback_used": fallback,
         "read_only": True,
