@@ -157,6 +157,9 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/constitution-status", "GET", "26.1", "agent constitution status"),
         _endpoint("/debug/constitution-registry", "GET", "26.1", "agent constitution registry"),
         _endpoint("/debug/constitution-preview", "POST", "26.1", "agent constitution rule resolution preview"),
+        _endpoint("/debug/project-rules-status", "GET", "26.2", "project rules status"),
+        _endpoint("/debug/project-rules-registry", "GET", "26.2", "project rules registry"),
+        _endpoint("/debug/project-rules-preview", "POST", "26.2", "project rules preview"),
     ],
 }
 

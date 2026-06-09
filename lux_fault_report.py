@@ -22,6 +22,7 @@ from safe_patch_planner_preview import build_patch_planner_preview, patch_planne
 from safe_verification_planner_preview import build_verification_planner_preview, verification_planner_registry
 from dev_agent_readiness_snapshot import layer25_status_snapshot
 from agent_constitution_engine_preview import build_constitution_preview, constitution_registry
+from project_rules_loader_preview import build_project_rules_preview, project_rules_registry
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -689,6 +690,30 @@ def _fault_report_constitution_engine() -> Dict[str, Any]:
     }
 
 
+def _fault_report_project_rules() -> List[Dict[str, Any]]:
+    registry = project_rules_registry()
+    output: List[Dict[str, Any]] = []
+    for rule in registry.get("rules", [])[:6]:
+        preview = build_project_rules_preview(
+            command=str(rule.get("project_rule_category", "")),
+            project_rule_category=str(rule.get("project_rule_category", "")),
+            target_area=str(rule.get("project_rule_category", "")),
+        )
+        output.append(
+            {
+                "project_rule_category": preview.get("project_rule_category"),
+                "rule_name": preview.get("rule_name"),
+                "rule_priority": preview.get("rule_priority"),
+                "protected_areas": preview.get("protected_areas", []),
+                "required_checks": preview.get("required_checks", []),
+                "recommended_actions": preview.get("recommended_actions", []),
+                "blocked_actions": preview.get("blocked_actions", []),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -1022,6 +1047,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "verification_plans": _fault_report_verification_plans(),
             "dev_agent_readiness": _fault_report_dev_agent_readiness(),
             "constitution_engine": _fault_report_constitution_engine(),
+            "project_rules": _fault_report_project_rules(),
         },
         "related_integrations": {
             "future_ready": [
@@ -1107,6 +1133,7 @@ def build_fault_report_preview(
             "verification_plans": _fault_report_verification_plans(),
             "dev_agent_readiness": _fault_report_dev_agent_readiness(),
             "constitution_engine": _fault_report_constitution_engine(),
+            "project_rules": _fault_report_project_rules(),
         },
         "fallback_used": fallback,
         "read_only": True,

@@ -124,6 +124,11 @@ from agent_constitution_engine_preview import (
     constitution_registry,
     constitution_status,
 )
+from project_rules_loader_preview import (
+    build_project_rules_preview,
+    project_rules_registry,
+    project_rules_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -833,6 +838,12 @@ class ConstitutionPreviewRequest(BaseModel):
     command: str = Field(default="", max_length=2000)
     rule_source: Optional[str] = Field(default=None, max_length=120)
     conflicting_rules: List[str] = Field(default_factory=list, max_length=20)
+    target_area: Optional[str] = Field(default=None, max_length=200)
+
+
+class ProjectRulesPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=2000)
+    project_rule_category: Optional[str] = Field(default=None, max_length=120)
     target_area: Optional[str] = Field(default=None, max_length=200)
 
 
@@ -8160,6 +8171,25 @@ async def debug_constitution_preview(payload: ConstitutionPreviewRequest):
     )
 
 
+@app.get("/debug/project-rules-status")
+async def debug_project_rules_status():
+    return project_rules_status()
+
+
+@app.get("/debug/project-rules-registry")
+async def debug_project_rules_registry():
+    return project_rules_registry()
+
+
+@app.post("/debug/project-rules-preview")
+async def debug_project_rules_preview(payload: ProjectRulesPreviewRequest):
+    return build_project_rules_preview(
+        command=payload.command,
+        project_rule_category=payload.project_rule_category,
+        target_area=payload.target_area,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8973,6 +9003,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/layer25-status">Layer 25 Status</button>
       <button data-endpoint="/debug/constitution-status">Constitution Durum</button>
       <button data-endpoint="/debug/constitution-registry">Constitution Kayıt</button>
+      <button data-endpoint="/debug/project-rules-status">Project Rules Durum</button>
+      <button data-endpoint="/debug/project-rules-registry">Project Rules Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -9050,6 +9082,12 @@ async def debug_agent_panel():
       <button data-constitution-command="user wants patch but protected stop continue boundary" data-constitution-target="stop_continue">Constitution: Stop/Continue</button>
       <button data-constitution-command="project rule conflicts with memory preference" data-constitution-target="memory">Constitution: Memory</button>
       <button data-constitution-command="dev agent can plan but cannot write" data-constitution-target="debug_intelligence">Constitution: Dev Agent</button>
+    </div>
+    <div class="bar">
+      <button data-project-rules-command="protect chat stream websocket typewriter stop continue" data-project-rules-category="protected_runtime">Proje Kuralı: Runtime</button>
+      <button data-project-rules-command="static index app runtime file guard" data-project-rules-category="protected_files">Proje Kuralı: Dosyalar</button>
+      <button data-project-rules-command="smoke compile verification required" data-project-rules-category="required_tests">Proje Kuralı: Testler</button>
+      <button data-project-rules-command="approval required before protected change" data-project-rules-category="approval_rules">Proje Kuralı: Onay</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -10266,6 +10304,27 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadProjectRulesPreview(category, command) {
+      statusEl.textContent = "Loading project rules preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/project-rules-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            project_rule_category: category,
+            target_area: category
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded project rules preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10645,6 +10704,12 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadConstitutionPreview(
         button.dataset.constitutionTarget,
         button.dataset.constitutionCommand
+      ));
+    });
+    document.querySelectorAll("button[data-project-rules-command]").forEach((button) => {
+      button.addEventListener("click", () => loadProjectRulesPreview(
+        button.dataset.projectRulesCategory,
+        button.dataset.projectRulesCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
