@@ -19,6 +19,7 @@ from dependency_mapper_preview import build_dependency_mapper_preview, dependenc
 from impact_analyzer_preview import build_impact_analyzer_preview, impact_analyzer_registry
 from safe_change_boundary_preview import build_change_boundary_preview, change_boundary_registry
 from safe_patch_planner_preview import build_patch_planner_preview, patch_planner_registry
+from safe_verification_planner_preview import build_verification_planner_preview, verification_planner_registry
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -630,6 +631,30 @@ def _fault_report_patch_plans() -> List[Dict[str, Any]]:
     return output
 
 
+def _fault_report_verification_plans() -> List[Dict[str, Any]]:
+    registry = verification_planner_registry()
+    plans = registry.get("verification_plans", [])
+    output: List[Dict[str, Any]] = []
+    for plan in plans[:5]:
+        preview = build_verification_planner_preview(
+            target_issue=str(plan.get("id", "")),
+            command=str(plan.get("id", "")),
+        )
+        output.append(
+            {
+                "target_issue": preview.get("target_issue"),
+                "recommended_smoke_tests": preview.get("recommended_smoke_tests", []),
+                "recommended_manual_tests": preview.get("recommended_manual_tests", []),
+                "recommended_regression_checks": preview.get("recommended_regression_checks", []),
+                "success_criteria": preview.get("success_criteria", []),
+                "risk_validation_points": preview.get("risk_validation_points", []),
+                "estimated_validation_effort": preview.get("estimated_validation_effort"),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -960,6 +985,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "impact_analysis": _fault_report_impact_analysis(),
             "change_boundary": _fault_report_change_boundary(),
             "patch_plans": _fault_report_patch_plans(),
+            "verification_plans": _fault_report_verification_plans(),
         },
         "related_integrations": {
             "future_ready": [
@@ -1042,6 +1068,7 @@ def build_fault_report_preview(
             "impact_analysis": _fault_report_impact_analysis(),
             "change_boundary": _fault_report_change_boundary(),
             "patch_plans": _fault_report_patch_plans(),
+            "verification_plans": _fault_report_verification_plans(),
         },
         "fallback_used": fallback,
         "read_only": True,

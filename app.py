@@ -109,6 +109,11 @@ from safe_patch_planner_preview import (
     patch_planner_registry,
     patch_planner_status,
 )
+from safe_verification_planner_preview import (
+    build_verification_planner_preview,
+    verification_planner_registry,
+    verification_planner_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -803,6 +808,12 @@ class ChangeBoundaryPreviewRequest(BaseModel):
 
 
 class PatchPlannerPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class VerificationPlannerPreviewRequest(BaseModel):
     target_issue: Optional[str] = Field(default=None, max_length=200)
     command: str = Field(default="", max_length=2000)
     related_layer: Optional[str] = Field(default=None, max_length=120)
@@ -8078,6 +8089,25 @@ async def debug_patch_planner_preview(payload: PatchPlannerPreviewRequest):
     )
 
 
+@app.get("/debug/verification-planner-status")
+async def debug_verification_planner_status():
+    return verification_planner_status()
+
+
+@app.get("/debug/verification-planner-registry")
+async def debug_verification_planner_registry():
+    return verification_planner_registry()
+
+
+@app.post("/debug/verification-planner-preview")
+async def debug_verification_planner_preview(payload: VerificationPlannerPreviewRequest):
+    return build_verification_planner_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8884,6 +8914,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/change-boundary-registry">Change Boundary Kayıt</button>
       <button data-endpoint="/debug/patch-planner-status">Patch Planner Durum</button>
       <button data-endpoint="/debug/patch-planner-registry">Patch Planner Kayıt</button>
+      <button data-endpoint="/debug/verification-planner-status">Verification Planner Durum</button>
+      <button data-endpoint="/debug/verification-planner-registry">Verification Planner Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -8949,6 +8981,12 @@ async def debug_agent_panel():
       <button data-patch-planner-command="websocket stream typewriter patch plan" data-patch-planner-target="websocket_stream">Patch Planı: Websocket</button>
       <button data-patch-planner-command="workspace export file guard patch plan" data-patch-planner-target="workspace_export">Patch Planı: Workspace Export</button>
       <button data-patch-planner-command="luxway permission private data patch plan" data-patch-planner-target="luxway_permission">Patch Planı: Luxway izin</button>
+    </div>
+    <div class="bar">
+      <button data-verification-planner-command="stop continue resume flow verification plan" data-verification-planner-target="stop_continue">Doğrulama: Stop/Continue</button>
+      <button data-verification-planner-command="websocket stream typewriter verification plan" data-verification-planner-target="websocket_stream">Doğrulama: Websocket</button>
+      <button data-verification-planner-command="workspace export file guard verification plan" data-verification-planner-target="workspace_export">Doğrulama: Workspace Export</button>
+      <button data-verification-planner-command="luxway permission private data verification plan" data-verification-planner-target="luxway_permission">Doğrulama: Luxway izin</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -10122,6 +10160,27 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadVerificationPlannerPreview(targetIssue, command) {
+      statusEl.textContent = "Loading verification planner preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/verification-planner-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            target_issue: targetIssue,
+            command,
+            related_layer: ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded verification planner preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10489,6 +10548,12 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadPatchPlannerPreview(
         button.dataset.patchPlannerTarget,
         button.dataset.patchPlannerCommand
+      ));
+    });
+    document.querySelectorAll("button[data-verification-planner-command]").forEach((button) => {
+      button.addEventListener("click", () => loadVerificationPlannerPreview(
+        button.dataset.verificationPlannerTarget,
+        button.dataset.verificationPlannerCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
