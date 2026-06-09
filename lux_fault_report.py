@@ -13,6 +13,7 @@ from knowledge_extractor_preview import build_knowledge_extractor_preview
 from repeated_pattern_detector_preview import build_repeated_pattern_preview, repeated_pattern_registry
 from investigation_starter_preview import build_investigation_starter_preview, investigation_starter_registry
 from investigation_priority_engine_preview import build_investigation_priority_preview, investigation_priority_registry
+from investigation_task_planner_preview import build_task_planner_preview, task_planner_registry
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -480,6 +481,30 @@ def _fault_report_priority_engine() -> List[Dict[str, Any]]:
     return output
 
 
+def _fault_report_task_plans() -> List[Dict[str, Any]]:
+    registry = task_planner_registry()
+    plans = registry.get("plans", [])
+    output: List[Dict[str, Any]] = []
+    for plan in plans[:5]:
+        preview = build_task_planner_preview(
+            issue_title=str(plan.get("id", "")),
+            command=str(plan.get("id", "")),
+        )
+        output.append(
+            {
+                "issue_title": preview.get("issue_title"),
+                "priority_level": preview.get("priority_level"),
+                "recommended_task_order": preview.get("recommended_task_order", []),
+                "recommended_checks": preview.get("recommended_checks", []),
+                "recommended_tests": preview.get("recommended_tests", []),
+                "estimated_complexity": preview.get("estimated_complexity"),
+                "recommended_codex_usage": preview.get("recommended_codex_usage"),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -804,6 +829,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "repeated_patterns": _fault_report_repeated_patterns(),
             "investigation_starters": _fault_report_investigation_starters(),
             "priority_engine": _fault_report_priority_engine(),
+            "task_plans": _fault_report_task_plans(),
         },
         "related_integrations": {
             "future_ready": [
@@ -880,6 +906,7 @@ def build_fault_report_preview(
             "repeated_patterns": _fault_report_repeated_patterns(),
             "investigation_starters": _fault_report_investigation_starters(),
             "priority_engine": _fault_report_priority_engine(),
+            "task_plans": _fault_report_task_plans(),
         },
         "fallback_used": fallback,
         "read_only": True,

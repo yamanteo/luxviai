@@ -1088,6 +1088,8 @@ class SmokeRunner:
             "/debug/investigation-starter-registry",
             "/debug/investigation-priority-status",
             "/debug/investigation-priority-registry",
+            "/debug/task-planner-status",
+            "/debug/task-planner-registry",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -3962,6 +3964,84 @@ class SmokeRunner:
 
         return "investigation priority preview"
 
+    def check_task_planner_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/task-planner-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "24.8", status
+        assert status.get("name") == "Investigation Task Planner Preview", status
+        assert status.get("status") == "task_planner_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("real_action_performed") is False, status
+        assert status.get("real_file_write_performed") is False, status
+        assert status.get("real_memory_write_performed") is False, status
+        assert status.get("real_db_write_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/task-planner-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "24.8", registry
+        assert registry.get("name") == "Investigation Task Planner Registry", registry
+        assert registry.get("status") == "task_planner_registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("analysis_only") is True, registry
+        assert registry.get("plan_count", 0) >= 1, registry
+        assert isinstance(registry.get("plans"), list), registry
+
+        preview_response = client.post(
+            "/debug/task-planner-preview",
+            json={
+                "issue_title": "stop_continue",
+                "symptom": "continue only works once",
+                "command": "dur devam tekrar bozuluyor",
+                "related_layer": "Layer 23",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("issue_title") == "stop_continue", preview
+        assert preview.get("priority_level") == "critical", preview
+        assert "root_flow_audit" in preview.get("recommended_task_order", []), preview
+        assert "manual_scenario_test" in preview.get("recommended_task_order", []), preview
+        assert preview.get("recommended_checks"), preview
+        assert preview.get("recommended_tests"), preview
+        assert preview.get("recommended_layers"), preview
+        assert preview.get("estimated_complexity") == "medium", preview
+        assert preview.get("recommended_codex_usage") == "only_if_manual_tests_fail", preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("priority_signal"), dict), preview
+        assert isinstance(preview.get("starter_signal"), dict), preview
+        assert isinstance(preview.get("knowledge_signal"), dict), preview
+        assert isinstance(preview.get("pattern_signal"), dict), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("real_action_performed") is False, preview
+        assert preview.get("real_file_write_performed") is False, preview
+        assert preview.get("real_memory_write_performed") is False, preview
+        assert preview.get("real_db_write_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        assert preview.get("patch_apply_performed") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        plans = report.get("sections", {}).get("task_plans", [])
+        assert plans, report
+        assert plans[0].get("recommended_task_order"), report
+        assert plans[0].get("recommended_codex_usage"), report
+
+        return "task planner preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4061,6 +4141,9 @@ class SmokeRunner:
         assert "/debug/investigation-priority-status" in development_paths, payload
         assert "/debug/investigation-priority-registry" in development_paths, payload
         assert "/debug/investigation-priority-preview" in development_paths, payload
+        assert "/debug/task-planner-status" in development_paths, payload
+        assert "/debug/task-planner-registry" in development_paths, payload
+        assert "/debug/task-planner-preview" in development_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -5858,6 +5941,7 @@ class SmokeRunner:
             ("repeated_pattern_detector_preview", self.check_repeated_pattern_detector_preview),
             ("investigation_starter_preview", self.check_investigation_starter_preview),
             ("investigation_priority_preview", self.check_investigation_priority_preview),
+            ("task_planner_preview", self.check_task_planner_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),

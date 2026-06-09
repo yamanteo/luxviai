@@ -79,6 +79,11 @@ from investigation_priority_engine_preview import (
     investigation_priority_registry,
     investigation_priority_status,
 )
+from investigation_task_planner_preview import (
+    build_task_planner_preview,
+    task_planner_registry,
+    task_planner_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -735,6 +740,13 @@ class InvestigationStarterPreviewRequest(BaseModel):
 
 
 class InvestigationPriorityPreviewRequest(BaseModel):
+    issue_title: Optional[str] = Field(default=None, max_length=200)
+    symptom: str = Field(default="", max_length=2000)
+    command: str = Field(default="", max_length=2000)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class TaskPlannerPreviewRequest(BaseModel):
     issue_title: Optional[str] = Field(default=None, max_length=200)
     symptom: str = Field(default="", max_length=2000)
     command: str = Field(default="", max_length=2000)
@@ -7896,6 +7908,26 @@ async def debug_investigation_priority_preview(payload: InvestigationPriorityPre
     )
 
 
+@app.get("/debug/task-planner-status")
+async def debug_task_planner_status():
+    return task_planner_status()
+
+
+@app.get("/debug/task-planner-registry")
+async def debug_task_planner_registry():
+    return task_planner_registry()
+
+
+@app.post("/debug/task-planner-preview")
+async def debug_task_planner_preview(payload: TaskPlannerPreviewRequest):
+    return build_task_planner_preview(
+        issue_title=payload.issue_title,
+        symptom=payload.symptom,
+        command=payload.command,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8690,6 +8722,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/investigation-starter-registry">Investigation Starter Kayıt</button>
       <button data-endpoint="/debug/investigation-priority-status">Investigation Priority Durum</button>
       <button data-endpoint="/debug/investigation-priority-registry">Investigation Priority Kayıt</button>
+      <button data-endpoint="/debug/task-planner-status">Task Planner Durum</button>
+      <button data-endpoint="/debug/task-planner-registry">Task Planner Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -8719,6 +8753,12 @@ async def debug_agent_panel():
       <button data-investigation-priority-command="websocket stream tab degisiminde duruyor" data-investigation-priority-title="websocket_stream">Öncelik: Websocket</button>
       <button data-investigation-priority-command="workspace export dosya yazma riski" data-investigation-priority-title="workspace_export">Öncelik: Workspace Export</button>
       <button data-investigation-priority-command="luxway izin akisi karisiyor" data-investigation-priority-title="luxway_permission">Öncelik: Luxway izin</button>
+    </div>
+    <div class="bar">
+      <button data-task-planner-command="stop continue ikinci devam calismiyor" data-task-planner-title="stop_continue">Plan: Stop/Continue</button>
+      <button data-task-planner-command="websocket stream tab degisiminde duruyor" data-task-planner-title="websocket_stream">Plan: Websocket</button>
+      <button data-task-planner-command="workspace export dosya yazma riski" data-task-planner-title="workspace_export">Plan: Workspace Export</button>
+      <button data-task-planner-command="luxway izin akisi karisiyor" data-task-planner-title="luxway_permission">Plan: Luxway izin</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -9765,6 +9805,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadTaskPlannerPreview(issueTitle, command) {
+      statusEl.textContent = "Loading task planner preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/task-planner-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            issue_title: issueTitle,
+            symptom: command,
+            command,
+            related_layer: ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded task planner preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10096,6 +10158,12 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadInvestigationPriorityPreview(
         button.dataset.investigationPriorityTitle,
         button.dataset.investigationPriorityCommand
+      ));
+    });
+    document.querySelectorAll("button[data-task-planner-command]").forEach((button) => {
+      button.addEventListener("click", () => loadTaskPlannerPreview(
+        button.dataset.taskPlannerTitle,
+        button.dataset.taskPlannerCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {

@@ -126,6 +126,9 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/investigation-priority-status", "GET", "24.7", "investigation priority status"),
         _endpoint("/debug/investigation-priority-registry", "GET", "24.7", "investigation priority registry"),
         _endpoint("/debug/investigation-priority-preview", "POST", "24.7", "investigation priority preview"),
+        _endpoint("/debug/task-planner-status", "GET", "24.8", "task planner status"),
+        _endpoint("/debug/task-planner-registry", "GET", "24.8", "task planner registry"),
+        _endpoint("/debug/task-planner-preview", "POST", "24.8", "task planner preview"),
     ],
 }
 
