@@ -149,6 +149,9 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/verification-planner-status", "GET", "25.6", "verification planner status"),
         _endpoint("/debug/verification-planner-registry", "GET", "25.6", "verification planner registry"),
         _endpoint("/debug/verification-planner-preview", "POST", "25.6", "verification planner preview"),
+        _endpoint("/debug/dev-agent-readiness-status", "GET", "25.7", "dev agent readiness status"),
+        _endpoint("/debug/dev-agent-readiness-registry", "GET", "25.7", "dev agent readiness registry"),
+        _endpoint("/debug/layer25-status", "GET", "25.7", "layer 25 status snapshot"),
     ],
 }
 

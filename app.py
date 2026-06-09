@@ -114,6 +114,11 @@ from safe_verification_planner_preview import (
     verification_planner_registry,
     verification_planner_status,
 )
+from dev_agent_readiness_snapshot import (
+    dev_agent_readiness_registry,
+    dev_agent_readiness_status,
+    layer25_status_snapshot,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -8108,6 +8113,21 @@ async def debug_verification_planner_preview(payload: VerificationPlannerPreview
     )
 
 
+@app.get("/debug/dev-agent-readiness-status")
+async def debug_dev_agent_readiness_status():
+    return dev_agent_readiness_status()
+
+
+@app.get("/debug/dev-agent-readiness-registry")
+async def debug_dev_agent_readiness_registry():
+    return dev_agent_readiness_registry()
+
+
+@app.get("/debug/layer25-status")
+async def debug_layer25_status():
+    return layer25_status_snapshot()
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8916,6 +8936,9 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/patch-planner-registry">Patch Planner Kayıt</button>
       <button data-endpoint="/debug/verification-planner-status">Verification Planner Durum</button>
       <button data-endpoint="/debug/verification-planner-registry">Verification Planner Kayıt</button>
+      <button data-endpoint="/debug/dev-agent-readiness-status">Dev Agent Readiness Durum</button>
+      <button data-endpoint="/debug/dev-agent-readiness-registry">Dev Agent Readiness Kayıt</button>
+      <button data-endpoint="/debug/layer25-status">Layer 25 Status</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>

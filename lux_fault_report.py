@@ -20,6 +20,7 @@ from impact_analyzer_preview import build_impact_analyzer_preview, impact_analyz
 from safe_change_boundary_preview import build_change_boundary_preview, change_boundary_registry
 from safe_patch_planner_preview import build_patch_planner_preview, patch_planner_registry
 from safe_verification_planner_preview import build_verification_planner_preview, verification_planner_registry
+from dev_agent_readiness_snapshot import layer25_status_snapshot
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -655,6 +656,20 @@ def _fault_report_verification_plans() -> List[Dict[str, Any]]:
     return output
 
 
+def _fault_report_dev_agent_readiness() -> Dict[str, Any]:
+    readiness = layer25_status_snapshot()
+    return {
+        "completed_layers": readiness.get("completed_layers", []),
+        "available_capabilities": readiness.get("available_capabilities", []),
+        "missing_capabilities": readiness.get("missing_capabilities", []),
+        "readiness_score": readiness.get("readiness_score"),
+        "safe_for_patch_planning": readiness.get("safe_for_patch_planning"),
+        "safe_for_write_operations": readiness.get("safe_for_write_operations"),
+        "recommended_next_layer": readiness.get("recommended_next_layer"),
+        "confidence_score": readiness.get("confidence_score"),
+    }
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -986,6 +1001,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "change_boundary": _fault_report_change_boundary(),
             "patch_plans": _fault_report_patch_plans(),
             "verification_plans": _fault_report_verification_plans(),
+            "dev_agent_readiness": _fault_report_dev_agent_readiness(),
         },
         "related_integrations": {
             "future_ready": [
@@ -1069,6 +1085,7 @@ def build_fault_report_preview(
             "change_boundary": _fault_report_change_boundary(),
             "patch_plans": _fault_report_patch_plans(),
             "verification_plans": _fault_report_verification_plans(),
+            "dev_agent_readiness": _fault_report_dev_agent_readiness(),
         },
         "fallback_used": fallback,
         "read_only": True,

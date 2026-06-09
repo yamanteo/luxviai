@@ -1102,6 +1102,9 @@ class SmokeRunner:
             "/debug/patch-planner-registry",
             "/debug/verification-planner-status",
             "/debug/verification-planner-registry",
+            "/debug/dev-agent-readiness-status",
+            "/debug/dev-agent-readiness-registry",
+            "/debug/layer25-status",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -4608,6 +4611,83 @@ class SmokeRunner:
 
         return "verification planner preview"
 
+    def check_dev_agent_readiness_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/dev-agent-readiness-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "25.7", status
+        assert status.get("name") == "Dev Agent Readiness Snapshot", status
+        assert status.get("status") == "dev_agent_foundation_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("completed_layers") == ["25.1", "25.2", "25.3", "25.4", "25.5", "25.6"], status
+        assert "exploration" in status.get("available_capabilities", []), status
+        assert "verification_planning" in status.get("available_capabilities", []), status
+        assert "constitution_engine" in status.get("missing_capabilities", []), status
+        assert status.get("readiness_score") == 78, status
+        assert status.get("safe_for_patch_planning") is True, status
+        assert status.get("safe_for_write_operations") is False, status
+        assert status.get("recommended_next_layer") == "layer_26_multi_agent_system", status
+        assert status.get("confidence_score", 0) > 0, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("git_write_enabled") is False, status
+        assert status.get("commit_enabled") is False, status
+        assert status.get("push_enabled") is False, status
+        assert status.get("deploy_enabled") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("patch_apply_enabled") is False, status
+        assert status.get("subprocess_execution_enabled") is False, status
+        assert status.get("repo_scan_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/dev-agent-readiness-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "25.7", registry
+        assert registry.get("name") == "Dev Agent Readiness Registry", registry
+        assert registry.get("status") == "dev_agent_readiness_registry_ready", registry
+        assert len(registry.get("component_statuses", [])) == 6, registry
+        gates = registry.get("readiness_gates", {})
+        assert gates.get("patch_planning_ready") is True, registry
+        assert gates.get("verification_planning_ready") is True, registry
+        assert gates.get("write_operations_ready") is False, registry
+        assert registry.get("safety_flags", {}).get("patch_apply") is False, registry
+        assert registry.get("safety_flags", {}).get("subprocess_execution") is False, registry
+
+        layer25_response = client.get("/debug/layer25-status")
+        assert layer25_response.status_code == 200, layer25_response.text
+        layer25 = layer25_response.json()
+        assert layer25.get("layer25_status") == "foundation_complete", layer25
+        assert layer25.get("can_plan_patches") is True, layer25
+        assert layer25.get("can_apply_patches") is False, layer25
+        assert layer25.get("can_modify_code") is False, layer25
+        assert layer25.get("can_commit") is False, layer25
+        assert layer25.get("can_push") is False, layer25
+        assert layer25.get("can_deploy") is False, layer25
+        assert layer25.get("next_recommended_layer") == "layer_26_multi_agent_system", layer25
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        readiness = report.get("sections", {}).get("dev_agent_readiness", {})
+        assert readiness.get("readiness_score") == 78, report
+        assert readiness.get("safe_for_patch_planning") is True, report
+        assert readiness.get("safe_for_write_operations") is False, report
+        assert "verification_planning" in readiness.get("available_capabilities", []), report
+
+        return "dev agent readiness snapshot"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4729,6 +4809,9 @@ class SmokeRunner:
         assert "/debug/verification-planner-status" in dev_agent_paths, payload
         assert "/debug/verification-planner-registry" in dev_agent_paths, payload
         assert "/debug/verification-planner-preview" in dev_agent_paths, payload
+        assert "/debug/dev-agent-readiness-status" in dev_agent_paths, payload
+        assert "/debug/dev-agent-readiness-registry" in dev_agent_paths, payload
+        assert "/debug/layer25-status" in dev_agent_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -6533,6 +6616,7 @@ class SmokeRunner:
             ("change_boundary_preview", self.check_change_boundary_preview),
             ("patch_planner_preview", self.check_patch_planner_preview),
             ("verification_planner_preview", self.check_verification_planner_preview),
+            ("dev_agent_readiness_snapshot", self.check_dev_agent_readiness_snapshot),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
