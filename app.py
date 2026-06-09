@@ -74,6 +74,11 @@ from investigation_starter_preview import (
     investigation_starter_registry,
     investigation_starter_status,
 )
+from investigation_priority_engine_preview import (
+    build_investigation_priority_preview,
+    investigation_priority_registry,
+    investigation_priority_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -723,6 +728,13 @@ class RepeatedPatternPreviewRequest(BaseModel):
 
 
 class InvestigationStarterPreviewRequest(BaseModel):
+    issue_title: Optional[str] = Field(default=None, max_length=200)
+    symptom: str = Field(default="", max_length=2000)
+    command: str = Field(default="", max_length=2000)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class InvestigationPriorityPreviewRequest(BaseModel):
     issue_title: Optional[str] = Field(default=None, max_length=200)
     symptom: str = Field(default="", max_length=2000)
     command: str = Field(default="", max_length=2000)
@@ -7864,6 +7876,26 @@ async def debug_investigation_starter_preview(payload: InvestigationStarterPrevi
     )
 
 
+@app.get("/debug/investigation-priority-status")
+async def debug_investigation_priority_status():
+    return investigation_priority_status()
+
+
+@app.get("/debug/investigation-priority-registry")
+async def debug_investigation_priority_registry():
+    return investigation_priority_registry()
+
+
+@app.post("/debug/investigation-priority-preview")
+async def debug_investigation_priority_preview(payload: InvestigationPriorityPreviewRequest):
+    return build_investigation_priority_preview(
+        issue_title=payload.issue_title,
+        symptom=payload.symptom,
+        command=payload.command,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8656,6 +8688,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/repeated-pattern-registry">Repeated Pattern Kayıt</button>
       <button data-endpoint="/debug/investigation-starter-status">Investigation Starter Durum</button>
       <button data-endpoint="/debug/investigation-starter-registry">Investigation Starter Kayıt</button>
+      <button data-endpoint="/debug/investigation-priority-status">Investigation Priority Durum</button>
+      <button data-endpoint="/debug/investigation-priority-registry">Investigation Priority Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -8679,6 +8713,12 @@ async def debug_agent_panel():
       <button data-investigation-starter-command="workspace export dosya yazma riski" data-investigation-starter-title="workspace_export">Başlangıç: Workspace Export</button>
       <button data-investigation-starter-command="websocket stream tab degisiminde duruyor" data-investigation-starter-title="websocket_stream">Başlangıç: Websocket</button>
       <button data-investigation-starter-command="luxway izin akisi karisiyor" data-investigation-starter-title="luxway_permission">Başlangıç: Luxway izin</button>
+    </div>
+    <div class="bar">
+      <button data-investigation-priority-command="stop continue ikinci devam calismiyor" data-investigation-priority-title="stop_continue">Öncelik: Stop/Continue</button>
+      <button data-investigation-priority-command="websocket stream tab degisiminde duruyor" data-investigation-priority-title="websocket_stream">Öncelik: Websocket</button>
+      <button data-investigation-priority-command="workspace export dosya yazma riski" data-investigation-priority-title="workspace_export">Öncelik: Workspace Export</button>
+      <button data-investigation-priority-command="luxway izin akisi karisiyor" data-investigation-priority-title="luxway_permission">Öncelik: Luxway izin</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -9703,6 +9743,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadInvestigationPriorityPreview(issueTitle, command) {
+      statusEl.textContent = "Loading investigation priority preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/investigation-priority-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            issue_title: issueTitle,
+            symptom: command,
+            command,
+            related_layer: ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded investigation priority preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10028,6 +10090,12 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadInvestigationStarterPreview(
         button.dataset.investigationStarterTitle,
         button.dataset.investigationStarterCommand
+      ));
+    });
+    document.querySelectorAll("button[data-investigation-priority-command]").forEach((button) => {
+      button.addEventListener("click", () => loadInvestigationPriorityPreview(
+        button.dataset.investigationPriorityTitle,
+        button.dataset.investigationPriorityCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {

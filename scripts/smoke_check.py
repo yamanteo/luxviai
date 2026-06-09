@@ -1086,6 +1086,8 @@ class SmokeRunner:
             "/debug/repeated-pattern-registry",
             "/debug/investigation-starter-status",
             "/debug/investigation-starter-registry",
+            "/debug/investigation-priority-status",
+            "/debug/investigation-priority-registry",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -3883,6 +3885,83 @@ class SmokeRunner:
 
         return "investigation starter preview"
 
+    def check_investigation_priority_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/investigation-priority-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "24.7", status
+        assert status.get("name") == "Investigation Priority Engine Preview", status
+        assert status.get("status") == "investigation_priority_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("real_action_performed") is False, status
+        assert status.get("real_file_write_performed") is False, status
+        assert status.get("real_memory_write_performed") is False, status
+        assert status.get("real_db_write_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+        assert {"critical", "high", "medium", "low"} <= set(status.get("priority_categories", [])), status
+
+        registry_response = client.get("/debug/investigation-priority-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "24.7", registry
+        assert registry.get("name") == "Investigation Priority Registry", registry
+        assert registry.get("status") == "investigation_priority_registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("analysis_only") is True, registry
+        assert registry.get("priority_item_count", 0) >= 1, registry
+        assert isinstance(registry.get("priority_items"), list), registry
+
+        preview_response = client.post(
+            "/debug/investigation-priority-preview",
+            json={
+                "issue_title": "stop_continue",
+                "symptom": "continue only works once",
+                "command": "dur devam tekrar bozuluyor",
+                "related_layer": "Layer 23",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("issue_title") == "stop_continue", preview
+        assert preview.get("priority_score", 0) >= 90, preview
+        assert preview.get("priority_level") == "critical", preview
+        assert preview.get("reasoning_summary"), preview
+        assert preview.get("recommended_order") == 1, preview
+        assert preview.get("risk_score", 0) > 0, preview
+        assert preview.get("impact_score", 0) > 0, preview
+        assert preview.get("frequency_score", 0) > 0, preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("criteria_scores"), dict), preview
+        assert isinstance(preview.get("repeated_pattern_signal"), dict), preview
+        assert isinstance(preview.get("investigation_starter_signal"), dict), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("real_action_performed") is False, preview
+        assert preview.get("real_file_write_performed") is False, preview
+        assert preview.get("real_memory_write_performed") is False, preview
+        assert preview.get("real_db_write_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        assert preview.get("patch_apply_performed") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        priorities = report.get("sections", {}).get("priority_engine", [])
+        assert priorities, report
+        assert priorities[0].get("priority_score") is not None, report
+        assert priorities[0].get("priority_level"), report
+
+        return "investigation priority preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -3979,6 +4058,9 @@ class SmokeRunner:
         assert "/debug/investigation-starter-status" in development_paths, payload
         assert "/debug/investigation-starter-registry" in development_paths, payload
         assert "/debug/investigation-starter-preview" in development_paths, payload
+        assert "/debug/investigation-priority-status" in development_paths, payload
+        assert "/debug/investigation-priority-registry" in development_paths, payload
+        assert "/debug/investigation-priority-preview" in development_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -5775,6 +5857,7 @@ class SmokeRunner:
             ("knowledge_extractor_preview", self.check_knowledge_extractor_preview),
             ("repeated_pattern_detector_preview", self.check_repeated_pattern_detector_preview),
             ("investigation_starter_preview", self.check_investigation_starter_preview),
+            ("investigation_priority_preview", self.check_investigation_priority_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
