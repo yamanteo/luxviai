@@ -27,6 +27,7 @@ from explorer_agent_preview import build_explorer_agent_preview
 from planner_agent_preview import build_planner_agent_preview
 from verifier_agent_preview import build_verifier_agent_preview
 from evidence_store_preview import build_evidence_store_preview
+from multi_agent_coordinator_preview import build_coordinator_preview
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -785,6 +786,23 @@ def _fault_report_evidence_store() -> Dict[str, Any]:
     }
 
 
+def _fault_report_coordinator() -> Dict[str, Any]:
+    preview = build_coordinator_preview(
+        command="stop continue icin ajan ciktilarini koordine et",
+        project_area="stop_continue",
+        related_layer="Layer 26",
+    )
+    return {
+        "participating_agents": preview.get("participating_agents", []),
+        "agent_contributions": preview.get("agent_contributions", {}),
+        "coordination_flow": preview.get("coordination_flow", []),
+        "combined_findings": preview.get("combined_findings", []),
+        "combined_risks": preview.get("combined_risks", []),
+        "combined_recommendations": preview.get("combined_recommendations", []),
+        "overall_confidence": preview.get("overall_confidence"),
+    }
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -1123,6 +1141,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "planner_agent": _fault_report_planner_agent(),
             "verifier_agent": _fault_report_verifier_agent(),
             "evidence_store": _fault_report_evidence_store(),
+            "coordinator": _fault_report_coordinator(),
         },
         "related_integrations": {
             "future_ready": [
@@ -1213,6 +1232,7 @@ def build_fault_report_preview(
             "planner_agent": _fault_report_planner_agent(),
             "verifier_agent": _fault_report_verifier_agent(),
             "evidence_store": _fault_report_evidence_store(),
+            "coordinator": _fault_report_coordinator(),
         },
         "fallback_used": fallback,
         "read_only": True,

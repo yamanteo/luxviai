@@ -149,6 +149,11 @@ from evidence_store_preview import (
     evidence_store_registry,
     evidence_store_status,
 )
+from multi_agent_coordinator_preview import (
+    build_coordinator_preview,
+    coordinator_registry,
+    coordinator_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -887,6 +892,12 @@ class VerifierAgentPreviewRequest(BaseModel):
 
 class EvidenceStorePreviewRequest(BaseModel):
     finding: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class CoordinatorPreviewRequest(BaseModel):
     command: str = Field(default="", max_length=2000)
     project_area: Optional[str] = Field(default=None, max_length=200)
     related_layer: Optional[str] = Field(default=None, max_length=120)
@@ -8312,6 +8323,25 @@ async def debug_evidence_store_preview(payload: EvidenceStorePreviewRequest):
     )
 
 
+@app.get("/debug/coordinator-status")
+async def debug_coordinator_status():
+    return coordinator_status()
+
+
+@app.get("/debug/coordinator-registry")
+async def debug_coordinator_registry():
+    return coordinator_registry()
+
+
+@app.post("/debug/coordinator-preview")
+async def debug_coordinator_preview(payload: CoordinatorPreviewRequest):
+    return build_coordinator_preview(
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -9135,6 +9165,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/verifier-agent-registry">Verifier Agent Kayıt</button>
       <button data-endpoint="/debug/evidence-store-status">Evidence Store Durum</button>
       <button data-endpoint="/debug/evidence-store-registry">Evidence Store Kayıt</button>
+      <button data-endpoint="/debug/coordinator-status">Coordinator Durum</button>
+      <button data-endpoint="/debug/coordinator-registry">Coordinator Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -9242,6 +9274,12 @@ async def debug_agent_panel():
       <button data-evidence-store-finding="duplicate_branch" data-evidence-store-command="duplicate branch dayanaklarini goster" data-evidence-store-area="debug_intelligence">Evidence: Duplicate Branch</button>
       <button data-evidence-store-finding="permission_boundary" data-evidence-store-command="luxway permission boundary kanitlarini goster" data-evidence-store-area="luxway_permission">Evidence: Permission</button>
       <button data-evidence-store-finding="validation_gap" data-evidence-store-command="validation gap dayanaklarini goster" data-evidence-store-area="websocket_stream">Evidence: Validation Gap</button>
+    </div>
+    <div class="bar">
+      <button data-coordinator-command="stop continue icin ajan ciktilarini koordine et" data-coordinator-area="stop_continue">Coordinator: Stop/Continue</button>
+      <button data-coordinator-command="websocket stream icin multi agent koordinasyon ozeti ver" data-coordinator-area="websocket_stream">Coordinator: Websocket</button>
+      <button data-coordinator-command="workspace export icin ajan katkilarini birlestir" data-coordinator-area="workspace_export">Coordinator: Workspace Export</button>
+      <button data-coordinator-command="luxway permission icin ortak risk ve oneri ozeti olustur" data-coordinator-area="luxway_permission">Coordinator: Luxway izin</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -10564,6 +10602,27 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadCoordinatorPreview(projectArea, command) {
+      statusEl.textContent = "Loading coordinator preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/coordinator-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            project_area: projectArea,
+            related_layer: "Layer 26"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded coordinator preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10974,6 +11033,12 @@ async def debug_agent_panel():
         button.dataset.evidenceStoreFinding,
         button.dataset.evidenceStoreArea,
         button.dataset.evidenceStoreCommand
+      ));
+    });
+    document.querySelectorAll("button[data-coordinator-command]").forEach((button) => {
+      button.addEventListener("click", () => loadCoordinatorPreview(
+        button.dataset.coordinatorArea,
+        button.dataset.coordinatorCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {

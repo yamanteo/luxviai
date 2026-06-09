@@ -172,6 +172,9 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/evidence-store-status", "GET", "26.6", "evidence store status"),
         _endpoint("/debug/evidence-store-registry", "GET", "26.6", "evidence store registry"),
         _endpoint("/debug/evidence-store-preview", "POST", "26.6", "evidence store preview"),
+        _endpoint("/debug/coordinator-status", "GET", "26.7", "multi-agent coordinator status"),
+        _endpoint("/debug/coordinator-registry", "GET", "26.7", "multi-agent coordinator registry"),
+        _endpoint("/debug/coordinator-preview", "POST", "26.7", "multi-agent coordinator preview"),
     ],
 }
 
