@@ -14,6 +14,7 @@ from repeated_pattern_detector_preview import build_repeated_pattern_preview, re
 from investigation_starter_preview import build_investigation_starter_preview, investigation_starter_registry
 from investigation_priority_engine_preview import build_investigation_priority_preview, investigation_priority_registry
 from investigation_task_planner_preview import build_task_planner_preview, task_planner_registry
+from dev_agent_explorer_preview import build_dev_agent_explorer_preview, dev_agent_explorer_registry
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -505,6 +506,29 @@ def _fault_report_task_plans() -> List[Dict[str, Any]]:
     return output
 
 
+def _fault_report_dev_agent_explorer() -> List[Dict[str, Any]]:
+    registry = dev_agent_explorer_registry()
+    areas = registry.get("project_areas", [])
+    output: List[Dict[str, Any]] = []
+    for area in areas[:5]:
+        preview = build_dev_agent_explorer_preview(
+            project_area=str(area.get("id", "")),
+            command=str(area.get("id", "")),
+        )
+        output.append(
+            {
+                "project_area": preview.get("project_area"),
+                "known_components": preview.get("known_components", []),
+                "known_layers": preview.get("known_layers", []),
+                "known_endpoints": preview.get("known_endpoints", []),
+                "suggested_entry_points": preview.get("suggested_entry_points", []),
+                "complexity_score": preview.get("complexity_score"),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -830,6 +854,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "investigation_starters": _fault_report_investigation_starters(),
             "priority_engine": _fault_report_priority_engine(),
             "task_plans": _fault_report_task_plans(),
+            "dev_agent_explorer": _fault_report_dev_agent_explorer(),
         },
         "related_integrations": {
             "future_ready": [
@@ -907,6 +932,7 @@ def build_fault_report_preview(
             "investigation_starters": _fault_report_investigation_starters(),
             "priority_engine": _fault_report_priority_engine(),
             "task_plans": _fault_report_task_plans(),
+            "dev_agent_explorer": _fault_report_dev_agent_explorer(),
         },
         "fallback_used": fallback,
         "read_only": True,

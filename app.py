@@ -84,6 +84,11 @@ from investigation_task_planner_preview import (
     task_planner_registry,
     task_planner_status,
 )
+from dev_agent_explorer_preview import (
+    build_dev_agent_explorer_preview,
+    dev_agent_explorer_registry,
+    dev_agent_explorer_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -749,6 +754,12 @@ class InvestigationPriorityPreviewRequest(BaseModel):
 class TaskPlannerPreviewRequest(BaseModel):
     issue_title: Optional[str] = Field(default=None, max_length=200)
     symptom: str = Field(default="", max_length=2000)
+    command: str = Field(default="", max_length=2000)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class DevAgentExplorerPreviewRequest(BaseModel):
+    project_area: Optional[str] = Field(default=None, max_length=200)
     command: str = Field(default="", max_length=2000)
     related_layer: Optional[str] = Field(default=None, max_length=120)
 
@@ -7928,6 +7939,25 @@ async def debug_task_planner_preview(payload: TaskPlannerPreviewRequest):
     )
 
 
+@app.get("/debug/dev-agent-explorer-status")
+async def debug_dev_agent_explorer_status():
+    return dev_agent_explorer_status()
+
+
+@app.get("/debug/dev-agent-explorer-registry")
+async def debug_dev_agent_explorer_registry():
+    return dev_agent_explorer_registry()
+
+
+@app.post("/debug/dev-agent-explorer-preview")
+async def debug_dev_agent_explorer_preview(payload: DevAgentExplorerPreviewRequest):
+    return build_dev_agent_explorer_preview(
+        project_area=payload.project_area,
+        command=payload.command,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8724,6 +8754,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/investigation-priority-registry">Investigation Priority Kayıt</button>
       <button data-endpoint="/debug/task-planner-status">Task Planner Durum</button>
       <button data-endpoint="/debug/task-planner-registry">Task Planner Kayıt</button>
+      <button data-endpoint="/debug/dev-agent-explorer-status">Dev Agent Explorer Durum</button>
+      <button data-endpoint="/debug/dev-agent-explorer-registry">Dev Agent Explorer Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -8759,6 +8791,12 @@ async def debug_agent_panel():
       <button data-task-planner-command="websocket stream tab degisiminde duruyor" data-task-planner-title="websocket_stream">Plan: Websocket</button>
       <button data-task-planner-command="workspace export dosya yazma riski" data-task-planner-title="workspace_export">Plan: Workspace Export</button>
       <button data-task-planner-command="luxway izin akisi karisiyor" data-task-planner-title="luxway_permission">Plan: Luxway izin</button>
+    </div>
+    <div class="bar">
+      <button data-dev-agent-explorer-command="stop continue arm typewriter iliskisi" data-dev-agent-explorer-area="stop_continue">Explorer: Stop/Continue</button>
+      <button data-dev-agent-explorer-command="websocket stream tab degisimi" data-dev-agent-explorer-area="websocket_stream">Explorer: Websocket</button>
+      <button data-dev-agent-explorer-command="workspace export preview dosya yazma" data-dev-agent-explorer-area="workspace_export">Explorer: Workspace Export</button>
+      <button data-dev-agent-explorer-command="luxway permission private data" data-dev-agent-explorer-area="luxway_permission">Explorer: Luxway izin</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -9827,6 +9865,27 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadDevAgentExplorerPreview(projectArea, command) {
+      statusEl.textContent = "Loading dev agent explorer preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/dev-agent-explorer-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_area: projectArea,
+            command,
+            related_layer: ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded dev agent explorer preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10164,6 +10223,12 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadTaskPlannerPreview(
         button.dataset.taskPlannerTitle,
         button.dataset.taskPlannerCommand
+      ));
+    });
+    document.querySelectorAll("button[data-dev-agent-explorer-command]").forEach((button) => {
+      button.addEventListener("click", () => loadDevAgentExplorerPreview(
+        button.dataset.devAgentExplorerArea,
+        button.dataset.devAgentExplorerCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {

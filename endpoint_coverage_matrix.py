@@ -130,6 +130,11 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/task-planner-registry", "GET", "24.8", "task planner registry"),
         _endpoint("/debug/task-planner-preview", "POST", "24.8", "task planner preview"),
     ],
+    "dev_agent_layer_25": [
+        _endpoint("/debug/dev-agent-explorer-status", "GET", "25.1", "dev agent explorer status"),
+        _endpoint("/debug/dev-agent-explorer-registry", "GET", "25.1", "dev agent explorer registry"),
+        _endpoint("/debug/dev-agent-explorer-preview", "POST", "25.1", "dev agent explorer preview"),
+    ],
 }
 
 
