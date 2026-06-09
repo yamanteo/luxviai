@@ -94,6 +94,11 @@ from dependency_mapper_preview import (
     dependency_mapper_registry,
     dependency_mapper_status,
 )
+from impact_analyzer_preview import (
+    build_impact_analyzer_preview,
+    impact_analyzer_registry,
+    impact_analyzer_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -771,6 +776,12 @@ class DevAgentExplorerPreviewRequest(BaseModel):
 
 class DependencyMapperPreviewRequest(BaseModel):
     component_name: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class ImpactAnalyzerPreviewRequest(BaseModel):
+    target_component: Optional[str] = Field(default=None, max_length=200)
     command: str = Field(default="", max_length=2000)
     related_layer: Optional[str] = Field(default=None, max_length=120)
 
@@ -7988,6 +7999,25 @@ async def debug_dependency_mapper_preview(payload: DependencyMapperPreviewReques
     )
 
 
+@app.get("/debug/impact-analyzer-status")
+async def debug_impact_analyzer_status():
+    return impact_analyzer_status()
+
+
+@app.get("/debug/impact-analyzer-registry")
+async def debug_impact_analyzer_registry():
+    return impact_analyzer_registry()
+
+
+@app.post("/debug/impact-analyzer-preview")
+async def debug_impact_analyzer_preview(payload: ImpactAnalyzerPreviewRequest):
+    return build_impact_analyzer_preview(
+        target_component=payload.target_component,
+        command=payload.command,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8788,6 +8818,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/dev-agent-explorer-registry">Dev Agent Explorer Kayıt</button>
       <button data-endpoint="/debug/dependency-mapper-status">Dependency Mapper Durum</button>
       <button data-endpoint="/debug/dependency-mapper-registry">Dependency Mapper Kayıt</button>
+      <button data-endpoint="/debug/impact-analyzer-status">Impact Analyzer Durum</button>
+      <button data-endpoint="/debug/impact-analyzer-registry">Impact Analyzer Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -8835,6 +8867,12 @@ async def debug_agent_panel():
       <button data-dependency-mapper-command="websocket stream typewriter bagimliliklari" data-dependency-mapper-component="websocket_stream">Bağımlılık: Websocket</button>
       <button data-dependency-mapper-command="workspace export block file guard" data-dependency-mapper-component="workspace_export">Bağımlılık: Workspace Export</button>
       <button data-dependency-mapper-command="luxway permission private data guard" data-dependency-mapper-component="luxway_permission">Bağımlılık: Luxway izin</button>
+    </div>
+    <div class="bar">
+      <button data-impact-analyzer-command="stop continue arm typewriter etkisi" data-impact-analyzer-target="stop_continue">Etki: Stop/Continue</button>
+      <button data-impact-analyzer-command="websocket stream typewriter etkisi" data-impact-analyzer-target="websocket_stream">Etki: Websocket</button>
+      <button data-impact-analyzer-command="workspace export etkisi" data-impact-analyzer-target="workspace_export">Etki: Workspace Export</button>
+      <button data-impact-analyzer-command="luxway permission private data etkisi" data-impact-analyzer-target="luxway_permission">Etki: Luxway izin</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -9945,6 +9983,27 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadImpactAnalyzerPreview(targetComponent, command) {
+      statusEl.textContent = "Loading impact analyzer preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/impact-analyzer-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            target_component: targetComponent,
+            command,
+            related_layer: ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded impact analyzer preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10294,6 +10353,12 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadDependencyMapperPreview(
         button.dataset.dependencyMapperComponent,
         button.dataset.dependencyMapperCommand
+      ));
+    });
+    document.querySelectorAll("button[data-impact-analyzer-command]").forEach((button) => {
+      button.addEventListener("click", () => loadImpactAnalyzerPreview(
+        button.dataset.impactAnalyzerTarget,
+        button.dataset.impactAnalyzerCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {

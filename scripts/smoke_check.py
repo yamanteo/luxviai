@@ -1094,6 +1094,8 @@ class SmokeRunner:
             "/debug/dev-agent-explorer-registry",
             "/debug/dependency-mapper-status",
             "/debug/dependency-mapper-registry",
+            "/debug/impact-analyzer-status",
+            "/debug/impact-analyzer-registry",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -4226,6 +4228,99 @@ class SmokeRunner:
 
         return "dependency mapper preview"
 
+    def check_impact_analyzer_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/impact-analyzer-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "25.3", status
+        assert status.get("name") == "Impact Analyzer Preview", status
+        assert status.get("status") == "impact_analyzer_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("git_write_enabled") is False, status
+        assert status.get("commit_enabled") is False, status
+        assert status.get("push_enabled") is False, status
+        assert status.get("deploy_enabled") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("patch_apply_enabled") is False, status
+        assert status.get("subprocess_execution_enabled") is False, status
+        assert status.get("real_file_scan_enabled") is False, status
+        assert status.get("repo_scan_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/impact-analyzer-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "25.3", registry
+        assert registry.get("name") == "Impact Analyzer Registry", registry
+        assert registry.get("status") == "impact_analyzer_registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("strict_read_only") is True, registry
+        assert registry.get("analysis_only") is True, registry
+        assert registry.get("impact_item_count", 0) >= 1, registry
+        assert isinstance(registry.get("impact_items"), list), registry
+        assert registry.get("safety_flags", {}).get("subprocess_execution") is False, registry
+        assert registry.get("safety_flags", {}).get("real_file_scan") is False, registry
+
+        preview_response = client.post(
+            "/debug/impact-analyzer-preview",
+            json={
+                "target_component": "stop_continue",
+                "command": "dur devam arm typewriter etkisi",
+                "related_layer": "Layer 24",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("target_component") == "stop_continue", preview
+        assert "ARM" in preview.get("potentially_affected_components", []), preview
+        assert "Layer 24" in preview.get("potentially_affected_layers", []), preview
+        assert "/debug/root-flow-audit" in preview.get("potentially_affected_endpoints", []), preview
+        assert "resume_flow" in preview.get("potentially_affected_behaviors", []), preview
+        assert preview.get("impact_risk") == "medium", preview
+        assert preview.get("recommended_caution_level") == "high", preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("dependency_signal"), dict), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("strict_read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        assert preview.get("patch_apply_performed") is False, preview
+        assert preview.get("subprocess_execution_performed") is False, preview
+        assert preview.get("real_file_scan_performed") is False, preview
+        assert preview.get("repo_scan_performed") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        impact = report.get("sections", {}).get("impact_analysis", [])
+        assert impact, report
+        assert impact[0].get("potentially_affected_components"), report
+        assert impact[0].get("potentially_affected_behaviors"), report
+        assert impact[0].get("impact_risk"), report
+        assert impact[0].get("recommended_caution_level"), report
+
+        return "impact analyzer preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4335,6 +4430,9 @@ class SmokeRunner:
         assert "/debug/dependency-mapper-status" in dev_agent_paths, payload
         assert "/debug/dependency-mapper-registry" in dev_agent_paths, payload
         assert "/debug/dependency-mapper-preview" in dev_agent_paths, payload
+        assert "/debug/impact-analyzer-status" in dev_agent_paths, payload
+        assert "/debug/impact-analyzer-registry" in dev_agent_paths, payload
+        assert "/debug/impact-analyzer-preview" in dev_agent_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -6135,6 +6233,7 @@ class SmokeRunner:
             ("task_planner_preview", self.check_task_planner_preview),
             ("dev_agent_explorer_preview", self.check_dev_agent_explorer_preview),
             ("dependency_mapper_preview", self.check_dependency_mapper_preview),
+            ("impact_analyzer_preview", self.check_impact_analyzer_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),

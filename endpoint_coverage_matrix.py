@@ -137,6 +137,9 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/dependency-mapper-status", "GET", "25.2", "dependency mapper status"),
         _endpoint("/debug/dependency-mapper-registry", "GET", "25.2", "dependency mapper registry"),
         _endpoint("/debug/dependency-mapper-preview", "POST", "25.2", "dependency mapper preview"),
+        _endpoint("/debug/impact-analyzer-status", "GET", "25.3", "impact analyzer status"),
+        _endpoint("/debug/impact-analyzer-registry", "GET", "25.3", "impact analyzer registry"),
+        _endpoint("/debug/impact-analyzer-preview", "POST", "25.3", "impact analyzer preview"),
     ],
 }
 
