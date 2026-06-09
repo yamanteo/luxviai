@@ -129,6 +129,11 @@ from project_rules_loader_preview import (
     project_rules_registry,
     project_rules_status,
 )
+from explorer_agent_preview import (
+    build_explorer_agent_preview,
+    explorer_agent_registry,
+    explorer_agent_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -845,6 +850,12 @@ class ProjectRulesPreviewRequest(BaseModel):
     command: str = Field(default="", max_length=2000)
     project_rule_category: Optional[str] = Field(default=None, max_length=120)
     target_area: Optional[str] = Field(default=None, max_length=200)
+
+
+class ExplorerAgentPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
 
 
 # =========================================================
@@ -8190,6 +8201,25 @@ async def debug_project_rules_preview(payload: ProjectRulesPreviewRequest):
     )
 
 
+@app.get("/debug/explorer-agent-status")
+async def debug_explorer_agent_status():
+    return explorer_agent_status()
+
+
+@app.get("/debug/explorer-agent-registry")
+async def debug_explorer_agent_registry():
+    return explorer_agent_registry()
+
+
+@app.post("/debug/explorer-agent-preview")
+async def debug_explorer_agent_preview(payload: ExplorerAgentPreviewRequest):
+    return build_explorer_agent_preview(
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -9005,6 +9035,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/constitution-registry">Constitution Kayıt</button>
       <button data-endpoint="/debug/project-rules-status">Project Rules Durum</button>
       <button data-endpoint="/debug/project-rules-registry">Project Rules Kayıt</button>
+      <button data-endpoint="/debug/explorer-agent-status">Explorer Agent Durum</button>
+      <button data-endpoint="/debug/explorer-agent-registry">Explorer Agent Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -9088,6 +9120,12 @@ async def debug_agent_panel():
       <button data-project-rules-command="static index app runtime file guard" data-project-rules-category="protected_files">Proje Kuralı: Dosyalar</button>
       <button data-project-rules-command="smoke compile verification required" data-project-rules-category="required_tests">Proje Kuralı: Testler</button>
       <button data-project-rules-command="approval required before protected change" data-project-rules-category="approval_rules">Proje Kuralı: Onay</button>
+    </div>
+    <div class="bar">
+      <button data-explorer-agent-command="stop continue arm typewriter iliskilerini kesfet" data-explorer-agent-area="stop_continue">Explorer Agent: Stop/Continue</button>
+      <button data-explorer-agent-command="websocket stream typewriter iliskilerini haritala" data-explorer-agent-area="websocket_stream">Explorer Agent: Websocket</button>
+      <button data-explorer-agent-command="workspace export giris noktalarini bul" data-explorer-agent-area="workspace_export">Explorer Agent: Workspace Export</button>
+      <button data-explorer-agent-command="luxway permission akislarini kesfet" data-explorer-agent-area="luxway_permission">Explorer Agent: Luxway izin</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -10325,6 +10363,27 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadExplorerAgentPreview(projectArea, command) {
+      statusEl.textContent = "Loading explorer agent preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/explorer-agent-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            project_area: projectArea,
+            related_layer: "Layer 26"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded explorer agent preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10710,6 +10769,12 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadProjectRulesPreview(
         button.dataset.projectRulesCategory,
         button.dataset.projectRulesCommand
+      ));
+    });
+    document.querySelectorAll("button[data-explorer-agent-command]").forEach((button) => {
+      button.addEventListener("click", () => loadExplorerAgentPreview(
+        button.dataset.explorerAgentArea,
+        button.dataset.explorerAgentCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
