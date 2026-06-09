@@ -140,6 +140,9 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/impact-analyzer-status", "GET", "25.3", "impact analyzer status"),
         _endpoint("/debug/impact-analyzer-registry", "GET", "25.3", "impact analyzer registry"),
         _endpoint("/debug/impact-analyzer-preview", "POST", "25.3", "impact analyzer preview"),
+        _endpoint("/debug/change-boundary-status", "GET", "25.4", "change boundary status"),
+        _endpoint("/debug/change-boundary-registry", "GET", "25.4", "change boundary registry"),
+        _endpoint("/debug/change-boundary-preview", "POST", "25.4", "change boundary preview"),
     ],
 }
 

@@ -99,6 +99,11 @@ from impact_analyzer_preview import (
     impact_analyzer_registry,
     impact_analyzer_status,
 )
+from safe_change_boundary_preview import (
+    build_change_boundary_preview,
+    change_boundary_registry,
+    change_boundary_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -782,6 +787,12 @@ class DependencyMapperPreviewRequest(BaseModel):
 
 class ImpactAnalyzerPreviewRequest(BaseModel):
     target_component: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class ChangeBoundaryPreviewRequest(BaseModel):
+    target_area: Optional[str] = Field(default=None, max_length=200)
     command: str = Field(default="", max_length=2000)
     related_layer: Optional[str] = Field(default=None, max_length=120)
 
@@ -8018,6 +8029,25 @@ async def debug_impact_analyzer_preview(payload: ImpactAnalyzerPreviewRequest):
     )
 
 
+@app.get("/debug/change-boundary-status")
+async def debug_change_boundary_status():
+    return change_boundary_status()
+
+
+@app.get("/debug/change-boundary-registry")
+async def debug_change_boundary_registry():
+    return change_boundary_registry()
+
+
+@app.post("/debug/change-boundary-preview")
+async def debug_change_boundary_preview(payload: ChangeBoundaryPreviewRequest):
+    return build_change_boundary_preview(
+        target_area=payload.target_area,
+        command=payload.command,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8820,6 +8850,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/dependency-mapper-registry">Dependency Mapper Kayıt</button>
       <button data-endpoint="/debug/impact-analyzer-status">Impact Analyzer Durum</button>
       <button data-endpoint="/debug/impact-analyzer-registry">Impact Analyzer Kayıt</button>
+      <button data-endpoint="/debug/change-boundary-status">Change Boundary Durum</button>
+      <button data-endpoint="/debug/change-boundary-registry">Change Boundary Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -8873,6 +8905,12 @@ async def debug_agent_panel():
       <button data-impact-analyzer-command="websocket stream typewriter etkisi" data-impact-analyzer-target="websocket_stream">Etki: Websocket</button>
       <button data-impact-analyzer-command="workspace export etkisi" data-impact-analyzer-target="workspace_export">Etki: Workspace Export</button>
       <button data-impact-analyzer-command="luxway permission private data etkisi" data-impact-analyzer-target="luxway_permission">Etki: Luxway izin</button>
+    </div>
+    <div class="bar">
+      <button data-change-boundary-command="stop continue core runtime boundary" data-change-boundary-target="stop_continue">Sınır: Stop/Continue</button>
+      <button data-change-boundary-command="websocket stream typewriter protected boundary" data-change-boundary-target="websocket_stream">Sınır: Websocket</button>
+      <button data-change-boundary-command="workspace export file write boundary" data-change-boundary-target="workspace_export">Sınır: Workspace Export</button>
+      <button data-change-boundary-command="luxway permission private data boundary" data-change-boundary-target="luxway_permission">Sınır: Luxway izin</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -10004,6 +10042,27 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadChangeBoundaryPreview(targetArea, command) {
+      statusEl.textContent = "Loading change boundary preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/change-boundary-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            target_area: targetArea,
+            command,
+            related_layer: ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded change boundary preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10359,6 +10418,12 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadImpactAnalyzerPreview(
         button.dataset.impactAnalyzerTarget,
         button.dataset.impactAnalyzerCommand
+      ));
+    });
+    document.querySelectorAll("button[data-change-boundary-command]").forEach((button) => {
+      button.addEventListener("click", () => loadChangeBoundaryPreview(
+        button.dataset.changeBoundaryTarget,
+        button.dataset.changeBoundaryCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {

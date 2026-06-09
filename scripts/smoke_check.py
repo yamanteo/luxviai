@@ -1096,6 +1096,8 @@ class SmokeRunner:
             "/debug/dependency-mapper-registry",
             "/debug/impact-analyzer-status",
             "/debug/impact-analyzer-registry",
+            "/debug/change-boundary-status",
+            "/debug/change-boundary-registry",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -4321,6 +4323,97 @@ class SmokeRunner:
 
         return "impact analyzer preview"
 
+    def check_change_boundary_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/change-boundary-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "25.4", status
+        assert status.get("name") == "Safe Change Boundary Preview", status
+        assert status.get("status") == "change_boundary_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("git_write_enabled") is False, status
+        assert status.get("commit_enabled") is False, status
+        assert status.get("push_enabled") is False, status
+        assert status.get("deploy_enabled") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("patch_apply_enabled") is False, status
+        assert status.get("subprocess_execution_enabled") is False, status
+        assert status.get("repo_scan_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+        assert {"open", "protected", "critical", "restricted"} <= set(status.get("boundary_levels", [])), status
+        assert "stop_continue" in status.get("critical_areas", []), status
+
+        registry_response = client.get("/debug/change-boundary-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "25.4", registry
+        assert registry.get("name") == "Safe Change Boundary Registry", registry
+        assert registry.get("status") == "change_boundary_registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("strict_read_only") is True, registry
+        assert registry.get("analysis_only") is True, registry
+        assert registry.get("boundary_count", 0) >= 1, registry
+        assert isinstance(registry.get("boundaries"), list), registry
+        assert registry.get("safety_flags", {}).get("subprocess_execution") is False, registry
+
+        preview_response = client.post(
+            "/debug/change-boundary-preview",
+            json={
+                "target_area": "stop_continue",
+                "command": "dur devam core runtime boundary",
+                "related_layer": "Layer 25",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("target_area") == "stop_continue", preview
+        assert preview.get("boundary_level") == "protected", preview
+        assert preview.get("user_approval_required") is True, preview
+        assert preview.get("criticality_level") == "high", preview
+        assert "analysis" in preview.get("allowed_actions", []), preview
+        assert "auto_patch" in preview.get("blocked_actions", []), preview
+        assert preview.get("risk_reason"), preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("impact_signal"), dict), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("strict_read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        assert preview.get("patch_apply_performed") is False, preview
+        assert preview.get("subprocess_execution_performed") is False, preview
+        assert preview.get("repo_scan_performed") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        boundaries = report.get("sections", {}).get("change_boundary", [])
+        assert boundaries, report
+        assert boundaries[0].get("boundary_level"), report
+        assert boundaries[0].get("criticality_level"), report
+        assert boundaries[0].get("blocked_actions"), report
+
+        return "change boundary preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4433,6 +4526,9 @@ class SmokeRunner:
         assert "/debug/impact-analyzer-status" in dev_agent_paths, payload
         assert "/debug/impact-analyzer-registry" in dev_agent_paths, payload
         assert "/debug/impact-analyzer-preview" in dev_agent_paths, payload
+        assert "/debug/change-boundary-status" in dev_agent_paths, payload
+        assert "/debug/change-boundary-registry" in dev_agent_paths, payload
+        assert "/debug/change-boundary-preview" in dev_agent_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -6234,6 +6330,7 @@ class SmokeRunner:
             ("dev_agent_explorer_preview", self.check_dev_agent_explorer_preview),
             ("dependency_mapper_preview", self.check_dependency_mapper_preview),
             ("impact_analyzer_preview", self.check_impact_analyzer_preview),
+            ("change_boundary_preview", self.check_change_boundary_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
