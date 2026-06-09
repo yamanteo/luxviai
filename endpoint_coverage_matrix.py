@@ -176,6 +176,11 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/coordinator-registry", "GET", "26.7", "multi-agent coordinator registry"),
         _endpoint("/debug/coordinator-preview", "POST", "26.7", "multi-agent coordinator preview"),
     ],
+    "patch_draft_layer_27": [
+        _endpoint("/debug/patch-draft-status", "GET", "27.1", "patch draft engine status"),
+        _endpoint("/debug/patch-draft-registry", "GET", "27.1", "patch draft registry"),
+        _endpoint("/debug/patch-draft-preview", "POST", "27.1", "read-only patch draft preview"),
+    ],
 }
 
 

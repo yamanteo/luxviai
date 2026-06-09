@@ -154,6 +154,11 @@ from multi_agent_coordinator_preview import (
     coordinator_registry,
     coordinator_status,
 )
+from patch_draft_engine_preview import (
+    build_patch_draft_preview,
+    patch_draft_registry,
+    patch_draft_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -898,6 +903,13 @@ class EvidenceStorePreviewRequest(BaseModel):
 
 
 class CoordinatorPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchDraftPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
     command: str = Field(default="", max_length=2000)
     project_area: Optional[str] = Field(default=None, max_length=200)
     related_layer: Optional[str] = Field(default=None, max_length=120)
@@ -8336,6 +8348,26 @@ async def debug_coordinator_registry():
 @app.post("/debug/coordinator-preview")
 async def debug_coordinator_preview(payload: CoordinatorPreviewRequest):
     return build_coordinator_preview(
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-draft-status")
+async def debug_patch_draft_status():
+    return patch_draft_status()
+
+
+@app.get("/debug/patch-draft-registry")
+async def debug_patch_draft_registry():
+    return patch_draft_registry()
+
+
+@app.post("/debug/patch-draft-preview")
+async def debug_patch_draft_preview(payload: PatchDraftPreviewRequest):
+    return build_patch_draft_preview(
+        target_issue=payload.target_issue,
         command=payload.command,
         project_area=payload.project_area,
         related_layer=payload.related_layer,

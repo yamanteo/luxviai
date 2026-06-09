@@ -28,6 +28,7 @@ from planner_agent_preview import build_planner_agent_preview
 from verifier_agent_preview import build_verifier_agent_preview
 from evidence_store_preview import build_evidence_store_preview
 from multi_agent_coordinator_preview import build_coordinator_preview
+from patch_draft_engine_preview import build_patch_draft_preview, patch_draft_registry
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -803,6 +804,31 @@ def _fault_report_coordinator() -> Dict[str, Any]:
     }
 
 
+def _fault_report_patch_draft() -> List[Dict[str, Any]]:
+    registry = patch_draft_registry()
+    drafts = registry.get("drafts", [])
+    output: List[Dict[str, Any]] = []
+    for draft in drafts[:5]:
+        preview = build_patch_draft_preview(
+            target_issue=str(draft.get("id", "")),
+            command=str(draft.get("id", "")),
+            project_area=str(draft.get("id", "")),
+            related_layer="Layer 27.1",
+        )
+        output.append(
+            {
+                "Hedef Sorun": preview.get("target_issue"),
+                "Önerilen Dosyalar": preview.get("recommended_files", []),
+                "Değişiklik Özeti": preview.get("draft_change_summary"),
+                "Taslak Adımlar": preview.get("draft_patch_steps", []),
+                "Risk": preview.get("risk_assessment"),
+                "Onay Gereksinimi": preview.get("approval_required"),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -1142,6 +1168,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "verifier_agent": _fault_report_verifier_agent(),
             "evidence_store": _fault_report_evidence_store(),
             "coordinator": _fault_report_coordinator(),
+            "patch_draft": _fault_report_patch_draft(),
         },
         "related_integrations": {
             "future_ready": [
@@ -1233,6 +1260,7 @@ def build_fault_report_preview(
             "verifier_agent": _fault_report_verifier_agent(),
             "evidence_store": _fault_report_evidence_store(),
             "coordinator": _fault_report_coordinator(),
+            "patch_draft": _fault_report_patch_draft(),
         },
         "fallback_used": fallback,
         "read_only": True,
