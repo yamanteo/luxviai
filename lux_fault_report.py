@@ -15,6 +15,7 @@ from investigation_starter_preview import build_investigation_starter_preview, i
 from investigation_priority_engine_preview import build_investigation_priority_preview, investigation_priority_registry
 from investigation_task_planner_preview import build_task_planner_preview, task_planner_registry
 from dev_agent_explorer_preview import build_dev_agent_explorer_preview, dev_agent_explorer_registry
+from dependency_mapper_preview import build_dependency_mapper_preview, dependency_mapper_registry
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -529,6 +530,30 @@ def _fault_report_dev_agent_explorer() -> List[Dict[str, Any]]:
     return output
 
 
+def _fault_report_dependency_map() -> List[Dict[str, Any]]:
+    registry = dependency_mapper_registry()
+    mappings = registry.get("dependency_mappings", [])
+    output: List[Dict[str, Any]] = []
+    for mapping in mappings[:5]:
+        preview = build_dependency_mapper_preview(
+            component_name=str(mapping.get("id", "")),
+            command=str(mapping.get("id", "")),
+        )
+        output.append(
+            {
+                "component_name": preview.get("component_name"),
+                "related_components": preview.get("related_components", []),
+                "related_layers": preview.get("related_layers", []),
+                "related_endpoints": preview.get("related_endpoints", []),
+                "related_behaviors": preview.get("related_behaviors", []),
+                "dependency_risk": preview.get("dependency_risk"),
+                "complexity_score": preview.get("complexity_score"),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -855,6 +880,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "priority_engine": _fault_report_priority_engine(),
             "task_plans": _fault_report_task_plans(),
             "dev_agent_explorer": _fault_report_dev_agent_explorer(),
+            "dependency_map": _fault_report_dependency_map(),
         },
         "related_integrations": {
             "future_ready": [
@@ -933,6 +959,7 @@ def build_fault_report_preview(
             "priority_engine": _fault_report_priority_engine(),
             "task_plans": _fault_report_task_plans(),
             "dev_agent_explorer": _fault_report_dev_agent_explorer(),
+            "dependency_map": _fault_report_dependency_map(),
         },
         "fallback_used": fallback,
         "read_only": True,

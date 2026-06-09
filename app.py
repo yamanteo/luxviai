@@ -89,6 +89,11 @@ from dev_agent_explorer_preview import (
     dev_agent_explorer_registry,
     dev_agent_explorer_status,
 )
+from dependency_mapper_preview import (
+    build_dependency_mapper_preview,
+    dependency_mapper_registry,
+    dependency_mapper_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -760,6 +765,12 @@ class TaskPlannerPreviewRequest(BaseModel):
 
 class DevAgentExplorerPreviewRequest(BaseModel):
     project_area: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class DependencyMapperPreviewRequest(BaseModel):
+    component_name: Optional[str] = Field(default=None, max_length=200)
     command: str = Field(default="", max_length=2000)
     related_layer: Optional[str] = Field(default=None, max_length=120)
 
@@ -7958,6 +7969,25 @@ async def debug_dev_agent_explorer_preview(payload: DevAgentExplorerPreviewReque
     )
 
 
+@app.get("/debug/dependency-mapper-status")
+async def debug_dependency_mapper_status():
+    return dependency_mapper_status()
+
+
+@app.get("/debug/dependency-mapper-registry")
+async def debug_dependency_mapper_registry():
+    return dependency_mapper_registry()
+
+
+@app.post("/debug/dependency-mapper-preview")
+async def debug_dependency_mapper_preview(payload: DependencyMapperPreviewRequest):
+    return build_dependency_mapper_preview(
+        component_name=payload.component_name,
+        command=payload.command,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8756,6 +8786,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/task-planner-registry">Task Planner Kayıt</button>
       <button data-endpoint="/debug/dev-agent-explorer-status">Dev Agent Explorer Durum</button>
       <button data-endpoint="/debug/dev-agent-explorer-registry">Dev Agent Explorer Kayıt</button>
+      <button data-endpoint="/debug/dependency-mapper-status">Dependency Mapper Durum</button>
+      <button data-endpoint="/debug/dependency-mapper-registry">Dependency Mapper Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -8797,6 +8829,12 @@ async def debug_agent_panel():
       <button data-dev-agent-explorer-command="websocket stream tab degisimi" data-dev-agent-explorer-area="websocket_stream">Explorer: Websocket</button>
       <button data-dev-agent-explorer-command="workspace export preview dosya yazma" data-dev-agent-explorer-area="workspace_export">Explorer: Workspace Export</button>
       <button data-dev-agent-explorer-command="luxway permission private data" data-dev-agent-explorer-area="luxway_permission">Explorer: Luxway izin</button>
+    </div>
+    <div class="bar">
+      <button data-dependency-mapper-command="stop continue arm typewriter bagimliliklari" data-dependency-mapper-component="stop_continue">Bağımlılık: Stop/Continue</button>
+      <button data-dependency-mapper-command="websocket stream typewriter bagimliliklari" data-dependency-mapper-component="websocket_stream">Bağımlılık: Websocket</button>
+      <button data-dependency-mapper-command="workspace export block file guard" data-dependency-mapper-component="workspace_export">Bağımlılık: Workspace Export</button>
+      <button data-dependency-mapper-command="luxway permission private data guard" data-dependency-mapper-component="luxway_permission">Bağımlılık: Luxway izin</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -9886,6 +9924,27 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadDependencyMapperPreview(componentName, command) {
+      statusEl.textContent = "Loading dependency mapper preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/dependency-mapper-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            component_name: componentName,
+            command,
+            related_layer: ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded dependency mapper preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10229,6 +10288,12 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadDevAgentExplorerPreview(
         button.dataset.devAgentExplorerArea,
         button.dataset.devAgentExplorerCommand
+      ));
+    });
+    document.querySelectorAll("button[data-dependency-mapper-command]").forEach((button) => {
+      button.addEventListener("click", () => loadDependencyMapperPreview(
+        button.dataset.dependencyMapperComponent,
+        button.dataset.dependencyMapperCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {

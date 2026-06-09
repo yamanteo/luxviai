@@ -134,6 +134,9 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/dev-agent-explorer-status", "GET", "25.1", "dev agent explorer status"),
         _endpoint("/debug/dev-agent-explorer-registry", "GET", "25.1", "dev agent explorer registry"),
         _endpoint("/debug/dev-agent-explorer-preview", "POST", "25.1", "dev agent explorer preview"),
+        _endpoint("/debug/dependency-mapper-status", "GET", "25.2", "dependency mapper status"),
+        _endpoint("/debug/dependency-mapper-registry", "GET", "25.2", "dependency mapper registry"),
+        _endpoint("/debug/dependency-mapper-preview", "POST", "25.2", "dependency mapper preview"),
     ],
 }
 

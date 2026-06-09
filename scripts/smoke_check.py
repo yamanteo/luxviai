@@ -1092,6 +1092,8 @@ class SmokeRunner:
             "/debug/task-planner-registry",
             "/debug/dev-agent-explorer-status",
             "/debug/dev-agent-explorer-registry",
+            "/debug/dependency-mapper-status",
+            "/debug/dependency-mapper-registry",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -4132,6 +4134,98 @@ class SmokeRunner:
 
         return "dev agent explorer preview"
 
+    def check_dependency_mapper_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/dependency-mapper-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "25.2", status
+        assert status.get("name") == "Dependency Mapper Preview", status
+        assert status.get("status") == "dependency_mapper_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("git_write_enabled") is False, status
+        assert status.get("commit_enabled") is False, status
+        assert status.get("push_enabled") is False, status
+        assert status.get("deploy_enabled") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("patch_apply_enabled") is False, status
+        assert status.get("subprocess_execution_enabled") is False, status
+        assert status.get("real_file_scan_enabled") is False, status
+        assert status.get("repo_scan_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/dependency-mapper-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "25.2", registry
+        assert registry.get("name") == "Dependency Mapper Registry", registry
+        assert registry.get("status") == "dependency_mapper_registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("strict_read_only") is True, registry
+        assert registry.get("analysis_only") is True, registry
+        assert registry.get("mapping_count", 0) >= 1, registry
+        assert isinstance(registry.get("dependency_mappings"), list), registry
+        assert registry.get("safety_flags", {}).get("subprocess_execution") is False, registry
+        assert registry.get("safety_flags", {}).get("real_file_scan") is False, registry
+
+        preview_response = client.post(
+            "/debug/dependency-mapper-preview",
+            json={
+                "component_name": "stop_continue",
+                "command": "dur devam arm typewriter bagimliliklari",
+                "related_layer": "Layer 24",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("component_name") == "stop_continue", preview
+        assert "ARM" in preview.get("related_components", []), preview
+        assert "Layer 24" in preview.get("related_layers", []), preview
+        assert "/debug/root-flow-audit" in preview.get("related_endpoints", []), preview
+        assert "resume_flow" in preview.get("related_behaviors", []), preview
+        assert preview.get("dependency_risk") == "medium", preview
+        assert preview.get("complexity_score") == "medium", preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("explorer_signal"), dict), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("strict_read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        assert preview.get("patch_apply_performed") is False, preview
+        assert preview.get("subprocess_execution_performed") is False, preview
+        assert preview.get("real_file_scan_performed") is False, preview
+        assert preview.get("repo_scan_performed") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        dependency_map = report.get("sections", {}).get("dependency_map", [])
+        assert dependency_map, report
+        assert dependency_map[0].get("related_components"), report
+        assert dependency_map[0].get("related_behaviors"), report
+        assert dependency_map[0].get("dependency_risk"), report
+
+        return "dependency mapper preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4238,6 +4332,9 @@ class SmokeRunner:
         assert "/debug/dev-agent-explorer-status" in dev_agent_paths, payload
         assert "/debug/dev-agent-explorer-registry" in dev_agent_paths, payload
         assert "/debug/dev-agent-explorer-preview" in dev_agent_paths, payload
+        assert "/debug/dependency-mapper-status" in dev_agent_paths, payload
+        assert "/debug/dependency-mapper-registry" in dev_agent_paths, payload
+        assert "/debug/dependency-mapper-preview" in dev_agent_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -6037,6 +6134,7 @@ class SmokeRunner:
             ("investigation_priority_preview", self.check_investigation_priority_preview),
             ("task_planner_preview", self.check_task_planner_preview),
             ("dev_agent_explorer_preview", self.check_dev_agent_explorer_preview),
+            ("dependency_mapper_preview", self.check_dependency_mapper_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
