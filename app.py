@@ -139,6 +139,11 @@ from planner_agent_preview import (
     planner_agent_registry,
     planner_agent_status,
 )
+from verifier_agent_preview import (
+    build_verifier_agent_preview,
+    verifier_agent_registry,
+    verifier_agent_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -864,6 +869,12 @@ class ExplorerAgentPreviewRequest(BaseModel):
 
 
 class PlannerAgentPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class VerifierAgentPreviewRequest(BaseModel):
     command: str = Field(default="", max_length=2000)
     project_area: Optional[str] = Field(default=None, max_length=200)
     related_layer: Optional[str] = Field(default=None, max_length=120)
@@ -8250,6 +8261,25 @@ async def debug_planner_agent_preview(payload: PlannerAgentPreviewRequest):
     )
 
 
+@app.get("/debug/verifier-agent-status")
+async def debug_verifier_agent_status():
+    return verifier_agent_status()
+
+
+@app.get("/debug/verifier-agent-registry")
+async def debug_verifier_agent_registry():
+    return verifier_agent_registry()
+
+
+@app.post("/debug/verifier-agent-preview")
+async def debug_verifier_agent_preview(payload: VerifierAgentPreviewRequest):
+    return build_verifier_agent_preview(
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -9069,6 +9099,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/explorer-agent-registry">Explorer Agent Kayıt</button>
       <button data-endpoint="/debug/planner-agent-status">Planner Agent Durum</button>
       <button data-endpoint="/debug/planner-agent-registry">Planner Agent Kayıt</button>
+      <button data-endpoint="/debug/verifier-agent-status">Verifier Agent Durum</button>
+      <button data-endpoint="/debug/verifier-agent-registry">Verifier Agent Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -9164,6 +9196,12 @@ async def debug_agent_panel():
       <button data-planner-agent-command="websocket stream icin gorev sirasi ve riskleri planla" data-planner-agent-area="websocket_stream">Planner Agent: Websocket</button>
       <button data-planner-agent-command="workspace export icin dogrulama stratejisi olustur" data-planner-agent-area="workspace_export">Planner Agent: Workspace Export</button>
       <button data-planner-agent-command="luxway permission icin risk ve validasyon plani yap" data-planner-agent-area="luxway_permission">Planner Agent: Luxway izin</button>
+    </div>
+    <div class="bar">
+      <button data-verifier-agent-command="stop continue icin dogrulama ve regresyon kontrolu yap" data-verifier-agent-area="stop_continue">Verifier Agent: Stop/Continue</button>
+      <button data-verifier-agent-command="websocket stream icin regresyon kontrollerini denetle" data-verifier-agent-area="websocket_stream">Verifier Agent: Websocket</button>
+      <button data-verifier-agent-command="workspace export icin basari kriterlerini kontrol et" data-verifier-agent-area="workspace_export">Verifier Agent: Workspace Export</button>
+      <button data-verifier-agent-command="luxway permission icin risk validasyonunu denetle" data-verifier-agent-area="luxway_permission">Verifier Agent: Luxway izin</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -10443,6 +10481,27 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadVerifierAgentPreview(projectArea, command) {
+      statusEl.textContent = "Loading verifier agent preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/verifier-agent-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            project_area: projectArea,
+            related_layer: "Layer 26"
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded verifier agent preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10840,6 +10899,12 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadPlannerAgentPreview(
         button.dataset.plannerAgentArea,
         button.dataset.plannerAgentCommand
+      ));
+    });
+    document.querySelectorAll("button[data-verifier-agent-command]").forEach((button) => {
+      button.addEventListener("click", () => loadVerifierAgentPreview(
+        button.dataset.verifierAgentArea,
+        button.dataset.verifierAgentCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {

@@ -25,6 +25,7 @@ from agent_constitution_engine_preview import build_constitution_preview, consti
 from project_rules_loader_preview import build_project_rules_preview, project_rules_registry
 from explorer_agent_preview import build_explorer_agent_preview
 from planner_agent_preview import build_planner_agent_preview
+from verifier_agent_preview import build_verifier_agent_preview
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -749,6 +750,22 @@ def _fault_report_planner_agent() -> Dict[str, Any]:
     }
 
 
+def _fault_report_verifier_agent() -> Dict[str, Any]:
+    preview = build_verifier_agent_preview(
+        command="stop continue icin dogrulama ve regresyon kontrolu yap",
+        project_area="stop_continue",
+        related_layer="Layer 26",
+    )
+    return {
+        "agent_role": preview.get("agent_role"),
+        "recommended_verification_steps": preview.get("recommended_verification_steps", []),
+        "recommended_regression_checks": preview.get("recommended_regression_checks", []),
+        "recommended_success_criteria": preview.get("recommended_success_criteria", []),
+        "risk_validation_focus": preview.get("risk_validation_focus", []),
+        "confidence_score": preview.get("confidence_score"),
+    }
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -1085,6 +1102,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "project_rules": _fault_report_project_rules(),
             "explorer_agent": _fault_report_explorer_agent(),
             "planner_agent": _fault_report_planner_agent(),
+            "verifier_agent": _fault_report_verifier_agent(),
         },
         "related_integrations": {
             "future_ready": [
@@ -1173,6 +1191,7 @@ def build_fault_report_preview(
             "project_rules": _fault_report_project_rules(),
             "explorer_agent": _fault_report_explorer_agent(),
             "planner_agent": _fault_report_planner_agent(),
+            "verifier_agent": _fault_report_verifier_agent(),
         },
         "fallback_used": fallback,
         "read_only": True,
