@@ -153,6 +153,11 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/debug/dev-agent-readiness-registry", "GET", "25.7", "dev agent readiness registry"),
         _endpoint("/debug/layer25-status", "GET", "25.7", "layer 25 status snapshot"),
     ],
+    "multi_agent_layer_26": [
+        _endpoint("/debug/constitution-status", "GET", "26.1", "agent constitution status"),
+        _endpoint("/debug/constitution-registry", "GET", "26.1", "agent constitution registry"),
+        _endpoint("/debug/constitution-preview", "POST", "26.1", "agent constitution rule resolution preview"),
+    ],
 }
 
 

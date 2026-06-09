@@ -21,6 +21,7 @@ from safe_change_boundary_preview import build_change_boundary_preview, change_b
 from safe_patch_planner_preview import build_patch_planner_preview, patch_planner_registry
 from safe_verification_planner_preview import build_verification_planner_preview, verification_planner_registry
 from dev_agent_readiness_snapshot import layer25_status_snapshot
+from agent_constitution_engine_preview import build_constitution_preview, constitution_registry
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -670,6 +671,24 @@ def _fault_report_dev_agent_readiness() -> Dict[str, Any]:
     }
 
 
+def _fault_report_constitution_engine() -> Dict[str, Any]:
+    registry = constitution_registry()
+    preview = build_constitution_preview(
+        command="modify chat runtime but strict read only mode",
+        conflicting_rules=["modify_chat_runtime", "read_only_mode"],
+        target_area="chat",
+    )
+    return {
+        "rule_source": preview.get("rule_source"),
+        "rule_priority": preview.get("rule_priority"),
+        "conflicting_rules": preview.get("conflicting_rules", []),
+        "selected_rule": preview.get("selected_rule"),
+        "resolution_reason": preview.get("resolution_reason"),
+        "confidence_score": preview.get("confidence_score"),
+        "hierarchy": registry.get("hierarchy", []),
+    }
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -1002,6 +1021,7 @@ def fault_report_registry() -> Dict[str, Any]:
             "patch_plans": _fault_report_patch_plans(),
             "verification_plans": _fault_report_verification_plans(),
             "dev_agent_readiness": _fault_report_dev_agent_readiness(),
+            "constitution_engine": _fault_report_constitution_engine(),
         },
         "related_integrations": {
             "future_ready": [
@@ -1086,6 +1106,7 @@ def build_fault_report_preview(
             "patch_plans": _fault_report_patch_plans(),
             "verification_plans": _fault_report_verification_plans(),
             "dev_agent_readiness": _fault_report_dev_agent_readiness(),
+            "constitution_engine": _fault_report_constitution_engine(),
         },
         "fallback_used": fallback,
         "read_only": True,

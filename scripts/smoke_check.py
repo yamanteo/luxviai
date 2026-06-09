@@ -1105,6 +1105,8 @@ class SmokeRunner:
             "/debug/dev-agent-readiness-status",
             "/debug/dev-agent-readiness-registry",
             "/debug/layer25-status",
+            "/debug/constitution-status",
+            "/debug/constitution-registry",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -4688,6 +4690,99 @@ class SmokeRunner:
 
         return "dev agent readiness snapshot"
 
+    def check_agent_constitution_engine_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/constitution-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "26.1", status
+        assert status.get("name") == "Agent Constitution Engine Preview", status
+        assert status.get("status") == "constitution_engine_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert len(status.get("hierarchy", [])) == 6, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("git_write_enabled") is False, status
+        assert status.get("commit_enabled") is False, status
+        assert status.get("push_enabled") is False, status
+        assert status.get("deploy_enabled") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("patch_apply_enabled") is False, status
+        assert status.get("subprocess_execution_enabled") is False, status
+        assert status.get("repo_scan_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/constitution-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "26.1", registry
+        assert registry.get("name") == "Agent Constitution Registry", registry
+        assert registry.get("status") == "constitution_registry_ready", registry
+        assert registry.get("read_only") is True, registry
+        assert registry.get("strict_read_only") is True, registry
+        assert registry.get("analysis_only") is True, registry
+        assert registry.get("default_resolution", {}).get("selected_rule") == "read_only_mode", registry
+        assert registry.get("safety_flags", {}).get("file_write") is False, registry
+        assert registry.get("safety_flags", {}).get("patch_apply") is False, registry
+        assert registry.get("safety_flags", {}).get("subprocess_execution") is False, registry
+
+        preview_response = client.post(
+            "/debug/constitution-preview",
+            json={
+                "command": "modify chat runtime but strict read only mode",
+                "target_area": "chat",
+                "conflicting_rules": ["modify_chat_runtime", "read_only_mode"],
+                "rule_source": "project_rules",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("rule_source") == "constitution_rules", preview
+        assert preview.get("rule_priority") == 1, preview
+        assert "modify_chat_runtime" in preview.get("conflicting_rules", []), preview
+        assert "read_only_mode" in preview.get("conflicting_rules", []), preview
+        assert preview.get("selected_rule") in {"read_only_mode", "protect_runtime"}, preview
+        assert preview.get("resolution_reason") in {"constitution_read_only_boundary", "protected_runtime_boundary"}, preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("boundary_signal"), dict), preview
+        assert preview.get("readiness_signal", {}).get("safe_for_write_operations") is False, preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("strict_read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        assert preview.get("patch_apply_performed") is False, preview
+        assert preview.get("subprocess_execution_performed") is False, preview
+        assert preview.get("repo_scan_performed") is False, preview
+        assert preview.get("chat_stream_touched") is False, preview
+        assert preview.get("typewriter_runtime_touched") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        constitution = report.get("sections", {}).get("constitution_engine", {})
+        assert constitution.get("selected_rule") in {"read_only_mode", "protect_runtime"}, report
+        assert constitution.get("rule_priority") == 1, report
+        assert constitution.get("hierarchy"), report
+
+        return "agent constitution engine preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -4812,6 +4907,10 @@ class SmokeRunner:
         assert "/debug/dev-agent-readiness-status" in dev_agent_paths, payload
         assert "/debug/dev-agent-readiness-registry" in dev_agent_paths, payload
         assert "/debug/layer25-status" in dev_agent_paths, payload
+        multi_agent_paths = {item.get("path") for item in groups.get("multi_agent_layer_26", [])}
+        assert "/debug/constitution-status" in multi_agent_paths, payload
+        assert "/debug/constitution-registry" in multi_agent_paths, payload
+        assert "/debug/constitution-preview" in multi_agent_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -6617,6 +6716,7 @@ class SmokeRunner:
             ("patch_planner_preview", self.check_patch_planner_preview),
             ("verification_planner_preview", self.check_verification_planner_preview),
             ("dev_agent_readiness_snapshot", self.check_dev_agent_readiness_snapshot),
+            ("agent_constitution_engine_preview", self.check_agent_constitution_engine_preview),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),

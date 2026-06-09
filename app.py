@@ -119,6 +119,11 @@ from dev_agent_readiness_snapshot import (
     dev_agent_readiness_status,
     layer25_status_snapshot,
 )
+from agent_constitution_engine_preview import (
+    build_constitution_preview,
+    constitution_registry,
+    constitution_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -822,6 +827,13 @@ class VerificationPlannerPreviewRequest(BaseModel):
     target_issue: Optional[str] = Field(default=None, max_length=200)
     command: str = Field(default="", max_length=2000)
     related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class ConstitutionPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=2000)
+    rule_source: Optional[str] = Field(default=None, max_length=120)
+    conflicting_rules: List[str] = Field(default_factory=list, max_length=20)
+    target_area: Optional[str] = Field(default=None, max_length=200)
 
 
 # =========================================================
@@ -8128,6 +8140,26 @@ async def debug_layer25_status():
     return layer25_status_snapshot()
 
 
+@app.get("/debug/constitution-status")
+async def debug_constitution_status():
+    return constitution_status()
+
+
+@app.get("/debug/constitution-registry")
+async def debug_constitution_registry():
+    return constitution_registry()
+
+
+@app.post("/debug/constitution-preview")
+async def debug_constitution_preview(payload: ConstitutionPreviewRequest):
+    return build_constitution_preview(
+        command=payload.command,
+        rule_source=payload.rule_source,
+        conflicting_rules=payload.conflicting_rules,
+        target_area=payload.target_area,
+    )
+
+
 @app.get("/debug/backlog-registry")
 async def debug_backlog_registry():
     return backlog_registry()
@@ -8939,6 +8971,8 @@ async def debug_agent_panel():
       <button data-endpoint="/debug/dev-agent-readiness-status">Dev Agent Readiness Durum</button>
       <button data-endpoint="/debug/dev-agent-readiness-registry">Dev Agent Readiness Kayıt</button>
       <button data-endpoint="/debug/layer25-status">Layer 25 Status</button>
+      <button data-endpoint="/debug/constitution-status">Constitution Durum</button>
+      <button data-endpoint="/debug/constitution-registry">Constitution Kayıt</button>
     </div>
     <div class="bar">
       <button data-investigation-timeline-command="Dur/Devam sistemi">Timeline: Dur/Devam</button>
@@ -9010,6 +9044,12 @@ async def debug_agent_panel():
       <button data-verification-planner-command="websocket stream typewriter verification plan" data-verification-planner-target="websocket_stream">Doğrulama: Websocket</button>
       <button data-verification-planner-command="workspace export file guard verification plan" data-verification-planner-target="workspace_export">Doğrulama: Workspace Export</button>
       <button data-verification-planner-command="luxway permission private data verification plan" data-verification-planner-target="luxway_permission">Doğrulama: Luxway izin</button>
+    </div>
+    <div class="bar">
+      <button data-constitution-command="modify chat runtime but strict read only mode" data-constitution-target="chat">Constitution: Runtime vs Read-only</button>
+      <button data-constitution-command="user wants patch but protected stop continue boundary" data-constitution-target="stop_continue">Constitution: Stop/Continue</button>
+      <button data-constitution-command="project rule conflicts with memory preference" data-constitution-target="memory">Constitution: Memory</button>
+      <button data-constitution-command="dev agent can plan but cannot write" data-constitution-target="debug_intelligence">Constitution: Dev Agent</button>
     </div>
     <h2>Production / Backlog</h2>
     <div class="bar">
@@ -10204,6 +10244,28 @@ async def debug_agent_panel():
         output.textContent = String(err);
       }
     }
+    async function loadConstitutionPreview(targetArea, command) {
+      statusEl.textContent = "Loading constitution preview";
+      output.textContent = "{}";
+      try {
+        const response = await fetch("/debug/constitution-preview", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command,
+            target_area: targetArea,
+            conflicting_rules: ["modify_chat_runtime", "read_only_mode"],
+            rule_source: ""
+          })
+        });
+        const data = await response.json();
+        statusEl.textContent = response.ok ? "Loaded constitution preview" : "Request failed: " + response.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        statusEl.textContent = "Request error";
+        output.textContent = String(err);
+      }
+    }
     async function loadDeviceBridgePreview(command) {
       statusEl.textContent = "Loading device bridge preview";
       output.textContent = "{}";
@@ -10577,6 +10639,12 @@ async def debug_agent_panel():
       button.addEventListener("click", () => loadVerificationPlannerPreview(
         button.dataset.verificationPlannerTarget,
         button.dataset.verificationPlannerCommand
+      ));
+    });
+    document.querySelectorAll("button[data-constitution-command]").forEach((button) => {
+      button.addEventListener("click", () => loadConstitutionPreview(
+        button.dataset.constitutionTarget,
+        button.dataset.constitutionCommand
       ));
     });
     document.querySelectorAll("button[data-endpoint]").forEach((button) => {
