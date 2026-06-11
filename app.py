@@ -758,6 +758,56 @@ from autonomous_agent_operating_model_preview import (
     autonomous_agent_operating_model_capabilities,
     autonomous_agent_operating_model_preview,
 )
+from agent_runtime_core_preview import (
+    agent_runtime_core_status,
+    agent_runtime_core_capabilities,
+    agent_runtime_core_preview,
+)
+from agent_session_runtime_preview import (
+    agent_session_runtime_status,
+    agent_session_runtime_capabilities,
+    agent_session_runtime_preview,
+)
+from agent_workspace_runtime_preview import (
+    agent_workspace_runtime_status,
+    agent_workspace_runtime_capabilities,
+    agent_workspace_runtime_preview,
+)
+from agent_memory_loop_runtime_preview import (
+    agent_memory_loop_runtime_status,
+    agent_memory_loop_runtime_capabilities,
+    agent_memory_loop_runtime_preview,
+)
+from agent_collaboration_runtime_preview import (
+    agent_collaboration_runtime_status,
+    agent_collaboration_runtime_capabilities,
+    agent_collaboration_runtime_preview,
+)
+from agent_lifecycle_runtime_preview import (
+    agent_lifecycle_runtime_status,
+    agent_lifecycle_runtime_capabilities,
+    agent_lifecycle_runtime_preview,
+)
+from agent_recovery_resilience_runtime_preview import (
+    agent_recovery_resilience_runtime_status,
+    agent_recovery_resilience_runtime_capabilities,
+    agent_recovery_resilience_runtime_preview,
+)
+from agent_continuity_runtime_preview import (
+    agent_continuity_runtime_status,
+    agent_continuity_runtime_capabilities,
+    agent_continuity_runtime_preview,
+)
+from agent_runtime_consolidation_preview import (
+    agent_runtime_consolidation_status,
+    agent_runtime_consolidation_capabilities,
+    agent_runtime_consolidation_preview,
+)
+from agent_runtime_master_status_preview import (
+    agent_runtime_master_status,
+    agent_runtime_master_capabilities,
+    agent_runtime_master_preview,
+)
 
 try:
     from dotenv import load_dotenv
@@ -1745,6 +1795,17 @@ class AutonomousAgentSystemsPreviewRequest(BaseModel):
     workflow_name: Optional[str] = Field(default=None, max_length=200)
     task_type: Optional[str] = Field(default=None, max_length=120)
     autonomy_level: Optional[str] = Field(default=None, max_length=120)
+    risk_level: Optional[str] = Field(default=None, max_length=80)
+    context: str = Field(default="", max_length=8000)
+
+
+class AgentRuntimeSystemsPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    runtime_state: Optional[str] = Field(default=None, max_length=160)
+    session_state: Optional[str] = Field(default=None, max_length=160)
+    workspace_state: Optional[str] = Field(default=None, max_length=160)
+    task_type: Optional[str] = Field(default=None, max_length=120)
     risk_level: Optional[str] = Field(default=None, max_length=80)
     context: str = Field(default="", max_length=8000)
 
@@ -11211,6 +11272,156 @@ async def autonomous_agent_operating_model_capabilities_endpoint():
 @app.post("/autonomous-agent-operating-model/preview")
 async def autonomous_agent_operating_model_preview_endpoint(payload: AutonomousAgentSystemsPreviewRequest):
     return autonomous_agent_operating_model_preview(payload.dict())
+
+
+@app.get("/agent-runtime-core/status")
+async def agent_runtime_core_status_endpoint():
+    return agent_runtime_core_status()
+
+
+@app.get("/agent-runtime-core/capabilities")
+async def agent_runtime_core_capabilities_endpoint():
+    return agent_runtime_core_capabilities()
+
+
+@app.post("/agent-runtime-core/preview")
+async def agent_runtime_core_preview_endpoint(payload: AgentRuntimeSystemsPreviewRequest):
+    return agent_runtime_core_preview(payload.dict())
+
+
+@app.get("/agent-session-runtime/status")
+async def agent_session_runtime_status_endpoint():
+    return agent_session_runtime_status()
+
+
+@app.get("/agent-session-runtime/capabilities")
+async def agent_session_runtime_capabilities_endpoint():
+    return agent_session_runtime_capabilities()
+
+
+@app.post("/agent-session-runtime/preview")
+async def agent_session_runtime_preview_endpoint(payload: AgentRuntimeSystemsPreviewRequest):
+    return agent_session_runtime_preview(payload.dict())
+
+
+@app.get("/agent-workspace-runtime/status")
+async def agent_workspace_runtime_status_endpoint():
+    return agent_workspace_runtime_status()
+
+
+@app.get("/agent-workspace-runtime/capabilities")
+async def agent_workspace_runtime_capabilities_endpoint():
+    return agent_workspace_runtime_capabilities()
+
+
+@app.post("/agent-workspace-runtime/preview")
+async def agent_workspace_runtime_preview_endpoint(payload: AgentRuntimeSystemsPreviewRequest):
+    return agent_workspace_runtime_preview(payload.dict())
+
+
+@app.get("/agent-memory-loop-runtime/status")
+async def agent_memory_loop_runtime_status_endpoint():
+    return agent_memory_loop_runtime_status()
+
+
+@app.get("/agent-memory-loop-runtime/capabilities")
+async def agent_memory_loop_runtime_capabilities_endpoint():
+    return agent_memory_loop_runtime_capabilities()
+
+
+@app.post("/agent-memory-loop-runtime/preview")
+async def agent_memory_loop_runtime_preview_endpoint(payload: AgentRuntimeSystemsPreviewRequest):
+    return agent_memory_loop_runtime_preview(payload.dict())
+
+
+@app.get("/agent-collaboration-runtime/status")
+async def agent_collaboration_runtime_status_endpoint():
+    return agent_collaboration_runtime_status()
+
+
+@app.get("/agent-collaboration-runtime/capabilities")
+async def agent_collaboration_runtime_capabilities_endpoint():
+    return agent_collaboration_runtime_capabilities()
+
+
+@app.post("/agent-collaboration-runtime/preview")
+async def agent_collaboration_runtime_preview_endpoint(payload: AgentRuntimeSystemsPreviewRequest):
+    return agent_collaboration_runtime_preview(payload.dict())
+
+
+@app.get("/agent-lifecycle-runtime/status")
+async def agent_lifecycle_runtime_status_endpoint():
+    return agent_lifecycle_runtime_status()
+
+
+@app.get("/agent-lifecycle-runtime/capabilities")
+async def agent_lifecycle_runtime_capabilities_endpoint():
+    return agent_lifecycle_runtime_capabilities()
+
+
+@app.post("/agent-lifecycle-runtime/preview")
+async def agent_lifecycle_runtime_preview_endpoint(payload: AgentRuntimeSystemsPreviewRequest):
+    return agent_lifecycle_runtime_preview(payload.dict())
+
+
+@app.get("/agent-recovery-resilience-runtime/status")
+async def agent_recovery_resilience_runtime_status_endpoint():
+    return agent_recovery_resilience_runtime_status()
+
+
+@app.get("/agent-recovery-resilience-runtime/capabilities")
+async def agent_recovery_resilience_runtime_capabilities_endpoint():
+    return agent_recovery_resilience_runtime_capabilities()
+
+
+@app.post("/agent-recovery-resilience-runtime/preview")
+async def agent_recovery_resilience_runtime_preview_endpoint(payload: AgentRuntimeSystemsPreviewRequest):
+    return agent_recovery_resilience_runtime_preview(payload.dict())
+
+
+@app.get("/agent-continuity-runtime/status")
+async def agent_continuity_runtime_status_endpoint():
+    return agent_continuity_runtime_status()
+
+
+@app.get("/agent-continuity-runtime/capabilities")
+async def agent_continuity_runtime_capabilities_endpoint():
+    return agent_continuity_runtime_capabilities()
+
+
+@app.post("/agent-continuity-runtime/preview")
+async def agent_continuity_runtime_preview_endpoint(payload: AgentRuntimeSystemsPreviewRequest):
+    return agent_continuity_runtime_preview(payload.dict())
+
+
+@app.get("/agent-runtime-consolidation/status")
+async def agent_runtime_consolidation_status_endpoint():
+    return agent_runtime_consolidation_status()
+
+
+@app.get("/agent-runtime-consolidation/capabilities")
+async def agent_runtime_consolidation_capabilities_endpoint():
+    return agent_runtime_consolidation_capabilities()
+
+
+@app.post("/agent-runtime-consolidation/preview")
+async def agent_runtime_consolidation_preview_endpoint(payload: AgentRuntimeSystemsPreviewRequest):
+    return agent_runtime_consolidation_preview(payload.dict())
+
+
+@app.get("/debug/layer39-status")
+async def debug_layer39_status_endpoint():
+    return agent_runtime_master_status()
+
+
+@app.get("/agent-runtime-master/capabilities")
+async def agent_runtime_master_capabilities_endpoint():
+    return agent_runtime_master_capabilities()
+
+
+@app.post("/agent-runtime-master/preview")
+async def agent_runtime_master_preview_endpoint(payload: AgentRuntimeSystemsPreviewRequest):
+    return agent_runtime_master_preview(payload.dict())
 
 
 @app.get("/debug/runtime-drift-status")

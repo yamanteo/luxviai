@@ -704,6 +704,56 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/autonomous-agent-operating-model/capabilities", "GET", "38.9", "autonomous agent operating model capabilities"),
         _endpoint("/autonomous-agent-operating-model/preview", "POST", "38.9", "read-only autonomous agent operating model preview"),
     ],
+    "agent_runtime_core_layer_39_0": [
+        _endpoint("/agent-runtime-core/status", "GET", "39.0", "agent runtime core status"),
+        _endpoint("/agent-runtime-core/capabilities", "GET", "39.0", "agent runtime core capabilities"),
+        _endpoint("/agent-runtime-core/preview", "POST", "39.0", "read-only agent runtime core preview"),
+    ],
+    "agent_session_runtime_layer_39_1": [
+        _endpoint("/agent-session-runtime/status", "GET", "39.1", "agent session runtime status"),
+        _endpoint("/agent-session-runtime/capabilities", "GET", "39.1", "agent session runtime capabilities"),
+        _endpoint("/agent-session-runtime/preview", "POST", "39.1", "read-only agent session runtime preview"),
+    ],
+    "agent_workspace_runtime_layer_39_2": [
+        _endpoint("/agent-workspace-runtime/status", "GET", "39.2", "agent workspace runtime status"),
+        _endpoint("/agent-workspace-runtime/capabilities", "GET", "39.2", "agent workspace runtime capabilities"),
+        _endpoint("/agent-workspace-runtime/preview", "POST", "39.2", "read-only agent workspace runtime preview"),
+    ],
+    "agent_memory_loop_runtime_layer_39_3": [
+        _endpoint("/agent-memory-loop-runtime/status", "GET", "39.3", "agent memory loop runtime status"),
+        _endpoint("/agent-memory-loop-runtime/capabilities", "GET", "39.3", "agent memory loop runtime capabilities"),
+        _endpoint("/agent-memory-loop-runtime/preview", "POST", "39.3", "read-only agent memory loop runtime preview"),
+    ],
+    "agent_collaboration_runtime_layer_39_4": [
+        _endpoint("/agent-collaboration-runtime/status", "GET", "39.4", "agent collaboration runtime status"),
+        _endpoint("/agent-collaboration-runtime/capabilities", "GET", "39.4", "agent collaboration runtime capabilities"),
+        _endpoint("/agent-collaboration-runtime/preview", "POST", "39.4", "read-only agent collaboration runtime preview"),
+    ],
+    "agent_lifecycle_runtime_layer_39_5": [
+        _endpoint("/agent-lifecycle-runtime/status", "GET", "39.5", "agent lifecycle runtime status"),
+        _endpoint("/agent-lifecycle-runtime/capabilities", "GET", "39.5", "agent lifecycle runtime capabilities"),
+        _endpoint("/agent-lifecycle-runtime/preview", "POST", "39.5", "read-only agent lifecycle runtime preview"),
+    ],
+    "agent_recovery_resilience_runtime_layer_39_6": [
+        _endpoint("/agent-recovery-resilience-runtime/status", "GET", "39.6", "agent recovery resilience runtime status"),
+        _endpoint("/agent-recovery-resilience-runtime/capabilities", "GET", "39.6", "agent recovery resilience runtime capabilities"),
+        _endpoint("/agent-recovery-resilience-runtime/preview", "POST", "39.6", "read-only agent recovery resilience runtime preview"),
+    ],
+    "agent_continuity_runtime_layer_39_7": [
+        _endpoint("/agent-continuity-runtime/status", "GET", "39.7", "agent continuity runtime status"),
+        _endpoint("/agent-continuity-runtime/capabilities", "GET", "39.7", "agent continuity runtime capabilities"),
+        _endpoint("/agent-continuity-runtime/preview", "POST", "39.7", "read-only agent continuity runtime preview"),
+    ],
+    "agent_runtime_consolidation_layer_39_8": [
+        _endpoint("/agent-runtime-consolidation/status", "GET", "39.8", "agent runtime consolidation status"),
+        _endpoint("/agent-runtime-consolidation/capabilities", "GET", "39.8", "agent runtime consolidation capabilities"),
+        _endpoint("/agent-runtime-consolidation/preview", "POST", "39.8", "read-only agent runtime consolidation preview"),
+    ],
+    "agent_runtime_master_status_layer_39_9": [
+        _endpoint("/debug/layer39-status", "GET", "39.9", "layer 39 agent runtime systems status"),
+        _endpoint("/agent-runtime-master/capabilities", "GET", "39.9", "agent runtime master capabilities"),
+        _endpoint("/agent-runtime-master/preview", "POST", "39.9", "read-only agent runtime master preview"),
+    ],
 }
 
 
