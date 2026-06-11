@@ -754,6 +754,56 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/agent-runtime-master/capabilities", "GET", "39.9", "agent runtime master capabilities"),
         _endpoint("/agent-runtime-master/preview", "POST", "39.9", "read-only agent runtime master preview"),
     ],
+    "agent_execution_core_layer_40_0": [
+        _endpoint("/agent-execution-core/status", "GET", "40.0", "agent execution core status"),
+        _endpoint("/agent-execution-core/capabilities", "GET", "40.0", "agent execution core capabilities"),
+        _endpoint("/agent-execution-core/preview", "POST", "40.0", "read-only agent execution core preview"),
+    ],
+    "agent_action_engine_layer_40_1": [
+        _endpoint("/agent-action-engine/status", "GET", "40.1", "agent action engine status"),
+        _endpoint("/agent-action-engine/capabilities", "GET", "40.1", "agent action engine capabilities"),
+        _endpoint("/agent-action-engine/preview", "POST", "40.1", "read-only agent action engine preview"),
+    ],
+    "agent_task_executor_layer_40_2": [
+        _endpoint("/agent-task-executor/status", "GET", "40.2", "agent task executor status"),
+        _endpoint("/agent-task-executor/capabilities", "GET", "40.2", "agent task executor capabilities"),
+        _endpoint("/agent-task-executor/preview", "POST", "40.2", "read-only agent task executor preview"),
+    ],
+    "agent_verification_executor_layer_40_3": [
+        _endpoint("/agent-verification-executor/status", "GET", "40.3", "agent verification executor status"),
+        _endpoint("/agent-verification-executor/capabilities", "GET", "40.3", "agent verification executor capabilities"),
+        _endpoint("/agent-verification-executor/preview", "POST", "40.3", "read-only agent verification executor preview"),
+    ],
+    "agent_workspace_executor_layer_40_4": [
+        _endpoint("/agent-workspace-executor/status", "GET", "40.4", "agent workspace executor status"),
+        _endpoint("/agent-workspace-executor/capabilities", "GET", "40.4", "agent workspace executor capabilities"),
+        _endpoint("/agent-workspace-executor/preview", "POST", "40.4", "read-only agent workspace executor preview"),
+    ],
+    "agent_deployment_executor_layer_40_5": [
+        _endpoint("/agent-deployment-executor/status", "GET", "40.5", "agent deployment executor status"),
+        _endpoint("/agent-deployment-executor/capabilities", "GET", "40.5", "agent deployment executor capabilities"),
+        _endpoint("/agent-deployment-executor/preview", "POST", "40.5", "read-only agent deployment executor preview"),
+    ],
+    "agent_execution_orchestrator_layer_40_6": [
+        _endpoint("/agent-execution-orchestrator/status", "GET", "40.6", "agent execution orchestrator status"),
+        _endpoint("/agent-execution-orchestrator/capabilities", "GET", "40.6", "agent execution orchestrator capabilities"),
+        _endpoint("/agent-execution-orchestrator/preview", "POST", "40.6", "read-only agent execution orchestrator preview"),
+    ],
+    "agent_execution_supervisor_layer_40_7": [
+        _endpoint("/agent-execution-supervisor/status", "GET", "40.7", "agent execution supervisor status"),
+        _endpoint("/agent-execution-supervisor/capabilities", "GET", "40.7", "agent execution supervisor capabilities"),
+        _endpoint("/agent-execution-supervisor/preview", "POST", "40.7", "read-only agent execution supervisor preview"),
+    ],
+    "agent_execution_recovery_coordinator_layer_40_8": [
+        _endpoint("/agent-execution-recovery-coordinator/status", "GET", "40.8", "agent execution recovery coordinator status"),
+        _endpoint("/agent-execution-recovery-coordinator/capabilities", "GET", "40.8", "agent execution recovery coordinator capabilities"),
+        _endpoint("/agent-execution-recovery-coordinator/preview", "POST", "40.8", "read-only agent execution recovery coordinator preview"),
+    ],
+    "agent_execution_master_status_layer_40_9": [
+        _endpoint("/debug/layer40-status", "GET", "40.9", "layer 40 agent execution systems status"),
+        _endpoint("/agent-execution-master/capabilities", "GET", "40.9", "agent execution master capabilities"),
+        _endpoint("/agent-execution-master/preview", "POST", "40.9", "read-only agent execution master preview"),
+    ],
 }
 
 

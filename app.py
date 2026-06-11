@@ -808,6 +808,56 @@ from agent_runtime_master_status_preview import (
     agent_runtime_master_capabilities,
     agent_runtime_master_preview,
 )
+from agent_execution_core_preview import (
+    agent_execution_core_status,
+    agent_execution_core_capabilities,
+    agent_execution_core_preview,
+)
+from agent_action_engine_preview import (
+    agent_action_engine_status,
+    agent_action_engine_capabilities,
+    agent_action_engine_preview,
+)
+from agent_task_executor_preview import (
+    agent_task_executor_status,
+    agent_task_executor_capabilities,
+    agent_task_executor_preview,
+)
+from agent_verification_executor_preview import (
+    agent_verification_executor_status,
+    agent_verification_executor_capabilities,
+    agent_verification_executor_preview,
+)
+from agent_workspace_executor_preview import (
+    agent_workspace_executor_status,
+    agent_workspace_executor_capabilities,
+    agent_workspace_executor_preview,
+)
+from agent_deployment_executor_preview import (
+    agent_deployment_executor_status,
+    agent_deployment_executor_capabilities,
+    agent_deployment_executor_preview,
+)
+from agent_execution_orchestrator_preview import (
+    agent_execution_orchestrator_status,
+    agent_execution_orchestrator_capabilities,
+    agent_execution_orchestrator_preview,
+)
+from agent_execution_supervisor_preview import (
+    agent_execution_supervisor_status,
+    agent_execution_supervisor_capabilities,
+    agent_execution_supervisor_preview,
+)
+from agent_execution_recovery_coordinator_preview import (
+    agent_execution_recovery_coordinator_status,
+    agent_execution_recovery_coordinator_capabilities,
+    agent_execution_recovery_coordinator_preview,
+)
+from agent_execution_master_status_preview import (
+    agent_execution_master_status,
+    agent_execution_master_capabilities,
+    agent_execution_master_preview,
+)
 
 try:
     from dotenv import load_dotenv
@@ -1807,6 +1857,17 @@ class AgentRuntimeSystemsPreviewRequest(BaseModel):
     workspace_state: Optional[str] = Field(default=None, max_length=160)
     task_type: Optional[str] = Field(default=None, max_length=120)
     risk_level: Optional[str] = Field(default=None, max_length=80)
+    context: str = Field(default="", max_length=8000)
+
+
+class AgentExecutionSystemsPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    execution_type: Optional[str] = Field(default=None, max_length=160)
+    target_system: Optional[str] = Field(default=None, max_length=160)
+    task_type: Optional[str] = Field(default=None, max_length=120)
+    risk_level: Optional[str] = Field(default=None, max_length=80)
+    confirmation_state: Optional[str] = Field(default=None, max_length=120)
     context: str = Field(default="", max_length=8000)
 
 
@@ -11422,6 +11483,156 @@ async def agent_runtime_master_capabilities_endpoint():
 @app.post("/agent-runtime-master/preview")
 async def agent_runtime_master_preview_endpoint(payload: AgentRuntimeSystemsPreviewRequest):
     return agent_runtime_master_preview(payload.dict())
+
+
+@app.get("/agent-execution-core/status")
+async def agent_execution_core_status_endpoint():
+    return agent_execution_core_status()
+
+
+@app.get("/agent-execution-core/capabilities")
+async def agent_execution_core_capabilities_endpoint():
+    return agent_execution_core_capabilities()
+
+
+@app.post("/agent-execution-core/preview")
+async def agent_execution_core_preview_endpoint(payload: AgentExecutionSystemsPreviewRequest):
+    return agent_execution_core_preview(payload.dict())
+
+
+@app.get("/agent-action-engine/status")
+async def agent_action_engine_status_endpoint():
+    return agent_action_engine_status()
+
+
+@app.get("/agent-action-engine/capabilities")
+async def agent_action_engine_capabilities_endpoint():
+    return agent_action_engine_capabilities()
+
+
+@app.post("/agent-action-engine/preview")
+async def agent_action_engine_preview_endpoint(payload: AgentExecutionSystemsPreviewRequest):
+    return agent_action_engine_preview(payload.dict())
+
+
+@app.get("/agent-task-executor/status")
+async def agent_task_executor_status_endpoint():
+    return agent_task_executor_status()
+
+
+@app.get("/agent-task-executor/capabilities")
+async def agent_task_executor_capabilities_endpoint():
+    return agent_task_executor_capabilities()
+
+
+@app.post("/agent-task-executor/preview")
+async def agent_task_executor_preview_endpoint(payload: AgentExecutionSystemsPreviewRequest):
+    return agent_task_executor_preview(payload.dict())
+
+
+@app.get("/agent-verification-executor/status")
+async def agent_verification_executor_status_endpoint():
+    return agent_verification_executor_status()
+
+
+@app.get("/agent-verification-executor/capabilities")
+async def agent_verification_executor_capabilities_endpoint():
+    return agent_verification_executor_capabilities()
+
+
+@app.post("/agent-verification-executor/preview")
+async def agent_verification_executor_preview_endpoint(payload: AgentExecutionSystemsPreviewRequest):
+    return agent_verification_executor_preview(payload.dict())
+
+
+@app.get("/agent-workspace-executor/status")
+async def agent_workspace_executor_status_endpoint():
+    return agent_workspace_executor_status()
+
+
+@app.get("/agent-workspace-executor/capabilities")
+async def agent_workspace_executor_capabilities_endpoint():
+    return agent_workspace_executor_capabilities()
+
+
+@app.post("/agent-workspace-executor/preview")
+async def agent_workspace_executor_preview_endpoint(payload: AgentExecutionSystemsPreviewRequest):
+    return agent_workspace_executor_preview(payload.dict())
+
+
+@app.get("/agent-deployment-executor/status")
+async def agent_deployment_executor_status_endpoint():
+    return agent_deployment_executor_status()
+
+
+@app.get("/agent-deployment-executor/capabilities")
+async def agent_deployment_executor_capabilities_endpoint():
+    return agent_deployment_executor_capabilities()
+
+
+@app.post("/agent-deployment-executor/preview")
+async def agent_deployment_executor_preview_endpoint(payload: AgentExecutionSystemsPreviewRequest):
+    return agent_deployment_executor_preview(payload.dict())
+
+
+@app.get("/agent-execution-orchestrator/status")
+async def agent_execution_orchestrator_status_endpoint():
+    return agent_execution_orchestrator_status()
+
+
+@app.get("/agent-execution-orchestrator/capabilities")
+async def agent_execution_orchestrator_capabilities_endpoint():
+    return agent_execution_orchestrator_capabilities()
+
+
+@app.post("/agent-execution-orchestrator/preview")
+async def agent_execution_orchestrator_preview_endpoint(payload: AgentExecutionSystemsPreviewRequest):
+    return agent_execution_orchestrator_preview(payload.dict())
+
+
+@app.get("/agent-execution-supervisor/status")
+async def agent_execution_supervisor_status_endpoint():
+    return agent_execution_supervisor_status()
+
+
+@app.get("/agent-execution-supervisor/capabilities")
+async def agent_execution_supervisor_capabilities_endpoint():
+    return agent_execution_supervisor_capabilities()
+
+
+@app.post("/agent-execution-supervisor/preview")
+async def agent_execution_supervisor_preview_endpoint(payload: AgentExecutionSystemsPreviewRequest):
+    return agent_execution_supervisor_preview(payload.dict())
+
+
+@app.get("/agent-execution-recovery-coordinator/status")
+async def agent_execution_recovery_coordinator_status_endpoint():
+    return agent_execution_recovery_coordinator_status()
+
+
+@app.get("/agent-execution-recovery-coordinator/capabilities")
+async def agent_execution_recovery_coordinator_capabilities_endpoint():
+    return agent_execution_recovery_coordinator_capabilities()
+
+
+@app.post("/agent-execution-recovery-coordinator/preview")
+async def agent_execution_recovery_coordinator_preview_endpoint(payload: AgentExecutionSystemsPreviewRequest):
+    return agent_execution_recovery_coordinator_preview(payload.dict())
+
+
+@app.get("/debug/layer40-status")
+async def debug_layer40_status_endpoint():
+    return agent_execution_master_status()
+
+
+@app.get("/agent-execution-master/capabilities")
+async def agent_execution_master_capabilities_endpoint():
+    return agent_execution_master_capabilities()
+
+
+@app.post("/agent-execution-master/preview")
+async def agent_execution_master_preview_endpoint(payload: AgentExecutionSystemsPreviewRequest):
+    return agent_execution_master_preview(payload.dict())
 
 
 @app.get("/debug/runtime-drift-status")

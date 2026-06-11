@@ -10142,6 +10142,93 @@ class SmokeRunner:
 
         return "39.x all endpoints 200, safety flags verified"
 
+    def check_layer40_agent_execution_systems_previews(self) -> str:
+        """Verify all 40.x endpoints return 200 with read-only safety flags."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+
+        modules = [
+            ("agent-execution-core", "40.0"),
+            ("agent-action-engine", "40.1"),
+            ("agent-task-executor", "40.2"),
+            ("agent-verification-executor", "40.3"),
+            ("agent-workspace-executor", "40.4"),
+            ("agent-deployment-executor", "40.5"),
+            ("agent-execution-orchestrator", "40.6"),
+            ("agent-execution-supervisor", "40.7"),
+            ("agent-execution-recovery-coordinator", "40.8"),
+        ]
+        false_safety_flags = [
+            "execution_enabled",
+            "action_engine_enabled",
+            "task_execution_performed",
+            "verification_execution_performed",
+            "workspace_execution_performed",
+            "deployment_execution_performed",
+            "orchestration_execution_performed",
+            "supervisor_action_performed",
+            "recovery_coordination_performed",
+            "command_executed",
+            "github_write_performed",
+            "deployment_triggered",
+        ]
+
+        for name, layer in modules:
+            s = client.get(f"/{name}/status")
+            assert s.status_code == 200, f"/{name}/status returned {s.status_code}"
+            data = s.json()
+            assert data.get("layer") == layer, f"/{name}/status layer mismatch: {data.get('layer')}"
+            assert data.get("read_only") is True, f"/{name}/status read_only not True"
+            safety = data.get("safety", {})
+            assert safety.get("read_only") is True, f"/{name}/status safety read_only not True"
+            assert safety.get("execution_enabled") is False
+
+            c = client.get(f"/{name}/capabilities")
+            assert c.status_code == 200, f"/{name}/capabilities returned {c.status_code}"
+
+            p = client.post(
+                f"/{name}/preview",
+                json={
+                    "command": "test execution preview",
+                    "project_area": "layer40",
+                    "execution_type": "planning",
+                    "target_system": "preview",
+                    "risk_level": "medium",
+                    "confirmation_state": "not_confirmed",
+                },
+            )
+            assert p.status_code == 200, f"/{name}/preview returned {p.status_code}"
+            pdata = p.json()
+            assert pdata.get("read_only") is True, f"/{name}/preview read_only not True"
+            psafety = pdata.get("safety", {})
+            assert psafety.get("read_only") is True, f"/{name}/preview safety read_only not True"
+            for flag in false_safety_flags:
+                assert psafety.get(flag) is False, f"/{name}/preview {flag} not False"
+
+        ls = client.get("/debug/layer40-status")
+        assert ls.status_code == 200, f"/debug/layer40-status returned {ls.status_code}"
+        lsdata = ls.json()
+        assert lsdata.get("series_status") == "agent_execution_systems_preview_scaffold_implemented", lsdata
+        assert lsdata.get("implemented_count") == 10, lsdata
+        assert lsdata.get("real_execution_enabled") is False, lsdata
+
+        ac = client.get("/agent-execution-master/capabilities")
+        assert ac.status_code == 200
+        ap = client.post("/agent-execution-master/preview", json={"command": "test"})
+        assert ap.status_code == 200
+        apdata = ap.json()
+        assert apdata.get("read_only") is True
+        apsafety = apdata.get("safety", {})
+        for flag in false_safety_flags:
+            assert apsafety.get(flag) is False, f"/agent-execution-master/preview {flag} not False"
+
+        return "40.x all endpoints 200, safety flags verified"
+
     def run(self) -> int:
         print(f"ROOT {ROOT}")
         checks: list[tuple[str, Callable[[], str | None]]] = [
@@ -10297,6 +10384,7 @@ class SmokeRunner:
             ("layer37_architecture_previews", self.check_layer37_architecture_previews),
             ("layer38_autonomous_agent_systems_previews", self.check_layer38_autonomous_agent_systems_previews),
             ("layer39_agent_runtime_systems_previews", self.check_layer39_agent_runtime_systems_previews),
+            ("layer40_agent_execution_systems_previews", self.check_layer40_agent_execution_systems_previews),
         ]
         try:
             for name, fn in checks:
