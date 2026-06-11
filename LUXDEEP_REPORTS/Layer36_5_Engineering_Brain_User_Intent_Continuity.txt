@@ -1,0 +1,304 @@
+================================================================================
+LAYER 36.5 — ENGINEERING BRAIN USER INTENT CONTINUITY INTELLIGENCE PREVIEW
+==========================================================================
+
+Report Date        : 2026-06-11
+Layer              : 36.5
+Module             : engineering_brain_user_intent_continuity_preview.py
+Series             : LuxCode Engineering Brain Architecture
+Version            : 1.0
+Status             : user_intent_continuity_ready
+Operation Mode     : read_only_preview_only
+Integration        : 36.4 Engineering Brain Multi-Session Continuity Intelligence,
+36.3 Engineering Brain Persistent Execution Intelligence,
+36.2 Engineering Brain Task Consciousness,
+36.1 Engineering Brain Workspace Consciousness,
+36.0 LuxCode Engineering Brain Core
+-----------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 36.5 introduces Engineering Brain User Intent Continuity Intelligence.
+
+This layer becomes the user-intent awareness engine of LuxCode.
+
+Goal:
+
+Track not only tasks.
+
+Track not only sessions.
+
+Track user intent itself.
+
+Primary Mission:
+
+Understand:
+
+* what the user originally wanted
+* what changed later
+* which commands were added
+* which priorities shifted
+* which goals remain incomplete
+* which intentions were postponed
+
+Intent becomes a first-class engineering object.
+
+---
+
+2. CAPABILITIES (12)
+
+---
+
+intent_tracking
+
+intent_history_analysis
+
+intent_change_detection
+
+priority_shift_detection
+
+added_command_tracking
+
+deferred_intent_tracking
+
+goal_continuity_analysis
+
+intent_conflict_detection
+
+intent_reconciliation
+
+intent_summary_generation
+
+intent_health_analysis
+
+intent_priority_engine
+
+---
+
+3. INTENT CONTINUITY PIPELINE
+
+---
+
+User Request Detection
+
+&#8595;
+
+Intent Extraction
+
+&#8595;
+
+Intent Tracking
+
+&#8595;
+
+Priority Analysis
+
+&#8595;
+
+Intent Change Detection
+
+&#8595;
+
+Goal Continuity Analysis
+
+&#8595;
+
+Intent Reconciliation
+
+&#8595;
+
+Intent Summary
+
+---
+
+4. INTENT STATES
+
+---
+
+new_intent
+
+active_intent
+
+queued_intent
+
+deferred_intent
+
+conflicting_intent
+
+completed_intent
+
+abandoned_intent
+
+---
+
+5. INTENT TRACKING ENGINE
+
+---
+
+Track:
+
+primary_intent
+
+secondary_intents
+
+added_commands
+
+deferred_requests
+
+future_requests
+
+Returns:
+
+intent_map
+
+intent_priority
+
+intent_confidence
+
+---
+
+6. PRIORITY SHIFT ENGINE
+
+---
+
+Detect:
+
+priority_changes
+
+goal_changes
+
+scope_changes
+
+user_focus_changes
+
+Returns:
+
+priority_shift_score
+
+priority_summary
+
+recommended_focus
+
+---
+
+7. ADDED COMMAND ENGINE
+
+---
+
+Track:
+
+added_commands
+
+queued_commands
+
+future_commands
+
+post_task_commands
+
+Returns:
+
+command_queue_health
+
+command_priority
+
+command_summary
+
+---
+
+8. INTENT RECONCILIATION ENGINE
+
+---
+
+Analyze:
+
+conflicting_requests
+
+changed_goals
+
+updated_priorities
+
+interrupted_tasks
+
+Returns:
+
+reconciliation_summary
+
+continuity_risk
+
+recommended_resolution
+
+---
+
+9. INTENT SCORE
+
+---
+
+Returns:
+
+intent_clarity
+
+intent_continuity
+
+intent_alignment
+
+intent_priority_health
+
+overall_intent_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+10. ENDPOINTS
+
+---
+
+GET  /intent-continuity/status
+
+GET  /intent-continuity/capabilities
+
+POST /intent-continuity/preview
+
+POST /intent-continuity/intent-analysis
+
+POST /intent-continuity/priority-analysis
+
+POST /intent-continuity/command-analysis
+
+POST /intent-continuity/reconciliation
+
+---
+
+11. FILES MODIFIED
+
+---
+
+engineering_brain_user_intent_continuity_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+12. SAFETY
+
+---
+
+intent_execution=False
+
+command_execution=False
+
+goal_modification=False
+
+deployment_execution=False
+
+All operations remain preview-only.
+
+================================================================================
+END OF LAYER 36.5 REPORT
+========================

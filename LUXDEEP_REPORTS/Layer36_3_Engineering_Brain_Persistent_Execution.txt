@@ -1,0 +1,308 @@
+================================================================================
+LAYER 36.3 — ENGINEERING BRAIN PERSISTENT EXECUTION INTELLIGENCE PREVIEW
+========================================================================
+
+Report Date        : 2026-06-11
+Layer              : 36.3
+Module             : engineering_brain_persistent_execution_intelligence_preview.py
+Series             : LuxCode Engineering Brain Architecture
+Version            : 1.0
+Status             : persistent_execution_ready
+Operation Mode     : read_only_preview_only
+Integration        : 36.2 Engineering Brain Task Consciousness,
+36.1 Engineering Brain Workspace Consciousness,
+36.0 LuxCode Engineering Brain Core,
+35.9 Engineering Self-Reflection & Meta Intelligence,
+35.8 Engineering Autonomy Intelligence
+--------------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 36.3 introduces Engineering Brain Persistent Execution Intelligence.
+
+This layer becomes the execution continuity and recovery engine of LuxCode.
+
+Goal:
+
+Allow LuxCode to continue work across interruptions,
+pauses, stops, follow-up conversations and execution transitions.
+
+Primary Mission:
+
+Never lose position.
+
+Never lose context.
+
+Never lose progress.
+
+Always know where work stopped.
+
+Always know where work should resume.
+
+---
+
+2. CAPABILITIES (12)
+
+---
+
+execution_state_tracking
+
+persistent_context_tracking
+
+resume_point_generation
+
+pause_state_management
+
+stop_state_management
+
+execution_recovery_analysis
+
+continuation_planning
+
+follow_up_reconciliation
+
+interruption_handling
+
+execution_summary_generation
+
+continuity_health_analysis
+
+persistent_execution_scoring
+
+---
+
+3. EXECUTION CONTINUITY PIPELINE
+
+---
+
+Execution Start
+
+&#8595;
+
+Context Tracking
+
+&#8595;
+
+Progress Tracking
+
+&#8595;
+
+Interruption Detection
+
+&#8595;
+
+State Preservation
+
+&#8595;
+
+Resume Point Generation
+
+&#8595;
+
+Continuation Planning
+
+&#8595;
+
+Execution Recovery
+
+---
+
+4. EXECUTION STATES
+
+---
+
+running
+
+paused
+
+stopped
+
+waiting_for_input
+
+queued
+
+recovering
+
+resuming
+
+completed
+
+---
+
+5. EXECUTION STATE ENGINE
+
+---
+
+Track:
+
+current_execution
+
+current_step
+
+current_progress
+
+current_context
+
+current_dependencies
+
+Returns:
+
+execution_status
+
+execution_health
+
+execution_confidence
+
+---
+
+6. RESUME POINT ENGINE
+
+---
+
+Generate:
+
+resume_step
+
+resume_context
+
+resume_dependencies
+
+resume_requirements
+
+Returns:
+
+resume_point
+
+resume_confidence
+
+resume_complexity
+
+---
+
+7. INTERRUPTION HANDLING ENGINE
+
+---
+
+Handle:
+
+user_questions
+
+added_commands
+
+follow_ups
+
+temporary_stops
+
+context_switches
+
+Returns:
+
+interruption_summary
+
+continuation_strategy
+
+continuity_score
+
+---
+
+8. STOP / RESUME INTELLIGENCE
+
+---
+
+Support:
+
+pause
+
+resume
+
+continue
+
+cancel
+
+restart
+
+Returns:
+
+state_transition_summary
+
+execution_recovery_plan
+
+recommended_next_action
+
+---
+
+9. PERSISTENT EXECUTION SCORE
+
+---
+
+Returns:
+
+continuity_score
+
+recovery_score
+
+resume_score
+
+execution_health
+
+overall_persistent_execution_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+10. ENDPOINTS
+
+---
+
+GET  /persistent-execution/status
+
+GET  /persistent-execution/capabilities
+
+POST /persistent-execution/preview
+
+POST /persistent-execution/resume-analysis
+
+POST /persistent-execution/interruption-analysis
+
+POST /persistent-execution/recovery-analysis
+
+POST /persistent-execution/state-summary
+
+---
+
+11. FILES MODIFIED
+
+---
+
+engineering_brain_persistent_execution_intelligence_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+12. SAFETY
+
+---
+
+execution_resume=False
+
+execution_restart=False
+
+task_execution=False
+
+deployment_execution=False
+
+All operations remain preview-only.
+
+No real execution recovery performed.
+
+================================================================================
+END OF LAYER 36.3 REPORT
+========================

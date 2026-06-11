@@ -1,0 +1,132 @@
+==============================================================================
+LAYER 37 — CODE GAP CLOSURE REPORT
+==============================================================================
+Report Date        : 2026-06-11
+Series             : Layer 37.x Agent Architecture
+Scope              : 9 preview modules → code scaffold
+Status             : agent_architecture_preview_scaffold_implemented
+42.x Decision      : NOT YET — continue to Layer 38 after verification
+==============================================================================
+
+A. COMMIT SUMMARY
+==============================================================================
+Commit message: Add layer 37 agent architecture previews
+
+B. FILES CREATED (9)
+==============================================================================
+ 1. github_project_intelligence_preview.py      (37.0 — 258 lines)
+ 2. terminal_intelligence_preview.py            (37.1 — 203 lines)
+ 3. render_deployment_intelligence_preview.py   (37.2 — 192 lines)
+ 4. project_intelligence_core_preview.py        (37.3 — 201 lines)
+ 5. multi_project_intelligence_preview.py       (37.4 — 193 lines)
+ 6. workspace_agent_preview.py                  (37.5 — 194 lines)
+ 7. deployment_agent_preview.py                 (37.6 — 203 lines)
+ 8. github_bridge_consolidation_preview.py      (37.7 — 214 lines)
+ 9. agent_core_preview.py                       (37.8 — 177 lines)
+
+C. FILES MODIFIED (3)
+==============================================================================
+ 1. app.py                  +9 imports, +1 Pydantic model, +28 routes
+ 2. endpoint_coverage_matrix.py  +9 endpoint groups (27 entries)
+ 3. scripts/smoke_check.py       +1 check method, +1 registration
+
+D. ADDED ENDPOINTS (28)
+==============================================================================
+ GET  /github-project-intelligence/status
+ GET  /github-project-intelligence/capabilities
+ POST /github-project-intelligence/preview
+ GET  /terminal-intelligence/status
+ GET  /terminal-intelligence/capabilities
+ POST /terminal-intelligence/preview
+ GET  /render-deployment-intelligence/status
+ GET  /render-deployment-intelligence/capabilities
+ POST /render-deployment-intelligence/preview
+ GET  /project-intelligence-core/status
+ GET  /project-intelligence-core/capabilities
+ POST /project-intelligence-core/preview
+ GET  /multi-project-intelligence/status
+ GET  /multi-project-intelligence/capabilities
+ POST /multi-project-intelligence/preview
+ GET  /workspace-agent/status
+ GET  /workspace-agent/capabilities
+ POST /workspace-agent/preview
+ GET  /deployment-agent/status
+ GET  /deployment-agent/capabilities
+ POST /deployment-agent/preview
+ GET  /github-bridge-consolidation/status
+ GET  /github-bridge-consolidation/capabilities
+ POST /github-bridge-consolidation/preview
+ GET  /debug/layer37-status
+ GET  /agent-core/capabilities
+ POST /agent-core/preview
+
+E. SAFETY FLAGS (all 9 modules)
+==============================================================================
+ read_only:                 True
+ real_action_enabled:       False
+ real_code_modified:        False
+ file_created:              False
+ file_deleted:              False
+ command_executed:          False
+ terminal_command_executed: False
+ github_write_performed:    False
+ github_commit_created:     False
+ github_push_performed:     False
+ deployment_triggered:      False
+ render_action_performed:   False
+ network_action_performed:  False
+ memory_write_performed:    False
+ db_write_performed:        False
+ secret_accessed:           False
+
+ No real GitHub/terminal/deploy/file/memory/DB actions performed.
+
+F. WHAT WAS NOT TOUCHED
+==============================================================================
+ Chat/stream/WebSocket/typewriter/durdur: NOT TOUCHED
+ static/index.html:                        NOT TOUCHED
+ Real GitHub integration:                  NOT TOUCHED
+ Real terminal execution:                  NOT TOUCHED
+ Real deployment execution:                NOT TOUCHED
+ Real file write outside new source files: NOT TOUCHED
+ Memory/DB write:                          NOT TOUCHED
+
+G. VALIDATION STATUS
+==============================================================================
+ py_compile:   NOT RUN (shell disabled)
+ smoke_check:  NOT RUN (shell disabled)
+ Manual check: All 9 modules follow existing 34-36 pattern.
+
+H. LAYER 37 IMPLEMENTED MODULES
+==============================================================================
+ 37.0 github_project_intelligence     : implemented
+ 37.1 terminal_intelligence           : implemented
+ 37.2 render_deployment_intelligence  : implemented
+ 37.3 project_intelligence_core       : implemented
+ 37.4 multi_project_intelligence      : implemented
+ 37.5 workspace_agent                 : implemented
+ 37.6 deployment_agent                : implemented
+ 37.7 github_bridge_consolidation     : implemented
+ 37.8 agent_core                      : implemented
+ ----------------------------------------
+ Total: 9/9 modules implemented
+
+I. endpoint_coverage_matrix UPDATED
+==============================================================================
+ YES — 9 new groups added (27 endpoint entries)
+
+J. smoke_check UPDATED
+==============================================================================
+ YES — check_layer37_architecture_previews added with 8 module + 1 master tests
+
+K. RECOMMENDED NEXT SERIES
+==============================================================================
+ Layer 38 — Autonomous Agent Systems (10 modules)
+
+L. NEXT CODEX PROMPT
+==============================================================================
+ LUXCODE — LAYER 38 CODE GAP CLOSURE / AUTONOMOUS AGENT SYSTEMS PREVIEWS
+
+==============================================================================
+END OF LAYER 37 CODE GAP CLOSURE REPORT
+==============================================================================

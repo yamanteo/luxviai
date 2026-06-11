@@ -1,0 +1,261 @@
+================================================================================
+LAYER 37.5 — MULTI PROJECT INTELLIGENCE PREVIEW
+================================================================================
+
+Report Date        : 2026-06-11
+Layer              : 37.5
+Module             : multi_project_intelligence_preview.py
+Series             : LuxCode Agent Architecture
+Version            : 1.0
+Status             : multi_project_intelligence_ready
+Operation Mode     : read_only_preview_only
+Integration        : 37.4 Project Intelligence Core,
+37.3 Render Deployment Intelligence,
+37.2 Terminal Intelligence,
+37.1 GitHub Project Intelligence,
+37.0 Execution Brain Consolidation
+----------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 37.5 introduces Multi Project Intelligence.
+
+This layer becomes the multi-project awareness engine of LuxCode.
+
+Primary Goal:
+
+Understand multiple projects simultaneously.
+
+Not one project.
+
+Many projects.
+
+Primary Mission:
+
+Know:
+
+* which projects exist
+* which project is active
+* which project is blocked
+* which project requires attention
+* which project depends on another project
+
+---
+
+2. MULTI PROJECT MODEL
+
+---
+
+Workspace
+
+├── Project A
+
+├── Project B
+
+├── Project C
+
+├── Project D
+
+└── Shared Resources
+
+---
+
+3. CAPABILITIES
+
+---
+
+multi_project_analysis
+
+project_relationship_mapping
+
+cross_project_dependency_analysis
+
+project_priority_analysis
+
+project_attention_analysis
+
+project_conflict_detection
+
+shared_resource_analysis
+
+multi_project_summary_generation
+
+multi_project_health_analysis
+
+portfolio_risk_analysis
+
+---
+
+4. PROJECT RELATIONSHIP ENGINE
+
+---
+
+Analyze:
+
+shared_dependencies
+
+shared_services
+
+shared_deployments
+
+shared_repositories
+
+shared_workflows
+
+Returns:
+
+relationship_map
+
+relationship_strength
+
+dependency_complexity
+
+---
+
+5. ACTIVE PROJECT ENGINE
+
+---
+
+Track:
+
+active_project
+
+background_projects
+
+paused_projects
+
+blocked_projects
+
+Returns:
+
+project_focus
+
+attention_priority
+
+recommended_focus
+
+---
+
+6. PROJECT PORTFOLIO HEALTH
+
+---
+
+Analyze:
+
+project_health_scores
+
+project_risks
+
+project_progress
+
+project_dependencies
+
+Returns:
+
+portfolio_health
+
+portfolio_risk
+
+portfolio_momentum
+
+---
+
+7. CROSS PROJECT RISK ENGINE
+
+---
+
+Detect:
+
+dependency_risks
+
+deployment_risks
+
+resource_conflicts
+
+priority_conflicts
+
+execution_conflicts
+
+Returns:
+
+cross_project_risk_score
+
+risk_summary
+
+recommended_resolution
+
+---
+
+8. MULTI PROJECT SCORE
+
+---
+
+Returns:
+
+portfolio_health
+
+relationship_health
+
+dependency_health
+
+resource_health
+
+overall_multi_project_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+9. ENDPOINTS
+
+---
+
+GET  /multi-project/status
+
+GET  /multi-project/capabilities
+
+POST /multi-project/preview
+
+POST /multi-project/relationship-analysis
+
+POST /multi-project/portfolio-health
+
+POST /multi-project/project-focus
+
+POST /multi-project/risk-analysis
+
+---
+
+10. FILES MODIFIED
+
+---
+
+multi_project_intelligence_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+11. SAFETY
+
+---
+
+project_modification=False
+
+deployment_execution=False
+
+repository_modification=False
+
+workspace_modification=False
+
+read_only_preview_only=True
+
+================================================================================
+END OF LAYER 37.5 REPORT
+========================

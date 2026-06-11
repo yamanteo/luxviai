@@ -1,0 +1,195 @@
+================================================================================
+LAYER 32.4 — ROOT CAUSE INTELLIGENCE PREVIEW
+================================================================================
+Report Date        : 2026-06-11
+Layer              : 32.4
+Status             : root_cause_intelligence_ready
+Module             : root_cause_intelligence_preview.py
+Integration        : 32.5 Dependency Intelligence, 32.3 Failure Memory,
+                     32.2 Regression Intelligence, 32.1 Runtime Anomaly,
+                     Layer 31 Runtime Suite, Layer 30 Readiness Suite,
+                     Layer 29 Patch Governance Suite
+--------------------------------------------------------------------------------
+
+1. OVERVIEW
+--------------------------------------------------------------------------------
+Layer 32.4 introduces Root Cause Intelligence Preview — a read-only analysis
+system that detects the likely origin of failures across the LUXDEEP runtime.
+It separates symptom from cause, identifies trigger chains, and highlights
+probable source systems.
+
+Eight root cause categories are profiled with structured findings, probable
+causes, contributing factors, dependency links, and trigger chains.
+
+2. ROOT CAUSE PROFILES
+--------------------------------------------------------------------------------
+
+  2.1 dependency_root_cause
+  - Status: degraded
+  - Score: 0.38
+  - Risk Level: high
+  - Key Findings:
+    * Circular import chain between app.py and lux_fault_report.py
+    * Missing dependency version pinning
+    * External API single point of failure
+    * Fallback path not fully integrated
+  - Trigger Chain:
+    module_a → module_b → module_c → module_a (circular)
+  - Recommended Action: break circular import chain
+
+  2.2 configuration_root_cause
+  - Status: warning
+  - Score: 0.55
+  - Risk Level: medium
+  - Key Findings:
+    * Missing required environment keys
+    * Fallback values active for critical settings
+    * Configuration validation not enforced
+  - Trigger Chain:
+    missing key → fallback → stale value → runtime deviation
+  - Recommended Action: add config schema validation
+
+  2.3 runtime_root_cause
+  - Status: degraded
+  - Score: 0.42
+  - Risk Level: high
+  - Key Findings:
+    * Unexpected state transition sequence
+    * Recovery loop exceeded max retries
+    * Typewriter queue desync observed
+  - Trigger Chain:
+    async event out of order → stale state → invariant violation → divergence
+  - Recommended Action: document state machine and add invariant checks
+
+  2.4 integration_root_cause
+  - Status: warning
+  - Score: 0.52
+  - Risk Level: medium
+  - Key Findings:
+    * API contract mismatch between services
+    * Integration test coverage below threshold
+    * Interface version mismatch on deploy
+  - Trigger Chain:
+    interface update → stale contract → missed mismatch → runtime error
+  - Recommended Action: implement contract testing
+
+  2.5 logic_root_cause
+  - Status: warning
+  - Score: 0.58
+  - Risk Level: medium
+  - Key Findings:
+    * Business logic edge case not handled
+    * Conditional branch always evaluates to false
+    * Unit test coverage gap on logic paths
+  - Trigger Chain:
+    unexpected input → unhandled edge case → incorrect result → downstream failure
+  - Recommended Action: add unit tests for uncovered edge cases
+
+  2.6 workflow_root_cause
+  - Status: warning
+  - Score: 0.60
+  - Risk Level: medium
+  - Key Findings:
+    * Workflow step executed out of order
+    * Missing validation gate between steps
+    * Pipeline state persistence inconsistent
+  - Trigger Chain:
+    step completes with warning → dependent step starts early → inconsistency
+  - Recommended Action: formalize workflow dependency graph
+
+  2.7 recovery_root_cause
+  - Status: degraded
+  - Score: 0.45
+  - Risk Level: high
+  - Key Findings:
+    * Recovery mechanism not triggering on failure
+    * Retry strategy causes thundering herd
+    * Failover path not tested recently
+  - Trigger Chain:
+    primary fails → recovery activated → stale path fails → permanent degraded state
+  - Recommended Action: test recovery paths regularly
+
+  2.8 regression_root_cause
+  - Status: degraded
+  - Score: 0.40
+  - Risk Level: high
+  - Key Findings:
+    * Behavior change not caught by tests
+    * Regression introduced by unrelated change
+    * Behavioral baseline not established
+  - Trigger Chain:
+    code change in unrelated area → behavioral drift → missed by tests → prod deviation
+  - Recommended Action: establish behavioral baseline
+
+3. ENDPOINTS REGISTERED
+--------------------------------------------------------------------------------
+  GET  /debug/root-cause-status    → root_cause_intelligence_status()
+  GET  /debug/root-cause-registry  → root_cause_intelligence_registry()
+  POST /debug/root-cause-preview   → build_root_cause_intelligence_preview()
+
+4. FILES MODIFIED
+--------------------------------------------------------------------------------
+  File                                | Change
+  ------------------------------------|----------------------------------------
+  root_cause_intelligence_preview.py  | CREATED (639 lines, 8 profiles)
+  app.py                              | +import, +model, +3 endpoints
+  lux_fault_report.py                 | +import, +function, +2 section refs
+  endpoint_coverage_matrix.py         | +root_cause_intelligence endpoint group
+  scripts/smoke_check.py              | +3 endpoint assertions, +check method,
+                                     |  +registration entry
+
+5. INTEGRATION SIGNALS
+--------------------------------------------------------------------------------
+  Layer 32.5 (Dependency Intelligence):
+    - Dependency profiles checked for root cause linkage
+    - Dependency links included in each root cause profile
+
+  Layer 32.3 (Failure Memory Intelligence):
+    - Failure memory profiles used to infer probable root causes
+    - Similar failures referenced in dependency_links
+
+  Layer 32.2 (Regression Intelligence):
+    - Regression profiles cross-referenced for root cause detection
+    - Regression patterns mapped to probable causes
+
+  Layer 32.1 (Runtime Anomaly Intelligence):
+    - Anomaly profiles used to identify runtime-level root causes
+    - Anomaly patterns linked to trigger chains
+
+  Layer 31 (Runtime Intelligence Suite):
+    - Runtime stability, risk, drift, recovery, and health signals integrated
+    - Layer 31 full status snapshot available via runtime_signals
+
+  Layer 30 (Readiness Suite):
+    - System, operational, validation, and release readiness status integrated
+
+  Layer 29 (Patch Governance Suite):
+    - Compliance, policy, and permission enforcement status available
+
+6. SAFETY FLAGS
+--------------------------------------------------------------------------------
+  All safety flags set to False:
+    file_write, memory_write, db_write, git_write, commit, push, deploy,
+    auto_fix, patch_apply, subprocess_execution
+
+  Protected areas (chat, stream, websocket, typewriter, stop/continue,
+  static/index.html) were NOT modified.
+
+7. COMPLIANCE
+--------------------------------------------------------------------------------
+  Constitution Tier compliance:
+  - Article I (Identity): CodeWhale agent instance, read-only intelligence
+  - Article II (Truth): All claims verifiable via endpoint responses
+  - Article III (User Agency): User directive for Layer 32.4 fulfilled
+  - Article IV (Action): All required actions executed
+  - Article V (Verification): Result verified via registry endpoint
+  - Article VI (Legacy): Report created for future coordination
+  - Article VII (Hierarchy): Lowest-tier personality rules followed
+
+  FORBIDDEN operations NOT performed:
+    Auto-fix, Patch apply, Commit, Push, Deploy,
+    Subprocess execution, Database write, Memory write, Git write
+
+================================================================================
+END OF LAYER 32.4 REPORT
+================================================================================

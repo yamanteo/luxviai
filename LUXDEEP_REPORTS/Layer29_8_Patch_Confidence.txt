@@ -1,0 +1,81 @@
+========================================================================
+LAYER 29.8 — PATCH CONFIDENCE — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+========================================================================
+
+TASK: Layer 29.8 — Patch Confidence Preview
+GOAL: Confidence preview with score/factors/reasoning tracking,
+      and 25 integrated layers (the complete patch assurance stack).
+
+FILES CREATED
+--------------------------------------------------------------------------------
+patch_confidence_preview.py (~500 lines, ~22 KB)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py — import, PatchConfidencePreviewRequest model, 3 routes
+endpoint_coverage_matrix.py — new patch_confidence_layer_29 group (3 entries)
+scripts/smoke_check.py — check_patch_confidence_preview() + registration
+lux_fault_report.py — import, _fault_report_patch_confidence(), 2 sections
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/patch-confidence-status
+GET  /debug/patch-confidence-registry
+POST /debug/patch-confidence-preview
+
+CONFIDENCE PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       pass   ready  score:0.93 — flow_safety
+websocket_stream    viol   BLOCK  score:0.38 — stream_integrity
+workspace_export    pass   ready  score:0.91 — export_safety
+luxway_permission   viol   BLOCK  score:0.30 — platform_privacy
+debug_intelligence  pass   ready  score:0.96 — scaffold_safety
+
+OUTPUT FIELDS
+--------------------------------------------------------------------------------
+confidence_id            — profile identifier
+confidence_category      — category classification
+confidence_status        — pass / violation
+confidence_score         — numeric confidence score
+confidence_factors       — contributing factor list
+confidence_findings      — finding list
+confidence_requirements  — requirement list
+confidence_exceptions    — exception list
+confidence_risk_level    — low / high
+confidence_readiness     — bool (3 ready, 2 blocked)
+confidence_reasoning     — narrative reasoning
+required_actions         — action items to resolve gaps
+recommended_next_action  — action recommendation
+
+25 INTEGRATIONS: 29.7 → 29.6 → 29.5 → 29.4 → 29.3 → 29.2 → 29.1 → 28.6 → 28.5 → 28.4 → 28.3 → 28.2 → 28.1 → 27.6 → 27.5 → 27.4 → 27.3 → 27.2 → 27.1 → 26.7 → 26.6 → 25.6 → 25.5 → 25.4
+
+CONFIDENCE VS PRIOR LAYERS
+--------------------------------------------------------------------------------
+Top layer of the 29.x patch assurance stack. Aggregates signals from all
+24 lower layers into a single confidence_score (0.0–1.0) with reasoning.
+Websocket stream (0.38) and Luxway permissions (0.30) remain critical gaps.
+Scaffold (debug_intelligence) achieves highest confidence at 0.96.
+All endpoints are read-only scaffold; no real enforcement actions performed.
+
+COMPLETE LAYER 29 STACK STATUS
+--------------------------------------------------------------------------------
+29.1 Patch Permission Enforcement  ✓
+29.2 Patch Policy Evaluation       ✓
+29.3 Patch Compliance              ✓
+29.4 Patch Governance              ✓
+29.5 Patch Oversight               ✓
+29.6 Patch Accountability           ✓
+29.7 Patch Assurance               ✓
+29.8 Patch Confidence              ✓ (new)
+
+HEALTH CHECK
+--------------------------------------------------------------------------------
+- No files over-written: incremental edits only
+- app.py not replaced: 3 targeted edits
+- All new endpoints read-only: no writes, no subprocesses
+- All existing flags set to False: safe by default
+- Fault report section added: patch_confidence
+- Smoke check method added with 24 integration signal assertions
+- Endpoint coverage matrix updated with 3 new entries
+- Protected areas (chat, stream, websocket, typewriter, stop/continue, static/index.html) untouched

@@ -1,0 +1,277 @@
+================================================================================
+LAYER 38.7 — AUTONOMOUS EXECUTION DECISION INTELLIGENCE PREVIEW
+================================================================================
+
+Report Date        : 2026-06-11
+Layer              : 38.7
+Module             : autonomous_execution_decision_intelligence_preview.py
+Series             : LuxCode Autonomous Agent Systems
+Version            : 1.0
+Status             : execution_decision_ready
+Operation Mode     : read_only_preview_only
+Integration        : 38.6 Autonomous Execution Simulation Intelligence,
+38.5 Autonomous Execution Strategy Intelligence,
+38.4 Autonomous Execution Planning Intelligence,
+38.3 Autonomous Task Network Intelligence,
+37.9 LuxCode Agent Core
+-----------------------
+
+1. OVERVIEW
+
+---
+
+Layer 38.7 introduces Autonomous Execution Decision Intelligence.
+
+This layer becomes the decision-selection engine of LuxCode.
+
+Primary Goal:
+
+Choose between multiple possible execution paths.
+
+Not merely generate plans.
+
+Not merely simulate outcomes.
+
+Decide.
+
+Primary Mission:
+
+Determine:
+
+* which path should be selected
+* which strategy should be preferred
+* which risks are acceptable
+* which tradeoffs are justified
+* which execution route maximizes success probability
+
+---
+
+2. DECISION MODEL
+
+---
+
+Task Network
+
+&#8595;
+
+Execution Planning
+
+&#8595;
+
+Strategy Generation
+
+&#8595;
+
+Simulation
+
+&#8595;
+
+Decision Evaluation
+
+&#8595;
+
+Decision Selection
+
+&#8595;
+
+Recommended Execution Decision
+
+---
+
+3. CAPABILITIES
+
+---
+
+decision_generation
+
+decision_comparison
+
+decision_selection
+
+risk_adjusted_decision
+
+confidence_scoring
+
+outcome_weighted_decision
+
+tradeoff_aware_decision
+
+decision_health_analysis
+
+decision_summary_generation
+
+decision_trace_generation
+
+---
+
+4. DECISION EVALUATION ENGINE
+
+---
+
+Evaluate:
+
+path_success_probability
+
+path_risk_exposure
+
+path_resource_cost
+
+path_timeline_estimate
+
+path_quality_estimate
+
+Returns:
+
+path_scores
+
+recommended_path
+
+decision_confidence
+
+---
+
+5. RISK-ADJUSTED DECISION ENGINE
+
+---
+
+Adjust:
+
+base_confidence
+
+risk_penalty
+
+uncertainty_penalty
+
+complexity_penalty
+
+Returns:
+
+risk_adjusted_confidence
+
+adjusted_recommendation
+
+adjustment_trace
+
+---
+
+6. DECISION TRACE ENGINE
+
+---
+
+Generate:
+
+decision_inputs
+
+evaluation_criteria
+
+weighted_scores
+
+selected_decision
+
+rejected_alternatives
+
+Returns:
+
+decision_trace
+
+decision_transparency
+
+decision_audit
+
+---
+
+7. DECISION HEALTH MODEL
+
+---
+
+Analyze:
+
+decision_quality
+
+decision_confidence
+
+decision_risk
+
+decision_completeness
+
+Returns:
+
+decision_health
+
+decision_risk
+
+decision_readiness
+
+---
+
+8. DECISION SCORE
+
+---
+
+Returns:
+
+decision_quality_score
+
+confidence_score
+
+risk_score
+
+traceability_score
+
+overall_decision_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+9. ENDPOINTS
+
+---
+
+GET  /execution-decision/status
+
+GET  /execution-decision/capabilities
+
+POST /execution-decision/preview
+
+POST /execution-decision/evaluate
+
+POST /execution-decision/risk-adjusted
+
+POST /execution-decision/trace
+
+POST /execution-decision/health
+
+---
+
+10. FILES MODIFIED
+
+---
+
+autonomous_execution_decision_intelligence_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+11. SAFETY
+
+---
+
+decision_execution=False
+
+workflow_execution=False
+
+deployment_execution=False
+
+system_actions=False
+
+read_only_preview_only=True
+
+================================================================================
+END OF LAYER 38.7 REPORT
+========================

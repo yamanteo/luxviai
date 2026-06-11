@@ -1,0 +1,312 @@
+================================================================================
+LAYER 35.3 — ENGINEERING KNOWLEDGE GRAPH INTELLIGENCE PREVIEW
+=============================================================
+
+Report Date        : 2026-06-11
+Layer              : 35.3
+Module             : engineering_knowledge_graph_intelligence_preview.py
+Series             : LuxCode Autonomous Engineering Suite
+Version            : 1.0
+Status             : engineering_graph_ready
+Operation Mode     : read_only_preview_only
+Integration        : 35.2 Engineering Memory & Failure Intelligence,
+35.1 Autonomous Engineering Coordinator,
+35.0 Deployment Verification Intelligence,
+34.9 Clone Workspace Intelligence,
+34.8 Verification Intelligence,
+34.7 Autonomous Repair Intelligence
+-----------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 35.3 introduces Engineering Knowledge Graph Intelligence Preview.
+
+This layer becomes the relationship-mapping engine of LuxCode.
+
+Goal:
+
+Allow LuxCode to understand how projects, files, modules, tasks,
+repairs, deployments, reports and dependencies relate to each other.
+
+Instead of isolated data:
+
+LuxCode begins building an engineering relationship model.
+
+---
+
+2. CAPABILITIES (12)
+
+---
+
+project_relationship_mapping
+
+file_relationship_mapping
+
+module_dependency_mapping
+
+repair_relationship_mapping
+
+verification_relationship_mapping
+
+deployment_relationship_mapping
+
+workspace_relationship_mapping
+
+task_relationship_mapping
+
+knowledge_graph_analysis
+
+impact_chain_detection
+
+dependency_graph_generation
+
+graph_summary_generation
+
+---
+
+3. KNOWLEDGE GRAPH PIPELINE
+
+---
+
+Project Analysis
+
+&#8595;
+
+Dependency Discovery
+
+&#8595;
+
+Relationship Mapping
+
+&#8595;
+
+Impact Chain Detection
+
+&#8595;
+
+Knowledge Graph Generation
+
+&#8595;
+
+Risk Analysis
+
+&#8595;
+
+Engineering Summary
+
+---
+
+4. GRAPH PROFILES
+
+---
+
+4.1 isolated_project
+
+Health: 0.95
+
+Risk: 0.05
+
+Recommendation:
+
+basic_mapping
+
+---
+
+4.2 connected_project
+
+Health: 0.85
+
+Risk: 0.15
+
+Recommendation:
+
+dependency_analysis
+
+---
+
+4.3 multi_module_project
+
+Health: 0.70
+
+Risk: 0.35
+
+Recommendation:
+
+graph_expansion
+
+---
+
+4.4 dependency_dense_project
+
+Health: 0.50
+Risk: 0.65
+
+Recommendation:
+
+impact_analysis_required
+
+---
+
+4.5 critical_dependency_project
+
+Health: 0.30
+
+Risk: 0.90
+
+Recommendation:
+
+verification_priority
+
+---
+
+5. PROJECT RELATIONSHIP ENGINE
+
+---
+
+Map:
+
+projects
+
+modules
+
+services
+
+workspaces
+
+reports
+
+tasks
+
+Returns:
+
+relationship_graph
+
+relationship_health
+
+relationship_risk
+
+---
+
+6. IMPACT CHAIN DETECTOR
+
+---
+
+Detect:
+
+file_change_impacts
+
+module_change_impacts
+
+dependency_impacts
+
+deployment_impacts
+
+verification_impacts
+
+Returns:
+
+impact_chain
+
+impact_score
+
+affected_scope
+
+---
+
+7. DEPENDENCY GRAPH ENGINE
+
+---
+
+Generate:
+
+dependency_nodes
+
+dependency_edges
+
+dependency_clusters
+
+dependency_risks
+
+Returns:
+
+dependency_graph
+
+dependency_health
+
+dependency_complexity
+
+---
+
+8. KNOWLEDGE GRAPH SCORE
+
+---
+
+Returns:
+
+relationship_score
+
+dependency_score
+
+impact_score
+
+graph_health
+
+overall_graph_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+9. ENDPOINTS
+
+---
+
+GET  /engineering-graph/status
+
+GET  /engineering-graph/capabilities
+
+POST /engineering-graph/preview
+
+POST /engineering-graph/relationships
+
+POST /engineering-graph/dependencies
+
+POST /engineering-graph/impact-analysis
+
+POST /engineering-graph/summary
+
+---
+
+10. FILES MODIFIED
+
+---
+
+engineering_knowledge_graph_intelligence_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+11. SAFETY
+
+---
+
+graph_write=False
+
+relationship_modification=False
+
+repair_execution=False
+
+deployment_execution=False
+
+All operations remain preview-only.
+
+================================================================================
+END OF LAYER 35.3 REPORT
+========================

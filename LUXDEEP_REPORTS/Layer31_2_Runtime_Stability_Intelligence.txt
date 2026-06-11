@@ -1,0 +1,141 @@
+================================================================================
+LAYER 31.2 — RUNTIME STABILITY INTELLIGENCE PREVIEW
+================================================================================
+Report Timestamp: 2026-06-11T00:00:00Z
+
+================================================================================
+1. IMPLEMENTATION OVERVIEW
+================================================================================
+
+Module:          runtime_stability_intelligence_preview.py
+Status:          COMPLETED
+Layer:           31.2
+Prerequisite:    Layer 31.1 — System Health Intelligence Preview
+
+This layer introduces runtime stability intelligence as a read-only preview
+system that profiles and reports on the operational stability of key runtime
+components: typewriter queue, websocket stream, stop/continue flow, application
+startup, API routing, session state, file IO, external API integration, and
+concurrency handling.
+
+================================================================================
+2. STABILITY PROFILES REGISTERED
+================================================================================
+
+  ID                   | Component                  | Status    | Score
+  ---------------------+----------------------------+-----------+------
+  typewriter_queue     | typewriter_queue_runtime   | degraded  | 0.58
+  websocket_stream     | websocket_stream_runtime   | degraded  | 0.48
+  stop_continue_flow   | resume_flow_runtime        | pass      | 0.86
+  application_startup  | application_boot_runtime   | pass      | 0.82
+  api_routing          | api_routing_runtime        | pass      | 0.85
+  session_state        | session_state_runtime      | pass      | 0.80
+  file_io              | file_io_runtime            | pass      | 0.83
+  external_api         | external_api_runtime       | warning   | 0.65
+  concurrency          | concurrency_runtime        | pass      | 0.78
+
+  Overall Stability Score:   0.74 (degraded)
+  Profiles:                  9 total (2 degraded, 1 warning, 6 pass)
+
+================================================================================
+3. ENDPOINTS REGISTERED
+================================================================================
+
+  GET  /debug/runtime-stability-status     -> status metadata
+  GET  /debug/runtime-stability-registry   -> full registry of all profiles
+  POST /debug/runtime-stability-preview    -> per-component stability preview
+
+================================================================================
+4. INTEGRATIONS
+================================================================================
+
+  Upstream layers consulted for runtime signals:
+    * Layer 30 — Status Snapshot (layer30_status_snapshot)
+    * Layer 29 — Status Snapshot (layer29_status_snapshot)
+    * 29.8    — Patch Confidence
+    * 29.7    — Patch Assurance
+    * 29.6    — Patch Accountability
+    * 29.5    — Patch Oversight
+    * 29.4    — Patch Governance
+    * 29.3    — Patch Compliance
+    * 29.2    — Patch Policy Evaluation
+    * 29.1    — Patch Permission Enforcement
+
+  Downstream consumers:
+    * app.py                          — 3 route handlers registered
+    * lux_fault_report.py             — 2 section entries added
+    * endpoint_coverage_matrix.py     — endpoint group added
+    * scripts/smoke_check.py          — 1 test case + registry entry added
+
+================================================================================
+5. PROTECTED AREAS (NOT MODIFIED)
+================================================================================
+
+  * chat           — untouched
+  * stream         — untouched
+  * websocket      — untouched
+  * typewriter     — untouched
+  * stop/continue  — untouched
+  * static/index.html — untouched
+
+================================================================================
+6. FORBIDDEN OPERATIONS (NOT PERFORMED)
+================================================================================
+
+  [OK] Auto-fix        — not performed
+  [OK] Patch apply     — not performed
+  [OK] Commit          — not performed
+  [OK] Push            — not performed
+  [OK] Deploy          — not performed
+  [OK] Subprocess exec — not performed
+  [OK] Database write  — not performed
+  [OK] Memory write    — not performed
+  [OK] Git write       — not performed
+
+================================================================================
+7. FILES MODIFIED / CREATED
+================================================================================
+
+  NEW:
+    runtime_stability_intelligence_preview.py   (512 lines)
+
+  MODIFIED:
+    app.py                                      +import +model +3 endpoints
+    lux_fault_report.py                         +import +function +2 entries
+    endpoint_coverage_matrix.py                 +1 endpoint group (3 entries)
+    scripts/smoke_check.py                      +1 test method +1 registry entry
+
+  CREATED:
+    Layer31_2_Runtime_Stability_Intelligence.txt  (this report)
+
+================================================================================
+8. OUTPUT FIELDS (per preview response)
+================================================================================
+
+  stability_id              — unique profile identifier
+  stability_category        — category of stability (queue_integrity, etc.)
+  stability_status          — pass / warning / degraded / blocked
+  stability_score           — numeric score (0.0-1.0)
+  stability_findings        — list of evidence items
+  stability_warnings        — list of warning conditions
+  stability_blockers        — list of blocking issues
+  stability_risk_level      — low / medium / high
+  stability_recommendations — recommended remediation steps
+  stability_summary         — human-readable summary
+  required_actions          — concrete action items
+  recommended_next_action   — single next step
+  confidence_score          — confidence in the assessment
+  runtime_signals           — integration signals from upstream layers
+
+================================================================================
+9. COMPLETION STATUS
+================================================================================
+
+  Layer 31.2 — Runtime Stability Intelligence Preview: COMPLETE
+  No commit performed.
+  No push performed.
+  All changes are read-only scaffold previews.
+
+================================================================================
+END OF LAYER 31.2 REPORT
+================================================================================

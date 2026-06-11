@@ -1,0 +1,90 @@
+========================================================================
+LAYER 30 — STATUS SNAPSHOT — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+========================================================================
+
+LAYER SUMMARY
+--------------------------------------------------------------------------------
+Layer 30 Status Snapshot aggregates all five Layer 30 sub-layers
+(30.1–30.5) into a single status endpoint. Provides both a concise
+snapshot and a full-detail view with per-layer metadata.
+
+INCLUDED LAYERS
+--------------------------------------------------------------------------------
+30.1 Production Readiness Preview
+30.2 Operational Readiness Preview
+30.3 System Readiness Preview
+30.4 Validation Readiness Preview
+30.5 Release Readiness Preview
+
+ENDPOINT COUNT
+--------------------------------------------------------------------------------
+17 endpoints across Layer 30 (15 sub-layer + 2 snapshot)
+- /debug/production-readiness-status (GET)
+- /debug/production-readiness-registry (GET)
+- /debug/production-readiness-preview (POST)
+- /debug/operational-readiness-status (GET)
+- /debug/operational-readiness-registry (GET)
+- /debug/operational-readiness-preview (POST)
+- /debug/system-readiness-status (GET)
+- /debug/system-readiness-registry (GET)
+- /debug/system-readiness-preview (POST)
+- /debug/validation-readiness-status (GET)
+- /debug/validation-readiness-registry (GET)
+- /debug/validation-readiness-preview (POST)
+- /debug/release-readiness-status (GET)
+- /debug/release-readiness-registry (GET)
+- /debug/release-readiness-preview (POST)
+- /debug/layer30-status (GET) — NEW
+- /debug/layer30-full-status (GET) — NEW
+
+INTEGRATION COUNT
+--------------------------------------------------------------------------------
+21 connected layers from 29.8 → 25.4
+
+SAFETY SUMMARY
+--------------------------------------------------------------------------------
+- All endpoints read-only; no writes permitted
+- All safety flags False across all sub-layers
+- No file, memory, DB, git writes; no commit/push/deploy
+- No auto-fix, patch-apply, or subprocess execution
+- Protected areas untouched: chat, stream, websocket, typewriter,
+  stop/continue, static/index.html
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py                   — import + 2 routes (2 incremental edits)
+endpoint_coverage_matrix.py — new layer30_snapshot_group (2 entries)
+scripts/smoke_check.py   — check_layer30_status_snapshot() + registration
+lux_fault_report.py      — import + 2 section entries (open + closed)
+
+FILES CREATED
+--------------------------------------------------------------------------------
+layer30_status_snapshot.py (~175 lines, ~6 KB)
+
+TEST RESULTS
+--------------------------------------------------------------------------------
+Python syntax check: PASS
+5 implemented layers verified
+17 total endpoints tracked
+21 integrations listed
+All 10 safety_summary flags False
+All read_only_guards present
+
+FINAL STATUS
+--------------------------------------------------------------------------------
+Layer 30 Snapshot — COMPLETE
+All 5 sub-layers (30.1–30.5) implemented and aggregated.
+Layer 30 status snapshot provides clear visibility into:
+- Status of each sub-layer
+- Read-only guard enforcement
+- Integration chain completeness
+- Future direction for production hardening
+
+RECOMMENDATIONS
+--------------------------------------------------------------------------------
+- Layer 30 scaffold is complete; all sub-layers are read-only
+- Real readiness pipeline requires production hardening beyond scaffold
+- Consider deployment gating using layer 30 readiness signals
+- Automated runbook execution for operational readiness verification
+- System-wide blocker propagation monitoring as next step

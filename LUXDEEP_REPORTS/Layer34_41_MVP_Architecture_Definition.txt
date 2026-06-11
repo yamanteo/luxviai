@@ -1,0 +1,119 @@
+==============================================================================
+LUXCODE MVP ARCHITECTURE DEFINITION
+==============================================================================
+Report Date        : 2026-06-11
+Based on          : 34-41 Architecture Audit findings
+==============================================================================
+
+MVP CORE (13 systems — must work to call it an autonomous engineering agent)
+==============================================================================
+
+1. Project Registry
+   Status:        DESIGN ONLY (37.4)
+   Current:       Not implemented
+   Required for:  Knowing which project to operate on
+   MVP action:    Implement project_intelligence_core_preview.py
+
+2. Task Orchestration
+   Status:        IMPLEMENTED — read-only (34.5)
+   Current:       /task-orchestration/queue, watch, add-command follow-up
+   Required for:  Receiving and queuing user tasks
+   MVP action:    Enable real execution trigger from queue
+
+3. Workspace
+   Status:        IMPLEMENTED — read-only (Layer 15)
+   Current:       Workspace schema, preview, parse-command, export, builder
+   Required for:  Structured command/content workspace
+   MVP action:    Connect workspace to clone/sandbox mechanism
+
+4. Added Command Queue
+   Status:        IMPLEMENTED — scaffold (34.5 + 36.6)
+   Current:       add-command endpoint, dynamic priority analysis
+   Required for:  Queue management with priority
+   MVP action:    Wire queue to actual execution
+
+5. Clone/Sandbox Workspace
+   Status:        DESIGN ONLY / PREVIEW (34.9)
+   Current:       Read-only clone preview, difference/sync/conflict analysis
+   Required for:  Safe workspace isolation — LuxCode's fundamental promise
+   MVP action:    Implement real directory cloning + sandbox isolation
+
+6. Repair Planner
+   Status:        DESIGN ONLY / PREVIEW (34.7)
+   Current:       Read-only root cause, strategy, dependency, simulation
+   Required for:  Automatic problem diagnosis and fix planning
+   MVP action:    Wire strategy output to execution pipeline
+
+7. Verification Engine
+   Status:        DESIGN ONLY / PREVIEW (34.8 + 33.6)
+   Current:       Read-only coverage, regression, sandbox validation
+   Required for:  Confirming changes work before applying to real system
+   MVP action:    Enable real test execution against sandbox
+
+8. GitHub Bridge
+   Status:        DESIGN ONLY / PREVIEW (34.1)
+   Current:       Read-only status, capabilities, preview
+   Required for:  Git operations (clone, commit, push, PR)
+   MVP action:    Implement real GitHub API integration with safety filter
+
+9. Terminal Bridge
+   Status:        DESIGN ONLY / PREVIEW (34.2)
+   Current:       Read-only status, capabilities, preview
+   Required for:  Running commands in sandbox
+   MVP action:    Implement sandboxed terminal execution
+
+10. Deployment/Render Bridge
+    Status:        DESIGN ONLY / PREVIEW (34.3)
+    Current:       Read-only status, capabilities, preview
+    Required for:  Deploying changes to staging/production
+    MVP action:    Implement deploy-to-Render with rollback safety
+
+11. Safe Execution Boundary
+    Status:        MISSING (should be in 40.x)
+    Current:       Not implemented at all
+    Required for:  Defining what the agent is allowed to do
+    MVP action:    CREATE — this is the single most critical missing component
+
+12. Rollback Plan
+    Status:        DESIGN ONLY / PREVIEW (28.2)
+    Current:       Read-only rollback preview
+    Required for:  Undoing failed changes
+    MVP action:    Enable real rollback execution
+
+13. Delivery Report
+    Status:        DESIGN ONLY / PREVIEW (33.7)
+    Current:       Read-only delivery readiness preview
+    Required for:  Telling the user what was done
+    MVP action:    Enable real report generation after each operation
+
+MVP ARCHITECTURE SCORE: 2/13 fully implemented = ~15%
+==============================================================================
+
+TRUE EXECUTION FLOW (LuxCode's fundamental promise — what must work)
+==============================================================================
+
+Real System                          → NOT directly touched by agent
+  ↓
+Working Copy / Clone/Sandbox         → 34.9 — MUST implement real clone
+  ↓
+Analysis                             → 34.7 — root cause, dependency analysis
+  ↓
+Change Plan                          → 34.7 — strategy generation
+  ↓
+Patch / Modification                 → 27.x — MUST enable real patch
+  ↓
+Sandbox Test                         → 33.5/34.8 — MUST enable real verification
+  ↓
+Verification                         → 34.8 — MUST enable real verification
+  ↓
+Real System Apply (safe)             → 40.x + 28.x — MUST enable real execution
+  ↓
+Real System Verification             → 35.0 — MUST enable real verification
+  ↓
+Delivery Report                      → 33.7 — MUST enable report generation
+
+Current status: EVERY STEP IS READ-ONLY PREVIEW. Zero steps can execute.
+
+==============================================================================
+END OF MVP ARCHITECTURE DEFINITION
+==============================================================================

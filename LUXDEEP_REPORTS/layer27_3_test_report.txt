@@ -1,0 +1,142 @@
+================================================================================
+LAYER 27.3 — DIFF PREVIEW ENGINE PREVIEW — TEST REPORT
+Date: 2026-06-10
+Mode: Read-only scaffold (no real actions, no commit, no push)
+================================================================================
+
+FILES CREATED
+--------------------------------------------------------------------------------
+1. diff_preview_engine_preview.py (301 lines, 12,709 bytes)
+   - DIFF_PREVIEW_PROFILES (5 profiles)
+   - diff_preview_status() → layer 27.3 status
+   - diff_preview_registry() → 5 diff entries
+   - build_diff_preview() → full diff preview with 5 integrations
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+1. app.py (was 11,944 → now 11,976 lines)
+   - Line 167-171: import block for diff_preview_engine_preview
+   - Line 935-939: DiffPreviewRequest Pydantic model
+   - Line 8421-8438: 3 endpoint routes (GET status, GET registry, POST preview)
+
+2. endpoint_coverage_matrix.py (was 240 → now 243 lines)
+   - Line 186-188: 3 entries in patch_draft_layer_27 group (27.3)
+
+3. scripts/smoke_check.py (was 7,642 → now 7,747 lines)
+   - Line 5622-5730: check_diff_preview_engine() test method (109 lines)
+   - Tests: status endpoint (22 assertions), registry endpoint (14 assertions),
+     preview endpoint (40 assertions), fault report section (10 assertions)
+
+4. lux_fault_report.py (was 1,305 → now 1,335 lines)
+   - Line 33: import of diff_preview_engine_preview
+   - Line 860-890: _fault_report_diff_preview() function (31 lines)
+   - Line 1228: diff_preview section in build_fault_report_preview()
+   - Line 1322: diff_preview section in build_fault_report_intelligence_preview()
+
+ENDPOINTS ADDED
+--------------------------------------------------------------------------------
+| Method | Path                          | Layer | Purpose                      |
+|--------|-------------------------------|-------|------------------------------|
+| GET    | /debug/diff-preview-status    | 27.3  | Diff preview engine status   |
+| GET    | /debug/diff-preview-registry  | 27.3  | Diff preview registry        |
+| POST   | /debug/diff-preview           | 27.3  | Read-only diff preview       |
+
+INTEGRATIONS
+--------------------------------------------------------------------------------
+| Integration            | Module                              | Signal Path                                  |
+|------------------------|-------------------------------------|----------------------------------------------|
+| Patch Draft Engine     | patch_draft_engine_preview.py       | integration_signals → patch_draft            |
+| Change Preview Engine  | change_preview_engine_preview.py    | integration_signals → change_preview         |
+| Multi-Agent Coordinator| multi_agent_coordinator_preview.py  | integration_signals → multi_agent_coordinator|
+| Evidence Store         | evidence_store_preview.py           | integration_signals → evidence_store         |
+| Safe Change Boundary   | safe_change_boundary_preview.py     | integration_signals → safe_change_boundary   |
+
+DIFF PROFILES (5)
+--------------------------------------------------------------------------------
+1. stop_continue       — resume flow consolidation diff
+2. websocket_stream    — stream event guard and typewriter state diff
+3. workspace_export    — export preview guard tightening diff
+4. luxway_permission   — permission boundary explanation diff
+5. debug_intelligence  — unified diff view scaffolding diff (default fallback)
+
+SAFETY CHECKS (all confirmed in status/registry/preview payloads)
+--------------------------------------------------------------------------------
+- read_only: True
+- strict_read_only: True
+- analysis_only: True
+- preview_only: True
+- file_write_enabled: False
+- memory_write_enabled: False
+- db_write_enabled: False
+- git_write_enabled: False
+- commit_enabled: False
+- push_enabled: False
+- deploy_enabled: False
+- auto_fix_enabled: False
+- patch_apply_enabled: False
+- subprocess_execution_enabled: False
+- repo_scan_performed: False
+- chat_stream_touched: False
+- typewriter_runtime_touched: False
+
+PROTECTED AREAS (not touched)
+--------------------------------------------------------------------------------
+- chat endpoint (/chat POST)
+- stream / typewriter runtime
+- websocket (/ws/chat)
+- stop/continue (dur/devam) runtime
+- static/index.html
+- No large file rewrites
+- No apply_patch used
+- Only incremental edit_file operations
+
+DIFF PREVIEW PROFILE DETAIL
+--------------------------------------------------------------------------------
+Each profile maps to:
+- affected_files: which files would change
+- before_code_summary: current state description
+- after_code_summary: expected state after change
+- diff_hunks_expected: estimated number of diff hunks
+- predicted_changes: merged from change_preview effects + patch_draft steps
+- risk_areas: merged from profile + change_preview + coordinator risks
+- integration_signals: nested signals from all 5 integrations
+
+FAULT REPORT INTEGRATION
+--------------------------------------------------------------------------------
+build_fault_report_preview() and build_fault_report_intelligence_preview()
+now include a "diff_preview" section with:
+- Hedef Sorun (target issue)
+- Etkilenen Dosyalar (affected files)
+- Önce Kod Özeti (before code summary)
+- Sonra Kod Özeti (after code summary)
+- Tahmini Hunk Sayısı (estimated hunk count)
+- Tahmini Değişiklikler (predicted changes)
+- Risk Alanları (risk areas)
+- Onay Gereksinimi (approval required)
+- confidence_score
+
+SMOKE TEST COVERAGE
+--------------------------------------------------------------------------------
+check_diff_preview_engine() validates:
+- Status endpoint: layer=27.3, name, all safety flags false
+- Registry endpoint: diff_count >= 1, safety_flags all false
+- Preview endpoint: target_issue matching, affected_files, before/after summaries,
+  diff_hunks_expected >= 1, risk_areas, approval, confidence,
+  all 5 integration_signals present, all safety performed flags false
+- Fault report section: diff_preview section present with all 7 Turkish field names
+
+FINAL STATUS
+--------------------------------------------------------------------------------
+Layer 27.3 implementation: COMPLETE
+- 1 file created
+- 4 files edited (9 incremental edit_file operations)
+- 3 endpoints added
+- 5 integrations wired
+- Safety: all read-only, no write capability
+- Protected areas: untouched
+- No commit, no push (per instructions)
+- Ready for smoke test validation
+
+================================================================================
+END OF REPORT
+================================================================================

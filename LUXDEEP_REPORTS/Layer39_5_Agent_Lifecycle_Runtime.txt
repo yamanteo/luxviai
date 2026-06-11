@@ -1,0 +1,275 @@
+================================================================================
+LAYER 39.5 — AGENT LIFECYCLE RUNTIME PREVIEW
+================================================================================
+
+Report Date        : 2026-06-11
+Layer              : 39.5
+Module             : agent_lifecycle_runtime_preview.py
+Series             : LuxCode Agent Runtime Systems
+Version            : 1.0
+Status             : agent_lifecycle_runtime_ready
+Operation Mode     : read_only_preview_only
+Integration        : 39.4 Agent Collaboration Runtime,
+39.3 Agent Memory Loop Runtime,
+39.2 Agent Workspace Runtime,
+39.1 Agent Session Runtime,
+39.0 Agent Runtime Core
+-----------------------
+
+1. OVERVIEW
+
+---
+
+Layer 39.5 introduces Agent Lifecycle Runtime.
+
+This layer becomes the lifecycle management engine of LuxCode.
+
+Primary Goal:
+
+Manage the complete life journey of an active agent.
+
+Primary Mission:
+
+Understand:
+
+* when an agent starts
+* when an agent becomes active
+* when an agent enters waiting mode
+* when an agent pauses
+* when an agent resumes
+* when an agent shuts down
+* when an agent recovers
+
+while preserving operational continuity.
+
+---
+
+2. LIFECYCLE MODEL
+
+---
+
+Agent Creation
+
+&#8595;
+
+Initialization
+
+&#8595;
+
+Activation
+
+&#8595;
+
+Active Runtime
+
+&#8595;
+
+Pause / Waiting
+
+&#8595;
+
+Resume
+
+&#8595;
+
+Recovery
+
+&#8595;
+
+Shutdown
+
+---
+
+3. LIFECYCLE STATES
+
+---
+
+created
+
+initializing
+
+active
+
+focused
+
+waiting
+
+paused
+
+recovering
+
+shutting_down
+
+terminated
+
+---
+
+4. CAPABILITIES
+
+---
+
+lifecycle_tracking
+
+lifecycle_state_management
+
+lifecycle_transition_analysis
+
+pause_resume_management
+
+recovery_lifecycle_analysis
+
+runtime_lifecycle_monitoring
+
+lifecycle_health_analysis
+
+lifecycle_summary_generation
+
+lifecycle_readiness_analysis
+
+lifecycle_forecasting
+
+---
+
+5. TRANSITION ENGINE
+
+---
+
+Track:
+
+state_entry
+
+state_exit
+
+transition_reason
+
+transition_duration
+
+Returns:
+
+transition_health
+
+transition_risk
+
+transition_trace
+
+---
+
+6. RECOVERY ENGINE
+
+---
+
+Analyze:
+
+interrupted_runtime
+
+paused_runtime
+
+recoverable_state
+
+continuity_state
+
+Returns:
+
+recovery_plan
+
+recovery_readiness
+
+recovery_confidence
+
+---
+
+7. LIFECYCLE HEALTH MODEL
+
+---
+
+Analyze:
+
+state_health
+
+transition_health
+
+recovery_health
+
+continuity_health
+
+Returns:
+
+lifecycle_health
+
+lifecycle_risk
+
+lifecycle_readiness
+
+---
+
+8. LIFECYCLE SCORE
+
+---
+
+Returns:
+
+state_score
+
+transition_score
+
+continuity_score
+
+recovery_score
+
+overall_lifecycle_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+9. ENDPOINTS
+
+---
+
+GET  /agent-lifecycle/status
+
+GET  /agent-lifecycle/capabilities
+
+POST /agent-lifecycle/preview
+
+POST /agent-lifecycle/state-analysis
+
+POST /agent-lifecycle/transition-analysis
+
+POST /agent-lifecycle/recovery-analysis
+
+POST /agent-lifecycle/health
+
+---
+
+10. FILES MODIFIED
+
+---
+
+agent_lifecycle_runtime_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+11. SAFETY
+
+---
+
+runtime_control=False
+
+lifecycle_control=False
+
+execution_control=False
+
+system_actions=False
+
+read_only_preview_only=True
+
+================================================================================
+END OF LAYER 39.5 REPORT
+========================

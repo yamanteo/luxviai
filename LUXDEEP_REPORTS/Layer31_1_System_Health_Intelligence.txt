@@ -1,0 +1,144 @@
+==============================================================================
+LAYER 31.1 — SYSTEM HEALTH INTELLIGENCE PREVIEW
+==============================================================================
+Report Date: 2026-06-10
+Status: IMPLEMENTED
+
+==============================================================================
+1. MODULE: system_health_intelligence_preview.py
+==============================================================================
+File: system_health_intelligence_preview.py
+Status: CREATED
+
+Description:
+  System Health Intelligence Preview — provides read-only health assessment
+  for the Luxdeep runtime, aggregating signals from Layer 29, Layer 30,
+  and all downstream patch layers into a unified health intelligence output.
+
+Exported Functions:
+  - system_health_intelligence_status() -> Dict[str, Any]
+  - system_health_intelligence_registry() -> Dict[str, Any]
+  - build_system_health_intelligence_preview(...) -> Dict[str, Any]
+
+Health Categories (7 profiles):
+  1. stop_continue_flow   — flow_safety        (pass,     score: 0.88)
+  2. websocket_stream     — stream_integrity    (degraded, score: 0.45)
+  3. workspace_export     — export_safety       (pass,     score: 0.87)
+  4. luxway_permission    — permission_safety   (pass,     score: 0.82)
+  5. typewriter_queue     — queue_integrity     (warning,  score: 0.60)
+  6. patch_lifecycle      — patch_governance    (pass,     score: 0.85)
+  7. production_readiness — deployment_safety   (pass,     score: 0.83)
+
+Integration Signals:
+  - layer30_status_snapshot
+  - layer29_status_snapshot
+  - patch_confidence, patch_assurance, patch_accountability
+  - patch_oversight, patch_governance, patch_compliance
+  - patch_policy_evaluation, patch_permission_enforcement
+
+Safety:
+  - read_only: True
+  - strict_read_only: True
+  - analysis_only: True
+  - preview_only: True
+  - All write/commit/push/deploy flags: False
+  - chat_stream_touched: False
+  - typewriter_runtime_touched: False
+
+==============================================================================
+2. ENDPOINTS
+==============================================================================
+  1. GET  /debug/system-health-status    — Layer 31.1 status
+  2. GET  /debug/system-health-registry  — Layer 31.1 health registry
+  3. POST /debug/system-health-preview   — Layer 31.1 health preview
+
+POST Request Body (SystemHealthIntelligencePreviewRequest):
+  - target_issue: Optional[str]
+  - command: str
+  - project_area: Optional[str]
+  - related_layer: Optional[str]
+
+POST Response Fields (build_system_health_intelligence_preview):
+  - health_id              - health_category
+  - health_status          - health_score
+  - health_findings        - health_warnings
+  - health_blockers        - health_risk_level
+  - health_recommendations - health_summary
+  - required_actions       - recommended_next_action
+  - confidence_score       - integration_signals
+
+==============================================================================
+3. INTEGRATION: app.py
+==============================================================================
+  - Import added: from system_health_intelligence_preview import (...)
+  - Model added: class SystemHealthIntelligencePreviewRequest(BaseModel)
+  - Endpoints registered:
+    @app.get("/debug/system-health-status")
+    @app.get("/debug/system-health-registry")
+    @app.post("/debug/system-health-preview")
+
+==============================================================================
+4. INTEGRATION: lux_fault_report.py
+==============================================================================
+  - Import added: from system_health_intelligence_preview import (...)
+  - Function: _fault_report_system_health_intelligence() -> List[Dict]
+  - Added to build_fault_report(): system_health_intelligence
+  - Added to build_fault_report_preview(): system_health_intelligence
+
+==============================================================================
+5. INTEGRATION: endpoint_coverage_matrix.py
+==============================================================================
+  - Group added: system_health_intelligence_layer_31
+  - Endpoints registered (3):
+    /debug/system-health-status       (GET,  31.1)
+    /debug/system-health-registry     (GET,  31.1)
+    /debug/system-health-preview      (POST, 31.1)
+
+==============================================================================
+6. INTEGRATION: scripts/smoke_check.py
+==============================================================================
+  - Method: check_system_health_intelligence_preview() added
+  - Registration added: system_health_intelligence_preview
+  - Tests all 3 endpoints: status, registry, preview
+  - Verifies: layer, status, safety flags, health profiles, integration signals
+  - Verifies: fault report section exists with expected fields
+
+==============================================================================
+7. PROTECTED AREAS (Not Modified)
+==============================================================================
+  - chat                            - untouched
+  - stream                          - untouched
+  - websocket                       - untouched
+  - typewriter                      - untouched
+  - stop/continue                   - untouched
+  - static/index.html               - untouched
+
+==============================================================================
+8. FORBIDDEN OPERATIONS (Not Executed)
+==============================================================================
+  - Auto-fix:    NOT performed
+  - Patch apply: NOT performed (no apply_patch used)
+  - Commit:      NOT performed
+  - Push:        NOT performed
+  - Deploy:      NOT performed
+  - Subprocess:  NOT performed
+  - Database:    NOT performed
+  - Memory:      NOT performed
+  - Git:         NOT performed
+
+==============================================================================
+COMPLETION SUMMARY
+==============================================================================
+  Layer 31.1 System Health Intelligence Preview:
+    - 1 new module created (system_health_intelligence_preview.py)
+    - 3 new endpoints registered in app.py
+    - 7 health profiles with status/score/warnings/blockers
+    - Integration signals from 10 downstream components
+    - 2 dictionaries extended in lux_fault_report.py
+    - 3 endpoints added to endpoint_coverage_matrix.py
+    - 1 smoke test method added to scripts/smoke_check.py
+    - All safety flags verified: read-only, no writes, no commits
+    - Protected areas untouched
+
+  VERDICT: LAYER 31.1 IMPLEMENTED SUCCESSFULLY
+==============================================================================

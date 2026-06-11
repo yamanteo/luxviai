@@ -1,0 +1,59 @@
+================================================================================
+LAYER 28.4 — PATCH RECOVERY PREVIEW — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+================================================================================
+
+TASK: Layer 28.4 — Patch Recovery Preview
+GOAL: Recovery strategy preview with failure type/scope classification, recovery
+      readiness assessment, and 14 integrated layers.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+patch_recovery_preview.py (338 satır, 16,896 byte)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py (12,179 → 12,188) — import, PatchRecoveryPreviewRequest model, 3 routes
+endpoint_coverage_matrix.py (265 → 268) — 3 entries in patch_application_layer_28
+scripts/smoke_check.py (8,413 → 8,414) — check_patch_recovery_preview() (56 satır)
+lux_fault_report.py (1,580 → 1,607) — import, _fault_report_patch_recovery(), section
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/patch-recovery-status
+GET  /debug/patch-recovery-registry
+POST /debug/patch-recovery-preview
+
+RECOVERY PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       ready    low   — git revert, single commit
+websocket_stream    BLOCKED  high  — canary-first rollback, full regression
+workspace_export    ready    low   — automated format revert
+luxway_permission   BLOCKED  high  — platform-specific recovery
+debug_intelligence  ready    low   — smoke test endpoint drift detection
+
+OUTPUT FIELDS
+--------------------------------------------------------------------------------
+failure_type           — runtime_flow_regression / runtime_stream_corruption
+                       — export_schema_mismatch / platform_permission_regression
+                       — endpoint_smoke_failure
+failure_scope          — component-level scope classification
+recovery_required      — bool
+recovery_strategy      — strategy description
+recovery_steps         — ordered recovery step list
+recovery_dependencies  — dependency list
+recovery_risk_level    — low / medium / high
+recovery_risk_reasons  — risk classification
+rollback_dependency    — patch_rollback_preview
+validation_dependency  — patch_validation_preview
+recovery_readiness     — bool (3 ready, 2 blocked)
+recommended_next_action — action recommendation
+confidence_score       — aggregated confidence (0.0–1.0)
+
+14 INTEGRATIONS: 28.3 → 28.2 → 28.1 → 27.6 → 27.5 → 27.4 → 27.3 → 27.2 → 27.1 → 26.7 → 26.6 → 25.6 → 25.5 → 25.4
+
+SAFETY: All read_only. No actual recovery execution.
+PROBLEMS: None.
+
+FINAL: TAMAMLANDI — 1 created, 4 edited, 3 endpoints, 14 integrations
+================================================================================

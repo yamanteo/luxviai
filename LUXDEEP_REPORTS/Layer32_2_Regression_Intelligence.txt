@@ -1,0 +1,125 @@
+================================================================================
+  LAYER 32.2 — REGRESSION INTELLIGENCE PREVIEW
+  Layer 32 Runtime Intelligence Series — Regression Extension
+================================================================================
+
+  Date:          2026-06-11
+  Status:        IMPLEMENTED
+  Layer:         32.2
+  Read-only:     Yes
+  Auto-fix:      Disabled
+  Patch-apply:   Disabled
+  Commit/Push:   Disabled
+
+================================================================================
+  FILES CREATED
+================================================================================
+
+  regression_intelligence_preview.py
+    - 557 lines
+    - 7 regression profiles
+    - 3 endpoint handlers
+    - Integration with Layer 32.1, 31, 30, 29 status snapshots
+
+================================================================================
+  FILES MODIFIED
+================================================================================
+
+  1. app.py
+     - Added import: regression_intelligence_preview
+     - Added model: RegressionIntelligencePreviewRequest
+     - Added 3 endpoints:
+       GET  /debug/regression-status
+       GET  /debug/regression-registry
+       POST /debug/regression-preview
+
+  2. lux_fault_report.py
+     - Added import for regression_intelligence_preview
+     - Added _fault_report_regression_intelligence() helper
+     - Added section in build_fault_report_preview sections dict
+     - Added section in build_fault_report_filtered_preview sections dict
+
+  3. endpoint_coverage_matrix.py
+     - Added "regression_intelligence_layer_32_2" endpoint group
+     - 3 endpoints registered under layer 32.2
+
+  4. scripts/smoke_check.py
+     - Added check_regression_intelligence_preview() test method
+     - Added registration in test runner list
+
+================================================================================
+  REGRESSION TYPES (7)
+================================================================================
+
+  1. behavior_regression        Score: 0.42  Status: degraded  Risk: high
+  2. endpoint_regression        Score: 0.55  Status: warning   Risk: medium
+  3. dependency_regression      Score: 0.60  Status: warning   Risk: medium
+  4. configuration_regression   Score: 0.82  Status: pass      Risk: low
+  5. runtime_regression         Score: 0.48  Status: degraded  Risk: high
+  6. stability_regression       Score: 0.58  Status: warning   Risk: medium
+  7. recovery_regression        Score: 0.40  Status: degraded  Risk: high
+
+  Overall Regression Score: 0.55
+  Overall Regression Status: degraded
+
+================================================================================
+  INTEGRATIONS
+================================================================================
+
+  Layer 32.1 — Runtime Anomaly Intelligence
+  Layer 31    — 31.1–31.5 Runtime Intelligence Suite
+  Layer 30    — 30.1–30.5 Readiness Previews
+  Layer 29    — 29.1–29.8 Patch Governance Suite
+
+================================================================================
+  ENDPOINTS
+================================================================================
+
+  GET  /debug/regression-status    → Layer metadata + safety flags
+  GET  /debug/regression-registry  → All 7 regression profiles aggregated
+  POST /debug/regression-preview   → Selected regression deep-dive + signals
+
+================================================================================
+  OUTPUT FIELDS
+================================================================================
+
+  regression_id
+  regression_category
+  regression_status
+  regression_score
+  regression_findings
+  regression_warnings
+  regression_blockers
+  regression_risk_level
+  regression_recommendations
+  regression_summary
+  required_actions
+  recommended_next_action
+  confidence_score
+  regression_signals
+
+================================================================================
+  PROTECTED AREAS — NOT MODIFIED
+================================================================================
+
+  - chat (endpoints /chat, /ws/chat)
+  - stream (streaming logic)
+  - websocket (WebSocket handlers)
+  - typewriter (typewriter queue)
+  - stop/continue (flow control)
+  - static/index.html
+
+================================================================================
+  COMPLETION SUMMARY
+================================================================================
+
+  Layer 32.2 Regression Intelligence Preview is complete.
+
+  Created:   1 file
+  Modified:  4 files
+  Report:    Layer32_2_Regression_Intelligence.txt
+
+  No auto-fix, commit, push, or deploy performed.
+  All operations are read-only scaffold endpoints.
+
+================================================================================

@@ -1,0 +1,129 @@
+================================================================================
+  LAYER 32.1 — RUNTIME ANOMALY INTELLIGENCE PREVIEW
+  Layer 31 Runtime Intelligence Series — Anomaly Extension
+================================================================================
+
+  Date:          2026-06-11
+  Status:        IMPLEMENTED
+  Layer:         32.1
+  Read-only:     Yes
+  Auto-fix:      Disabled
+  Patch-apply:   Disabled
+  Commit/Push:   Disabled
+
+================================================================================
+  FILES CREATED
+================================================================================
+
+  runtime_anomaly_intelligence_preview.py
+    - 581 lines
+    - 8 anomaly profiles
+    - 3 endpoint handlers
+    - Integration with Layer 31, 30, 29 status snapshots
+
+================================================================================
+  FILES MODIFIED
+================================================================================
+
+  1. app.py
+     - Added import: runtime_anomaly_intelligence_preview
+     - Added model: RuntimeAnomalyIntelligencePreviewRequest
+     - Added 3 endpoints:
+       GET  /debug/runtime-anomaly-status
+       GET  /debug/runtime-anomaly-registry
+       POST /debug/runtime-anomaly-preview
+
+  2. lux_fault_report.py
+     - Added import for runtime_anomaly_intelligence_preview
+     - Added _fault_report_runtime_anomaly_intelligence() helper
+     - Added section in build_fault_report_preview sections dict
+     - Added section in build_fault_report_filtered_preview sections dict
+
+  3. endpoint_coverage_matrix.py
+     - Added "runtime_anomaly_intelligence_layer_32_1" endpoint group
+     - 3 endpoints registered under layer 32.1
+
+  4. scripts/smoke_check.py
+     - Added check_runtime_anomaly_intelligence_preview() test method
+     - Added registration in test runner list
+
+================================================================================
+  ANOMALY TYPES (8)
+================================================================================
+
+  1. performance_anomaly      Score: 0.62  Status: warning   Risk: medium
+  2. dependency_anomaly       Score: 0.45  Status: degraded  Risk: high
+  3. configuration_anomaly    Score: 0.55  Status: warning   Risk: medium
+  4. runtime_behavior_anomaly Score: 0.48  Status: degraded  Risk: high
+  5. endpoint_anomaly         Score: 0.58  Status: warning   Risk: medium
+  6. resource_usage_anomaly   Score: 0.52  Status: warning   Risk: medium
+  7. session_anomaly          Score: 0.80  Status: pass      Risk: low
+  8. recovery_anomaly         Score: 0.38  Status: degraded  Risk: high
+
+  Overall Anomaly Score: 0.55
+  Overall Anomaly Status: degraded
+
+================================================================================
+  INTEGRATIONS
+================================================================================
+
+  Layer 31 Status Snapshot  — 31.1 System Health Intelligence
+                           — 31.2 Runtime Stability Intelligence
+                           — 31.3 Runtime Risk Intelligence
+                           — 31.4 Runtime Drift Intelligence
+                           — 31.5 Runtime Recovery Intelligence
+  Layer 30 Status Snapshot  — 30.1–30.5 Readiness Previews
+  Layer 29 Status Snapshot  — 29.1–29.8 Patch Governance Suite
+
+================================================================================
+  ENDPOINTS
+================================================================================
+
+  GET  /debug/runtime-anomaly-status    → Layer metadata + safety flags
+  GET  /debug/runtime-anomaly-registry  → All 8 anomaly profiles aggregated
+  POST /debug/runtime-anomaly-preview   → Selected anomaly deep-dive + signals
+
+================================================================================
+  OUTPUT FIELDS
+================================================================================
+
+  anomaly_id
+  anomaly_category
+  anomaly_status
+  anomaly_score
+  anomaly_findings
+  anomaly_warnings
+  anomaly_blockers
+  anomaly_risk_level
+  anomaly_recommendations
+  anomaly_summary
+  required_actions
+  recommended_next_action
+  confidence_score
+  anomaly_signals
+
+================================================================================
+  PROTECTED AREAS — NOT MODIFIED
+================================================================================
+
+  - chat (endpoints /chat, /ws/chat)
+  - stream (streaming logic)
+  - websocket (WebSocket handlers)
+  - typewriter (typewriter queue)
+  - stop/continue (flow control)
+  - static/index.html
+
+================================================================================
+  COMPLETION SUMMARY
+================================================================================
+
+  Layer 32.1 Runtime Anomaly Intelligence Preview is complete.
+
+  Created:   1 file
+  Modified:  4 files
+  Report:    Layer32_1_Runtime_Anomaly_Intelligence.txt
+
+  No auto-fix, commit, push, or deploy performed.
+  All operations are read-only scaffold endpoints.
+
+================================================================================

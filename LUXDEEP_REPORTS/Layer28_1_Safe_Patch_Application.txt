@@ -1,0 +1,55 @@
+================================================================================
+LAYER 28.1 — SAFE PATCH APPLICATION PREVIEW — TEST REPORT
+Date: 2026-06-10
+Mode: Read-only scaffold
+================================================================================
+
+TASK: Layer 28.1 — Safe Patch Application Preview
+GOAL: Describe how a patch would be safely applied with pre/post checks,
+       rollback plan, and integration signals from 11 layers.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+safe_patch_application_preview.py (352 satır, 17,600 byte)
+- SAFE_PATCH_PROFILES (5 profiles: SP-001 to SP-005)
+- safe_patch_status(), safe_patch_registry(), build_safe_patch_preview()
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py (12,083 → 12,115)
+- import, SafePatchPreviewRequest model, 3 routes
+endpoint_coverage_matrix.py (254 → 259)
+- new group: patch_application_layer_28 (3 entries)
+smoke_check.py (8,155 → 8,246)
+- check_safe_patch_application_preview() (85 satır)
+lux_fault_report.py (1,449 → 1,479)
+- import, _fault_report_safe_patch_application() (30 satır), 2 sections
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/safe-patch-status
+GET  /debug/safe-patch-registry
+POST /debug/safe-patch-preview
+
+INTEGRATIONS (11)
+--------------------------------------------------------------------------------
+27.1-27.6 + 26.7 + 26.6 + 25.6 + 25.5 + 25.4
+
+PATCH PLANS (5)
+--------------------------------------------------------------------------------
+SP-001 stop_continue     (ready, medium) — resume konsolidasyonu
+SP-002 websocket_stream  (BLOCKED, high) — 2 pre-check engelli
+SP-003 workspace_export  (ready, low)
+SP-004 luxway_permission (BLOCKED, high) — 3 pre-check engelli
+SP-005 debug_intelligence(ready, low)
+
+SAFETY: All read_only, strict_read_only. No actual patch execution.
+PROBLEMS: None. 9 incremental edits clean.
+
+FINAL STATUS: TAMAMLANDI
+- 1 created, 4 edited, 3 endpoints, 11 integrations
+- Commit/push yok
+
+================================================================================
+END OF REPORT
+================================================================================

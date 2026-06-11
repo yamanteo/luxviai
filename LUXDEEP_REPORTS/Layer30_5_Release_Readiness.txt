@@ -1,0 +1,80 @@
+========================================================================
+LAYER 30.5 — RELEASE READINESS — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+========================================================================
+
+TASK: Layer 30.5 — Release Readiness Preview
+GOAL: Release-level readiness assessment aggregating validation, system,
+      operational, and production readiness with full-stack blocker tracking
+      across 26 integrated layers (Layers 25–30).
+
+FILES CREATED
+--------------------------------------------------------------------------------
+release_readiness_preview.py (~554 lines, ~24 KB)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py — import, ReleaseReadinessPreviewRequest model, 3 routes
+endpoint_coverage_matrix.py — new release_readiness_layer_30 group (3 entries)
+scripts/smoke_check.py — check_release_readiness_preview() + registration
+lux_fault_report.py — import, _fault_report_release_readiness(), 2 sections
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/release-readiness-status
+GET  /debug/release-readiness-registry
+POST /debug/release-readiness-preview
+
+RELEASE READINESS PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       pass       ready  score:0.78 — 0 blockers
+websocket_stream    violation  BLOCK  score:0.12 — 3 blockers
+workspace_export    pass       ready  score:0.75 — 0 blockers
+luxway_permission   violation  BLOCK  score:0.08 — 3 blockers
+debug_intelligence  pass       ready  score:0.82 — 0 blockers
+
+OUTPUT FIELDS
+--------------------------------------------------------------------------------
+release_id             — profile identifier
+release_category       — category classification
+release_status         — pass / violation
+release_score          — numeric release score
+release_requirements   — requirement list
+release_findings       — finding list
+release_blockers       — release blocker list
+release_risk_level     — low / high
+release_recommendations — recommendation list
+release_readiness      — bool (0 ready, 5 not ready)
+required_actions       — action items to resolve blockers
+recommended_next_action — action recommendation
+confidence_score       — aggregated confidence
+
+26 INTEGRATIONS: 30.4 → 30.3 → 30.2 → 30.1 → 29 Snapshot → 29.8 → ... → 25.4
+
+LAYER 30 STACK STATUS
+--------------------------------------------------------------------------------
+30.1 Production Readiness     ✓  deployment-awareness scaffold
+30.2 Operational Readiness    ✓  ops-awareness scaffold
+30.3 System Readiness         ✓  system-awareness scaffold
+30.4 Validation Readiness     ✓  validation-awareness scaffold
+30.5 Release Readiness        ✓  release-awareness scaffold (new)
+
+All five remain read-only scaffold; no deployment actions performed.
+Release readiness=False for all components — gated behind all lower layers.
+debug_intelligence leads with release_score=0.82.
+luxway_permission trails at 0.08 with full-stack blocker cascade.
+Websocket_stream has 3 release blockers (tab switch, typewriter ownership,
+privacy audit) that propagate from upstream readiness layers.
+
+HEALTH CHECK
+--------------------------------------------------------------------------------
+- No files over-written: incremental edits only
+- app.py not replaced: 3 targeted edits (import, model, routes)
+- All new endpoints read-only: no writes, no subprocesses
+- All existing safety flags set to False: safe by default
+- Fault report section added: release_readiness (both open/closed paths)
+- Smoke check method added with 26 integration signal assertions
+- Endpoint coverage matrix updated with 3 new entries
+- Protected areas (chat, stream, websocket, typewriter, stop/continue,
+  static/index.html) untouched
+- Python syntax verified: PASS

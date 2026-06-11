@@ -1,0 +1,91 @@
+========================================================================
+LAYER 29.5 — PATCH OVERSIGHT — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+========================================================================
+
+TASK: Layer 29.5 — Patch Oversight Preview
+GOAL: Oversight preview with finding/violation tracking, controls mapping,
+      and 22 integrated layers.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+patch_oversight_preview.py (461 lines, ~19 KB)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py — import, PatchOversightPreviewRequest model, 3 routes
+endpoint_coverage_matrix.py — new patch_oversight_layer_29 group (3 entries)
+scripts/smoke_check.py — check_patch_oversight_preview() + registration
+lux_fault_report.py — import, _fault_report_patch_oversight(), 2 sections
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/patch-oversight-status
+GET  /debug/patch-oversight-registry
+POST /debug/patch-oversight-preview
+
+OVERSIGHT PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       pass       ready      — flow_safety, 2 controls active
+websocket_stream    violation  BLOCKED    — stream_integrity, 2 controls violated
+workspace_export    pass       ready      — export_safety, 1 control active
+luxway_permission   violation  BLOCKED    — platform_privacy, 3 controls violated
+debug_intelligence  pass       ready      — scaffold_safety, 1 control active
+
+OUTPUT FIELDS
+--------------------------------------------------------------------------------
+oversight_id              — profile identifier
+oversight_category        — category classification
+oversight_status          — pass / violation
+oversight_findings        — finding list
+oversight_controls        — control list
+oversight_exceptions      — exception list
+oversight_risk_level      — low / high
+oversight_readiness       — bool (3 ready, 2 blocked)
+oversight_recommendations — recommendation list
+required_actions          — action items to resolve violations
+recommended_next_action   — action recommendation
+confidence_score          — aggregated confidence
+
+22 INTEGRATIONS: 29.4 → 29.3 → 29.2 → 29.1 → 28.6 → 28.5 → 28.4 → 28.3 → 28.2 → 28.1 → 27.6 → 27.5 → 27.4 → 27.3 → 27.2 → 27.1 → 26.7 → 26.6 → 25.6 → 25.5 → 25.4
+
+OVERSIGHT VS GOVERNANCE
+--------------------------------------------------------------------------------
+Added patch_governance + patch_compliance integration for cross-layer oversight.
+Oversight extends governance with explicit finding gates and recommendation policies.
+All endpoints are read-only scaffold; no real enforcement actions performed.
+
+INTEGRATION LAYERS
+--------------------------------------------------------------------------------
+29.4 Patch Governance         — governance_status, governance_readiness
+29.3 Patch Compliance         — compliance_status, compliance_readiness
+29.2 Patch Policy Evaluation  — policy_result, policy_readiness
+29.1 Patch Permission         — permission_level, permission_readiness
+28.6 Patch Lifecycle          — lifecycle_readiness, completion_score
+28.5 Patch Audit Trail        — audit_readiness, audit_completeness
+28.4 Patch Recovery           — recovery_required, recovery_readiness
+28.3 Patch Validation         — validation_status, validation_risk_level
+28.2 Patch Rollback           — rollback_required, rollback_readiness
+28.1 Safe Patch Application   — application_ready
+27.6 Patch Execution          — execution_ready, go_no_go_status
+27.5 Patch Approval           — approval_required
+27.4 Patch Risk Matrix        — risk_score, risk_level
+27.3 Diff Preview             — affected_files
+27.2 Change Preview           — risk_areas
+27.1 Patch Draft              — recommended_files
+26.7 Multi-Agent Coordinator  — combined_risks, overall_confidence
+26.6 Evidence Store           — risk_reasoning
+25.6 Verification Planner     — required_tests
+25.5 Safe Patch Planner       — estimated_complexity
+25.4 Safe Change Boundary     — blocked_actions
+
+HEALTH CHECK
+--------------------------------------------------------------------------------
+- No files over-written: incremental edits only
+- app.py not replaced: 3 targeted edits
+- All new endpoints read-only: no writes, no subprocesses
+- All existing flags set to False: safe by default
+- Fault report section added: patch_oversight
+- Smoke check method added with 21 integration signal assertions
+- Endpoint coverage matrix updated with 3 new entries
+- Protected areas (chat, stream, websocket, typewriter, stop/continue, static/index.html) untouched

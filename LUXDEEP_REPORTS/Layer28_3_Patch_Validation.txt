@@ -1,0 +1,41 @@
+================================================================================
+LAYER 28.3 — PATCH VALIDATION PREVIEW — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+================================================================================
+
+TASK: Layer 28.3 — Patch Validation Preview
+GOAL: Validation strategy preview with success/failure criteria, rollback
+      trigger conditions, and 13 integrated layers.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+patch_validation_preview.py (227 satır, 16,774 byte)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py (12,147 → 12,179) — import, model, 3 routes
+endpoint_coverage_matrix.py (262 → 265) — 3 entries in patch_application_layer_28
+smoke_check.py (8,296 → 8,364) — check_patch_validation_preview() (68 satır)
+lux_fault_report.py (1,540 → 1,580) — import, function, 2 sections
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/patch-validation-status
+GET  /debug/patch-validation-registry
+POST /debug/patch-validation-preview
+
+VALIDATION PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       pending  medium — incremental validation
+websocket_stream    BLOCKED  high   — manual-first regression
+workspace_export    ready    low    — automated suite
+luxway_permission   BLOCKED  high   — platform-specific
+debug_intelligence  ready    low    — smoke tests
+
+13 INTEGRATIONS: 28.2 → 28.1 → 27.6 → 27.5 → 27.4 → 27.3 → 27.2 → 27.1 → 26.7 → 26.6 → 25.6 → 25.5 → 25.4
+
+SAFETY: All read_only. No actual validation execution.
+PROBLEMS: None.
+
+FINAL: TAMAMLANDI — 1 created, 4 edited, 3 endpoints, 13 integrations
+================================================================================

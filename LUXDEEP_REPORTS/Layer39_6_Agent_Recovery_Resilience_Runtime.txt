@@ -1,0 +1,264 @@
+================================================================================
+LAYER 39.6 — AGENT RECOVERY & RESILIENCE RUNTIME PREVIEW
+================================================================================
+
+Report Date        : 2026-06-11
+Layer              : 39.6
+Module             : agent_recovery_resilience_runtime_preview.py
+Series             : LuxCode Agent Runtime Systems
+Version            : 1.0
+Status             : recovery_resilience_ready
+Operation Mode     : read_only_preview_only
+Integration        : 39.5 Agent Lifecycle Runtime,
+39.4 Agent Collaboration Runtime,
+39.3 Agent Memory Loop Runtime,
+39.1 Agent Session Runtime,
+37.0 Execution Brain Consolidation
+----------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 39.6 introduces Agent Recovery & Resilience Runtime.
+
+This layer becomes the runtime resilience and recovery engine of LuxCode.
+
+Primary Goal:
+
+Maintain continuity despite interruptions, failures and unexpected events.
+
+Primary Mission:
+
+Handle:
+
+* stop events
+* interrupted sessions
+* partial executions
+* runtime failures
+* lost continuity
+* unexpected shutdowns
+
+while preserving recoverability.
+
+---
+
+2. RESILIENCE MODEL
+
+---
+
+Runtime Activity
+
+&#8595;
+
+Interruption Detection
+
+&#8595;
+
+State Preservation
+
+&#8595;
+
+Recovery Analysis
+
+&#8595;
+
+Recovery Preparation
+
+&#8595;
+
+Resume Readiness
+
+&#8595;
+
+Runtime Continuation
+
+---
+
+3. INTERRUPTION TYPES
+
+---
+
+manual_stop
+
+runtime_failure
+
+session_interruption
+
+context_loss
+
+partial_completion
+
+unexpected_shutdown
+
+---
+
+4. CAPABILITIES
+
+---
+
+interruption_detection
+
+recovery_analysis
+
+resume_preparation
+
+continuity_reconstruction
+
+state_restoration_analysis
+
+failure_impact_analysis
+
+runtime_resilience_tracking
+
+recovery_health_analysis
+
+recovery_summary_generation
+
+resilience_readiness_analysis
+
+---
+
+5. RECOVERY ENGINE
+
+---
+
+Analyze:
+
+last_known_state
+
+active_tasks
+
+active_workflows
+
+active_commands
+
+runtime_context
+
+Returns:
+
+recovery_package
+
+recovery_plan
+
+recovery_confidence
+
+---
+
+6. HARD STOP ENGINE
+
+---
+
+Track:
+
+manual_stop
+
+forced_stop
+
+partial_stop
+
+Returns:
+
+stop_snapshot
+
+stop_integrity
+
+resume_eligibility
+
+---
+
+7. RESILIENCE HEALTH MODEL
+
+---
+
+Analyze:
+
+recovery_health
+
+continuity_health
+
+resume_health
+
+runtime_health
+
+Returns:
+
+resilience_health
+
+resilience_risk
+
+resilience_readiness
+
+---
+
+8. RESILIENCE SCORE
+
+---
+
+Returns:
+
+recovery_score
+
+resume_score
+
+continuity_score
+
+stability_score
+
+overall_resilience_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+9. ENDPOINTS
+
+---
+
+GET  /recovery-runtime/status
+
+GET  /recovery-runtime/capabilities
+
+POST /recovery-runtime/preview
+
+POST /recovery-runtime/recovery-analysis
+
+POST /recovery-runtime/resume-analysis
+
+POST /recovery-runtime/stop-analysis
+
+POST /recovery-runtime/health
+
+---
+
+10. FILES MODIFIED
+
+---
+
+agent_recovery_resilience_runtime_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+11. SAFETY
+
+---
+
+runtime_control=False
+
+resume_execution=False
+
+state_restoration=False
+
+system_actions=False
+
+read_only_preview_only=True
+
+================================================================================
+END OF LAYER 39.6 REPORT
+========================

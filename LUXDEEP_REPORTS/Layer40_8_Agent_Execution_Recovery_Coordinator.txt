@@ -1,0 +1,289 @@
+================================================================================
+LAYER 40.8 — AGENT EXECUTION RECOVERY COORDINATOR PREVIEW
+================================================================================
+
+Report Date        : 2026-06-11
+Layer              : 40.8
+Module             : agent_execution_recovery_coordinator_preview.py
+Series             : LuxCode Agent Execution Systems
+Version            : 1.0
+Status             : execution_recovery_coordinator_ready
+Operation Mode     : read_only_preview_only
+Integration        : 40.7 Agent Execution Supervisor,
+40.6 Agent Execution Orchestrator,
+39.6 Agent Recovery & Resilience Runtime,
+39.7 Agent Continuity Runtime,
+23.x Lux Debug Intelligence Core (future)
+-----------------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 40.8 introduces Agent Execution Recovery Coordinator.
+
+This layer becomes the execution recovery and continuation coordination
+engine of LuxCode.
+
+Primary Goal:
+
+Coordinate safe recovery when execution deviates from expectations.
+
+Primary Mission:
+
+Determine:
+
+* how to recover
+* how to continue
+* how to reroute
+* how to rollback
+* how to minimize loss
+* how to preserve continuity
+
+after execution problems occur.
+
+---
+
+2. RECOVERY COORDINATION MODEL
+
+---
+
+Execution Issue
+
+&#8595;
+
+Issue Classification
+
+&#8595;
+
+Recovery Analysis
+
+&#8595;
+
+Recovery Planning
+
+&#8595;
+
+Recovery Coordination
+
+&#8595;
+
+Continuation Recommendation
+
+---
+
+3. ISSUE TYPES
+
+---
+
+execution_drift
+
+blocked_execution
+
+failed_verification
+
+dependency_failure
+
+runtime_interruption
+
+deployment_failure
+
+continuity_loss
+
+resource_conflict
+
+---
+
+4. CAPABILITIES
+
+---
+
+recovery_coordination
+
+rollback_analysis
+
+continuation_analysis
+
+reroute_analysis
+
+failure_classification
+
+recovery_plan_generation
+
+continuity_preservation
+
+recovery_health_analysis
+
+recovery_summary_generation
+
+recovery_trace_generation
+
+---
+
+5. RECOVERY PLANNING ENGINE
+
+---
+
+Generate:
+
+safe_recovery_path
+
+alternative_execution_path
+
+continuation_path
+
+rollback_path
+
+Returns:
+
+recovery_plan
+
+recovery_confidence
+
+recovery_complexity
+
+---
+
+6. CONTINUATION ENGINE
+
+---
+
+Analyze:
+
+remaining_tasks
+
+active_workflows
+
+runtime_state
+
+continuity_state
+
+Returns:
+
+continuation_plan
+
+continuation_confidence
+
+continuation_risk
+
+---
+
+7. ROLLBACK ENGINE
+
+---
+
+Evaluate:
+
+rollback_candidates
+
+rollback_dependencies
+
+rollback_impact
+
+rollback_risk
+
+Returns:
+
+rollback_readiness
+
+rollback_confidence
+
+rollback_cost
+
+---
+
+8. RECOVERY HEALTH MODEL
+
+---
+
+Analyze:
+
+recovery_health
+
+continuity_health
+
+rollback_health
+
+runtime_health
+
+Returns:
+
+recovery_coordinator_health
+
+recovery_coordinator_risk
+
+recovery_coordinator_readiness
+
+---
+
+9. RECOVERY SCORE
+
+---
+
+Returns:
+
+recovery_score
+
+continuity_score
+
+rollback_score
+
+stability_score
+
+overall_recovery_coordinator_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+10. ENDPOINTS
+
+---
+
+GET  /execution-recovery/status
+
+GET  /execution-recovery/capabilities
+
+POST /execution-recovery/preview
+
+POST /execution-recovery/recovery-analysis
+
+POST /execution-recovery/continuation-analysis
+
+POST /execution-recovery/rollback-analysis
+
+POST /execution-recovery/health
+
+---
+
+11. FILES MODIFIED
+
+---
+
+agent_execution_recovery_coordinator_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+12. SAFETY
+
+---
+
+real_execution=False
+
+real_rollback=False
+
+continuation_execution=False
+
+system_actions=False
+
+read_only_preview_only=True
+
+================================================================================
+END OF LAYER 40.8 REPORT
+========================

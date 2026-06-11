@@ -1,0 +1,136 @@
+================================================================================
+LAYER 37.1 — GITHUB PROJECT INTELLIGENCE PREVIEW
+================================================================================
+
+Report Date        : 2026-06-11
+Layer              : 37.1
+Module             : github_project_intelligence_preview.py
+Series             : LuxCode Agent Architecture
+Version            : 1.0
+Status             : github_project_intelligence_ready
+Operation Mode     : read_only_preview_only
+-------------------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 37.1 introduces GitHub Project Intelligence.
+
+This layer becomes the repository-awareness engine of LuxCode.
+
+Primary Goal:
+
+Understand repositories as living projects.
+
+Not just files.
+
+Not just commits.
+
+Projects.
+
+---
+
+2. CAPABILITIES
+
+---
+
+repository_analysis
+
+repository_structure_mapping
+
+branch_analysis
+
+commit_history_analysis
+
+repository_health_analysis
+
+issue_relationship_analysis
+
+pull_request_analysis
+
+repository_summary_generation
+
+repository_risk_analysis
+
+repository_growth_analysis
+
+---
+
+3. REPOSITORY AWARENESS
+
+---
+
+Understand:
+
+repository structure
+
+branches
+
+commits
+
+issues
+
+pull requests
+
+release history
+
+project evolution
+
+---
+
+4. PROJECT HEALTH MODEL
+
+---
+
+Analyze:
+
+repository_health
+
+commit_health
+
+branch_health
+
+release_health
+
+maintenance_health
+
+Returns:
+
+overall_repository_score
+
+---
+
+5. FUTURE INTEGRATION TARGETS
+
+---
+
+GitHub Bridge
+
+Clone Workspace
+
+Verification Engine
+
+Deployment Verification
+
+Project Intelligence
+
+---
+
+6. SAFETY
+
+---
+
+repository_modification=False
+
+push_execution=False
+
+merge_execution=False
+
+branch_creation=False
+
+read_only_preview_only=True
+
+================================================================================
+END OF LAYER 37.1 REPORT
+========================

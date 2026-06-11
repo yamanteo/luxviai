@@ -1,0 +1,108 @@
+================================================================================
+  LAYER 32.5 — DEPENDENCY INTELLIGENCE PREVIEW
+  Layer 32 Runtime Intelligence Series — Dependency Extension
+================================================================================
+
+  Date:          2026-06-11
+  Status:        IMPLEMENTED
+  Layer:         32.5
+  Read-only:     Yes
+  Auto-fix:      Disabled
+  Patch-apply:   Disabled
+  Commit/Push:   Disabled
+
+================================================================================
+  FILES CREATED
+================================================================================
+
+  dependency_intelligence_preview.py
+    - 596 lines
+    - 7 dependency profiles
+    - 3 endpoint handlers
+    - Integration with Layer 32.3, 32.2, 32.1, 31, 30
+
+================================================================================
+  FILES MODIFIED
+================================================================================
+
+  1. app.py
+     - Added import: dependency_intelligence_preview
+     - Added model: DependencyIntelligencePreviewRequest
+     - Added 3 endpoints:
+       GET  /debug/dependency-status
+       GET  /debug/dependency-registry
+       POST /debug/dependency-preview
+
+  2. lux_fault_report.py
+     - Added import for dependency_intelligence_preview
+     - Added _fault_report_dependency_intelligence() helper
+     - Added section in both fault report preview dicts
+
+  3. endpoint_coverage_matrix.py
+     - Added "dependency_intelligence_layer_32_5" endpoint group
+     - 3 endpoints registered under layer 32.5
+
+  4. scripts/smoke_check.py
+     - Added check_dependency_intelligence_preview() test method
+     - Added registration in test runner list
+
+================================================================================
+  DEPENDENCY PROFILES (7)
+================================================================================
+
+  1. file_dependency            Score: 0.58  Status: warning  Risk: medium
+  2. module_dependency          Score: 0.45  Status: degraded Risk: high
+  3. system_trigger_dependency  Score: 0.42  Status: degraded Risk: high
+  4. system_impact_dependency   Score: 0.52  Status: warning  Risk: medium
+  5. cross_layer_dependency     Score: 0.48  Status: degraded Risk: high
+  6. external_dependency        Score: 0.55  Status: warning  Risk: high
+  7. configuration_dependency   Score: 0.80  Status: pass     Risk: low
+
+  Overall Dependency Score: 0.54
+  Overall Dependency Status: degraded
+
+================================================================================
+  FOUR-QUADRANT DEPENDENCY MODEL
+================================================================================
+
+  Each profile maps:
+  - Hangi dosyalarla ilişkili      (affected_files)
+  - Hangi modülleri etkilediği     (affected_modules)
+  - Hangi sistemleri tetiklediği   (triggered_systems)
+  - Hangi sistemlerden etkilendiği (impacted_by_systems)
+
+================================================================================
+  ENDPOINTS
+================================================================================
+
+  GET  /debug/dependency-status    → Layer metadata + safety flags
+  GET  /debug/dependency-registry  → All 7 dependency profiles aggregated
+  POST /debug/dependency-preview   → Selected dependency deep-dive + signals
+
+================================================================================
+  PROTECTED AREAS — NOT MODIFIED
+================================================================================
+
+  - chat, stream, websocket, typewriter, stop/continue, static/index.html
+
+================================================================================
+  COMPLETION SUMMARY
+================================================================================
+
+  Layer 32.5 Dependency Intelligence Preview is complete.
+
+  Created:   1 file
+  Modified:  4 files
+  Report:    Layer32_5_Dependency_Intelligence.txt
+
+  No auto-fix, commit, push, or deploy performed.
+  All operations are read-only scaffold endpoints.
+
+  This layer provides the integration foundation for:
+  ★★★★★ Clone Workspace
+  ★★★★★ Sandbox Repair
+  ★★★★★ Dependency Graph
+  ★★★★★ Root Cause Analysis
+  ★★★★★ Safe Patch Planning
+
+================================================================================

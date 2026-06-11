@@ -1,0 +1,55 @@
+========================================================================
+LAYER 29.1 — PATCH PERMISSION ENFORCEMENT — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+========================================================================
+
+TASK: Layer 29.1 — Patch Permission Enforcement Preview
+GOAL: Permission enforcement preview with level/source classification,
+      allowed/blocked action mapping, and 17 integrated layers.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+patch_permission_enforcement_preview.py (422 satır, 19,039 byte)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py (→ 12,310) — import, PatchPermissionPreviewRequest model, 3 routes
+endpoint_coverage_matrix.py (→ 282) — new patch_permission_layer_29 group (3 entries)
+scripts/smoke_check.py (→ 8,646) — check_patch_permission_preview() + registration
+lux_fault_report.py (→ 1,664) — import, _fault_report_patch_permission(), 2 sections
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/patch-permission-status
+GET  /debug/patch-permission-registry
+POST /debug/patch-permission-preview
+
+PERMISSION PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       normal    ready   — auto-approval, basic smoke validation
+websocket_stream    elevated  BLOCKED — manual approval + boundary check required
+workspace_export    normal    ready   — auto-approval, format validation
+luxway_permission   elevated  BLOCKED — platform-specific + privacy boundary
+debug_intelligence  normal    ready   — auto-approval, smoke tests
+
+OUTPUT FIELDS
+--------------------------------------------------------------------------------
+permission_level       — normal / elevated
+permission_source      — lifecycle gate + boundary checks
+allowed_actions        — list of permitted actions
+blocked_actions        — list of blocked actions
+required_approvals     — approval requirements
+required_validations   — validation requirements
+required_boundaries    — boundary check requirements
+permission_risk_level  — low / high
+permission_readiness   — bool (3 ready, 2 blocked)
+recommended_next_action — action recommendation
+confidence_score       — aggregated confidence
+
+17 INTEGRATIONS: 28 → 28.6 → 28.5 → 28.4 → 28.3 → 28.2 → 28.1 → 27.6 → 27.5 → 27.4 → 27.3 → 27.2 → 27.1 → 26.7 → 26.6 → 25.6 → 25.5 → 25.4
+
+SAFETY: All read_only. No actual permission enforcement.
+PROBLEMS: None.
+
+FINAL: TAMAMLANDI — 1 created, 4 edited, 3 endpoints, 17 integrations
+========================================================================

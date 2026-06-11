@@ -1119,6 +1119,30 @@ class SmokeRunner:
             "/debug/evidence-store-registry",
             "/debug/coordinator-status",
             "/debug/coordinator-registry",
+            "/debug/root-cause-status",
+            "/debug/root-cause-registry",
+            "/debug/root-cause-preview",
+            "/debug/change-memory-status",
+            "/debug/change-memory-registry",
+            "/debug/change-memory-preview",
+            "/debug/failed-change-status",
+            "/debug/failed-change-registry",
+            "/debug/failed-change-preview",
+            "/debug/change-planning-status",
+            "/debug/change-planning-registry",
+            "/debug/change-planning-preview",
+            "/debug/clone-workspace-status",
+            "/debug/clone-workspace-registry",
+            "/debug/clone-workspace-preview",
+            "/debug/sandbox-repair-status",
+            "/debug/sandbox-repair-registry",
+            "/debug/sandbox-repair-preview",
+            "/debug/verification-status",
+            "/debug/verification-registry",
+            "/debug/verification-preview",
+            "/debug/delivery-readiness-status",
+            "/debug/delivery-readiness-registry",
+            "/debug/delivery-readiness-preview",
         ]:
             assert endpoint in html, endpoint
         lowered = html.lower()
@@ -1164,6 +1188,8 @@ class SmokeRunner:
         assert "/debug/master-status" in html, html[:300]
         assert "/debug/lux-character-status" in html, html[:300]
         assert "/debug/layer21-status" in html, html[:300]
+        assert "/debug/layer32-status" in html, html[:300]
+        assert "/debug/layer32-full-status" in html, html[:300]
         assert "/future/candidates" in html, html[:300]
         assert "/future/preview" in html, html[:300]
         assert "/debug/layer22-status" in html, html[:300]
@@ -5515,6 +5541,2497 @@ class SmokeRunner:
 
         return "patch draft engine preview"
 
+    def check_change_preview_engine(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/change-preview-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "27.2", status
+        assert status.get("name") == "Change Preview Engine", status
+        assert status.get("status") == "change_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("preview_only") is True, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("git_write_enabled") is False, status
+        assert status.get("commit_enabled") is False, status
+        assert status.get("push_enabled") is False, status
+        assert status.get("deploy_enabled") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("patch_apply_enabled") is False, status
+        assert status.get("subprocess_execution_enabled") is False, status
+        assert status.get("repo_scan_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/change-preview-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "27.2", registry
+        assert registry.get("name") == "Change Preview Registry", registry
+        assert registry.get("status") == "change_preview_registry_ready", registry
+        assert registry.get("preview_count", 0) >= 1, registry
+        assert isinstance(registry.get("previews"), list), registry
+        assert registry.get("safety_flags", {}).get("file_write") is False, registry
+        assert registry.get("safety_flags", {}).get("memory_write") is False, registry
+        assert registry.get("safety_flags", {}).get("db_write") is False, registry
+        assert registry.get("safety_flags", {}).get("git_write") is False, registry
+        assert registry.get("safety_flags", {}).get("patch_apply") is False, registry
+        assert registry.get("safety_flags", {}).get("subprocess_execution") is False, registry
+
+        preview_response = client.post(
+            "/debug/change-preview",
+            json={
+                "target_issue": "stop_continue",
+                "command": "dur devam resume flow change preview",
+                "project_area": "stop_continue",
+                "related_layer": "Layer 27.2",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("target_issue") == "stop_continue", preview
+        assert "resume_flow" in preview.get("affected_areas", []), preview
+        assert "runtime_state" in preview.get("affected_areas", []), preview
+        assert preview.get("before_summary") == "multiple resume paths", preview
+        assert preview.get("after_summary") == "single owner flow", preview
+        assert "reduced duplication" in preview.get("predicted_effects", []), preview
+        assert "stream_runtime" in preview.get("risk_areas", []), preview
+        assert preview.get("approval_required") is True, preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("integration_signals"), dict), preview
+        assert preview.get("integration_signals", {}).get("patch_draft"), preview
+        assert preview.get("integration_signals", {}).get("multi_agent_coordinator"), preview
+        assert preview.get("integration_signals", {}).get("evidence_store"), preview
+        assert preview.get("integration_signals", {}).get("safe_change_boundary"), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("strict_read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("preview_only") is True, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        assert preview.get("patch_apply_performed") is False, preview
+        assert preview.get("subprocess_execution_performed") is False, preview
+        assert preview.get("repo_scan_performed") is False, preview
+        assert preview.get("chat_stream_touched") is False, preview
+        assert preview.get("typewriter_runtime_touched") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        change_preview = report.get("sections", {}).get("change_preview", [])
+        assert change_preview, report
+        assert change_preview[0].get("Etkilenen Alanlar"), report
+        assert change_preview[0].get("Önce Özeti"), report
+        assert change_preview[0].get("Sonra Özeti"), report
+        assert change_preview[0].get("Tahmini Etkiler"), report
+        assert change_preview[0].get("Risk Alanları"), report
+        assert change_preview[0].get("Onay Gereksinimi") is not None, report
+
+        return "change preview engine"
+
+    def check_diff_preview_engine(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/diff-preview-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "27.3", status
+        assert status.get("name") == "Diff Preview Engine", status
+        assert status.get("status") == "diff_preview_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("preview_only") is True, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("git_write_enabled") is False, status
+        assert status.get("commit_enabled") is False, status
+        assert status.get("push_enabled") is False, status
+        assert status.get("deploy_enabled") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("patch_apply_enabled") is False, status
+        assert status.get("subprocess_execution_enabled") is False, status
+        assert status.get("repo_scan_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/diff-preview-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "27.3", registry
+        assert registry.get("name") == "Diff Preview Registry", registry
+        assert registry.get("status") == "diff_preview_registry_ready", registry
+        assert registry.get("diff_count", 0) >= 1, registry
+        assert isinstance(registry.get("diffs"), list), registry
+        assert registry.get("safety_flags", {}).get("file_write") is False, registry
+        assert registry.get("safety_flags", {}).get("memory_write") is False, registry
+        assert registry.get("safety_flags", {}).get("db_write") is False, registry
+        assert registry.get("safety_flags", {}).get("git_write") is False, registry
+        assert registry.get("safety_flags", {}).get("patch_apply") is False, registry
+        assert registry.get("safety_flags", {}).get("subprocess_execution") is False, registry
+
+        preview_response = client.post(
+            "/debug/diff-preview",
+            json={
+                "target_issue": "stop_continue",
+                "command": "dur devam resume flow diff preview",
+                "project_area": "stop_continue",
+                "related_layer": "Layer 27.3",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("target_issue") == "stop_continue", preview
+        assert "app.py" in preview.get("affected_files", []), preview
+        assert preview.get("before_code_summary") == "multiple resume_owner paths with scattered validation", preview
+        assert preview.get("after_code_summary") == "single resume_owner path with consolidated validation", preview
+        assert preview.get("diff_hunks_expected", 0) >= 1, preview
+        assert "resume_flow" in preview.get("risk_areas", []), preview
+        assert preview.get("approval_required") is True, preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("integration_signals"), dict), preview
+        assert preview.get("integration_signals", {}).get("patch_draft"), preview
+        assert preview.get("integration_signals", {}).get("change_preview"), preview
+        assert preview.get("integration_signals", {}).get("multi_agent_coordinator"), preview
+        assert preview.get("integration_signals", {}).get("evidence_store"), preview
+        assert preview.get("integration_signals", {}).get("safe_change_boundary"), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("strict_read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("preview_only") is True, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        assert preview.get("patch_apply_performed") is False, preview
+        assert preview.get("subprocess_execution_performed") is False, preview
+        assert preview.get("repo_scan_performed") is False, preview
+        assert preview.get("chat_stream_touched") is False, preview
+        assert preview.get("typewriter_runtime_touched") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        diff_preview_section = report.get("sections", {}).get("diff_preview", [])
+        assert diff_preview_section, report
+        assert diff_preview_section[0].get("Hedef Sorun"), report
+        assert diff_preview_section[0].get("Etkilenen Dosyalar"), report
+        assert diff_preview_section[0].get("Önce Kod Özeti"), report
+        assert diff_preview_section[0].get("Sonra Kod Özeti"), report
+        assert diff_preview_section[0].get("Tahmini Hunk Sayısı"), report
+        assert diff_preview_section[0].get("Risk Alanları"), report
+        assert diff_preview_section[0].get("Onay Gereksinimi") is not None, report
+
+        return "diff preview engine"
+
+    def check_patch_risk_matrix_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/patch-risk-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "27.4", status
+        assert status.get("name") == "Patch Risk Matrix Preview", status
+        assert status.get("status") == "patch_risk_matrix_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("preview_only") is True, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("git_write_enabled") is False, status
+        assert status.get("commit_enabled") is False, status
+        assert status.get("push_enabled") is False, status
+        assert status.get("deploy_enabled") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("patch_apply_enabled") is False, status
+        assert status.get("subprocess_execution_enabled") is False, status
+        assert status.get("repo_scan_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/patch-risk-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "27.4", registry
+        assert registry.get("name") == "Patch Risk Registry", registry
+        assert registry.get("status") == "patch_risk_registry_ready", registry
+        assert registry.get("risk_count", 0) >= 1, registry
+        assert isinstance(registry.get("risks"), list), registry
+        risk_summary = registry.get("risk_level_summary", {})
+        assert isinstance(risk_summary.get("high"), int), registry
+        assert isinstance(risk_summary.get("medium"), int), registry
+        assert isinstance(risk_summary.get("low"), int), registry
+        assert registry.get("safety_flags", {}).get("file_write") is False, registry
+        assert registry.get("safety_flags", {}).get("memory_write") is False, registry
+        assert registry.get("safety_flags", {}).get("db_write") is False, registry
+        assert registry.get("safety_flags", {}).get("git_write") is False, registry
+        assert registry.get("safety_flags", {}).get("patch_apply") is False, registry
+        assert registry.get("safety_flags", {}).get("subprocess_execution") is False, registry
+
+        preview_response = client.post(
+            "/debug/patch-risk-preview",
+            json={
+                "target_issue": "stop_continue",
+                "command": "dur devam resume flow patch risk",
+                "project_area": "stop_continue",
+                "related_layer": "Layer 27.4",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("target_issue") == "stop_continue", preview
+        assert preview.get("target_component") == "resume_flow", preview
+        assert "app.py" in preview.get("affected_files", []), preview
+        assert "legacy_chat_runtime" in preview.get("affected_layers", []), preview
+        assert "/chat" in preview.get("affected_endpoints", []), preview
+        assert preview.get("risk_score", 0) >= 1, preview
+        assert preview.get("risk_level") == "medium", preview
+        assert "duplicate resume_owner logic" in preview.get("risk_reasons", []), preview
+        assert preview.get("dependency_risk") == "low", preview
+        assert preview.get("runtime_risk") == "high", preview
+        assert preview.get("regression_risk") == "medium", preview
+        assert preview.get("boundary_risk") == "medium", preview
+        assert preview.get("verification_required") is True, preview
+        assert "resume after stop via /chat" in preview.get("recommended_tests", []), preview
+        assert preview.get("approval_required") is True, preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("integration_signals"), dict), preview
+        assert preview.get("integration_signals", {}).get("patch_draft"), preview
+        assert preview.get("integration_signals", {}).get("change_preview"), preview
+        assert preview.get("integration_signals", {}).get("diff_preview"), preview
+        assert preview.get("integration_signals", {}).get("multi_agent_coordinator"), preview
+        assert preview.get("integration_signals", {}).get("evidence_store"), preview
+        assert preview.get("integration_signals", {}).get("safe_patch_planner"), preview
+        assert preview.get("integration_signals", {}).get("verification_planner"), preview
+        assert preview.get("integration_signals", {}).get("safe_change_boundary"), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("strict_read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("preview_only") is True, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        assert preview.get("patch_apply_performed") is False, preview
+        assert preview.get("subprocess_execution_performed") is False, preview
+        assert preview.get("repo_scan_performed") is False, preview
+        assert preview.get("chat_stream_touched") is False, preview
+        assert preview.get("typewriter_runtime_touched") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        risk_section = report.get("sections", {}).get("patch_risk_matrix", [])
+        assert risk_section, report
+        assert risk_section[0].get("Hedef Sorun"), report
+        assert risk_section[0].get("Hedef Bileşen"), report
+        assert risk_section[0].get("Etkilenen Dosyalar"), report
+        assert risk_section[0].get("Etkilenen Layer'lar"), report
+        assert risk_section[0].get("Etkilenen Endpoint'ler"), report
+        assert risk_section[0].get("Risk Skoru") is not None, report
+        assert risk_section[0].get("Risk Seviyesi"), report
+        assert risk_section[0].get("Risk Sebepleri"), report
+        assert risk_section[0].get("Bağımlılık Riski"), report
+        assert risk_section[0].get("Çalışma Zamanı Riski"), report
+        assert risk_section[0].get("Regresyon Riski"), report
+        assert risk_section[0].get("Sınır Riski"), report
+        assert risk_section[0].get("Doğrulama Gerekli") is not None, report
+        assert risk_section[0].get("Önerilen Testler"), report
+        assert risk_section[0].get("Onay Gereksinimi") is not None, report
+
+        return "patch risk matrix preview"
+
+    def check_patch_approval_engine_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/patch-approval-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "27.5", status
+        assert status.get("name") == "Patch Approval Engine Preview", status
+        assert status.get("status") == "patch_approval_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("preview_only") is True, status
+        assert status.get("file_write_enabled") is False, status
+        assert status.get("memory_write_enabled") is False, status
+        assert status.get("db_write_enabled") is False, status
+        assert status.get("git_write_enabled") is False, status
+        assert status.get("commit_enabled") is False, status
+        assert status.get("push_enabled") is False, status
+        assert status.get("deploy_enabled") is False, status
+        assert status.get("auto_fix_enabled") is False, status
+        assert status.get("patch_apply_enabled") is False, status
+        assert status.get("subprocess_execution_enabled") is False, status
+        assert status.get("repo_scan_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/patch-approval-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "27.5", registry
+        assert registry.get("name") == "Patch Approval Registry", registry
+        assert registry.get("status") == "patch_approval_registry_ready", registry
+        assert registry.get("approval_count", 0) >= 1, registry
+        assert isinstance(registry.get("approvals"), list), registry
+        approval_summary = registry.get("approval_level_summary", {})
+        assert isinstance(approval_summary.get("strict"), int), registry
+        assert isinstance(approval_summary.get("standard"), int), registry
+        assert isinstance(approval_summary.get("low"), int), registry
+        assert isinstance(registry.get("blocked_count"), int), registry
+        assert isinstance(registry.get("human_review_count"), int), registry
+        assert isinstance(registry.get("safe_to_continue_count"), int), registry
+        assert registry.get("safety_flags", {}).get("file_write") is False, registry
+        assert registry.get("safety_flags", {}).get("memory_write") is False, registry
+        assert registry.get("safety_flags", {}).get("db_write") is False, registry
+        assert registry.get("safety_flags", {}).get("git_write") is False, registry
+        assert registry.get("safety_flags", {}).get("patch_apply") is False, registry
+        assert registry.get("safety_flags", {}).get("subprocess_execution") is False, registry
+
+        preview_response = client.post(
+            "/debug/patch-approval-preview",
+            json={
+                "target_issue": "stop_continue",
+                "command": "dur devam resume flow patch approval",
+                "project_area": "stop_continue",
+                "related_layer": "Layer 27.5",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("target_issue") == "stop_continue", preview
+        assert preview.get("target_component") == "resume_flow", preview
+        assert preview.get("approval_required") is True, preview
+        assert preview.get("approval_level") == "standard", preview
+        assert "consolidated resume_owner" in preview.get("approval_reason", ""), preview
+        assert preview.get("approval_source") == "patch_risk_matrix", preview
+        assert preview.get("human_review_required") is True, preview
+        assert preview.get("blocked_by_boundary") is False, preview
+        assert preview.get("safe_to_continue") is True, preview
+        assert "resume_flow consolidation" in preview.get("recommended_next_action", ""), preview
+        assert "dev_review" in preview.get("recommended_approval_path", ""), preview
+        assert "resume after stop" in preview.get("required_validations", []), preview
+        assert "unit: resume flow" in preview.get("required_tests", []), preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("integration_signals"), dict), preview
+        assert preview.get("integration_signals", {}).get("patch_draft"), preview
+        assert preview.get("integration_signals", {}).get("change_preview"), preview
+        assert preview.get("integration_signals", {}).get("diff_preview"), preview
+        assert preview.get("integration_signals", {}).get("patch_risk_matrix"), preview
+        assert preview.get("integration_signals", {}).get("multi_agent_coordinator"), preview
+        assert preview.get("integration_signals", {}).get("evidence_store"), preview
+        assert preview.get("integration_signals", {}).get("verification_planner"), preview
+        assert preview.get("integration_signals", {}).get("safe_patch_planner"), preview
+        assert preview.get("integration_signals", {}).get("safe_change_boundary"), preview
+        assert preview.get("read_only") is True, preview
+        assert preview.get("strict_read_only") is True, preview
+        assert preview.get("analysis_only") is True, preview
+        assert preview.get("preview_only") is True, preview
+        assert preview.get("file_write_performed") is False, preview
+        assert preview.get("memory_write_performed") is False, preview
+        assert preview.get("db_write_performed") is False, preview
+        assert preview.get("git_write_performed") is False, preview
+        assert preview.get("commit_performed") is False, preview
+        assert preview.get("push_performed") is False, preview
+        assert preview.get("deploy_performed") is False, preview
+        assert preview.get("auto_fix_performed") is False, preview
+        assert preview.get("patch_apply_performed") is False, preview
+        assert preview.get("subprocess_execution_performed") is False, preview
+        assert preview.get("repo_scan_performed") is False, preview
+        assert preview.get("chat_stream_touched") is False, preview
+        assert preview.get("typewriter_runtime_touched") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        approval_section = report.get("sections", {}).get("patch_approval", [])
+        assert approval_section, report
+        assert approval_section[0].get("Hedef Sorun"), report
+        assert approval_section[0].get("Hedef Bileşen"), report
+        assert approval_section[0].get("Onay Gerekli") is not None, report
+        assert approval_section[0].get("Onay Seviyesi"), report
+        assert approval_section[0].get("Onay Sebebi"), report
+        assert approval_section[0].get("Onay Kaynağı"), report
+        assert approval_section[0].get("İnsan İncelemesi Gerekli") is not None, report
+        assert approval_section[0].get("Sınır Engelli") is not None, report
+        assert approval_section[0].get("Devam Etmek Güvenli") is not None, report
+        assert approval_section[0].get("Önerilen Sonraki Adım"), report
+        assert approval_section[0].get("Önerilen Onay Yolu"), report
+        assert approval_section[0].get("Gerekli Doğrulamalar"), report
+        assert approval_section[0].get("Gerekli Testler"), report
+
+        return "patch approval engine preview"
+
+    def check_patch_execution_readiness_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/patch-execution-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "27.6", status
+        assert status.get("name") == "Patch Execution Readiness Preview", status
+        assert status.get("status") == "patch_execution_readiness_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        assert status.get("analysis_only") is True, status
+        assert status.get("preview_only") is True, status
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled",
+                     "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled",
+                     "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert status.get(flag) is False, f"{flag} should be False"
+        assert status.get("repo_scan_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/patch-execution-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "27.6", registry
+        assert registry.get("name") == "Patch Execution Readiness Registry", registry
+        assert registry.get("status") == "patch_execution_registry_ready", registry
+        assert registry.get("execution_count", 0) >= 1, registry
+        assert isinstance(registry.get("executions"), list), registry
+        go_no_go = registry.get("go_no_go_summary", {})
+        assert isinstance(go_no_go.get("go"), int), registry
+        assert isinstance(go_no_go.get("no_go"), int), registry
+        assert isinstance(registry.get("ready_count"), int), registry
+        assert isinstance(registry.get("blocked_count"), int), registry
+        assert isinstance(registry.get("rollback_required_count"), int), registry
+        for flag in ["file_write", "memory_write", "db_write", "git_write",
+                     "commit", "push", "deploy", "auto_fix", "patch_apply", "subprocess_execution"]:
+            assert registry.get("safety_flags", {}).get(flag) is False, f"safety flag {flag}"
+
+        preview_response = client.post(
+            "/debug/patch-execution-preview",
+            json={
+                "target_issue": "stop_continue",
+                "command": "dur devam resume flow execution readiness",
+                "project_area": "stop_continue",
+                "related_layer": "Layer 27.6",
+            },
+        )
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("target_issue") == "stop_continue", preview
+        assert preview.get("target_component") == "resume_flow", preview
+        assert preview.get("execution_ready") is True, preview
+        assert preview.get("readiness_score", 0) >= 50, preview
+        assert preview.get("go_no_go_status") == "go", preview
+        assert preview.get("blockers") == [], preview
+        assert "dev_review" in preview.get("required_approvals", []), preview
+        assert "resume after stop" in preview.get("required_validations", []), preview
+        assert "unit: resume flow" in preview.get("required_tests", []), preview
+        assert preview.get("verification_ready") is True, preview
+        assert preview.get("rollback_required") is False, preview
+        assert "git revert" in preview.get("rollback_strategy", ""), preview
+        assert "apply_patch" in preview.get("execution_path", ""), preview
+        assert "proceed" in preview.get("recommended_next_action", ""), preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        assert isinstance(preview.get("integration_signals"), dict), preview
+        for sig in ["patch_draft", "change_preview", "diff_preview", "patch_risk_matrix",
+                     "patch_approval", "multi_agent_coordinator", "evidence_store",
+                     "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert preview.get("integration_signals", {}).get(sig), f"missing integration signal: {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed",
+                     "git_write_performed", "commit_performed", "push_performed", "deploy_performed",
+                     "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert preview.get(flag) is False, f"{flag} should be False"
+        assert preview.get("repo_scan_performed") is False, preview
+        assert preview.get("chat_stream_touched") is False, preview
+        assert preview.get("typewriter_runtime_touched") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        exec_section = report.get("sections", {}).get("patch_execution_readiness", [])
+        assert exec_section, report
+        for field in ["Hedef Sorun", "Hedef Bileşen", "Çalıştırmaya Hazır", "Hazırlık Skoru",
+                      "Go/No-Go Durumu", "Engeller", "Eksik Gereksinimler", "Gerekli Onaylar",
+                      "Gerekli Doğrulamalar", "Gerekli Testler", "Doğrulama Hazır",
+                      "Geri Alma Gerekli", "Geri Alma Stratejisi", "Çalıştırma Yolu",
+                      "Önerilen Sonraki Adım"]:
+            assert exec_section[0].get(field) is not None or exec_section[0].get(field) == [], f"missing field: {field}"
+
+        return "patch execution readiness preview"
+
+    def check_layer27_status_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        response = client.get("/debug/layer27-status")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload.get("snapshot_status") == "layer_27_snapshot_ready", payload
+        assert payload.get("layer_27_complete") is True, payload
+        assert payload.get("layer_count") == 6, payload
+        assert payload.get("endpoint_count") == 18, payload
+        assert payload.get("integration_count") >= 1, payload
+        implemented = payload.get("implemented_layers", [])
+        assert len(implemented) == 6, payload
+        for layer_name in ["27.1", "27.2", "27.3", "27.4", "27.5", "27.6"]:
+            found = any(layer_name in str(item) for item in implemented)
+            assert found, f"missing {layer_name} in implemented_layers"
+        statuses = payload.get("layer_statuses", {})
+        for layer_id in ["27.1", "27.2", "27.3", "27.4", "27.5", "27.6"]:
+            assert layer_id in statuses, f"missing {layer_id}"
+            assert statuses[layer_id].get("read_only") is True, f"{layer_id} not read_only"
+        assert payload.get("all_read_only") is True, payload
+        safety = payload.get("safety_summary", {})
+        for flag in ["file_write", "memory_write", "db_write", "git_write",
+                     "commit", "push", "deploy", "auto_fix", "patch_apply", "subprocess_execution"]:
+            assert safety.get(flag) is False, f"safety {flag}"
+        readiness = payload.get("development_readiness", {})
+        assert readiness.get("all_layers_implemented") is True, payload
+        assert readiness.get("all_endpoints_documented") is True, payload
+        assert readiness.get("smoke_tests_implemented") is True, payload
+        assert readiness.get("fault_report_integrated") is True, payload
+        assert isinstance(payload.get("future_direction"), list), payload
+        assert payload.get("read_only") is True, payload
+        assert payload.get("chat_stream_touched") is False, payload
+        assert payload.get("typewriter_runtime_touched") is False, payload
+
+        full_response = client.get("/debug/layer27-full-status")
+        assert full_response.status_code == 200, full_response.text
+        full = full_response.json()
+        assert full.get("layer_27_complete") is True, full
+        details = full.get("full_details", {})
+        for layer_id in ["27.1", "27.2", "27.3", "27.4", "27.5", "27.6"]:
+            assert layer_id in details, f"missing {layer_id}"
+            assert details[layer_id].get("read_only") is True
+            assert isinstance(details[layer_id].get("available_endpoints"), list)
+            assert isinstance(details[layer_id].get("connected_layers"), list)
+        assert full.get("total_integrations_across_layers", 0) >= 6, full
+        assert full.get("total_endpoints_across_layers", 0) >= 18, full
+
+        return "layer 27 status snapshot"
+
+    def check_safe_patch_application_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        status_response = client.get("/debug/safe-patch-status")
+        assert status_response.status_code == 200, status_response.text
+        status = status_response.json()
+        assert status.get("layer") == "28.1", status
+        assert status.get("name") == "Safe Patch Application Preview", status
+        assert status.get("status") == "safe_patch_application_ready", status
+        assert status.get("read_only") is True, status
+        assert status.get("strict_read_only") is True, status
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled",
+                     "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled",
+                     "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert status.get(flag) is False, f"{flag}"
+        assert status.get("repo_scan_performed") is False, status
+        assert status.get("chat_stream_touched") is False, status
+        assert status.get("typewriter_runtime_touched") is False, status
+
+        registry_response = client.get("/debug/safe-patch-registry")
+        assert registry_response.status_code == 200, registry_response.text
+        registry = registry_response.json()
+        assert registry.get("layer") == "28.1", registry
+        assert registry.get("name") == "Safe Patch Application Registry", registry
+        assert registry.get("status") == "safe_patch_registry_ready", registry
+        assert registry.get("patch_count", 0) >= 1, registry
+        assert isinstance(registry.get("patches"), list), registry
+        assert isinstance(registry.get("ready_count"), int), registry
+        assert isinstance(registry.get("blocked_count"), int), registry
+        for flag in ["file_write", "memory_write", "db_write", "git_write",
+                     "commit", "push", "deploy", "auto_fix", "patch_apply", "subprocess_execution"]:
+            assert registry.get("safety_flags", {}).get(flag) is False, f"safety {flag}"
+
+        preview_response = client.post("/debug/safe-patch-preview", json={
+            "target_issue": "stop_continue",
+            "command": "dur devam resume flow safe patch application",
+            "project_area": "stop_continue",
+            "related_layer": "Layer 28.1",
+        })
+        assert preview_response.status_code == 200, preview_response.text
+        preview = preview_response.json()
+        assert preview.get("target_issue") == "stop_continue", preview
+        assert preview.get("target_component") == "resume_flow", preview
+        assert preview.get("patch_plan_id") == "SP-001", preview
+        assert preview.get("application_ready") is True, preview
+        assert len(preview.get("application_steps", [])) >= 2, preview
+        assert "app.py" in preview.get("affected_files", []), preview
+        assert "resume_owner" in preview.get("affected_functions", []), preview
+        assert len(preview.get("pre_checks", [])) >= 1, preview
+        assert len(preview.get("post_checks", [])) >= 1, preview
+        assert "git revert" in preview.get("rollback_plan", ""), preview
+        assert preview.get("approval_required") is True, preview
+        assert preview.get("verification_required") is True, preview
+        assert preview.get("risk_level") == "medium", preview
+        assert preview.get("confidence_score", 0) > 0, preview
+        sigs = preview.get("integration_signals", {})
+        for sig in ["patch_draft", "change_preview", "diff_preview", "patch_risk_matrix",
+                     "patch_approval", "patch_execution_readiness", "multi_agent_coordinator",
+                     "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed",
+                     "git_write_performed", "commit_performed", "push_performed", "deploy_performed",
+                     "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert preview.get(flag) is False, f"{flag}"
+        assert preview.get("chat_stream_touched") is False, preview
+        assert preview.get("typewriter_runtime_touched") is False, preview
+
+        report_response = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert report_response.status_code == 200, report_response.text
+        report = report_response.json()
+        section = report.get("sections", {}).get("safe_patch_application", [])
+        assert section, report
+        for field in ["Hedef Sorun", "Hedef Bileşen", "Patch Plan ID", "Uygulamaya Hazır",
+                      "Uygulama Adımları", "Etkilenen Dosyalar", "Etkilenen Fonksiyonlar",
+                      "Ön Kontroller", "Son Kontroller", "Geri Alma Planı",
+                      "Onay Gerekli", "Doğrulama Gerekli", "Risk Seviyesi"]:
+            assert section[0].get(field) is not None or section[0].get(field) == [], f"missing {field}"
+
+        return "safe patch application preview"
+
+    def check_patch_rollback_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/patch-rollback-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "28.2", st
+        assert st.get("name") == "Patch Rollback Preview", st
+        assert st.get("status") == "patch_rollback_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled",
+                     "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled",
+                     "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/patch-rollback-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "28.2", rg
+        assert rg.get("status") == "patch_rollback_registry_ready", rg
+        assert rg.get("rollback_count", 0) >= 1, rg
+        assert isinstance(rg.get("mandatory_count"), int), rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        p = client.post("/debug/patch-rollback-preview", json={
+            "target_issue": "websocket_stream", "command": "stream rollback test",
+            "project_area": "websocket_stream", "related_layer": "Layer 28.2"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("target_issue") == "websocket_stream", pv
+        assert pv.get("rollback_required") is True, pv
+        assert pv.get("rollback_level") == "mandatory", pv
+        assert "high runtime risk" in pv.get("rollback_reason", ""), pv
+        assert len(pv.get("rollback_steps", [])) >= 2, pv
+        assert pv.get("rollback_risk_level") == "high", pv
+        assert pv.get("rollback_readiness") is False, pv
+        assert pv.get("confidence_score", 0) > 0, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["safe_patch_application", "patch_execution_readiness", "patch_approval",
+                     "patch_risk_matrix", "diff_preview", "change_preview", "patch_draft",
+                     "multi_agent_coordinator", "evidence_store", "verification_planner",
+                     "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed",
+                     "git_write_performed", "commit_performed", "push_performed", "deploy_performed",
+                     "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("patch_rollback", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Rollback Gerekli", "Rollback Seviyesi", "Rollback Adımları",
+                     "Rollback Risk Seviyesi", "Kurtarma Planı", "Rollback Hazır"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "patch rollback preview"
+
+    def check_patch_validation_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/patch-validation-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "28.3", st
+        assert st.get("status") == "patch_validation_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled",
+                     "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled",
+                     "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/patch-validation-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "28.3", rg
+        assert rg.get("status") == "patch_validation_registry_ready", rg
+        assert rg.get("validation_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("pending_count"), int), rg
+        p = client.post("/debug/patch-validation-preview", json={
+            "target_issue": "websocket_stream", "command": "stream validation test",
+            "project_area": "websocket_stream", "related_layer": "Layer 28.3"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("target_issue") == "websocket_stream", pv
+        assert pv.get("validation_required") is True, pv
+        assert pv.get("validation_status") == "blocked", pv
+        assert "manual-first" in pv.get("validation_strategy", ""), pv
+        assert len(pv.get("validation_steps", [])) >= 2, pv
+        assert pv.get("validation_risk_level") == "high", pv
+        assert len(pv.get("required_tests", [])) >= 2, pv
+        assert len(pv.get("success_criteria", [])) >= 2, pv
+        assert len(pv.get("failure_criteria", [])) >= 2, pv
+        assert "rollback" in pv.get("rollback_trigger", ""), pv
+        assert pv.get("confidence_score", 0) > 0, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["patch_rollback", "safe_patch_application", "patch_execution_readiness",
+                     "patch_approval", "patch_risk_matrix", "diff_preview", "change_preview",
+                     "patch_draft", "multi_agent_coordinator", "evidence_store",
+                     "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed",
+                     "git_write_performed", "commit_performed", "push_performed", "deploy_performed",
+                     "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("patch_validation", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Doğrulama Gerekli", "Doğrulama Durumu", "Doğrulama Stratejisi",
+                     "Başarı Kriterleri", "Rollback Tetikleyici"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "patch validation preview"
+
+    def check_patch_recovery_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/patch-recovery-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "28.4", st
+        assert st.get("status") == "patch_recovery_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled",
+                     "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled",
+                     "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/patch-recovery-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "28.4", rg
+        assert rg.get("status") == "patch_recovery_registry_ready", rg
+        assert rg.get("recovery_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("pending_count"), int), rg
+        p = client.post("/debug/patch-recovery-preview", json={
+            "target_issue": "websocket_stream", "command": "stream recovery test",
+            "project_area": "websocket_stream", "related_layer": "Layer 28.4"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("target_issue") == "websocket_stream", pv
+        assert pv.get("failure_type") == "runtime_stream_corruption", pv
+        assert pv.get("recovery_required") is True, pv
+        assert pv.get("recovery_strategy") is not None, pv
+        assert len(pv.get("recovery_steps", [])) >= 2, pv
+        assert pv.get("recovery_risk_level") == "high", pv
+        assert pv.get("confidence_score", 0) > 0, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["patch_validation", "patch_rollback", "safe_patch_application",
+                     "patch_execution_readiness", "patch_approval", "patch_risk_matrix",
+                     "diff_preview", "change_preview", "patch_draft", "multi_agent_coordinator",
+                     "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed",
+                     "git_write_performed", "commit_performed", "push_performed", "deploy_performed",
+                     "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("patch_recovery", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hata Türü", "Kurtarma Gerekli", "Kurtarma Stratejisi",
+                     "Kurtarma Adımları", "Kurtarma Risk Seviyesi", "Önerilen Sonraki Adım"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "patch recovery preview"
+
+    def check_patch_audit_trail_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/patch-audit-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "28.5", st
+        assert st.get("status") == "patch_audit_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/patch-audit-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "28.5", rg
+        assert rg.get("status") == "patch_audit_registry_ready", rg
+        assert rg.get("audit_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("pending_count"), int), rg
+        p = client.post("/debug/patch-audit-preview", json={"target_issue": "websocket_stream", "command": "stream audit test", "project_area": "websocket_stream", "related_layer": "Layer 28.5"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("target_issue") == "websocket_stream", pv
+        assert pv.get("audit_id") == "websocket_stream", pv
+        assert pv.get("audit_completeness") == "comprehensive", pv
+        assert pv.get("audit_readiness") is True, pv
+        assert len(pv.get("timeline_events", [])) >= 5, pv
+        assert pv.get("confidence_score", 0) > 0, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "diff_preview", "change_preview", "patch_draft", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("patch_audit_trail", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Audit ID", "Olay Sayısı", "Etkilenen Katmanlar", "Karar Zinciri", "Denetim Hazır"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "patch audit trail preview"
+
+    def check_patch_lifecycle_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/patch-lifecycle-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "28.6", st
+        assert st.get("status") == "patch_lifecycle_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/patch-lifecycle-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "28.6", rg
+        assert rg.get("status") == "patch_lifecycle_registry_ready", rg
+        assert rg.get("lifecycle_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("pending_count"), int), rg
+        p = client.post("/debug/patch-lifecycle-preview", json={"target_issue": "websocket_stream", "command": "stream lifecycle test", "project_area": "websocket_stream", "related_layer": "Layer 28.6"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("target_issue") == "websocket_stream", pv
+        assert pv.get("lifecycle_id") == "websocket_stream", pv
+        assert pv.get("current_stage") == "approval", pv
+        assert pv.get("lifecycle_readiness") is False, pv
+        assert pv.get("completion_score", 0) < 1.0, pv
+        assert len(pv.get("completed_stages", [])) >= 2, pv
+        assert len(pv.get("remaining_stages", [])) >= 2, pv
+        assert pv.get("confidence_score", 0) > 0, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "diff_preview", "change_preview", "patch_draft", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("patch_lifecycle", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Lifecycle ID", "Mevcut Aşama", "Tamamlanan Aşamalar", "Yaşam Döngüsü Hazır", "Tamamlanma Skoru"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "patch lifecycle preview"
+
+    def check_layer28_status_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/layer28-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("snapshot_status") == "layer_28_snapshot_ready", st
+        assert st.get("layer_28_complete") is True, st
+        assert len(st.get("implemented_layers", [])) == 6, st
+        assert st.get("endpoint_count", 0) >= 18, st
+        assert st.get("all_read_only") is True, st
+        for flag in ["file_write", "memory_write", "db_write", "git_write", "commit", "push", "deploy", "auto_fix", "patch_apply", "subprocess_execution"]:
+            assert st.get("safety_summary", {}).get(flag) is False, f"safety {flag}"
+        assert len(st.get("read_only_guards", [])) >= 2, st
+        assert st.get("read_only") is True, st
+        assert st.get("chat_stream_touched") is False, st
+        assert st.get("typewriter_runtime_touched") is False, st
+        f = client.get("/debug/layer28-full-status")
+        assert f.status_code == 200, f.text
+        ft = f.json()
+        assert ft.get("snapshot_status") == "layer_28_snapshot_ready", ft
+        assert "full_details" in ft, ft
+        assert len(ft.get("full_details", {})) == 6, ft
+        assert ft.get("total_integrations_across_layers", 0) >= 60, ft
+        assert ft.get("total_endpoints_across_layers", 0) >= 18, ft
+        assert ft.get("real_action_performed") is False, ft
+        assert ft.get("chat_stream_touched") is False, ft
+        assert ft.get("typewriter_runtime_touched") is False, ft
+        return "layer 28 status snapshot"
+
+    def check_layer29_status_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/layer29-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("snapshot_status") == "layer_29_snapshot_ready", st
+        assert st.get("layer_29_complete") is True, st
+        assert len(st.get("implemented_layers", [])) == 8, st
+        assert st.get("endpoint_count", 0) >= 24, st
+        assert st.get("all_read_only") is True, st
+        for flag in ["file_write", "memory_write", "db_write", "git_write", "commit", "push", "deploy", "auto_fix", "patch_apply", "subprocess_execution"]:
+            assert st.get("safety_summary", {}).get(flag) is False, f"safety {flag}"
+        assert len(st.get("read_only_guards", [])) >= 2, st
+        assert st.get("read_only") is True, st
+        assert st.get("chat_stream_touched") is False, st
+        assert st.get("typewriter_runtime_touched") is False, st
+        f = client.get("/debug/layer29-full-status")
+        assert f.status_code == 200, f.text
+        ft = f.json()
+        assert ft.get("snapshot_status") == "layer_29_snapshot_ready", ft
+        assert "full_details" in ft, ft
+        assert len(ft.get("full_details", {})) == 8, ft
+        assert ft.get("total_integrations_across_layers", 0) >= 130, ft
+        assert ft.get("total_endpoints_across_layers", 0) >= 24, ft
+        assert ft.get("real_action_performed") is False, ft
+        assert ft.get("chat_stream_touched") is False, ft
+        assert ft.get("typewriter_runtime_touched") is False, ft
+        return "layer 29 status snapshot"
+
+    def check_layer30_status_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/layer30-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("snapshot_status") == "layer_30_snapshot_ready", st
+        assert st.get("layer_30_complete") is True, st
+        assert len(st.get("implemented_layers", [])) == 5, st
+        assert st.get("endpoint_count", 0) >= 15, st
+        assert st.get("all_read_only") is True, st
+        for flag in ["file_write", "memory_write", "db_write", "git_write", "commit", "push", "deploy", "auto_fix", "patch_apply", "subprocess_execution"]:
+            assert st.get("safety_summary", {}).get(flag) is False, f"safety {flag}"
+        assert len(st.get("read_only_guards", [])) >= 2, st
+        assert st.get("read_only") is True, st
+        assert st.get("chat_stream_touched") is False, st
+        assert st.get("typewriter_runtime_touched") is False, st
+        f = client.get("/debug/layer30-full-status")
+        assert f.status_code == 200, f.text
+        ft = f.json()
+        assert ft.get("snapshot_status") == "layer_30_snapshot_ready", ft
+        assert "full_details" in ft, ft
+        assert len(ft.get("full_details", {})) == 5, ft
+        assert ft.get("total_integrations_across_layers", 0) >= 100, ft
+        assert ft.get("total_endpoints_across_layers", 0) >= 15, ft
+        assert ft.get("real_action_performed") is False, ft
+        assert ft.get("chat_stream_touched") is False, ft
+        assert ft.get("typewriter_runtime_touched") is False, ft
+        return "layer 30 status snapshot"
+
+    def check_production_readiness_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/production-readiness-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "30.1", st
+        assert st.get("status") == "production_readiness_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/production-readiness-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "30.1", rg
+        assert rg.get("status") == "production_readiness_registry_ready", rg
+        assert rg.get("readiness_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        p = client.post("/debug/production-readiness-preview", json={"target_issue": "websocket_stream", "command": "stream readiness test", "project_area": "websocket_stream", "related_layer": "Layer 30.1"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("readiness_id") == "websocket_stream", pv
+        assert pv.get("readiness_status") == "violation", pv
+        assert pv.get("production_ready") is False, pv
+        assert len(pv.get("readiness_blockers", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("readiness_score", 0) < 0.5, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["layer29_status_snapshot", "patch_confidence", "patch_assurance", "patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement", "patch_lifecycle", "patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("production_readiness", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Hazırlık Kategorisi", "Hazırlık Durumu", "Hazırlık Skoru", "Gereksinimler", "Bulgular", "Engelleyiciler", "Risk Seviyesi", "Öneriler", "Üretime Hazır"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "production readiness preview"
+
+    def check_operational_readiness_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/operational-readiness-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "30.2", st
+        assert st.get("status") == "operational_readiness_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/operational-readiness-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "30.2", rg
+        assert rg.get("status") == "operational_readiness_registry_ready", rg
+        assert rg.get("operational_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        p = client.post("/debug/operational-readiness-preview", json={"target_issue": "websocket_stream", "command": "stream ops readiness test", "project_area": "websocket_stream", "related_layer": "Layer 30.2"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("operational_id") == "websocket_stream", pv
+        assert pv.get("operational_status") == "violation", pv
+        assert pv.get("operational_readiness") is False, pv
+        assert len(pv.get("operational_blockers", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("operational_score", 0) < 0.5, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["production_readiness", "patch_confidence", "patch_assurance", "patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement", "patch_lifecycle", "patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("operational_readiness", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Operasyonel Kategori", "Operasyonel Durum", "Operasyonel Skor", "Gereksinimler", "Bulgular", "Engelleyiciler", "Risk Seviyesi", "Öneriler", "Operasyonel Hazır"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "operational readiness preview"
+
+    def check_system_readiness_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/system-readiness-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "30.3", st
+        assert st.get("status") == "system_readiness_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/system-readiness-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "30.3", rg
+        assert rg.get("status") == "system_readiness_registry_ready", rg
+        assert rg.get("system_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        p = client.post("/debug/system-readiness-preview", json={"target_issue": "websocket_stream", "command": "stream system readiness test", "project_area": "websocket_stream", "related_layer": "Layer 30.3"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("system_id") == "websocket_stream", pv
+        assert pv.get("system_status") == "violation", pv
+        assert pv.get("system_readiness") is False, pv
+        assert len(pv.get("system_blockers", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("system_score", 0) < 0.5, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["operational_readiness", "production_readiness", "patch_confidence", "patch_assurance", "patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement", "patch_lifecycle", "patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("system_readiness", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Sistem Kategorisi", "Sistem Durumu", "Sistem Skoru", "Gereksinimler", "Bulgular", "Engelleyiciler", "Risk Seviyesi", "Öneriler", "Sistem Hazır"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "system readiness preview"
+
+    def check_validation_readiness_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/validation-readiness-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "30.4", st
+        assert st.get("status") == "validation_readiness_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/validation-readiness-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "30.4", rg
+        assert rg.get("status") == "validation_readiness_registry_ready", rg
+        assert rg.get("validation_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        p = client.post("/debug/validation-readiness-preview", json={"target_issue": "websocket_stream", "command": "stream validation readiness test", "project_area": "websocket_stream", "related_layer": "Layer 30.4"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("validation_id") == "websocket_stream", pv
+        assert pv.get("validation_status") == "violation", pv
+        assert pv.get("validation_readiness") is False, pv
+        assert len(pv.get("validation_blockers", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("validation_score", 0) < 0.5, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["system_readiness", "operational_readiness", "production_readiness", "patch_confidence", "patch_assurance", "patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement", "patch_lifecycle", "patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("validation_readiness", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Doğrulama Kategorisi", "Doğrulama Durumu", "Doğrulama Skoru", "Gereksinimler", "Bulgular", "Engelleyiciler", "Risk Seviyesi", "Öneriler", "Doğrulama Hazır"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "validation readiness preview"
+
+    def check_release_readiness_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/release-readiness-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "30.5", st
+        assert st.get("status") == "release_readiness_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/release-readiness-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "30.5", rg
+        assert rg.get("status") == "release_readiness_registry_ready", rg
+        assert rg.get("release_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        p = client.post("/debug/release-readiness-preview", json={"target_issue": "websocket_stream", "command": "stream release readiness test", "project_area": "websocket_stream", "related_layer": "Layer 30.5"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("release_id") == "websocket_stream", pv
+        assert pv.get("release_status") == "violation", pv
+        assert pv.get("release_readiness") is False, pv
+        assert len(pv.get("release_blockers", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("release_score", 0) < 0.5, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["validation_readiness", "system_readiness", "operational_readiness", "production_readiness", "patch_confidence", "patch_assurance", "patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement", "patch_lifecycle", "patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("release_readiness", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Sürüm Kategorisi", "Sürüm Durumu", "Sürüm Skoru", "Gereksinimler", "Bulgular", "Engelleyiciler", "Risk Seviyesi", "Öneriler", "Sürüm Hazır"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "release readiness preview"
+
+    def check_system_health_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/system-health-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "31.1", st
+        assert st.get("status") == "system_health_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/system-health-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "31.1", rg
+        assert rg.get("status") == "system_health_intelligence_registry_ready", rg
+        assert rg.get("health_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_health_score"), float), rg
+        p = client.post("/debug/system-health-preview", json={"target_issue": "websocket_stream", "command": "stream health test", "project_area": "websocket_stream", "related_layer": "Layer 31.1"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("health_id") == "websocket_stream", pv
+        assert pv.get("health_status") == "degraded", pv
+        assert len(pv.get("health_blockers", [])) >= 1, pv
+        assert len(pv.get("health_warnings", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("health_score", 0) < 0.5, pv
+        assert pv.get("health_risk_level") == "high", pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["layer30_status_snapshot", "layer29_status_snapshot", "patch_confidence", "patch_assurance", "patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("system_health_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Hedef Bileşen", "Sağlık ID", "Sağlık Kategorisi", "Sağlık Durumu", "Sağlık Skoru", "Bulgular", "Uyarılar", "Engelleyiciler", "Risk Seviyesi", "Öneriler"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "system health intelligence preview"
+
+    def check_runtime_stability_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/runtime-stability-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "31.2", st
+        assert st.get("status") == "runtime_stability_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/runtime-stability-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "31.2", rg
+        assert rg.get("status") == "runtime_stability_intelligence_registry_ready", rg
+        assert rg.get("stability_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_stability_score"), float), rg
+        p = client.post("/debug/runtime-stability-preview", json={"target_issue": "websocket_stream", "command": "stream stability test", "project_area": "websocket_stream", "related_layer": "Layer 31.2"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("stability_id") == "websocket_stream", pv
+        assert pv.get("stability_status") == "degraded", pv
+        assert len(pv.get("stability_blockers", [])) >= 1, pv
+        assert len(pv.get("stability_warnings", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("stability_score", 0) < 0.5, pv
+        assert pv.get("stability_risk_level") == "high", pv
+        sigs = pv.get("runtime_signals", {})
+        for sig in ["layer30_status_snapshot", "layer29_status_snapshot", "patch_confidence", "patch_assurance", "patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("runtime_stability_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Hedef Bileşen", "Kararlılık ID", "Kararlılık Kategorisi", "Kararlılık Durumu", "Kararlılık Skoru", "Bulgular", "Uyarılar", "Engelleyiciler", "Risk Seviyesi", "Öneriler"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "runtime stability intelligence preview"
+
+    def check_runtime_risk_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/runtime-risk-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "31.3", st
+        assert st.get("status") == "runtime_risk_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/runtime-risk-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "31.3", rg
+        assert rg.get("status") == "runtime_risk_intelligence_registry_ready", rg
+        assert rg.get("risk_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_risk_score"), float), rg
+        p = client.post("/debug/runtime-risk-preview", json={"target_issue": "api_failure_risk", "command": "api risk test", "project_area": "api_failure_risk", "related_layer": "Layer 31.3"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("risk_id") == "api_failure_risk", pv
+        assert pv.get("risk_status") == "degraded", pv
+        assert len(pv.get("risk_blockers", [])) >= 1, pv
+        assert len(pv.get("risk_warnings", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("risk_score", 0) < 0.5, pv
+        assert pv.get("risk_level") == "high", pv
+        sigs = pv.get("risk_signals", {})
+        for sig in ["layer30_status_snapshot", "layer29_status_snapshot", "patch_confidence", "patch_assurance", "patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("runtime_risk_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Hedef Bileşen", "Risk ID", "Risk Kategorisi", "Risk Durumu", "Risk Skoru", "Bulgular", "Uyarılar", "Engelleyiciler", "Risk Seviyesi", "Öneriler"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "runtime risk intelligence preview"
+
+    def check_runtime_drift_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/runtime-drift-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "31.4", st
+        assert st.get("status") == "runtime_drift_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/runtime-drift-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "31.4", rg
+        assert rg.get("status") == "runtime_drift_intelligence_registry_ready", rg
+        assert rg.get("drift_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_drift_score"), float), rg
+        p = client.post("/debug/runtime-drift-preview", json={"target_issue": "config_drift", "command": "config drift test", "project_area": "config_drift", "related_layer": "Layer 31.4"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("drift_id") == "config_drift", pv
+        assert pv.get("drift_status") == "warning", pv
+        assert len(pv.get("drift_warnings", [])) >= 1, pv
+        assert pv.get("drift_score", 1) < 0.7, pv
+        assert pv.get("drift_risk_level") == "medium", pv
+        sigs = pv.get("drift_signals", {})
+        for sig in ["layer30_status_snapshot", "layer29_status_snapshot", "patch_confidence", "patch_assurance", "patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("runtime_drift_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Hedef Bileşen", "Sapma ID", "Sapma Kategorisi", "Sapma Durumu", "Sapma Skoru", "Bulgular", "Uyarılar", "Engelleyiciler", "Risk Seviyesi", "Öneriler"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "runtime drift intelligence preview"
+
+    def check_runtime_recovery_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/runtime-recovery-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "31.5", st
+        assert st.get("status") == "runtime_recovery_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/runtime-recovery-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "31.5", rg
+        assert rg.get("status") == "runtime_recovery_intelligence_registry_ready", rg
+        assert rg.get("recovery_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_recovery_score"), float), rg
+        p = client.post("/debug/runtime-recovery-preview", json={"target_issue": "dependency_recovery", "command": "dep recovery test", "project_area": "dependency_recovery", "related_layer": "Layer 31.5"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("recovery_id") == "dependency_recovery", pv
+        assert pv.get("recovery_status") == "degraded", pv
+        assert len(pv.get("recovery_blockers", [])) >= 1, pv
+        assert len(pv.get("recovery_warnings", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("recovery_score", 1) < 0.5, pv
+        assert pv.get("recovery_risk_level") == "high", pv
+        sigs = pv.get("recovery_signals", {})
+        for sig in ["layer30_status_snapshot", "layer29_status_snapshot", "patch_confidence", "patch_assurance", "patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("runtime_recovery_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Hedef Bileşen", "Kurtarma ID", "Kurtarma Kategorisi", "Kurtarma Durumu", "Kurtarma Skoru", "Bulgular", "Uyarılar", "Engelleyiciler", "Risk Seviyesi", "Öneriler"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "runtime recovery intelligence preview"
+
+    def check_runtime_anomaly_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/runtime-anomaly-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "32.1", st
+        assert st.get("status") == "runtime_anomaly_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/runtime-anomaly-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "32.1", rg
+        assert rg.get("status") == "runtime_anomaly_intelligence_registry_ready", rg
+        assert rg.get("anomaly_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_anomaly_score"), float), rg
+        p = client.post("/debug/runtime-anomaly-preview", json={"target_issue": "performance_anomaly", "command": "perf anomaly test", "project_area": "performance_anomaly", "related_layer": "Layer 32.1"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("anomaly_id") == "performance_anomaly", pv
+        assert pv.get("anomaly_status") == "warning", pv
+        assert pv.get("anomaly_score", 1) < 1.0, pv
+        assert pv.get("anomaly_risk_level") == "medium", pv
+        assert len(pv.get("anomaly_warnings", [])) >= 1, pv
+        assert len(pv.get("anomaly_recommendations", [])) >= 1, pv
+        sigs = pv.get("runtime_signals", {})
+        for sig in ["layer31_status_snapshot", "layer30_status_snapshot", "layer29_status_snapshot", "system_health_intelligence", "runtime_stability_intelligence", "runtime_risk_intelligence", "runtime_drift_intelligence", "runtime_recovery_intelligence", "patch_confidence", "patch_assurance", "patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("runtime_anomaly_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Hedef Bileşen", "Anomali ID", "Anomali Kategorisi", "Anomali Durumu", "Anomali Skoru", "Bulgular", "Uyarılar", "Engelleyiciler", "Risk Seviyesi", "Öneriler"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "runtime anomaly intelligence preview"
+
+    def check_regression_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/regression-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "32.2", st
+        assert st.get("status") == "regression_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/regression-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "32.2", rg
+        assert rg.get("status") == "regression_intelligence_registry_ready", rg
+        assert rg.get("regression_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_regression_score"), float), rg
+        p = client.post("/debug/regression-preview", json={"target_issue": "behavior_regression", "command": "behavior regression test", "project_area": "behavior_regression", "related_layer": "Layer 32.2"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("regression_id") == "behavior_regression", pv
+        assert pv.get("regression_status") == "degraded", pv
+        assert pv.get("regression_score", 1) < 1.0, pv
+        assert pv.get("regression_risk_level") == "high", pv
+        assert len(pv.get("regression_warnings", [])) >= 1, pv
+        assert len(pv.get("regression_recommendations", [])) >= 1, pv
+        sigs = pv.get("runtime_signals", {})
+        for sig in ["layer32_1_anomaly_intelligence", "layer31_status_snapshot", "layer30_status_snapshot", "layer29_status_snapshot", "system_health_intelligence", "runtime_stability_intelligence", "runtime_risk_intelligence", "runtime_drift_intelligence", "runtime_recovery_intelligence", "patch_confidence", "patch_assurance", "patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("regression_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Hedef Bileşen", "Regresyon ID", "Regresyon Kategorisi", "Regresyon Durumu", "Regresyon Skoru", "Bulgular", "Uyarılar", "Engelleyiciler", "Risk Seviyesi", "Öneriler"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "regression intelligence preview"
+
+    def check_failure_memory_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/failure-memory-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "32.3", st
+        assert st.get("status") == "failure_memory_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/failure-memory-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "32.3", rg
+        assert rg.get("status") == "failure_memory_intelligence_registry_ready", rg
+        assert rg.get("failure_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_failure_score"), float), rg
+        assert isinstance(rg.get("overall_failure_risk_level"), str), rg
+        p = client.post("/debug/failure-memory-preview", json={"target_issue": "connection_failure", "command": "conn failure test", "project_area": "connection_failure", "related_layer": "Layer 32.3"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("failure_id") == "connection_failure", pv
+        assert pv.get("failure_status") == "degraded", pv
+        assert pv.get("failure_score", 1) < 1.0, pv
+        assert pv.get("failure_risk_level") == "high", pv
+        assert len(pv.get("failure_patterns", [])) >= 1, pv
+        assert len(pv.get("similar_failures", [])) >= 1, pv
+        assert len(pv.get("successful_resolutions", [])) >= 1, pv
+        assert len(pv.get("failed_resolutions", [])) >= 1, pv
+        sigs = pv.get("runtime_signals", {})
+        for sig in ["layer32_2_regression_intelligence", "layer32_1_anomaly_intelligence", "layer31_status_snapshot", "layer30_status_snapshot", "layer29_status_snapshot"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("failure_memory_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Hedef Bileşen", "Hata ID", "Hata Kategorisi", "Hata Durumu", "Hata Skoru", "Bulgular", "Tekrar Eden Desenler", "Tekrarlama Seviyesi", "Risk Seviyesi", "Hata Özeti"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "failure memory intelligence preview"
+
+    def check_dependency_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/dependency-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "32.5", st
+        assert st.get("status") == "dependency_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/dependency-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "32.5", rg
+        assert rg.get("status") == "dependency_intelligence_registry_ready", rg
+        assert rg.get("dependency_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_dependency_score"), float), rg
+        p = client.post("/debug/dependency-preview", json={"target_issue": "file_dependency", "command": "file dep test", "project_area": "file_dependency", "related_layer": "Layer 32.5"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("dependency_id") == "file_dependency", pv
+        assert pv.get("dependency_status") == "warning", pv
+        assert pv.get("dependency_score", 1) < 1.0, pv
+        assert pv.get("dependency_risk_level") == "medium", pv
+        assert len(pv.get("affected_files", [])) >= 1, pv
+        assert len(pv.get("affected_modules", [])) >= 1, pv
+        assert len(pv.get("affected_systems", [])) >= 1, pv
+        assert len(pv.get("triggered_systems", [])) >= 1, pv
+        assert len(pv.get("impacted_by_systems", [])) >= 1, pv
+        sigs = pv.get("runtime_signals", {})
+        for sig in ["layer32_3_failure_memory_intelligence", "layer32_2_regression_intelligence", "layer32_1_anomaly_intelligence", "layer31_status_snapshot", "layer30_status_snapshot"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("dependency_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Hedef Bileşen", "Bağımlılık ID", "Bağımlılık Kategorisi", "Bağımlılık Türü", "Bağımlılık Durumu", "Bağımlılık Skoru", "Etkilenen Dosyalar", "Etkilenen Modüller", "Etkilenen Sistemler"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "dependency intelligence preview"
+
+    def check_root_cause_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/root-cause-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "32.4", st
+        assert st.get("status") == "root_cause_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/root-cause-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "32.4", rg
+        assert rg.get("status") == "root_cause_intelligence_registry_ready", rg
+        assert rg.get("root_cause_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_root_cause_score"), float), rg
+        p = client.post("/debug/root-cause-preview", json={"target_issue": "dependency_root_cause", "command": "root cause test", "project_area": "dependency_root_cause", "related_layer": "Layer 32.4"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("root_cause_id") == "dependency_root_cause", pv
+        assert pv.get("root_cause_status") == "degraded", pv
+        assert pv.get("root_cause_score", 1) < 1.0, pv
+        assert pv.get("root_cause_risk_level") == "high", pv
+        assert len(pv.get("root_cause_findings", [])) >= 1, pv
+        assert len(pv.get("probable_causes", [])) >= 1, pv
+        assert len(pv.get("contributing_factors", [])) >= 1, pv
+        assert len(pv.get("dependency_links", [])) >= 1, pv
+        assert len(pv.get("trigger_chain", [])) >= 1, pv
+        sigs = pv.get("runtime_signals", {})
+        for sig in ["layer32_5_dependency_intelligence", "layer32_3_failure_memory_intelligence", "layer32_2_regression_intelligence", "layer32_1_anomaly_intelligence", "layer31_status_snapshot", "layer30_status_snapshot", "layer29_status_snapshot"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("root_cause_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Kök Neden ID", "Kök Neden Kategorisi", "Kök Neden Durumu", "Kök Neden Skoru", "Bulgular", "Olası Nedenler", "Katkıda Bulunan Faktörler", "Bağımlılık Bağlantıları", "Tetikleyici Zinciri"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "root cause intelligence preview"
+
+    def check_change_memory_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/change-memory-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "33.1", st
+        assert st.get("status") == "change_memory_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/change-memory-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "33.1", rg
+        assert rg.get("status") == "change_memory_intelligence_registry_ready", rg
+        assert rg.get("change_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_change_score"), float), rg
+        p = client.post("/debug/change-memory-preview", json={"target_issue": "repair_change", "command": "change memory test", "project_area": "repair_change", "related_layer": "Layer 33.1"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("change_id") == "repair_change", pv
+        assert pv.get("change_status") == "warning", pv
+        assert pv.get("change_score", 1) < 1.0, pv
+        assert pv.get("change_risk_level") == "medium", pv
+        assert len(pv.get("change_patterns", [])) >= 1, pv
+        assert len(pv.get("similar_changes", [])) >= 1, pv
+        sigs = pv.get("runtime_signals", {})
+        for sig in ["layer32_5_dependency_intelligence", "layer32_4_root_cause_intelligence", "layer32_3_failure_memory_intelligence", "layer32_2_regression_intelligence", "layer32_1_anomaly_intelligence", "layer31_status_snapshot", "layer30_status_snapshot", "layer29_status_snapshot"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("change_memory_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Değişiklik ID", "Değişiklik Kategorisi", "Değişiklik Türü", "Değişiklik Durumu", "Değişiklik Skoru", "Bulgular", "Desenler", "Benzer Değişiklikler"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "change memory intelligence preview"
+
+    def check_failed_change_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/failed-change-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "33.2", st
+        assert st.get("status") == "failed_change_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/failed-change-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "33.2", rg
+        assert rg.get("status") == "failed_change_intelligence_registry_ready", rg
+        assert rg.get("failed_change_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_failed_change_score"), float), rg
+        ld = rg.get("loop_detection_summary", {})
+        assert isinstance(ld.get("total_loops"), int), rg
+        p = client.post("/debug/failed-change-preview", json={"target_issue": "repair_failure", "command": "failed change test", "project_area": "repair_failure", "related_layer": "Layer 33.2"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("failed_change_id") == "repair_failure", pv
+        assert pv.get("failed_change_status") == "degraded", pv
+        assert pv.get("failed_change_score", 1) < 1.0, pv
+        assert pv.get("failure_risk_level") == "high", pv
+        assert len(pv.get("failed_change_patterns", [])) >= 1, pv
+        assert len(pv.get("repeated_failures", [])) >= 1, pv
+        assert len(pv.get("avoidance_recommendations", [])) >= 1, pv
+        sigs = pv.get("runtime_signals", {})
+        for sig in ["layer33_1_change_memory_intelligence", "layer32_5_dependency_intelligence", "layer32_4_root_cause_intelligence", "layer32_3_failure_memory_intelligence", "layer32_2_regression_intelligence", "layer32_1_anomaly_intelligence", "layer31_status_snapshot", "layer30_status_snapshot", "layer29_status_snapshot"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("failed_change_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Başarısız Değişiklik ID", "Başarısız Değişiklik Kategorisi", "Başarısız Değişiklik Türü", "Başarısız Değişiklik Durumu", "Başarısız Değişiklik Skoru", "Bulgular", "Başarısız Desenler", "Benzer Başarısızlıklar"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "failed change intelligence preview"
+
+    def check_change_planning_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/change-planning-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "33.3", st
+        assert st.get("status") == "change_planning_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/change-planning-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "33.3", rg
+        assert rg.get("status") == "change_planning_intelligence_registry_ready", rg
+        assert rg.get("plan_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_plan_score"), float), rg
+        p = client.post("/debug/change-planning-preview", json={"target_issue": "repair_plan", "command": "planning test", "project_area": "repair_plan", "related_layer": "Layer 33.3"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("plan_id") == "repair_plan", pv
+        assert pv.get("plan_status") == "degraded", pv
+        assert pv.get("plan_score", 1) < 1.0, pv
+        assert pv.get("estimated_risk") == "high", pv
+        assert len(pv.get("recommended_strategy", "")) > 10, pv
+        assert len(pv.get("alternative_strategies", [])) >= 1, pv
+        assert len(pv.get("avoided_strategies", [])) >= 1, pv
+        assert len(pv.get("validation_steps", [])) >= 1, pv
+        assert len(pv.get("required_files", [])) >= 1, pv
+        sigs = pv.get("runtime_signals", {})
+        for sig in ["layer33_2_failed_change_intelligence", "layer33_1_change_memory_intelligence", "layer32_5_dependency_intelligence", "layer32_4_root_cause_intelligence", "layer32_3_failure_memory_intelligence", "layer32_2_regression_intelligence", "layer32_1_anomaly_intelligence", "layer31_status_snapshot", "layer30_status_snapshot", "layer29_status_snapshot"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("change_planning_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Plan ID", "Plan Türü", "Plan Durumu", "Plan Skoru", "Önerilen Strateji", "Alternatif Stratejiler", "Kaçınılacak Stratejiler"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "change planning intelligence preview"
+
+    def check_clone_workspace_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/clone-workspace-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "33.4", st
+        assert st.get("status") == "clone_workspace_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/clone-workspace-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "33.4", rg
+        assert rg.get("status") == "clone_workspace_intelligence_registry_ready", rg
+        assert rg.get("workspace_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("avg_sync_score"), float), rg
+        assert isinstance(rg.get("avg_integrity_score"), float), rg
+        p = client.post("/debug/clone-workspace-preview", json={"target_issue": "master_clone_sync", "command": "clone test", "project_area": "master_clone_sync", "related_layer": "Layer 33.4"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("workspace_id") == "master_clone_sync", pv
+        assert pv.get("workspace_status") == "warning", pv
+        assert pv.get("sync_score", 1) > 0, pv
+        assert pv.get("clone_integrity_score", 1) > 0, pv
+        assert pv.get("clone_health_score", 1) > 0, pv
+        sigs = pv.get("runtime_signals", {})
+        for sig in ["layer33_3_change_planning_intelligence", "layer33_2_failed_change_intelligence", "layer33_1_change_memory_intelligence", "layer32_5_dependency_intelligence", "layer32_4_root_cause_intelligence"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("clone_workspace_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Çalışma Alanı ID", "Çalışma Alanı Türü", "Çalışma Alanı Durumu", "Ana Klon Durumu", "Çalışma Klonu Durumu", "Senkronizasyon Durumu", "Senkronizasyon Skoru"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "clone workspace intelligence preview"
+
+    def check_sandbox_repair_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/sandbox-repair-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "33.5", st
+        assert st.get("status") == "sandbox_repair_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/sandbox-repair-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "33.5", rg
+        assert rg.get("status") == "sandbox_repair_intelligence_registry_ready", rg
+        assert rg.get("repair_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_repair_score"), float), rg
+        assert isinstance(rg.get("avg_sandbox_integrity"), float), rg
+        p = client.post("/debug/sandbox-repair-preview", json={"target_issue": "repair_change", "command": "sandbox repair test", "project_area": "repair_change", "related_layer": "Layer 33.5"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("repair_id") == "repair_change", pv
+        assert pv.get("repair_status") == "degraded", pv
+        assert pv.get("repair_score", 1) < 1.0, pv
+        assert pv.get("repair_risk_level") == "high", pv
+        assert len(pv.get("repair_steps", [])) >= 1, pv
+        sigs = pv.get("runtime_signals", {})
+        for sig in ["layer33_4_clone_workspace_intelligence", "layer33_3_change_planning_intelligence", "layer33_2_failed_change_intelligence", "layer33_1_change_memory_intelligence", "layer32_5_dependency_intelligence", "layer32_4_root_cause_intelligence"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("sandbox_repair_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Onarım ID", "Onarım Türü", "Onarım Durumu", "Onarım Skoru", "Strateji", "Adımlar", "Çalışma Klonu Durumu", "Sandbox Durumu"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "sandbox repair intelligence preview"
+
+    def check_verification_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/verification-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "33.6", st
+        assert st.get("status") == "verification_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/verification-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "33.6", rg
+        assert rg.get("status") == "verification_intelligence_registry_ready", rg
+        assert rg.get("verification_count", 0) >= 1, rg
+        assert isinstance(rg.get("pass_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("overall_verification_score"), float), rg
+        assert isinstance(rg.get("all_gates_passed_count"), int), rg
+        p = client.post("/debug/verification-preview", json={"target_issue": "sandbox_verification", "command": "verification test", "project_area": "sandbox_verification", "related_layer": "Layer 33.6"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("verification_id") == "sandbox_verification", pv
+        assert pv.get("verification_status") == "pass", pv
+        assert pv.get("verification_score", 1) > 0, pv
+        assert pv.get("verification_risk_level") == "low", pv
+        sigs = pv.get("runtime_signals", {})
+        for sig in ["layer33_5_sandbox_repair_intelligence", "layer33_4_clone_workspace_intelligence", "layer33_3_change_planning_intelligence", "layer33_2_failed_change_intelligence", "layer33_1_change_memory_intelligence", "layer32_5_dependency_intelligence", "layer32_4_root_cause_intelligence"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("verification_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Doğrulama ID", "Doğrulama Türü", "Doğrulama Durumu", "Doğrulama Skoru", "Özet", "Sandbox Doğrulama", "Bağımlılık Doğrulama", "Entegrasyon Doğrulama"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "verification intelligence preview"
+
+    def check_delivery_readiness_intelligence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/delivery-readiness-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "33.7", st
+        assert st.get("status") == "delivery_readiness_intelligence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/delivery-readiness-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "33.7", rg
+        assert rg.get("status") == "delivery_readiness_intelligence_registry_ready", rg
+        assert rg.get("delivery_count", 0) >= 1, rg
+        assert isinstance(rg.get("overall_delivery_score"), float), rg
+        p = client.post("/debug/delivery-readiness-preview", json={"target_issue": "ready", "command": "delivery test", "project_area": "ready", "related_layer": "Layer 33.7"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("delivery_id") == "ready", pv
+        assert pv.get("delivery_status") == "ready", pv
+        assert pv.get("delivery_score", 1) > 0, pv
+        assert pv.get("delivery_risk_level") == "low", pv
+        assert len(pv.get("release_blockers", [])) == 0, pv
+        sigs = pv.get("runtime_signals", {})
+        for sig in ["layer33_6_verification_intelligence", "layer33_5_sandbox_repair_intelligence", "layer33_4_clone_workspace_intelligence", "layer33_3_change_planning_intelligence", "layer33_2_failed_change_intelligence", "layer33_1_change_memory_intelligence"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("delivery_readiness_intelligence", [])
+        assert sec, rep.text
+        for fld in ["Teslimat ID", "Teslimat Durumu", "Teslimat Skoru", "Özet", "Güven", "Risk Seviyesi", "Hazırlık"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "delivery readiness intelligence preview"
+
+    def check_layer31_status_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/layer31-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("snapshot_status") == "layer_31_snapshot_ready", st
+        assert st.get("layer_31_complete") is True, st
+        assert st.get("layer_count") == 5, st
+        assert st.get("endpoint_count", 0) >= 17, st
+        assert st.get("overall_runtime_score", 0) > 0, st
+        assert isinstance(st.get("health_summary"), str), st
+        for key in ["health_summary", "stability_summary", "risk_summary", "drift_summary", "recovery_summary"]:
+            assert isinstance(st.get(key), str), f"missing {key}"
+        ff = client.get("/debug/layer31-full-status")
+        assert ff.status_code == 200, ff.text
+        ffj = ff.json()
+        assert "full_details" in ffj, ffj
+        for lid in ["31.1", "31.2", "31.3", "31.4", "31.5"]:
+            assert lid in ffj.get("full_details", {}), f"missing {lid}"
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("layer31_status_snapshot", [])
+        assert sec, rep.text
+        for fld in ["Genel Runtime Skoru", "Genel Runtime Durumu", "Sağlık Skoru", "Stabilite Skoru", "Risk Skoru", "Sapma Skoru", "Kurtarma Skoru"]:
+            assert sec[0].get(fld) is not None, f"missing {fld}"
+        return "layer 31 status snapshot"
+
+    def check_layer32_status_snapshot(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/layer32-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("snapshot_status") == "layer_32_snapshot_ready", st
+        assert st.get("layer_32_complete") is True, st
+        assert st.get("layer_count") == 5, st
+        assert st.get("endpoint_count", 0) >= 17, st
+        assert st.get("overall_layer32_score", 0) > 0, st
+        assert isinstance(st.get("anomaly_summary"), str), st
+        for key in ["anomaly_summary", "regression_summary", "failure_memory_summary", "root_cause_summary", "dependency_summary"]:
+            assert isinstance(st.get(key), str), f"missing {key}"
+        ff = client.get("/debug/layer32-full-status")
+        assert ff.status_code == 200, ff.text
+        ffj = ff.json()
+        assert "full_details" in ffj, ffj
+        for lid in ["32.1", "32.2", "32.3", "32.4", "32.5"]:
+            assert lid in ffj.get("full_details", {}), f"missing {lid}"
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("layer32_status_snapshot", [])
+        assert sec, rep.text
+        for fld in ["Genel Layer32 Skoru", "Genel Layer32 Durumu", "Anomali Skoru", "Regresyon Skoru", "Hata Hafıza Skoru", "Kök Neden Skoru", "Bağımlılık Skoru"]:
+            assert sec[0].get(fld) is not None, f"missing {fld}"
+        return "layer 32 status snapshot"
+
+    def check_patch_permission_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/patch-permission-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "29.1", st
+        assert st.get("status") == "patch_permission_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/patch-permission-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "29.1", rg
+        assert rg.get("status") == "patch_permission_registry_ready", rg
+        assert rg.get("permission_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("pending_count"), int), rg
+        p = client.post("/debug/patch-permission-preview", json={"target_issue": "websocket_stream", "command": "stream permission test", "project_area": "websocket_stream", "related_layer": "Layer 29.1"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("permission_level") == "elevated", pv
+        assert pv.get("permission_readiness") is False, pv
+        assert len(pv.get("allowed_actions", [])) >= 3, pv
+        assert len(pv.get("blocked_actions", [])) >= 3, pv
+        assert pv.get("confidence_score", 0) > 0, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["patch_lifecycle", "patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "diff_preview", "change_preview", "patch_draft", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("patch_permission_enforcement", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "İzin Seviyesi", "İzin Verilenler", "Engellenenler", "İzin Risk Seviyesi", "İzin Hazır"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "patch permission preview"
+
+    def check_patch_policy_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/patch-policy-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "29.2", st
+        assert st.get("status") == "patch_policy_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/patch-policy-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "29.2", rg
+        assert rg.get("status") == "patch_policy_registry_ready", rg
+        assert rg.get("policy_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("pending_count"), int), rg
+        p = client.post("/debug/patch-policy-preview", json={"target_issue": "websocket_stream", "command": "stream policy test", "project_area": "websocket_stream", "related_layer": "Layer 29.2"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("policy_id") == "websocket_stream", pv
+        assert pv.get("policy_category") == "runtime_stream_mutation", pv
+        assert pv.get("policy_result") == "block", pv
+        assert pv.get("policy_readiness") is False, pv
+        assert len(pv.get("policy_requirements", [])) >= 2, pv
+        assert pv.get("confidence_score", 0) > 0, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["patch_permission_enforcement", "patch_lifecycle", "patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "diff_preview", "change_preview", "patch_draft", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("patch_policy_evaluation", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Politika Kategorisi", "Politika Sonucu", "Politika Sebebi", "Politika Risk Seviyesi", "Politika Hazır"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "patch policy preview"
+
+    def check_patch_compliance_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/patch-compliance-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "29.3", st
+        assert st.get("status") == "patch_compliance_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/patch-compliance-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "29.3", rg
+        assert rg.get("status") == "patch_compliance_registry_ready", rg
+        assert rg.get("compliance_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("pending_count"), int), rg
+        p = client.post("/debug/patch-compliance-preview", json={"target_issue": "websocket_stream", "command": "stream compliance test", "project_area": "websocket_stream", "related_layer": "Layer 29.3"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("compliance_id") == "websocket_stream", pv
+        assert pv.get("compliance_status") == "violation", pv
+        assert pv.get("compliance_readiness") is False, pv
+        assert len(pv.get("compliance_violations", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("confidence_score", 0) > 0, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["patch_policy_evaluation", "patch_permission_enforcement", "patch_lifecycle", "patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "diff_preview", "change_preview", "patch_draft", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("patch_compliance", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Uyum Kategorisi", "Uyum Durumu", "Uyum Gereksinimleri", "Uyum İhlalleri", "Uyum Risk Seviyesi", "Uyum Hazır"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "patch compliance preview"
+
+    def check_patch_governance_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/patch-governance-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "29.4", st
+        assert st.get("status") == "patch_governance_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/patch-governance-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "29.4", rg
+        assert rg.get("status") == "patch_governance_registry_ready", rg
+        assert rg.get("governance_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("pending_count"), int), rg
+        p = client.post("/debug/patch-governance-preview", json={"target_issue": "websocket_stream", "command": "stream governance test", "project_area": "websocket_stream", "related_layer": "Layer 29.4"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("governance_id") == "websocket_stream", pv
+        assert pv.get("governance_status") == "violation", pv
+        assert pv.get("governance_readiness") is False, pv
+        assert len(pv.get("governance_controls", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("confidence_score", 0) > 0, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement", "patch_lifecycle", "patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "diff_preview", "change_preview", "patch_draft", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("patch_governance", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Yönetişim Kategorisi", "Yönetişim Durumu", "Yönetişim Gereksinimleri", "Yönetişim Kontrolleri", "Yönetişim Risk Seviyesi", "Yönetişim Hazır"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "patch governance preview"
+
+    def check_patch_oversight_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/patch-oversight-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "29.5", st
+        assert st.get("status") == "patch_oversight_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/patch-oversight-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "29.5", rg
+        assert rg.get("status") == "patch_oversight_registry_ready", rg
+        assert rg.get("oversight_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("pending_count"), int), rg
+        p = client.post("/debug/patch-oversight-preview", json={"target_issue": "websocket_stream", "command": "stream oversight test", "project_area": "websocket_stream", "related_layer": "Layer 29.5"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("oversight_id") == "websocket_stream", pv
+        assert pv.get("oversight_status") == "violation", pv
+        assert pv.get("oversight_readiness") is False, pv
+        assert len(pv.get("oversight_controls", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("confidence_score", 0) > 0, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement", "patch_lifecycle", "patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "diff_preview", "change_preview", "patch_draft", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("patch_oversight", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Gözetim Kategorisi", "Gözetim Durumu", "Gözetim Bulguları", "Gözetim Kontrolleri", "Gözetim Risk Seviyesi", "Gözetim Hazır"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "patch oversight preview"
+
+    def check_patch_accountability_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/patch-accountability-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "29.6", st
+        assert st.get("status") == "patch_accountability_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/patch-accountability-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "29.6", rg
+        assert rg.get("status") == "patch_accountability_registry_ready", rg
+        assert rg.get("accountability_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("pending_count"), int), rg
+        p = client.post("/debug/patch-accountability-preview", json={"target_issue": "websocket_stream", "command": "stream accountability test", "project_area": "websocket_stream", "related_layer": "Layer 29.6"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("accountability_id") == "websocket_stream", pv
+        assert pv.get("accountability_status") == "violation", pv
+        assert pv.get("accountability_readiness") is False, pv
+        assert len(pv.get("accountability_findings", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("confidence_score", 0) > 0, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement", "patch_lifecycle", "patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "diff_preview", "change_preview", "patch_draft", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("patch_accountability", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Hesap Verebilirlik Kategorisi", "Hesap Verebilirlik Durumu", "Sahip", "Kapsam", "Bulgular", "Gereksinimler", "Risk Seviyesi", "Hazır"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "patch accountability preview"
+
+    def check_patch_assurance_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/patch-assurance-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "29.7", st
+        assert st.get("status") == "patch_assurance_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/patch-assurance-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "29.7", rg
+        assert rg.get("status") == "patch_assurance_registry_ready", rg
+        assert rg.get("assurance_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("pending_count"), int), rg
+        p = client.post("/debug/patch-assurance-preview", json={"target_issue": "websocket_stream", "command": "stream assurance test", "project_area": "websocket_stream", "related_layer": "Layer 29.7"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("assurance_id") == "websocket_stream", pv
+        assert pv.get("assurance_status") == "violation", pv
+        assert pv.get("assurance_readiness") is False, pv
+        assert len(pv.get("assurance_findings", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("confidence_score", 0) > 0, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement", "patch_lifecycle", "patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "diff_preview", "change_preview", "patch_draft", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("patch_assurance", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Güvence Kategorisi", "Güvence Durumu", "Kapsam", "Bulgular", "Kontroller", "Gereksinimler", "Risk Seviyesi", "Hazır", "Güvence Skoru"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "patch assurance preview"
+
+    def check_patch_confidence_preview(self) -> str:
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        luxapp = self.patch_app_for_api()
+        client = TestClient(luxapp.app)
+        s = client.get("/debug/patch-confidence-status")
+        assert s.status_code == 200, s.text
+        st = s.json()
+        assert st.get("layer") == "29.8", st
+        assert st.get("status") == "patch_confidence_ready", st
+        for flag in ["file_write_enabled", "memory_write_enabled", "db_write_enabled", "git_write_enabled", "commit_enabled", "push_enabled", "deploy_enabled", "auto_fix_enabled", "patch_apply_enabled", "subprocess_execution_enabled"]:
+            assert st.get(flag) is False, flag
+        r = client.get("/debug/patch-confidence-registry")
+        assert r.status_code == 200, r.text
+        rg = r.json()
+        assert rg.get("layer") == "29.8", rg
+        assert rg.get("status") == "patch_confidence_registry_ready", rg
+        assert rg.get("confidence_count", 0) >= 1, rg
+        assert isinstance(rg.get("ready_count"), int), rg
+        assert isinstance(rg.get("blocked_count"), int), rg
+        assert isinstance(rg.get("pending_count"), int), rg
+        p = client.post("/debug/patch-confidence-preview", json={"target_issue": "websocket_stream", "command": "stream confidence test", "project_area": "websocket_stream", "related_layer": "Layer 29.8"})
+        assert p.status_code == 200, p.text
+        pv = p.json()
+        assert pv.get("confidence_id") == "websocket_stream", pv
+        assert pv.get("confidence_status") == "violation", pv
+        assert pv.get("confidence_readiness") is False, pv
+        assert len(pv.get("confidence_findings", [])) >= 1, pv
+        assert len(pv.get("required_actions", [])) >= 1, pv
+        assert pv.get("confidence_score", 0) < 0.5, pv
+        sigs = pv.get("integration_signals", {})
+        for sig in ["patch_assurance", "patch_accountability", "patch_oversight", "patch_governance", "patch_compliance", "patch_policy_evaluation", "patch_permission_enforcement", "patch_lifecycle", "patch_audit_trail", "patch_recovery", "patch_validation", "patch_rollback", "safe_patch_application", "patch_execution_readiness", "patch_approval", "patch_risk_matrix", "diff_preview", "change_preview", "patch_draft", "multi_agent_coordinator", "evidence_store", "verification_planner", "safe_patch_planner", "safe_change_boundary"]:
+            assert sig in sigs, f"missing {sig}"
+        for flag in ["file_write_performed", "memory_write_performed", "db_write_performed", "git_write_performed", "commit_performed", "push_performed", "deploy_performed", "auto_fix_performed", "patch_apply_performed", "subprocess_execution_performed"]:
+            assert pv.get(flag) is False, flag
+        rep = client.get("/debug/fault-report-preview", params={"focus": "open"})
+        assert rep.status_code == 200, rep.text
+        sec = rep.json().get("sections", {}).get("patch_confidence", [])
+        assert sec, rep.text
+        for fld in ["Hedef Sorun", "Hedef Bileşen", "Güven Kategorisi", "Güven Durumu", "Güven Skoru", "Güven Faktörleri", "Bulgular", "Gereksinimler", "Risk Seviyesi", "Hazır", "Gerekçe"]:
+            assert sec[0].get(fld) is not None or sec[0].get(fld) == [], f"missing {fld}"
+        return "patch confidence preview"
+
     def check_system_control_audit_preview(self) -> str:
         try:
             from fastapi.testclient import TestClient
@@ -5665,6 +8182,9 @@ class SmokeRunner:
         assert "/debug/patch-draft-status" in patch_draft_paths, payload
         assert "/debug/patch-draft-registry" in patch_draft_paths, payload
         assert "/debug/patch-draft-preview" in patch_draft_paths, payload
+        assert "/debug/change-preview-status" in patch_draft_paths, payload
+        assert "/debug/change-preview-registry" in patch_draft_paths, payload
+        assert "/debug/change-preview" in patch_draft_paths, payload
         return "endpoint coverage matrix"
 
     def check_live_readiness_checklist_preview(self) -> str:
@@ -7399,6 +9919,143 @@ class SmokeRunner:
         assert not hits, hits
         return "raw phrase absent"
 
+    def check_layer37_architecture_previews(self) -> str:
+        """Verify all 37.x endpoints return 200 with read-only safety flags."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+
+        modules = [
+            ("github-project-intelligence", "37.0"),
+            ("terminal-intelligence", "37.1"),
+            ("render-deployment-intelligence", "37.2"),
+            ("project-intelligence-core", "37.3"),
+            ("multi-project-intelligence", "37.4"),
+            ("workspace-agent", "37.5"),
+            ("deployment-agent", "37.6"),
+            ("github-bridge-consolidation", "37.7"),
+        ]
+
+        for name, layer in modules:
+            # status endpoint
+            s = client.get(f"/{name}/status")
+            assert s.status_code == 200, f"/{name}/status returned {s.status_code}"
+            data = s.json()
+            assert data.get("read_only") is True, f"/{name}/status read_only not True"
+            assert data.get("real_action_enabled") is False, f"/{name}/status real_action_enabled not False"
+            assert data.get("layer") == layer, f"/{name}/status layer mismatch: {data.get('layer')}"
+
+            # capabilities endpoint
+            c = client.get(f"/{name}/capabilities")
+            assert c.status_code == 200, f"/{name}/capabilities returned {c.status_code}"
+
+            # preview endpoint
+            p = client.post(f"/{name}/preview", json={"command": "test command"})
+            assert p.status_code == 200, f"/{name}/preview returned {p.status_code}"
+            pdata = p.json()
+            assert pdata.get("read_only") is True, f"/{name}/preview read_only not True"
+            assert pdata.get("real_action_enabled") is False
+
+        # layer37-status
+        ls = client.get("/debug/layer37-status")
+        assert ls.status_code == 200, f"/debug/layer37-status returned {ls.status_code}"
+        lsdata = ls.json()
+        assert lsdata.get("series_status") == "agent_architecture_preview_scaffold_implemented", lsdata
+        assert lsdata.get("implemented_count", 0) >= 8, lsdata
+
+        # agent-core capabilities + preview
+        ac = client.get("/agent-core/capabilities")
+        assert ac.status_code == 200
+        ap = client.post("/agent-core/preview", json={"command": "test"})
+        assert ap.status_code == 200
+        apdata = ap.json()
+        assert apdata.get("read_only") is True
+
+        return "37.x all endpoints 200, safety flags verified"
+
+    def check_layer38_autonomous_agent_systems_previews(self) -> str:
+        """Verify all 38.x endpoints return 200 with read-only safety flags."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+
+        modules = [
+            ("autonomous-workflow-intelligence", "38.0"),
+            ("workflow-chain-intelligence", "38.1"),
+            ("workflow-orchestration-intelligence", "38.2"),
+            ("autonomous-task-network-intelligence", "38.3"),
+            ("autonomous-execution-planning-intelligence", "38.4"),
+            ("autonomous-execution-strategy-intelligence", "38.5"),
+            ("autonomous-execution-simulation-intelligence", "38.6"),
+            ("autonomous-execution-decision-intelligence", "38.7"),
+            ("autonomous-execution-governance-intelligence", "38.8"),
+        ]
+        false_safety_flags = [
+            "autonomous_execution_enabled",
+            "workflow_executed",
+            "task_network_executed",
+            "command_executed",
+            "github_write_performed",
+            "deployment_triggered",
+        ]
+
+        for name, layer in modules:
+            s = client.get(f"/{name}/status")
+            assert s.status_code == 200, f"/{name}/status returned {s.status_code}"
+            data = s.json()
+            assert data.get("layer") == layer, f"/{name}/status layer mismatch: {data.get('layer')}"
+            assert data.get("read_only") is True, f"/{name}/status read_only not True"
+            safety = data.get("safety", {})
+            assert safety.get("read_only") is True, f"/{name}/status safety read_only not True"
+            assert safety.get("autonomous_execution_enabled") is False
+
+            c = client.get(f"/{name}/capabilities")
+            assert c.status_code == 200, f"/{name}/capabilities returned {c.status_code}"
+
+            p = client.post(
+                f"/{name}/preview",
+                json={
+                    "command": "test autonomous workflow",
+                    "workflow_name": "smoke",
+                    "project_area": "layer38",
+                    "risk_level": "medium",
+                },
+            )
+            assert p.status_code == 200, f"/{name}/preview returned {p.status_code}"
+            pdata = p.json()
+            assert pdata.get("read_only") is True, f"/{name}/preview read_only not True"
+            psafety = pdata.get("safety", {})
+            assert psafety.get("read_only") is True, f"/{name}/preview safety read_only not True"
+            for flag in false_safety_flags:
+                assert psafety.get(flag) is False, f"/{name}/preview {flag} not False"
+
+        ls = client.get("/debug/layer38-status")
+        assert ls.status_code == 200, f"/debug/layer38-status returned {ls.status_code}"
+        lsdata = ls.json()
+        assert lsdata.get("series_status") == "autonomous_agent_systems_preview_scaffold_implemented", lsdata
+        assert lsdata.get("implemented_count") == 10, lsdata
+        assert lsdata.get("real_autonomous_execution_enabled") is False, lsdata
+
+        ac = client.get("/autonomous-agent-operating-model/capabilities")
+        assert ac.status_code == 200
+        ap = client.post("/autonomous-agent-operating-model/preview", json={"command": "test"})
+        assert ap.status_code == 200
+        apdata = ap.json()
+        assert apdata.get("read_only") is True
+        apsafety = apdata.get("safety", {})
+        for flag in false_safety_flags:
+            assert apsafety.get(flag) is False, f"/autonomous-agent-operating-model/preview {flag} not False"
+
+        return "38.x all endpoints 200, safety flags verified"
+
     def run(self) -> int:
         print(f"ROOT {ROOT}")
         checks: list[tuple[str, Callable[[], str | None]]] = [
@@ -7455,8 +10112,46 @@ class SmokeRunner:
             ("credit_saver_engine_preview", self.check_credit_saver_engine_preview),
             ("debug_intelligence_core_preview", self.check_debug_intelligence_core_preview),
             ("layer23_status_snapshot", self.check_layer23_status_snapshot),
+            ("patch_recovery_preview", self.check_patch_recovery_preview),
+            ("patch_audit_trail_preview", self.check_patch_audit_trail_preview),
             ("lux_fault_report_preview", self.check_lux_fault_report_preview),
             ("investigation_context_preview", self.check_investigation_context_preview),
+            ("patch_lifecycle_preview", self.check_patch_lifecycle_preview),
+            ("layer28_status_snapshot", self.check_layer28_status_snapshot),
+            ("layer29_status_snapshot", self.check_layer29_status_snapshot),
+            ("layer30_status_snapshot", self.check_layer30_status_snapshot),
+            ("production_readiness_preview", self.check_production_readiness_preview),
+            ("operational_readiness_preview", self.check_operational_readiness_preview),
+            ("system_readiness_preview", self.check_system_readiness_preview),
+            ("validation_readiness_preview", self.check_validation_readiness_preview),
+            ("release_readiness_preview", self.check_release_readiness_preview),
+            ("system_health_intelligence_preview", self.check_system_health_intelligence_preview),
+            ("runtime_stability_intelligence_preview", self.check_runtime_stability_intelligence_preview),
+            ("runtime_risk_intelligence_preview", self.check_runtime_risk_intelligence_preview),
+            ("runtime_drift_intelligence_preview", self.check_runtime_drift_intelligence_preview),
+            ("runtime_recovery_intelligence_preview", self.check_runtime_recovery_intelligence_preview),
+            ("runtime_anomaly_intelligence_preview", self.check_runtime_anomaly_intelligence_preview),
+            ("regression_intelligence_preview", self.check_regression_intelligence_preview),
+            ("failure_memory_intelligence_preview", self.check_failure_memory_intelligence_preview),
+            ("dependency_intelligence_preview", self.check_dependency_intelligence_preview),
+            ("root_cause_intelligence_preview", self.check_root_cause_intelligence_preview),
+            ("change_memory_intelligence_preview", self.check_change_memory_intelligence_preview),
+            ("failed_change_intelligence_preview", self.check_failed_change_intelligence_preview),
+            ("change_planning_intelligence_preview", self.check_change_planning_intelligence_preview),
+            ("clone_workspace_intelligence_preview", self.check_clone_workspace_intelligence_preview),
+            ("sandbox_repair_intelligence_preview", self.check_sandbox_repair_intelligence_preview),
+            ("verification_intelligence_preview", self.check_verification_intelligence_preview),
+            ("delivery_readiness_intelligence_preview", self.check_delivery_readiness_intelligence_preview),
+            ("layer31_status_snapshot", self.check_layer31_status_snapshot),
+            ("layer32_status_snapshot", self.check_layer32_status_snapshot),
+            ("patch_permission_preview", self.check_patch_permission_preview),
+            ("patch_policy_preview", self.check_patch_policy_preview),
+            ("patch_compliance_preview", self.check_patch_compliance_preview),
+            ("patch_governance_preview", self.check_patch_governance_preview),
+            ("patch_oversight_preview", self.check_patch_oversight_preview),
+            ("patch_accountability_preview", self.check_patch_accountability_preview),
+            ("patch_assurance_preview", self.check_patch_assurance_preview),
+            ("patch_confidence_preview", self.check_patch_confidence_preview),
             ("investigation_timeline_preview", self.check_investigation_timeline_preview),
             ("knowledge_extractor_preview", self.check_knowledge_extractor_preview),
             ("repeated_pattern_detector_preview", self.check_repeated_pattern_detector_preview),
@@ -7478,6 +10173,7 @@ class SmokeRunner:
             ("evidence_store_preview", self.check_evidence_store_preview),
             ("multi_agent_coordinator_preview", self.check_coordinator_preview),
             ("patch_draft_engine_preview", self.check_patch_draft_engine_preview),
+            ("change_preview_engine", self.check_change_preview_engine),
             ("system_control_audit_preview", self.check_system_control_audit_preview),
             ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview),
             ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview),
@@ -7512,6 +10208,8 @@ class SmokeRunner:
             ("ws_stream_schema_in_process", self.check_ws_stream_schema),
             ("live_server_health", self.check_live_server_health),
             ("local_privacy_scan", self.check_local_privacy_scan),
+            ("layer37_architecture_previews", self.check_layer37_architecture_previews),
+            ("layer38_autonomous_agent_systems_previews", self.check_layer38_autonomous_agent_systems_previews),
         ]
         try:
             for name, fn in checks:

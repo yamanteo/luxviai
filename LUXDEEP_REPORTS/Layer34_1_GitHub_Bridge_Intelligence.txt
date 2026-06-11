@@ -1,0 +1,92 @@
+================================================================================
+LAYER 34.1 — GITHUB BRIDGE INTELLIGENCE PREVIEW
+================================================================================
+Report Date        : 2026-06-11
+Layer              : 34.1
+Module             : github_bridge_intelligence_preview.py
+Series             : Execution Bridge Suite
+Bridge Version     : 1.0
+Status             : github_bridge_intelligence_ready
+Integration        : 33.8 LuxCode Core Snapshot,
+                     33.7 Delivery Readiness Intelligence,
+                     33.6 Verification Intelligence,
+                     33.5 Sandbox Repair Intelligence
+--------------------------------------------------------------------------------
+
+1. OVERVIEW
+--------------------------------------------------------------------------------
+Layer 34.1 introduces GitHub Bridge Intelligence Preview — a read-only bridge
+between LuxCode Core and GitHub repositories. It provides repository inspection,
+health analysis, branch analysis, pull request planning, and commit planning
+without performing any actual GitHub write operations.
+
+Operation Mode: read_only_preview_only
+Execution Rule: all changes must go through LuxCode Sandbox
+
+2. CAPABILITIES
+--------------------------------------------------------------------------------
+  - repository_inspection
+  - repository_health_analysis
+  - branch_analysis
+  - pull_request_planning
+  - commit_planning
+  - repository_dependency_mapping
+  - repository_risk_analysis
+  - repository_readiness_analysis
+
+3. NOT ALLOWED OPERATIONS
+--------------------------------------------------------------------------------
+  commit | push | merge | delete | write | deploy
+
+4. PROFILES
+--------------------------------------------------------------------------------
+
+  4.1 healthy_repository
+  - Health: pass | Risk: 0.15 | PR Readiness: ready
+  - Branches: 3 | Dependencies: 42 | Vulnerable: 0
+  - Summary: Repository healthy. Ready for change planning.
+
+  4.2 repository_with_unmerged_changes
+  - Health: warning | Risk: 0.45 | PR Readiness: not_ready
+  - Uncommitted: 2 files | Dependencies: 42 | Vulnerable: 1
+  - Recommendation: commit or stash before bridge operations
+
+  4.3 repository_with_diverged_branches
+  - Health: degraded | Risk: 0.62 | PR Readiness: conditional
+  - Diverged: 2 branches | Merge conflict: 1 potential
+  - Recommendation: rebase via Sandbox — never on production branches
+
+  4.4 repository_with_vulnerable_dependencies
+  - Health: degraded | Risk: 0.78 | PR Readiness: blocked
+  - Vulnerable: 2 (1 high severity)
+  - Recommendation: remediate via Sandbox before any bridge ops
+
+  4.5 repository_ready_for_release
+  - Health: pass | Risk: 0.08 | PR Readiness: ready
+  - Branches: 3 | Dependencies: 42 | Vulnerable: 0
+  - Recommendation: handoff to Delivery Readiness engine
+
+5. ENDPOINTS REGISTERED
+--------------------------------------------------------------------------------
+  GET  /github-bridge/status        → bridge status and health
+  GET  /github-bridge/capabilities  → available capabilities list
+  POST /github-bridge/preview       → read-only repository preview
+
+6. FILES MODIFIED
+--------------------------------------------------------------------------------
+  File                                | Change
+  ------------------------------------|------------------------------------------
+  github_bridge_intelligence_preview.py | CREATED (436 lines, 5 profiles)
+  app.py                              | +import, +3 endpoints
+  endpoint_coverage_matrix.py         | +github_bridge endpoint group
+
+7. SAFETY & COMPLIANCE
+--------------------------------------------------------------------------------
+  All safety flags set to False
+  All operations read-only
+  Protected areas untouched
+  NOT ALLOWED operations confirmed not performable
+
+================================================================================
+END OF LAYER 34.1 REPORT
+================================================================================

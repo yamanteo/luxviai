@@ -1,0 +1,147 @@
+================================================================================
+LAYER 33.2 — FAILED CHANGE INTELLIGENCE PREVIEW
+================================================================================
+Report Date        : 2026-06-11
+Layer              : 33.2
+Status             : failed_change_intelligence_ready
+Module             : failed_change_intelligence_preview.py
+Series             : LuxCode Foundation
+Integration        : 33.1 Change Memory Intelligence,
+                     32.5 Dependency Intelligence,
+                     32.4 Root Cause Intelligence,
+                     32.3 Failure Memory Intelligence,
+                     32.2 Regression Intelligence,
+                     32.1 Runtime Anomaly Intelligence,
+                     Layer 31 Runtime Suite, Layer 30 Readiness Suite,
+                     Layer 29 Patch Governance Suite
+--------------------------------------------------------------------------------
+
+1. OVERVIEW
+--------------------------------------------------------------------------------
+Layer 33.2 introduces Failed Change Intelligence Preview — a read-only analysis
+system focused on what failed, why it failed, repeated failed approaches,
+recurring dead ends, historical failure patterns, failure chains, and loop
+detection.
+
+The layer is SYSTEM-CENTRIC and TECHNOLOGY-AGNOSTIC, supporting Python, HTML,
+CSS, JavaScript, TypeScript, JSON, YAML, Database, Infrastructure, API,
+Workflow, and Documentation.
+
+Ten failed change types are profiled with structured analysis, including
+loop detection and avoidance recommendations.
+
+2. LOOP DETECTION
+--------------------------------------------------------------------------------
+  repair_failure:     symptom_repair_loop detected — same symptom repaired
+                       multiple times without addressing root cause
+  refactor_failure:   refactor_revert_loop detected — refactoring reverted
+                       twice due to import chain disruption
+  integration_failure: integration_contract_drift_loop detected — API version
+                       mismatch recurring across releases
+
+3. FAILED CHANGE PROFILES
+--------------------------------------------------------------------------------
+
+  3.1 repair_failure
+  - Type: corrective_failure | Status: degraded | Score: 0.38 | Risk: high
+  - Loop: symptom_repair_loop
+  - Summary: Symptom-level repairs cause recurrence within days.
+  - Recurrence: high | Repeated Failures: 3
+  - Recommendation: audit repair history before applying new repair
+
+  3.2 maintenance_failure
+  - Type: preventive_failure | Status: warning | Score: 0.55 | Risk: medium
+  - Summary: Version bumps occasionally introduce breaking changes.
+  - Recurrence: low | Repeated Failures: 2
+  - Recommendation: test rollback procedure before every maintenance window
+
+  3.3 feature_failure
+  - Type: additive_failure | Status: warning | Score: 0.62 | Risk: medium
+  - Summary: Scaffolding lacks downstream integration planning.
+  - Recurrence: low | Repeated Failures: 2
+  - Recommendation: add dependency mapping to feature design templates
+
+  3.4 optimization_failure
+  - Type: performance_failure | Status: warning | Score: 0.58 | Risk: medium
+  - Summary: Caching without invalidation strategy causes stale data.
+  - Recurrence: medium | Repeated Failures: 2
+  - Recommendation: establish performance baseline before optimization
+
+  3.5 refactor_failure
+  - Type: restructuring_failure | Status: degraded | Score: 0.42 | Risk: high
+  - Loop: refactor_revert_loop
+  - Summary: Contract tests missing before restructuring.
+  - Recurrence: high | Repeated Failures: 2
+  - Recommendation: add contract tests and analyze import graph
+
+  3.6 integration_failure
+  - Type: connective_failure | Status: degraded | Score: 0.35 | Risk: critical
+  - Loop: integration_contract_drift_loop
+  - Summary: External API contract changes cause cascading failures.
+  - Recurrence: high | Repeated Failures: 2
+  - Recommendation: version all integration contracts
+
+  3.7 configuration_failure
+  - Type: environmental_failure | Status: warning | Score: 0.52 | Risk: medium
+  - Summary: Missing keys trigger silent fallback to stale values.
+  - Recurrence: medium | Repeated Failures: 2
+  - Recommendation: add config schema validation
+
+  3.8 security_failure
+  - Type: protective_failure | Status: warning | Score: 0.60 | Risk: high
+  - Summary: Permission boundary exceptions after deployment.
+  - Recurrence: low | Repeated Failures: 1
+  - Recommendation: add automated security scanning to CI
+
+  3.9 workflow_failure
+  - Type: process_failure | Status: warning | Score: 0.55 | Risk: medium
+  - Summary: Pipeline steps executed before prerequisites validated.
+  - Recurrence: medium | Repeated Failures: 2
+  - Recommendation: formalize workflow dependency graph
+
+  3.10 documentation_failure
+  - Type: informational_failure | Status: warning | Score: 0.58 | Risk: low
+  - Summary: Documentation out of sync with implementation.
+  - Recurrence: medium | Repeated Failures: 1
+  - Recommendation: automate documentation generation
+
+4. ENDPOINTS REGISTERED
+--------------------------------------------------------------------------------
+  GET  /debug/failed-change-status    → failed_change_intelligence_status()
+  GET  /debug/failed-change-registry  → failed_change_intelligence_registry()
+  POST /debug/failed-change-preview   → build_failed_change_intelligence_preview()
+
+5. FILES MODIFIED
+--------------------------------------------------------------------------------
+  File                                    | Change
+  ----------------------------------------|---------------------------------------
+  failed_change_intelligence_preview.py   | CREATED (734 lines, 10 profiles)
+  app.py                                  | +import, +model, +3 endpoints
+  lux_fault_report.py                     | +import, +function, +2 section refs
+  endpoint_coverage_matrix.py             | +failed_change endpoint group
+  scripts/smoke_check.py                  | +3 endpoint assertions, +check method,
+                                         |  +registration entry
+
+6. TECHNOLOGY SUPPORT
+--------------------------------------------------------------------------------
+  Python, HTML, CSS, JavaScript, TypeScript, JSON, YAML, Database,
+  Infrastructure, API, Workflow, Documentation
+
+7. SAFETY FLAGS
+--------------------------------------------------------------------------------
+  All safety flags set to False:
+    file_write, memory_write, db_write, git_write, commit, push, deploy,
+    auto_fix, patch_apply, subprocess_execution
+
+8. COMPLIANCE
+--------------------------------------------------------------------------------
+  FORBIDDEN operations NOT performed:
+    Auto-fix, Patch apply, Commit, Push, Deploy,
+    Subprocess execution, Database write, Memory write, Git write
+
+  Protected areas (chat, stream, websocket, typewriter, stop/continue,
+  static/index.html) were NOT modified.
+
+================================================================================
+END OF LAYER 33.2 REPORT
+================================================================================

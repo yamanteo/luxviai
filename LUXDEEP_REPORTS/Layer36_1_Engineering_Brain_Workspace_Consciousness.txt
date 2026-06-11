@@ -1,0 +1,277 @@
+================================================================================
+LAYER 36.1 — ENGINEERING BRAIN WORKSPACE CONSCIOUSNESS PREVIEW
+==============================================================
+
+Report Date        : 2026-06-11
+Layer              : 36.1
+Module             : engineering_brain_workspace_consciousness_preview.py
+Series             : LuxCode Engineering Brain Architecture
+Version            : 1.0
+Status             : workspace_consciousness_ready
+Operation Mode     : read_only_preview_only
+Integration        : 36.0 LuxCode Engineering Brain Core,
+35.9 Engineering Self-Reflection & Meta Intelligence,
+35.8 Engineering Autonomy Intelligence,
+35.7 Engineering Strategy Intelligence,
+35.6 Engineering Prediction & Forecast Intelligence
+---------------------------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 36.1 introduces Engineering Brain Workspace Consciousness.
+
+This layer becomes the workspace-awareness engine of LuxCode.
+
+Goal:
+
+Allow the Engineering Brain to understand the entire active workspace
+as a living environment instead of isolated tasks.
+
+Primary Mission:
+
+Know:
+
+* what project is active
+* what tasks are running
+* what commands are queued
+* what files are changing
+* what reports are pending
+* what requires attention now
+
+Workspace becomes contextual awareness.
+
+---
+
+2. CAPABILITIES (12)
+
+---
+
+workspace_awareness
+
+active_project_awareness
+
+task_queue_awareness
+
+command_queue_awareness
+
+file_activity_awareness
+
+workspace_context_mapping
+
+workspace_priority_analysis
+
+workspace_attention_engine
+
+workspace_state_tracking
+
+workspace_summary_generation
+
+workspace_health_analysis
+
+workspace_focus_management
+
+---
+
+3. WORKSPACE CONSCIOUSNESS PIPELINE
+
+---
+
+Workspace Detection
+
+&#8595;
+
+Project Detection
+
+&#8595;
+
+Task Detection
+
+&#8595;
+
+Queue Analysis
+
+&#8595;
+
+Priority Analysis
+
+&#8595;
+
+Context Assembly
+
+&#8595;
+
+Workspace Understanding
+
+&#8595;
+
+Workspace Summary
+
+---
+
+4. WORKSPACE STATES
+
+---
+
+idle_workspace
+
+active_workspace
+
+multi_project_workspace
+
+high_activity_workspace
+
+attention_required_workspace
+
+critical_workspace
+
+---
+
+5. ACTIVE PROJECT ENGINE
+
+---
+
+Track:
+
+active_project
+
+active_branch
+
+active_workspace
+
+active_task
+
+active_context
+
+Returns:
+
+workspace_focus
+
+workspace_priority
+
+workspace_confidence
+
+---
+
+6. COMMAND QUEUE ENGINE
+
+---
+
+Track:
+
+queued_commands
+
+pending_commands
+
+scheduled_commands
+
+follow_up_commands
+
+Returns:
+
+queue_health
+
+queue_priority
+
+queue_summary
+
+---
+
+7. WORKSPACE ATTENTION ENGINE
+
+---
+
+Analyze:
+
+active_work
+
+waiting_work
+
+blocked_work
+
+important_work
+
+critical_work
+
+Returns:
+
+attention_map
+
+attention_score
+
+recommended_focus
+
+---
+
+8. WORKSPACE SCORE
+
+---
+
+Returns:
+
+workspace_health
+
+workspace_clarity
+
+workspace_focus
+
+workspace_attention
+
+overall_workspace_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+9. ENDPOINTS
+
+---
+
+GET  /workspace-consciousness/status
+
+GET  /workspace-consciousness/capabilities
+
+POST /workspace-consciousness/preview
+
+POST /workspace-consciousness/attention-map
+
+POST /workspace-consciousness/focus-analysis
+
+POST /workspace-consciousness/queue-analysis
+
+POST /workspace-consciousness/workspace-health
+
+---
+
+10. FILES MODIFIED
+
+---
+
+engineering_brain_workspace_consciousness_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+11. SAFETY
+
+---
+
+workspace_modification=False
+
+command_execution=False
+
+task_execution=False
+
+deployment_execution=False
+
+All operations remain preview-only.
+
+================================================================================
+END OF LAYER 36.1 REPORT
+========================

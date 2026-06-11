@@ -1,0 +1,256 @@
+================================================================================
+LAYER 38.0 — AUTONOMOUS WORKFLOW INTELLIGENCE PREVIEW
+================================================================================
+
+Report Date        : 2026-06-11
+Layer              : 38.0
+Module             : autonomous_workflow_intelligence_preview.py
+Series             : LuxCode Autonomous Agent Systems
+Version            : 1.0
+Status             : autonomous_workflow_ready
+Operation Mode     : read_only_preview_only
+Integration        : 37.9 LuxCode Agent Core,
+37.7 Deployment Agent,
+37.6 Workspace Agent,
+37.5 Multi Project Intelligence,
+37.0 Execution Brain Consolidation,
+36.0 Engineering Brain Core
+---------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 38.0 introduces Autonomous Workflow Intelligence.
+
+This layer becomes the workflow-awareness engine of LuxCode.
+
+Primary Goal:
+
+Understand work as workflows.
+
+Not tasks.
+
+Not commands.
+
+Not projects.
+
+Workflows.
+
+---
+
+2. WORKFLOW MODEL
+
+---
+
+Workflow
+
+├── Trigger
+
+├── Tasks
+
+├── Commands
+
+├── Dependencies
+
+├── Verification
+
+├── Deployment
+
+├── Completion
+
+└── Follow-Up Actions
+
+---
+
+3. CAPABILITIES
+
+---
+
+workflow_detection
+
+workflow_mapping
+
+workflow_dependency_analysis
+
+workflow_health_analysis
+
+workflow_risk_analysis
+
+workflow_progress_analysis
+
+workflow_continuity_analysis
+
+workflow_summary_generation
+
+workflow_attention_analysis
+
+workflow_completion_analysis
+
+---
+
+4. WORKFLOW AWARENESS
+
+---
+
+Understand:
+
+workflow start
+
+workflow state
+
+workflow dependencies
+
+workflow risks
+
+workflow progress
+
+workflow completion path
+
+---
+
+5. WORKFLOW HEALTH ENGINE
+
+---
+
+Analyze:
+
+task_health
+
+dependency_health
+
+verification_health
+
+deployment_health
+
+execution_health
+
+Returns:
+
+workflow_health
+
+workflow_confidence
+
+workflow_risk
+
+---
+
+6. WORKFLOW COMPLETION ENGINE
+
+---
+
+Track:
+
+completed_steps
+
+active_steps
+
+blocked_steps
+
+future_steps
+
+Returns:
+
+completion_forecast
+
+workflow_momentum
+
+completion_confidence
+
+---
+
+7. WORKFLOW ATTENTION MAP
+
+---
+
+Identify:
+
+healthy_workflows
+
+active_workflows
+
+blocked_workflows
+
+critical_workflows
+
+future_workflows
+
+Returns:
+
+workflow_attention_map
+
+recommended_focus
+
+---
+
+8. AUTONOMOUS WORKFLOW SCORE
+
+---
+
+Returns:
+
+workflow_health
+
+workflow_progress
+
+workflow_continuity
+
+workflow_completion
+
+overall_workflow_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+9. ENDPOINTS
+
+---
+
+GET  /workflow-intelligence/status
+
+GET  /workflow-intelligence/capabilities
+
+POST /workflow-intelligence/preview
+
+POST /workflow-intelligence/workflow-analysis
+
+POST /workflow-intelligence/workflow-health
+
+POST /workflow-intelligence/completion-analysis
+
+POST /workflow-intelligence/attention-map
+
+---
+
+10. FILES MODIFIED
+
+---
+
+autonomous_workflow_intelligence_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+11. SAFETY
+
+---
+
+workflow_execution=False
+
+deployment_execution=False
+
+command_execution=False
+
+system_actions=False
+
+read_only_preview_only=True
+
+================================================================================
+END OF LAYER 38.0 REPORT
+========================

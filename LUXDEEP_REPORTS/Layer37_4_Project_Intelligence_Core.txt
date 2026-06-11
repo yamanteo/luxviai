@@ -1,0 +1,266 @@
+================================================================================
+LAYER 37.4 — PROJECT INTELLIGENCE CORE PREVIEW
+================================================================================
+
+Report Date        : 2026-06-11
+Layer              : 37.4
+Module             : project_intelligence_core_preview.py
+Series             : LuxCode Agent Architecture
+Version            : 1.0
+Status             : project_intelligence_core_ready
+Operation Mode     : read_only_preview_only
+Integration        : 37.3 Render Deployment Intelligence,
+37.2 Terminal Intelligence,
+37.1 GitHub Project Intelligence,
+37.0 Execution Brain Consolidation,
+36.9 Execution Brain Core,
+36.0 Engineering Brain Core
+---------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 37.4 introduces Project Intelligence Core.
+
+This layer becomes the project-awareness engine of LuxCode.
+
+Primary Goal:
+
+Understand an entire project as a living system.
+
+Not:
+
+repository only.
+
+Not:
+
+deployment only.
+
+Not:
+
+workspace only.
+
+Project.
+
+---
+
+2. PROJECT INTELLIGENCE MODEL
+
+---
+
+Project
+
+├── Repository
+
+├── Workspace
+
+├── Terminal Activity
+
+├── Deployments
+
+├── Tasks
+
+├── Verification
+
+├── Reports
+
+└── Roadmap
+
+---
+
+3. CAPABILITIES
+
+---
+
+project_analysis
+
+project_structure_mapping
+
+project_health_analysis
+
+project_lifecycle_analysis
+
+project_dependency_mapping
+
+project_risk_analysis
+
+project_progress_analysis
+
+project_summary_generation
+
+project_attention_analysis
+
+project_growth_analysis
+
+---
+
+4. PROJECT AWARENESS
+
+---
+
+Understand:
+
+project structure
+
+project goals
+
+project progress
+
+project health
+
+project dependencies
+
+project risks
+
+project evolution
+
+---
+
+5. PROJECT HEALTH MODEL
+
+---
+
+Analyze:
+
+repository_health
+
+workspace_health
+
+deployment_health
+
+verification_health
+
+task_health
+
+roadmap_health
+
+Returns:
+
+overall_project_score
+
+---
+
+6. PROJECT PROGRESS ENGINE
+
+---
+
+Analyze:
+
+completed_work
+
+active_work
+
+queued_work
+
+blocked_work
+
+future_work
+
+Returns:
+
+progress_score
+
+completion_forecast
+
+project_momentum
+
+---
+
+7. PROJECT RISK ENGINE
+
+---
+
+Analyze:
+
+technical_risk
+
+deployment_risk
+
+verification_risk
+
+dependency_risk
+
+execution_risk
+
+Returns:
+
+project_risk_score
+
+project_risk_summary
+
+recommended_focus
+
+---
+
+8. PROJECT ATTENTION MAP
+
+---
+
+Generate:
+
+healthy_areas
+
+attention_required_areas
+
+critical_areas
+
+future_focus_areas
+
+Returns:
+
+project_attention_map
+
+priority_focus
+
+---
+
+9. ENDPOINTS
+
+---
+
+GET  /project-intelligence/status
+
+GET  /project-intelligence/capabilities
+
+POST /project-intelligence/preview
+
+POST /project-intelligence/project-analysis
+
+POST /project-intelligence/project-health
+
+POST /project-intelligence/project-progress
+
+POST /project-intelligence/project-risk
+
+---
+
+10. FILES MODIFIED
+
+---
+
+project_intelligence_core_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+11. SAFETY
+
+---
+
+project_modification=False
+
+deployment_execution=False
+
+repository_modification=False
+
+workspace_modification=False
+
+read_only_preview_only=True
+
+================================================================================
+END OF LAYER 37.4 REPORT
+========================

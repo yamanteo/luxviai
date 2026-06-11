@@ -1,0 +1,254 @@
+================================================================================
+LAYER 40.1 — AGENT ACTION ENGINE PREVIEW
+================================================================================
+
+Report Date        : 2026-06-11
+Layer              : 40.1
+Module             : agent_action_engine_preview.py
+Series             : LuxCode Agent Execution Systems
+Version            : 1.0
+Status             : action_engine_ready
+Operation Mode     : read_only_preview_only
+Integration        : 40.0 Agent Execution Core,
+39.9 Agent Runtime Master Status,
+38.9 Autonomous Agent Operating Model,
+36.9 Execution Brain Core
+-------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 40.1 introduces Agent Action Engine.
+
+This layer becomes the action decomposition engine of LuxCode.
+
+Primary Goal:
+
+Convert execution plans into actionable units.
+
+Primary Mission:
+
+Transform:
+
+Goal
+
+&#8595;
+
+Task
+
+&#8595;
+
+Actions
+
+&#8595;
+
+Execution Units
+
+---
+
+2. ACTION ENGINE MODEL
+
+---
+
+Task Intake
+
+&#8595;
+
+Task Analysis
+
+&#8595;
+
+Action Decomposition
+
+&#8595;
+
+Action Sequencing
+
+&#8595;
+
+Execution Unit Creation
+
+&#8595;
+
+Action Package
+
+---
+
+3. CAPABILITIES
+
+---
+
+action_decomposition
+
+action_sequencing
+
+action_dependency_analysis
+
+execution_unit_generation
+
+micro_action_generation
+
+action_trace_generation
+
+action_health_analysis
+
+action_risk_analysis
+
+action_summary_generation
+
+action_readiness_analysis
+
+---
+
+4. ACTION DECOMPOSITION ENGINE
+
+---
+
+Convert:
+
+high_level_tasks
+
+workflow_steps
+
+execution_plans
+
+project_operations
+
+Into:
+
+action_units
+
+micro_actions
+
+execution_steps
+
+Returns:
+
+action_package
+
+action_count
+
+decomposition_confidence
+
+---
+
+5. ACTION SEQUENCE ENGINE
+
+---
+
+Analyze:
+
+action_order
+
+action_dependencies
+
+parallel_actions
+
+blocked_actions
+
+Returns:
+
+action_sequence
+
+sequence_health
+
+sequence_risk
+
+---
+
+6. ACTION HEALTH MODEL
+
+---
+
+Analyze:
+
+decomposition_health
+
+dependency_health
+
+sequence_health
+
+execution_health
+
+Returns:
+
+action_health
+
+action_risk
+
+action_readiness
+
+---
+
+7. ACTION SCORE
+
+---
+
+Returns:
+
+decomposition_score
+
+sequence_score
+
+dependency_score
+
+readiness_score
+
+overall_action_engine_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+8. ENDPOINTS
+
+---
+
+GET  /action-engine/status
+
+GET  /action-engine/capabilities
+
+POST /action-engine/preview
+
+POST /action-engine/decompose
+
+POST /action-engine/sequence-analysis
+
+POST /action-engine/readiness-analysis
+
+POST /action-engine/health
+
+---
+
+9. FILES MODIFIED
+
+---
+
+agent_action_engine_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+10. SAFETY
+
+---
+
+real_execution=False
+
+action_execution=False
+
+deployment_execution=False
+
+file_modification=False
+
+read_only_preview_only=True
+
+================================================================================
+END OF LAYER 40.1 REPORT
+========================

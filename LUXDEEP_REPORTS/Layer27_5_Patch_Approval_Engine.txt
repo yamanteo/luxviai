@@ -1,0 +1,123 @@
+================================================================================
+LAYER 27.5 — PATCH APPROVAL ENGINE PREVIEW — TEST REPORT
+Date: 2026-06-10
+Mode: Read-only scaffold (gerçek işlem yok, commit yok, push yok)
+================================================================================
+
+TASK NAME
+--------------------------------------------------------------------------------
+Layer 27.5 — Patch Approval Engine Preview
+
+LAYER
+--------------------------------------------------------------------------------
+27.5 — Patch Approval Engine Preview
+
+GOAL
+--------------------------------------------------------------------------------
+Implement a read-only patch approval assessment engine that evaluates whether
+a proposed patch can be approved, blocked, or needs human review, based on
+risk assessment from layers 27.1-27.4 and integration signals from 9 layers.
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+1. app.py (12,008 → 12,040 satır)
+   - Satır 179-183: patch_approval_engine_preview import bloğu
+   - Satır 959-965: PatchApprovalPreviewRequest Pydantic modeli
+   - Satır 8485-8505: 3 endpoint route'u
+
+2. endpoint_coverage_matrix.py (246 → 249 satır)
+   - Satır 192-194: patch_draft_layer_27 grubuna 3 kayıt (27.5)
+
+3. scripts/smoke_check.py (7,875 → 8,003 satır)
+   - check_patch_approval_engine_preview() test metodu (128 satır)
+   - Testler: durum (22 assertion), kayıt (22 assertion),
+     önizleme (50 assertion), fault report (14 assertion)
+
+4. lux_fault_report.py (1,372 → 1,408 satır)
+   - Satır 35: import
+   - _fault_report_patch_approval() fonksiyonu (33 satır)
+   - 2 x patch_approval section
+
+FILES CREATED
+--------------------------------------------------------------------------------
+1. patch_approval_engine_preview.py (414 satır, 19,303 byte)
+   - PATCH_APPROVAL_PROFILES (5 profil)
+   - patch_approval_status(), patch_approval_registry(), build_patch_approval_preview()
+
+ENDPOINTS ADDED
+--------------------------------------------------------------------------------
+| Method | Path                            | Layer | Amaç                          |
+|--------|---------------------------------|-------|-------------------------------|
+| GET    | /debug/patch-approval-status    | 27.5  | Patch onay motoru durumu      |
+| GET    | /debug/patch-approval-registry  | 27.5  | Patch onay kaydı              |
+| POST   | /debug/patch-approval-preview   | 27.5  | Salt okunur onay değerlendirme|
+
+INTEGRATIONS ADDED (9)
+--------------------------------------------------------------------------------
+| Entegrasyon            | Modül                               | Layer |
+|------------------------|-------------------------------------|-------|
+| Patch Draft Engine     | patch_draft_engine_preview.py       | 27.1  |
+| Change Preview Engine  | change_preview_engine_preview.py    | 27.2  |
+| Diff Preview Engine    | diff_preview_engine_preview.py      | 27.3  |
+| Patch Risk Matrix      | patch_risk_matrix_preview.py        | 27.4  |
+| Multi-Agent Coordinator| multi_agent_coordinator_preview.py  | 26.7  |
+| Evidence Store         | evidence_store_preview.py           | 26.6  |
+| Verification Planner   | safe_verification_planner_preview.py| 25.6  |
+| Safe Patch Planner     | safe_patch_planner_preview.py       | 25.5  |
+| Safe Change Boundary   | safe_change_boundary_preview.py     | 25.4  |
+
+APPROVAL STRUCTURE
+--------------------------------------------------------------------------------
+Her onay profili:
+- target_issue, target_component
+- approval_required, approval_level (strict|standard|low)
+- approval_reason, approval_source
+- human_review_required
+- blocked_by_boundary, blocked_reasons
+- safe_to_continue
+- recommended_next_action, recommended_approval_path
+- required_validations, required_tests
+- confidence_score
+
+5 PROFIL
+--------------------------------------------------------------------------------
+1. stop_continue       (standard, güvenli)     — resume konsolidasyonu
+2. websocket_stream    (strict,   ENGELLİ)     — stream event guard
+3. workspace_export    (low,      güvenli)     — export guard
+4. luxway_permission   (standard, ENGELLİ)     — izin sınırı
+5. debug_intelligence  (low,      güvenli)     — şema iskeleti
+
+SAFETY CHECKS
+--------------------------------------------------------------------------------
+Tümü read_only=True, strict_read_only=True, tüm write/commit/push/deploy false.
+
+PROBLEMS ENCOUNTERED
+--------------------------------------------------------------------------------
+None. 8 incremental edit_file işlemi temiz uygulandı.
+
+SMOKE TEST COVERAGE
+--------------------------------------------------------------------------------
+check_patch_approval_engine_preview() → 108 assertion
+- Status: layer/name/status, 16 safety flag false
+- Registry: approval_count, approvals list, approval_level_summary,
+  blocked_count, human_review_count, safe_to_continue_count, safety_flags
+- Preview: tüm 15 çıktı alanı, 9 integration_signals, 16 safety performed false
+- Fault report: patch_approval section, 14 Türkçe alan adı
+
+FINAL STATUS
+--------------------------------------------------------------------------------
+Layer 27.5: TAMAMLANDI
+- 1 dosya oluşturuldu, 4 dosya düzenlendi (8 edit_file)
+- 3 endpoint eklendi, 9 entegrasyon bağlandı
+- Güvenlik: salt okunur, korunan alanlar dokunulmadı
+- Commit yok, push yok
+
+RECOMMENDATIONS
+--------------------------------------------------------------------------------
+1. Canlı smoke test ile tüm 27.x endpoint'lerini doğrula
+2. Layer 27 toplayıcısı (layer27_status.py) ile 27.1-27.5'i birleştir
+3. Onay seviyeleri gerçek patch uygulama verisiyle rafine edilebilir
+
+================================================================================
+END OF REPORT
+================================================================================

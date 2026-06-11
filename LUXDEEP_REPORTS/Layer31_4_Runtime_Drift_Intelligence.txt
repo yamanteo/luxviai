@@ -1,0 +1,143 @@
+================================================================================
+LAYER 31.4 — RUNTIME DRIFT INTELLIGENCE PREVIEW
+================================================================================
+Report Timestamp: 2026-06-11T00:00:00Z
+
+================================================================================
+1. IMPLEMENTATION OVERVIEW
+================================================================================
+
+Module:          runtime_drift_intelligence_preview.py
+Status:          COMPLETED
+Layer:           31.4
+Prerequisite:    Layer 31.3 — Runtime Risk Intelligence Preview
+
+This layer introduces runtime drift intelligence as a read-only preview
+system that profiles and reports on configuration, dependency, state,
+performance, data, deployment, security, behavioral, and memory drift
+across the runtime environment.
+
+================================================================================
+2. DRIFT PROFILES REGISTERED
+================================================================================
+
+  ID                       | Component                    | Status    | Score
+  -------------------------+------------------------------+-----------+------
+  config_drift             | configuration_runtime        | warning   | 0.54
+  dependency_drift         | dependency_graph_runtime     | warning   | 0.56
+  state_drift              | state_management_runtime     | pass      | 0.78
+  performance_drift        | performance_runtime          | warning   | 0.50
+  data_drift               | data_layer_runtime           | pass      | 0.76
+  deployment_drift         | deployment_environment       | warning   | 0.46
+  security_drift           | security_posture_runtime     | warning   | 0.50
+  behavioral_drift         | runtime_behavior_runtime     | pass      | 0.80
+  memory_drift             | memory_runtime               | warning   | 0.52
+
+  Overall Drift Score:     0.60 (warning)
+  Profiles:                9 total (0 degraded, 6 warning, 3 pass)
+
+================================================================================
+3. ENDPOINTS REGISTERED
+================================================================================
+
+  GET  /debug/runtime-drift-status      -> status metadata
+  GET  /debug/runtime-drift-registry    -> full registry of all drift profiles
+  POST /debug/runtime-drift-preview     -> per-component drift preview
+
+================================================================================
+4. INTEGRATIONS
+================================================================================
+
+  Upstream layers consulted for drift signals:
+    * Layer 31.3 — Runtime Risk Intelligence
+    * Layer 31.2 — Runtime Stability Intelligence
+    * Layer 31.1 — System Health Intelligence
+    * Layer 30   — Status Snapshot
+    * Layer 29   — Status Snapshot
+    * 29.8       — Patch Confidence
+    * 29.7       — Patch Assurance
+    * 29.6       — Patch Accountability
+    * 29.5       — Patch Oversight
+    * 29.4       — Patch Governance
+    * 29.3       — Patch Compliance
+    * 29.2       — Patch Policy Evaluation
+    * 29.1       — Patch Permission Enforcement
+
+  Downstream consumers:
+    * app.py                          — 3 route handlers registered
+    * lux_fault_report.py             — 2 section entries added
+    * endpoint_coverage_matrix.py     — endpoint group added
+    * scripts/smoke_check.py          — 1 test case + registry entry added
+
+================================================================================
+5. PROTECTED AREAS (NOT MODIFIED)
+================================================================================
+
+  * chat           — untouched
+  * stream         — untouched
+  * websocket      — untouched
+  * typewriter     — untouched
+  * stop/continue  — untouched
+  * static/index.html — untouched
+
+================================================================================
+6. FORBIDDEN OPERATIONS (NOT PERFORMED)
+================================================================================
+
+  [OK] Auto-fix        — not performed
+  [OK] Patch apply     — not performed
+  [OK] Commit          — not performed
+  [OK] Push            — not performed
+  [OK] Deploy          — not performed
+  [OK] Subprocess exec — not performed
+  [OK] Database write  — not performed
+  [OK] Memory write    — not performed
+  [OK] Git write       — not performed
+
+================================================================================
+7. FILES MODIFIED / CREATED
+================================================================================
+
+  NEW:
+    runtime_drift_intelligence_preview.py       (499 lines)
+
+  MODIFIED:
+    app.py                                      +import +model +3 endpoints
+    lux_fault_report.py                         +import +function +2 entries
+    endpoint_coverage_matrix.py                 +1 endpoint group (3 entries)
+    scripts/smoke_check.py                      +1 test method +1 registry entry
+
+  CREATED:
+    Layer31_4_Runtime_Drift_Intelligence.txt     (this report)
+
+================================================================================
+8. OUTPUT FIELDS (per preview response)
+================================================================================
+
+  drift_id              — unique profile identifier
+  drift_category        — category of drift (config_integrity, etc.)
+  drift_status          — pass / warning / degraded / blocked
+  drift_score           — numeric score (0.0-1.0)
+  drift_findings        — list of evidence items
+  drift_warnings        — list of warning conditions
+  drift_blockers        — list of blocking issues
+  drift_risk_level      — low / medium / high
+  drift_recommendations — recommended remediation steps
+  drift_summary         — human-readable summary
+  required_actions      — concrete action items
+  recommended_next_action — single next step
+  confidence_score      — confidence in the assessment
+  drift_signals         — integration signals from upstream layers
+
+================================================================================
+9. COMPLETION STATUS
+================================================================================
+
+  Layer 31.4 — Runtime Drift Intelligence Preview: COMPLETE
+  No commit performed.
+  No push performed.
+  All changes are read-only scaffold previews.
+
+================================================================================
+END OF LAYER 31.4 REPORT
+================================================================================

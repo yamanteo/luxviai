@@ -1,0 +1,78 @@
+========================================================================
+LAYER 30.4 — VALIDATION READINESS — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+========================================================================
+
+TASK: Layer 30.4 — Validation Readiness Preview
+GOAL: Validation-level readiness assessment aggregating system, operational,
+      and production readiness with full-stack blocker tracking across
+      25 integrated layers (Layers 25–30).
+
+FILES CREATED
+--------------------------------------------------------------------------------
+validation_readiness_preview.py (~540 lines, ~24 KB)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py — import, ValidationReadinessPreviewRequest model, 3 routes
+endpoint_coverage_matrix.py — new validation_readiness_layer_30 group (3 entries)
+scripts/smoke_check.py — check_validation_readiness_preview() + registration
+lux_fault_report.py — import, _fault_report_validation_readiness(), 2 sections
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/validation-readiness-status
+GET  /debug/validation-readiness-registry
+POST /debug/validation-readiness-preview
+
+VALIDATION READINESS PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       pass       ready  score:0.80 — 0 blockers
+websocket_stream    violation  BLOCK  score:0.15 — 3 blockers
+workspace_export    pass       ready  score:0.78 — 0 blockers
+luxway_permission   violation  BLOCK  score:0.10 — 3 blockers
+debug_intelligence  pass       ready  score:0.85 — 0 blockers
+
+OUTPUT FIELDS
+--------------------------------------------------------------------------------
+validation_id             — profile identifier
+validation_category       — category classification
+validation_status         — pass / violation
+validation_score          — numeric validation score
+validation_requirements   — requirement list
+validation_findings       — finding list
+validation_blockers       — validation blocker list
+validation_risk_level     — low / high
+validation_recommendations — recommendation list
+validation_readiness      — bool (0 ready, 5 not ready)
+required_actions          — action items to resolve blockers
+recommended_next_action   — action recommendation
+confidence_score          — aggregated confidence
+
+25 INTEGRATIONS: 30.3 → 30.2 → 30.1 → 29 Snapshot → 29.8 → ... → 25.4
+
+LAYER 30 STACK STATUS
+--------------------------------------------------------------------------------
+30.1 Production Readiness     ✓  deployment-awareness scaffold
+30.2 Operational Readiness    ✓  ops-awareness scaffold
+30.3 System Readiness         ✓  system-awareness scaffold
+30.4 Validation Readiness     ✓  validation-awareness scaffold (new)
+
+All four remain read-only scaffold; no deployment actions performed.
+Validation readiness=False for all components — gated behind all lower layers.
+debug_intelligence leads with validation_score=0.85.
+luxway_permission trails at 0.10 with full-stack blocker cascade.
+Websocket_stream has 3 validation blockers (tab switch, typewriter ownership,
+privacy audit) that propagate from upstream readiness layers.
+
+HEALTH CHECK
+--------------------------------------------------------------------------------
+- No files over-written: incremental edits only
+- app.py not replaced: 3 targeted edits (import, model, routes)
+- All new endpoints read-only: no writes, no subprocesses
+- All existing safety flags set to False: safe by default
+- Fault report section added: validation_readiness (both open/closed paths)
+- Smoke check method added with 25 integration signal assertions
+- Endpoint coverage matrix updated with 3 new entries
+- Protected areas (chat, stream, websocket, typewriter, stop/continue,
+  static/index.html) untouched

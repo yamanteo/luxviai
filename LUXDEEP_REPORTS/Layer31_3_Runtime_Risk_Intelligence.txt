@@ -1,0 +1,143 @@
+================================================================================
+LAYER 31.3 — RUNTIME RISK INTELLIGENCE PREVIEW
+================================================================================
+Report Timestamp: 2026-06-11T00:00:00Z
+
+================================================================================
+1. IMPLEMENTATION OVERVIEW
+================================================================================
+
+Module:          runtime_risk_intelligence_preview.py
+Status:          COMPLETED
+Layer:           31.3
+Prerequisite:    Layer 31.2 — Runtime Stability Intelligence Preview
+
+This layer introduces runtime risk intelligence as a read-only preview
+system that profiles and reports on the operational risk posture of key
+runtime areas: data persistence, external API dependency, security boundary,
+performance, state management, deployment pipeline, dependency graph,
+concurrency safety, and configuration integrity.
+
+================================================================================
+2. RISK PROFILES REGISTERED
+================================================================================
+
+  ID                       | Component                    | Status    | Score
+  -------------------------+------------------------------+-----------+------
+  data_loss_risk           | data_persistence_runtime     | warning   | 0.62
+  api_failure_risk         | external_api_runtime         | degraded  | 0.45
+  security_exposure_risk   | security_boundary_runtime    | warning   | 0.55
+  performance_degradation  | performance_runtime          | warning   | 0.60
+  state_corruption_risk    | state_management_runtime     | pass      | 0.78
+  deployment_risk          | deployment_pipeline_runtime  | warning   | 0.58
+  dependency_failure_risk  | dependency_graph_runtime     | pass      | 0.80
+  concurrency_risk         | concurrency_runtime          | pass      | 0.76
+  configuration_drift_risk | configuration_runtime        | warning   | 0.52
+
+  Overall Risk Score:      0.63 (warning)
+  Profiles:                9 total (1 degraded, 4 warning, 4 pass)
+
+================================================================================
+3. ENDPOINTS REGISTERED
+================================================================================
+
+  GET  /debug/runtime-risk-status      -> status metadata
+  GET  /debug/runtime-risk-registry    -> full registry of all risk profiles
+  POST /debug/runtime-risk-preview     -> per-component risk preview
+
+================================================================================
+4. INTEGRATIONS
+================================================================================
+
+  Upstream layers consulted for risk signals:
+    * Layer 31.2 — Runtime Stability Intelligence
+    * Layer 31.1 — System Health Intelligence
+    * Layer 30   — Status Snapshot
+    * Layer 29   — Status Snapshot
+    * 29.8       — Patch Confidence
+    * 29.7       — Patch Assurance
+    * 29.6       — Patch Accountability
+    * 29.5       — Patch Oversight
+    * 29.4       — Patch Governance
+    * 29.3       — Patch Compliance
+    * 29.2       — Patch Policy Evaluation
+    * 29.1       — Patch Permission Enforcement
+
+  Downstream consumers:
+    * app.py                          — 3 route handlers registered
+    * lux_fault_report.py             — 2 section entries added
+    * endpoint_coverage_matrix.py     — endpoint group added
+    * scripts/smoke_check.py          — 1 test case + registry entry added
+
+================================================================================
+5. PROTECTED AREAS (NOT MODIFIED)
+================================================================================
+
+  * chat           — untouched
+  * stream         — untouched
+  * websocket      — untouched
+  * typewriter     — untouched
+  * stop/continue  — untouched
+  * static/index.html — untouched
+
+================================================================================
+6. FORBIDDEN OPERATIONS (NOT PERFORMED)
+================================================================================
+
+  [OK] Auto-fix        — not performed
+  [OK] Patch apply     — not performed
+  [OK] Commit          — not performed
+  [OK] Push            — not performed
+  [OK] Deploy          — not performed
+  [OK] Subprocess exec — not performed
+  [OK] Database write  — not performed
+  [OK] Memory write    — not performed
+  [OK] Git write       — not performed
+
+================================================================================
+7. FILES MODIFIED / CREATED
+================================================================================
+
+  NEW:
+    runtime_risk_intelligence_preview.py       (509 lines)
+
+  MODIFIED:
+    app.py                                      +import +model +3 endpoints
+    lux_fault_report.py                         +import +function +2 entries
+    endpoint_coverage_matrix.py                 +1 endpoint group (3 entries)
+    scripts/smoke_check.py                      +1 test method +1 registry entry
+
+  CREATED:
+    Layer31_3_Runtime_Risk_Intelligence.txt      (this report)
+
+================================================================================
+8. OUTPUT FIELDS (per preview response)
+================================================================================
+
+  risk_id              — unique profile identifier
+  risk_category        — category of risk (data_integrity, etc.)
+  risk_status          — pass / warning / degraded / blocked
+  risk_score           — numeric score (0.0-1.0)
+  risk_findings        — list of evidence items
+  risk_warnings        — list of warning conditions
+  risk_blockers        — list of blocking issues
+  risk_level           — low / medium / high
+  risk_recommendations — recommended remediation steps
+  risk_summary         — human-readable summary
+  required_actions     — concrete action items
+  recommended_next_action — single next step
+  confidence_score     — confidence in the assessment
+  risk_signals         — integration signals from upstream layers
+
+================================================================================
+9. COMPLETION STATUS
+================================================================================
+
+  Layer 31.3 — Runtime Risk Intelligence Preview: COMPLETE
+  No commit performed.
+  No push performed.
+  All changes are read-only scaffold previews.
+
+================================================================================
+END OF LAYER 31.3 REPORT
+================================================================================

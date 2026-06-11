@@ -1,0 +1,275 @@
+================================================================================
+LAYER 39.1 — AGENT SESSION RUNTIME PREVIEW
+================================================================================
+
+Report Date        : 2026-06-11
+Layer              : 39.1
+Module             : agent_session_runtime_preview.py
+Series             : LuxCode Agent Runtime Systems
+Version            : 1.0
+Status             : agent_session_runtime_ready
+Operation Mode     : read_only_preview_only
+Integration        : 39.0 Agent Runtime Core,
+38.9 Autonomous Agent Operating Model,
+37.0 Execution Brain Consolidation,
+36.3 Persistent Execution Intelligence,
+36.4 Multi Session Continuity Intelligence
+------------------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 39.1 introduces Agent Session Runtime.
+
+This layer becomes the session lifecycle engine of LuxCode.
+
+Primary Goal:
+
+Manage the complete lifecycle of an active working session.
+
+Primary Mission:
+
+Know:
+
+* when a session starts
+* when a session pauses
+* when a session resumes
+* when a session changes context
+* when a session ends
+
+without losing execution continuity.
+
+---
+
+2. SESSION RUNTIME MODEL
+
+---
+
+Session Start
+
+&#8595;
+
+Context Acquisition
+
+&#8595;
+
+Task Activation
+
+&#8595;
+
+Execution Tracking
+
+&#8595;
+
+Pause / Resume
+
+&#8595;
+
+Continuation Recovery
+
+&#8595;
+
+Session Completion
+
+---
+
+3. CAPABILITIES
+
+---
+
+session_state_tracking
+
+session_lifecycle_management
+
+session_pause_handling
+
+session_resume_handling
+
+session_recovery_analysis
+
+session_context_tracking
+
+session_continuity_analysis
+
+session_health_analysis
+
+session_summary_generation
+
+session_readiness_analysis
+
+---
+
+4. SESSION STATE ENGINE
+
+---
+
+Track:
+
+new_session
+
+active_session
+
+paused_session
+
+waiting_session
+
+recovering_session
+
+completed_session
+
+Returns:
+
+session_state
+
+session_health
+
+session_confidence
+
+---
+
+5. PAUSE / RESUME ENGINE
+
+---
+
+Support:
+
+pause_request
+
+resume_request
+
+continuation_request
+
+recovery_request
+
+Returns:
+
+resume_point
+
+continuation_context
+
+recovery_readiness
+
+---
+
+6. CONTINUITY ENGINE
+
+---
+
+Preserve:
+
+active_tasks
+
+active_workflows
+
+active_commands
+
+execution_state
+
+context_state
+
+Returns:
+
+continuity_health
+
+continuity_confidence
+
+continuity_risk
+
+---
+
+7. SESSION HEALTH MODEL
+
+---
+
+Analyze:
+
+state_health
+
+continuity_health
+
+recovery_health
+
+context_health
+
+Returns:
+
+session_health
+
+session_risk
+
+session_readiness
+
+---
+
+8. SESSION SCORE
+
+---
+
+Returns:
+
+continuity_score
+
+resume_score
+
+recovery_score
+
+context_score
+
+overall_session_runtime_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+9. ENDPOINTS
+
+---
+
+GET  /session-runtime/status
+
+GET  /session-runtime/capabilities
+
+POST /session-runtime/preview
+
+POST /session-runtime/pause-analysis
+
+POST /session-runtime/resume-analysis
+
+POST /session-runtime/continuity-analysis
+
+POST /session-runtime/health
+
+---
+
+10. FILES MODIFIED
+
+---
+
+agent_session_runtime_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+11. SAFETY
+
+---
+
+session_control=False
+
+runtime_control=False
+
+execution_control=False
+
+system_actions=False
+
+read_only_preview_only=True
+
+================================================================================
+END OF LAYER 39.1 REPORT
+========================

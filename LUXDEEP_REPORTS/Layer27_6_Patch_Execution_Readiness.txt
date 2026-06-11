@@ -1,0 +1,91 @@
+================================================================================
+LAYER 27.6 — PATCH EXECUTION READINESS PREVIEW — TEST REPORT
+Date: 2026-06-10
+Mode: Read-only scaffold (gerçek işlem yok, commit yok, push yok)
+================================================================================
+
+TASK NAME
+--------------------------------------------------------------------------------
+Layer 27.6 — Patch Execution Readiness Preview
+
+LAYER
+--------------------------------------------------------------------------------
+27.6
+
+GOAL
+--------------------------------------------------------------------------------
+Implement a read-only execution readiness engine that evaluates whether a
+proposed patch is ready for execution (go/no-go), identifies blockers and
+missing requirements, and recommends an execution path with rollback strategy.
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+1. app.py (12,040 → 12,072 satır)
+   - import: patch_execution_readiness_preview
+   - model: PatchExecutionPreviewRequest
+   - routes: 3 endpoint (GET status, GET registry, POST preview)
+
+2. endpoint_coverage_matrix.py (249 → 252 satır)
+   - 3 entries: 27.6 status, registry, preview
+
+3. scripts/smoke_check.py (8,003 → 8,100 satır)
+   - check_patch_execution_readiness_preview() (97 satır)
+   - Status: 18 assertion (loop + explicit)
+   - Registry: 20 assertion (go/no-go summary, ready/blocked/rollback counts)
+   - Preview: 45 assertion (all 17 output fields, 10 integration signals)
+   - Fault report: 16 alan doğrulaması
+
+4. lux_fault_report.py (1,408 → 1,444 satır)
+   - import: patch_execution_readiness_preview
+   - _fault_report_patch_execution_readiness() (35 satır, 17 Türkçe alan)
+   - 2 x section: build_fault_report_preview + intelligence
+
+FILES CREATED
+--------------------------------------------------------------------------------
+1. patch_execution_readiness_preview.py (438 satır, 19,991 byte)
+   - PATCH_EXECUTION_PROFILES (5 profil)
+   - patch_execution_status(), patch_execution_registry(), build_patch_execution_preview()
+
+ENDPOINTS ADDED
+--------------------------------------------------------------------------------
+| Method | Path                             | Layer | Amaç                            |
+|--------|----------------------------------|-------|---------------------------------|
+| GET    | /debug/patch-execution-status    | 27.6  | Çalıştırma hazırlık durumu     |
+| GET    | /debug/patch-execution-registry  | 27.6  | Çalıştırma hazırlık kaydı      |
+| POST   | /debug/patch-execution-preview   | 27.6  | Salt okunur çalıştırma değ.     |
+
+INTEGRATIONS (10)
+--------------------------------------------------------------------------------
+27.1 Patch Draft, 27.2 Change Preview, 27.3 Diff Preview, 27.4 Patch Risk Matrix,
+27.5 Patch Approval, 26.7 Multi-Agent Coordinator, 26.6 Evidence Store,
+25.6 Verification Planner, 25.5 Safe Patch Planner, 25.4 Safe Change Boundary
+
+EXECUTION READINESS STRUCTURE
+--------------------------------------------------------------------------------
+Her profil: target_issue, target_component, execution_ready, readiness_score,
+go_no_go_status, blockers, blocking_reasons, missing_requirements,
+required_approvals, required_validations, required_tests, verification_ready,
+rollback_required, rollback_strategy, execution_path, recommended_next_action
+
+5 PROFIL
+--------------------------------------------------------------------------------
+1. stop_continue       (go,     skor:78) — resume konsolidasyonu
+2. websocket_stream    (no_go,  skor:22) — ENGELLİ (3 blocker)
+3. workspace_export    (go,     skor:85) — export guard
+4. luxway_permission   (no_go,  skor:30) — ENGELLİ (2 blocker)
+5. debug_intelligence  (go,     skor:92) — şema iskeleti
+
+SAFETY: Tümü read_only, strict_read_only, tüm write/commit/push false.
+PROBLEMS: None. 8 incremental edit_file temiz.
+PROTECTED: chat, stream, websocket, typewriter, stop/continue, static/index.html.
+
+FINAL STATUS
+--------------------------------------------------------------------------------
+Layer 27.6: TAMAMLANDI
+- 1 dosya oluşturuldu, 4 düzenlendi (8 edit_file)
+- 3 endpoint, 10 entegrasyon
+- Commit yok, push yok
+
+================================================================================
+END OF REPORT
+================================================================================

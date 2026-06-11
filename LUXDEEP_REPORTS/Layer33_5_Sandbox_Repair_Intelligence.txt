@@ -1,0 +1,133 @@
+================================================================================
+LAYER 33.5 — SANDBOX REPAIR INTELLIGENCE PREVIEW
+================================================================================
+Report Date        : 2026-06-11
+Layer              : 33.5
+Status             : sandbox_repair_intelligence_ready
+Module             : sandbox_repair_intelligence_preview.py
+Series             : LuxCode Safe Repair Execution Model
+Integration        : 33.4 Clone Workspace Intelligence,
+                     33.3 Change Planning Intelligence,
+                     33.2 Failed Change Intelligence,
+                     33.1 Change Memory Intelligence,
+                     32.5 Dependency Intelligence,
+                     32.4 Root Cause Intelligence
+--------------------------------------------------------------------------------
+
+1. OVERVIEW
+--------------------------------------------------------------------------------
+Layer 33.5 introduces Sandbox Repair Intelligence Preview — a read-only
+analysis system for the LuxCode Safe Repair Execution Model.
+
+Sandbox Execution Model:
+  REAL_SYSTEM → MASTER_CLONE → WORKING_CLONE → SANDBOX → VALIDATION
+  → DELIVERY_CANDIDATE
+
+Repair Rules:
+  - No repair in REAL_SYSTEM or MASTER_CLONE
+  - All repairs in WORKING_CLONE only
+  - All testing in SANDBOX only
+
+Cancellation Model:
+  - Discard Working Clone + Sandbox state
+  - Regenerate from Master Clone
+  - No rollback required. No production impact.
+
+Loop Protection:
+  - Detects repeated repair loops using Layers 33.1, 33.2, 33.3 data
+  - Flags repeated failed repairs, temporary fixes, symptom-only fixes
+
+2. REPAIR PROFILES
+--------------------------------------------------------------------------------
+
+  2.1 repair_change
+  - Status: degraded | Score: 0.48 | Risk: high
+  - Loop Protection: triggered (3 prior failed repairs)
+  - Steps: 9 | Delivery Candidate: true
+
+  2.2 maintenance_change
+  - Status: pass | Score: 0.80 | Risk: low
+  - Loop Protection: not triggered
+  - Steps: 8 | Delivery Candidate: true
+
+  2.3 feature_change
+  - Status: pass | Score: 0.76 | Risk: low
+  - Steps: 8 | Delivery Candidate: true
+
+  2.4 optimization_change
+  - Status: warning | Score: 0.62 | Risk: medium
+  - Regression corrected before delivery
+  - Steps: 9 | Delivery Candidate: true
+
+  2.5 refactor_change
+  - Status: degraded | Score: 0.45 | Risk: high
+  - Loop Protection: triggered (2 prior failed refactors)
+  - Phased approach with contract tests
+  - Steps: 10 | Delivery Candidate: false (in progress)
+
+  2.6 integration_change
+  - Status: degraded | Score: 0.38 | Risk: critical
+  - Loop Protection: triggered (3 prior failed integrations)
+  - Contract versioning + circuit breaker enforced
+  - Steps: 10 | Delivery Candidate: false (pending tests)
+
+  2.7 configuration_change
+  - Status: warning | Score: 0.64 | Risk: medium
+  - Schema validation + fallback alerting added
+  - Steps: 8 | Delivery Candidate: true
+
+  2.8 security_change
+  - Status: pass | Score: 0.82 | Risk: low
+  - Automated scanning + permission enforcement
+  - Steps: 8 | Delivery Candidate: true
+
+  2.9 documentation_change
+  - Status: warning | Score: 0.66 | Risk: low
+  - Automated generation + CI sync check
+  - Steps: 8 | Delivery Candidate: true
+
+  2.10 workflow_change
+  - Status: warning | Score: 0.58 | Risk: medium
+  - Formalized graph + validation gates added
+  - Steps: 8 | Delivery Candidate: true
+
+3. ENDPOINTS REGISTERED
+--------------------------------------------------------------------------------
+  GET  /debug/sandbox-repair-status    → sandbox_repair_intelligence_status()
+  GET  /debug/sandbox-repair-registry  → sandbox_repair_intelligence_registry()
+  POST /debug/sandbox-repair-preview   → build_sandbox_repair_intelligence_preview()
+
+4. FILES MODIFIED
+--------------------------------------------------------------------------------
+  File                                    | Change
+  ----------------------------------------|---------------------------------------
+  sandbox_repair_intelligence_preview.py  | CREATED (664 lines, 10 profiles)
+  app.py                                  | +import, +model, +3 endpoints
+  lux_fault_report.py                     | +import, +function, +2 section refs
+  endpoint_coverage_matrix.py             | +sandbox_repair endpoint group
+  scripts/smoke_check.py                  | +3 endpoint assertions, +check method,
+                                         |  +registration entry
+
+5. TECHNOLOGY SUPPORT
+--------------------------------------------------------------------------------
+  Python, HTML, CSS, JavaScript, TypeScript, JSON, YAML, Database,
+  Infrastructure, API, Workflow, Documentation
+
+6. SAFETY FLAGS
+--------------------------------------------------------------------------------
+  All safety flags set to False:
+    file_write, memory_write, db_write, git_write, commit, push, deploy,
+    auto_fix, patch_apply, subprocess_execution
+
+7. COMPLIANCE
+--------------------------------------------------------------------------------
+  FORBIDDEN operations NOT performed:
+    Auto-fix, Patch apply, Commit, Push, Deploy,
+    Subprocess execution, Database write, Memory write, Git write
+
+  Protected areas (chat, stream, websocket, typewriter, stop/continue,
+  static/index.html) were NOT modified.
+
+================================================================================
+END OF LAYER 33.5 REPORT
+================================================================================

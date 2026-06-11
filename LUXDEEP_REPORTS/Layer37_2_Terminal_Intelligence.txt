@@ -1,0 +1,174 @@
+================================================================================
+LAYER 37.2 — TERMINAL INTELLIGENCE PREVIEW
+================================================================================
+
+Report Date        : 2026-06-11
+Layer              : 37.2
+Module             : terminal_intelligence_preview.py
+Series             : LuxCode Agent Architecture
+Version            : 1.0
+Status             : terminal_intelligence_ready
+Operation Mode     : read_only_preview_only
+Integration        : 37.1 GitHub Project Intelligence,
+37.0 Execution Brain Consolidation,
+36.9 Execution Brain Core,
+36.0 Engineering Brain Core
+---------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 37.2 introduces Terminal Intelligence.
+
+This layer becomes the terminal-awareness engine of LuxCode.
+
+Primary Goal:
+
+Understand terminal activity as structured engineering workflows.
+
+Not raw commands.
+
+Not text streams.
+
+Engineering actions.
+
+---
+
+2. CAPABILITIES
+
+---
+
+command_analysis
+
+command_chain_analysis
+
+terminal_session_analysis
+
+command_dependency_analysis
+
+terminal_history_analysis
+
+environment_analysis
+
+tool_detection
+
+package_analysis
+
+terminal_risk_analysis
+
+terminal_summary_generation
+
+---
+
+3. TERMINAL AWARENESS
+
+---
+
+Understand:
+
+commands
+
+command chains
+
+terminal sessions
+
+environment state
+
+tool availability
+
+package state
+
+engineering workflows
+
+---
+
+4. COMMAND CLASSIFICATION
+
+---
+
+navigation_commands
+
+development_commands
+
+verification_commands
+
+deployment_commands
+
+environment_commands
+
+utility_commands
+
+---
+
+5. TERMINAL HEALTH MODEL
+
+---
+
+Analyze:
+
+session_health
+
+command_health
+
+environment_health
+
+dependency_health
+
+Returns:
+
+overall_terminal_score
+
+---
+
+6. FUTURE INTEGRATION TARGETS
+
+---
+
+Terminal Bridge
+
+Execution Brain
+
+Command Intelligence
+
+Deployment Agent
+
+Workspace Agent
+
+---
+
+7. ENDPOINTS
+
+---
+
+GET  /terminal-intelligence/status
+
+GET  /terminal-intelligence/capabilities
+
+POST /terminal-intelligence/preview
+
+POST /terminal-intelligence/command-analysis
+
+POST /terminal-intelligence/session-analysis
+
+POST /terminal-intelligence/environment-analysis
+
+---
+
+8. SAFETY
+
+---
+
+terminal_execution=False
+
+command_execution=False
+
+package_installation=False
+
+environment_modification=False
+
+read_only_preview_only=True
+
+================================================================================
+END OF LAYER 37.2 REPORT
+========================

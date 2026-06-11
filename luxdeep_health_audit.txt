@@ -1,0 +1,131 @@
+================================================================================
+LUXDEEP — LAYER 27.3 DIFF PREVIEW ENGINE PREVIEW — SONUÇ RAPORU
+Date: 2026-06-10
+Mode: Read-only scaffold (gerçek işlem yok, commit yok, push yok)
+================================================================================
+
+OLUŞTURULAN DOSYALAR
+--------------------------------------------------------------------------------
+1. diff_preview_engine_preview.py (301 satır, 12,709 byte)
+   - DIFF_PREVIEW_PROFILES (5 profil)
+   - diff_preview_status() → layer 27.3 durum
+   - diff_preview_registry() → 5 diff kaydı
+   - build_diff_preview() → 5 entegrasyonlu tam diff önizleme
+
+DEĞİŞTİRİLEN DOSYALAR
+--------------------------------------------------------------------------------
+1. app.py (11,944 → 11,976 satır)
+   - Satır 167-171: diff_preview_engine_preview import bloğu
+   - Satır 935-939: DiffPreviewRequest Pydantic modeli
+   - Satır 8421-8438: 3 endpoint route'u (GET durum, GET kayıt, POST önizleme)
+
+2. endpoint_coverage_matrix.py (240 → 243 satır)
+   - Satır 186-188: patch_draft_layer_27 grubuna 3 kayıt (27.3)
+
+3. scripts/smoke_check.py (7,642 → 7,747 satır)
+   - Satır 5622-5730: check_diff_preview_engine() test metodu (109 satır)
+   - Testler: durum endpoint (22 assertion), kayıt endpoint (14 assertion),
+     önizleme endpoint (40 assertion), fault report bölümü (10 assertion)
+
+4. lux_fault_report.py (1,305 → 1,335 satır)
+   - Satır 33: diff_preview_engine_preview import'u
+   - Satır 860-890: _fault_report_diff_preview() fonksiyonu (31 satır)
+   - Satır 1228: build_fault_report_preview() içinde diff_preview bölümü
+   - Satır 1322: build_fault_report_intelligence_preview() içinde diff_preview bölümü
+
+EKLENEN ENDPOINT'LER
+--------------------------------------------------------------------------------
+| Method | Path                          | Layer | Amaç                          |
+|--------|-------------------------------|-------|-------------------------------|
+| GET    | /debug/diff-preview-status    | 27.3  | Diff önizleme motoru durumu   |
+| GET    | /debug/diff-preview-registry  | 27.3  | Diff önizleme kaydı           |
+| POST   | /debug/diff-preview           | 27.3  | Salt okunur diff önizleme     |
+
+ENTEGRASYONLAR
+--------------------------------------------------------------------------------
+| Entegrasyon            | Modül                               | Sinyal Yolu                                   |
+|------------------------|-------------------------------------|-----------------------------------------------|
+| Patch Draft Engine     | patch_draft_engine_preview.py       | integration_signals → patch_draft             |
+| Change Preview Engine  | change_preview_engine_preview.py    | integration_signals → change_preview          |
+| Multi-Agent Coordinator| multi_agent_coordinator_preview.py  | integration_signals → multi_agent_coordinator |
+| Evidence Store         | evidence_store_preview.py           | integration_signals → evidence_store          |
+| Safe Change Boundary   | safe_change_boundary_preview.py     | integration_signals → safe_change_boundary    |
+
+DIFF PROFİLLERİ (5 adet)
+--------------------------------------------------------------------------------
+1. stop_continue       — resume akışı konsolidasyon diff'i
+2. websocket_stream    — stream event guard ve typewriter durum diff'i
+3. workspace_export    — export önizleme guard sıkılaştırma diff'i
+4. luxway_permission   — izin sınırı açıklama diff'i
+5. debug_intelligence  — birleşik diff görünüm iskelet diff'i (varsayılan)
+
+GÜVENLİK KONTROLLERİ (durum/kayıt/önizleme payload'larında onaylandı)
+--------------------------------------------------------------------------------
+- read_only: True
+- strict_read_only: True
+- analysis_only: True
+- preview_only: True
+- file_write_enabled: False
+- memory_write_enabled: False
+- db_write_enabled: False
+- git_write_enabled: False
+- commit_enabled: False
+- push_enabled: False
+- deploy_enabled: False
+- auto_fix_enabled: False
+- patch_apply_enabled: False
+- subprocess_execution_enabled: False
+- repo_scan_performed: False
+- chat_stream_touched: False
+- typewriter_runtime_touched: False
+
+KORUNAN ALANLAR (dokunulmadı)
+--------------------------------------------------------------------------------
+- chat endpoint (/chat POST)
+- stream / typewriter runtime
+- websocket (/ws/chat)
+- stop/continue (dur/devam) runtime
+- static/index.html
+- Büyük dosya yeniden yazımı yapılmadı
+- apply_patch kullanılmadı
+- Sadece artımlı edit_file işlemleri
+
+FAULT REPORT ENTEGRASYONU
+--------------------------------------------------------------------------------
+build_fault_report_preview() ve build_fault_report_intelligence_preview()
+artık "diff_preview" bölümü içeriyor:
+- Hedef Sorun
+- Etkilenen Dosyalar
+- Önce Kod Özeti
+- Sonra Kod Özeti
+- Tahmini Hunk Sayısı
+- Tahmini Değişiklikler
+- Risk Alanları
+- Onay Gereksinimi
+- confidence_score
+
+SMOKE TEST KAPSAMI
+--------------------------------------------------------------------------------
+check_diff_preview_engine() şunları doğrular:
+- Durum endpoint: layer=27.3, isim, tüm güvenlik flag'leri false
+- Kayıt endpoint: diff_count >= 1, safety_flags hepsi false
+- Önizleme endpoint: target_issue eşleşmesi, affected_files, before/after özetleri,
+  diff_hunks_expected >= 1, risk_areas, onay, güven skoru,
+  5 entegrasyon sinyalinin tamamı mevcut, tüm güvenlik flag'leri false
+- Fault report bölümü: diff_preview bölümü mevcut, 7 Türkçe alan adı doğru
+
+SONUÇ
+--------------------------------------------------------------------------------
+Layer 27.3 uygulaması: TAMAMLANDI
+- 1 dosya oluşturuldu
+- 4 dosya düzenlendi (9 artımlı edit_file işlemi)
+- 3 endpoint eklendi
+- 5 entegrasyon bağlandı
+- Güvenlik: tümü salt okunur, yazma yetkisi yok
+- Korunan alanlar: dokunulmadı
+- Commit yok, push yok (talimat gereği)
+- Smoke test doğrulamasına hazır
+
+================================================================================
+RAPOR SONU
+================================================================================

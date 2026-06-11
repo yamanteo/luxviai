@@ -1,0 +1,304 @@
+================================================================================
+LAYER 36.8 — ENGINEERING BRAIN COMMAND INTELLIGENCE PREVIEW
+================================================================================
+
+Report Date        : 2026-06-11
+Layer              : 36.8
+Module             : engineering_brain_command_intelligence_preview.py
+Series             : LuxCode Engineering Brain Architecture
+Version            : 1.0
+Status             : command_intelligence_ready
+Operation Mode     : read_only_preview_only
+Integration        : 36.7 Engineering Brain Adaptive Execution Intelligence,
+36.6 Engineering Brain Dynamic Priority & Queue Intelligence,
+36.5 Engineering Brain User Intent Continuity Intelligence,
+36.4 Engineering Brain Multi-Session Continuity Intelligence,
+36.3 Engineering Brain Persistent Execution Intelligence
+--------------------------------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 36.8 introduces Engineering Brain Command Intelligence.
+
+This layer becomes the command understanding and command lifecycle engine
+of LuxCode.
+
+Goal:
+
+Treat commands as first-class objects.
+
+Not messages.
+
+Not notes.
+
+Not reminders.
+
+Commands.
+
+Primary Mission:
+
+Understand:
+
+* execute now
+* execute later
+* execute after completion
+* queue command
+* conditional command
+* follow-up command
+* dependent command
+
+---
+
+2. CAPABILITIES (12)
+
+---
+
+command_detection
+
+command_classification
+
+command_lifecycle_tracking
+
+command_dependency_analysis
+
+queued_command_management
+
+conditional_command_analysis
+
+follow_up_command_analysis
+
+post_completion_command_analysis
+
+command_conflict_detection
+
+command_summary_generation
+
+command_health_analysis
+
+command_priority_engine
+
+---
+
+3. COMMAND PIPELINE
+
+---
+
+Command Detection
+
+&#8595;
+
+Command Classification
+
+&#8595;
+
+Dependency Analysis
+
+&#8595;
+
+Queue Analysis
+
+&#8595;
+
+Priority Analysis
+
+&#8595;
+
+Execution Planning
+
+&#8595;
+
+Command Tracking
+
+&#8595;
+
+Command Summary
+
+---
+
+4. COMMAND TYPES
+
+---
+
+immediate_command
+
+queued_command
+
+follow_up_command
+
+completion_command
+
+conditional_command
+
+deferred_command
+
+---
+
+5. COMMAND DETECTION ENGINE
+
+---
+
+Detect:
+
+user_commands
+
+embedded_commands
+
+follow_up_commands
+
+background_commands
+
+Returns:
+
+command_type
+
+command_priority
+
+command_confidence
+
+---
+
+6. COMMAND DEPENDENCY ENGINE
+
+---
+
+Analyze:
+
+parent_command
+
+child_command
+
+completion_requirements
+
+dependencies
+
+Returns:
+
+dependency_chain
+
+dependency_health
+
+dependency_complexity
+
+---
+
+7. POST-COMPLETION COMMAND ENGINE
+
+---
+
+Examples:
+
+"Bitince bilgisayarı kapat"
+
+"Bitince uyku moduna al"
+
+"Bitince deploy et"
+
+"Bitince rapor hazırla"
+
+Returns:
+
+completion_command_chain
+
+execution_requirements
+
+dependency_status
+
+---
+
+8. COMMAND CONFLICT ENGINE
+
+---
+
+Detect:
+
+conflicting_commands
+
+priority_conflicts
+
+dependency_conflicts
+
+execution_conflicts
+
+Returns:
+
+conflict_summary
+
+conflict_risk
+
+recommended_resolution
+
+---
+
+9. COMMAND SCORE
+
+---
+
+Returns:
+
+command_clarity
+
+command_health
+
+dependency_health
+
+queue_health
+
+overall_command_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+10. ENDPOINTS
+
+---
+
+GET  /command-intelligence/status
+
+GET  /command-intelligence/capabilities
+
+POST /command-intelligence/preview
+
+POST /command-intelligence/command-analysis
+
+POST /command-intelligence/dependency-analysis
+
+POST /command-intelligence/conflict-analysis
+
+POST /command-intelligence/command-score
+
+---
+
+11. FILES MODIFIED
+
+---
+
+engineering_brain_command_intelligence_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+12. SAFETY
+
+---
+
+command_execution=False
+
+shutdown_execution=False
+
+sleep_execution=False
+
+deployment_execution=False
+
+All operations remain preview-only.
+
+================================================================================
+END OF LAYER 36.8 REPORT
+========================

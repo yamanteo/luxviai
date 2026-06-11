@@ -1,0 +1,111 @@
+==============================================================================
+LAYER 34-41 — CODE GAP CLOSURE PLAN
+==============================================================================
+Report Date        : 2026-06-11
+Based on          : Architecture Audit findings (Layer34_41_Architecture_Audit_Summary.txt
+                    Layer34_41_Gap_Analysis.txt, Layer34_41_MVP_Architecture_Definition.txt)
+Scope             : 37.x → 41.x code gap closure
+Status            : plan_ready — implementation pending
+42.x Decision     : NOT YET. Implement 37-41 code first.
+==============================================================================
+
+A. SHORT DECISION
+==============================================================================
+42.x'e geçilmez. 37–41 katmanlarının kod karşılığı sıfır.
+Mimari dokümanlarda "architecture_complete" yazmasına rağmen
+gerçek kodda bu 5 serinin hiçbir preview modülü, import'ı, route'u yok.
+
+B. GAP CLOSURE SCOPE
+==============================================================================
+Seri                    | Modül | Endpoint Ailesi | Öncelik
+------------------------|-------|-----------------|--------
+37.x Agent Architecture |     9 | /project-intelligence/ ... | 1
+38.x Autonomous Agents  |    10 | /autonomous-workflow/ ... | 2
+39.x Agent Runtime      |    10 | /agent-runtime/ ... | 3
+40.x Agent Execution    |    10 | /agent-execution/ ... | 4
+41.x Autonomous Ops     |    10 | /operations-core/ ... | 5
+Status Correction       |     3 | 39.9/40.9/41.9 .txt | 6
+endpoint_coverage       |    49 | matrix entries | 7
+smoke_check expansion   |   ~150 | checks | 8
+------------------------|-------|-----------------|--------
+TOTAL                   | 49 py | ~150 endpoint   |
+
+C. EXISTING PATTERN (from 34-36 implemented modules)
+==============================================================================
+Module naming:       snake_case_descriptive_preview.py
+Status function:    def module_name_status() -> Dict[str, Any]
+Capabilities:       def module_name_capabilities() -> Dict[str, Any]
+Preview function:   def build_module_name_preview(...) -> Dict[str, Any]
+Route pattern:      GET /kebab-case/status
+                    GET /kebab-case/capabilities
+                    POST /kebab-case/preview
+Safety:             read_only=True, preview_only=True, real_action_enabled=False
+
+D. IMPLEMENTATION ORDER (8 commits)
+==============================================================================
+Commit 1: Layer 37.x — 9 preview modules + app.py imports/routes + layer37-status
+Commit 2: Layer 38.x — 10 preview modules + app.py imports/routes + layer38-status
+Commit 3: Layer 39.x — 10 preview modules + app.py imports/routes + layer39-status
+Commit 4: Layer 40.x — 10 preview modules + app.py imports/routes + layer40-status
+Commit 5: Layer 41.x — 10 preview modules + app.py imports/routes + layer41-status
+Commit 6: Status correction — 39.9/40.9/41.9 .txt fixes
+Commit 7: endpoint_coverage_matrix expansion — 49 group entries
+Commit 8: smoke_check expansion — ~150 new checks
+
+E. SAFETY CONTRACT (all 49 modules)
+==============================================================================
+read_only: True
+preview_only: True
+real_action_enabled: False
+action_performed: False
+real_code_modified: False
+file_created: False
+file_deleted: False
+command_executed: False
+terminal_command_executed: False
+github_write_performed: False
+deployment_triggered: False
+memory_write_performed: False
+db_write_performed: False
+secret_accessed: False
+architecture_defined: True
+code_scaffold_implemented: True
+real_execution_enabled: False
+
+F. RISK SUMMARY
+==============================================================================
+Risk                    | Level | Mitigation
+------------------------|-------|---------------------------
+49 modül tek commit     | HIGH  | Seri seri commit (8 commits)
+Route naming collision  | LOW   | 37.x = "project-"/"agent-" prefix
+Duplicate concepts      | MED   | 34.x ↔ 37.x farkı netleştir
+app.py size growth      | MED   | ~15,500 lines after all routes
+smoke_check growth      | MED   | ~12,000 lines, split later
+Theoretical modules     | MED   | MVP-dışı işaretle
+
+G. MVP IMPACT
+==============================================================================
+Metric                      | Before | After | Delta
+----------------------------|--------|-------|------
+Architecture Scaffold       |   75%  |  100% | +25%
+MVP Product Readiness       |   20%  |   25% |  +5%
+Real Agent Readiness        |    5%  |   10% |  +5%
+
+Gap closure fixes architecture integrity, not product readiness.
+Real execution activation is a separate phase.
+
+H. STATUS DOCUMENTS TO CORRECT
+==============================================================================
+File                                    | Current             | Corrected
+----------------------------------------|---------------------|-----------------------------
+Layer39_9_Agent_Runtime_Master_Status   | architecture_complete| architecture_defined_not_implemented
+Layer40_9_Agent_Execution_Master_Status | architecture_complete| architecture_defined_not_implemented
+Layer41_9_Autonomous_Operations_Master  | architecture_complete| architecture_defined_not_implemented
+
+I. NEXT CODEX PROMPT
+==============================================================================
+LUXCODE — LAYER 37 CODE GAP CLOSURE / AGENT ARCHITECTURE PREVIEWS
+
+==============================================================================
+END OF CODE GAP CLOSURE PLAN
+==============================================================================

@@ -1,0 +1,144 @@
+================================================================================
+LAYER 33.3 — CHANGE PLANNING INTELLIGENCE PREVIEW
+================================================================================
+Report Date        : 2026-06-11
+Layer              : 33.3
+Status             : change_planning_intelligence_ready
+Module             : change_planning_intelligence_preview.py
+Series             : LuxCode Foundation
+Integration        : 33.2 Failed Change Intelligence,
+                     33.1 Change Memory Intelligence,
+                     32.5 Dependency Intelligence,
+                     32.4 Root Cause Intelligence,
+                     32.3 Failure Memory Intelligence,
+                     32.2 Regression Intelligence,
+                     32.1 Runtime Anomaly Intelligence,
+                     Layer 31 Runtime Suite, Layer 30 Readiness Suite,
+                     Layer 29 Patch Governance Suite
+CRITICAL RULE      : Previously failed strategies flagged and avoided.
+                     Previously successful strategies prioritized.
+--------------------------------------------------------------------------------
+
+1. OVERVIEW
+--------------------------------------------------------------------------------
+Layer 33.3 introduces Change Planning Intelligence Preview — a read-only
+analysis system that generates dependency-aware, risk-aware, and rollback-aware
+change plans. It is the first SYSTEM CHANGE PLANNING engine for LuxCode.
+
+Each plan includes a recommended strategy, alternative strategies, explicitly
+avoided strategies (from Layer 33.2 failed change data), required files,
+affected files, dependency chain, risk/complexity/effort estimates, validation
+steps, and a rollback strategy.
+
+Ten plan types are profiled.
+
+2. CRITICAL RULE COMPLIANCE
+--------------------------------------------------------------------------------
+  Rule: Use 33.1 successful changes and 33.2 failed changes when constructing
+  plans. Flag previously failed strategies. Prioritize previously successful
+  strategies.
+
+  Status: COMPLIANT
+  - Every plan profile references specific failed changes from Layer 33.2
+  - avoided_strategies explicitly cite prior failures with change ID
+  - Successful strategies from Layer 33.1 are prioritized
+  - repair_plan avoids 3 strategies from failed_change: repair_failure
+  - refactor_plan avoids 3 strategies including refactor_revert_loop
+  - integration_plan avoids 3 strategies from integration_contract_drift_loop
+
+3. PLAN PROFILES
+--------------------------------------------------------------------------------
+
+  3.1 repair_plan
+  - Status: degraded | Score: 0.52 | Risk: high | Complexity: high
+  - Strategies: 1 recommended, 2 alternative, 3 avoided
+  - Strategy: Root-cause-level repair with validation gate
+  - Avoided: symptom-only repair, timeout reduction, retry interval reduction
+
+  3.2 maintenance_plan
+  - Status: pass | Score: 0.78 | Risk: low | Complexity: low
+  - Strategies: 1 recommended, 2 alternative, 2 avoided
+  - Strategy: Staged individual dependency upgrades
+
+  3.3 feature_plan
+  - Status: pass | Score: 0.74 | Risk: low | Complexity: medium
+  - Strategies: 1 recommended, 2 alternative, 2 avoided
+  - Strategy: Scaffold with complete dependency map
+
+  3.4 optimization_plan
+  - Status: warning | Score: 0.60 | Risk: medium | Complexity: medium
+  - Strategies: 1 recommended, 2 alternative, 2 avoided
+  - Strategy: Baseline-first incremental optimization
+
+  3.5 refactor_plan
+  - Status: degraded | Score: 0.48 | Risk: high | Complexity: high
+  - Strategies: 1 recommended, 2 alternative, 3 avoided
+  - Strategy: Contract-first phased refactoring
+  - Avoided: refactor_revert_loop pattern
+
+  3.6 integration_plan
+  - Status: degraded | Score: 0.40 | Risk: critical | Complexity: high
+  - Strategies: 1 recommended, 2 alternative, 3 avoided
+  - Strategy: Contract-versioned integration with circuit breaker
+  - Avoided: integration_contract_drift_loop pattern
+
+  3.7 configuration_plan
+  - Status: warning | Score: 0.62 | Risk: medium | Complexity: low
+  - Strategies: 1 recommended, 2 alternative, 2 avoided
+  - Strategy: Schema-validated configuration with fallback alerting
+
+  3.8 security_plan
+  - Status: pass | Score: 0.80 | Risk: low | Complexity: low
+  - Strategies: 1 recommended, 2 alternative, 2 avoided
+  - Strategy: Security-reviewed deployment with automated scanning
+
+  3.9 workflow_plan
+  - Status: warning | Score: 0.58 | Risk: medium | Complexity: medium
+  - Strategies: 1 recommended, 2 alternative, 2 avoided
+  - Strategy: Gated pipeline with formalized dependency graph
+
+  3.10 documentation_plan
+  - Status: warning | Score: 0.64 | Risk: low | Complexity: low
+  - Strategies: 1 recommended, 2 alternative, 2 avoided
+  - Strategy: Automated generation with CI sync check
+
+4. ENDPOINTS REGISTERED
+--------------------------------------------------------------------------------
+  GET  /debug/change-planning-status    → change_planning_intelligence_status()
+  GET  /debug/change-planning-registry  → change_planning_intelligence_registry()
+  POST /debug/change-planning-preview   → build_change_planning_intelligence_preview()
+
+5. FILES MODIFIED
+--------------------------------------------------------------------------------
+  File                                    | Change
+  ----------------------------------------|---------------------------------------
+  change_planning_intelligence_preview.py | CREATED (828 lines, 10 profiles)
+  app.py                                  | +import, +model, +3 endpoints
+  lux_fault_report.py                     | +import, +function, +2 section refs
+  endpoint_coverage_matrix.py             | +change_planning endpoint group
+  scripts/smoke_check.py                  | +3 endpoint assertions, +check method,
+                                         |  +registration entry
+
+6. TECHNOLOGY SUPPORT
+--------------------------------------------------------------------------------
+  Python, HTML, CSS, JavaScript, TypeScript, JSON, YAML, Database,
+  Infrastructure, API, Workflow, Documentation
+
+7. SAFETY FLAGS
+--------------------------------------------------------------------------------
+  All safety flags set to False:
+    file_write, memory_write, db_write, git_write, commit, push, deploy,
+    auto_fix, patch_apply, subprocess_execution
+
+8. COMPLIANCE
+--------------------------------------------------------------------------------
+  FORBIDDEN operations NOT performed:
+    Auto-fix, Patch apply, Commit, Push, Deploy,
+    Subprocess execution, Database write, Memory write, Git write
+
+  Protected areas (chat, stream, websocket, typewriter, stop/continue,
+  static/index.html) were NOT modified.
+
+================================================================================
+END OF LAYER 33.3 REPORT
+================================================================================

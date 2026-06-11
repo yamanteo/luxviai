@@ -1,0 +1,42 @@
+================================================================================
+LAYER 28.2 — PATCH ROLLBACK PREVIEW — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+================================================================================
+
+TASK: Layer 28.2 — Patch Rollback Preview
+GOAL: Rollback strategy preview with trigger conditions, steps, dependencies,
+      and safe boundary across 12 integrated layers.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+patch_rollback_preview.py (238 satır, 16,055 byte)
+- ROLLBACK_PROFILES (5)
+- patch_rollback_status/registry/build functions
+- 12 integrations (28.1 down to 25.4)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py (12,115 → 12,147) — import, model, 3 routes
+endpoint_coverage_matrix.py (259 → 262) — 3 entries in patch_application_layer_28
+smoke_check.py (8,246 → 8,296) — check_patch_rollback_preview() (50 satır)
+lux_fault_report.py (1,482 → 1,540) — import, function (27 satır), 2 sections
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/patch-rollback-status
+GET  /debug/patch-rollback-registry
+POST /debug/patch-rollback-preview
+
+ROLLBACK PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       none      ready    (low)     — tek commit revert
+websocket_stream    mandatory BLOCKED  (high)    — canary + full regression gerekli
+workspace_export    none      ready    (low)
+luxway_permission   mandatory BLOCKED  (high)    — platform re-validation gerekli
+debug_intelligence  none      ready    (low)
+
+SAFETY: All read_only. No actual rollback execution.
+PROBLEMS: None.
+
+FINAL: TAMAMLANDI — 1 created, 4 edited, 3 endpoints, 12 integrations
+================================================================================

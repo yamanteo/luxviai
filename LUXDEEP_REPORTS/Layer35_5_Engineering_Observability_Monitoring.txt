@@ -1,0 +1,300 @@
+================================================================================
+LAYER 35.5 — ENGINEERING OBSERVABILITY & MONITORING INTELLIGENCE PREVIEW
+========================================================================
+
+Report Date        : 2026-06-11
+Layer              : 35.5
+Module             : engineering_observability_monitoring_preview.py
+Series             : LuxCode Autonomous Engineering Suite
+Version            : 1.0
+Status             : engineering_monitoring_ready
+Operation Mode     : read_only_preview_only
+Integration        : 35.4 Engineering Decision Intelligence,
+35.3 Engineering Knowledge Graph Intelligence,
+35.2 Engineering Memory & Failure Intelligence,
+35.1 Autonomous Engineering Coordinator,
+35.0 Deployment Verification Intelligence
+-----------------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 35.5 introduces Engineering Observability & Monitoring Intelligence.
+
+This layer becomes the visibility and monitoring engine of LuxCode.
+
+Goal:
+
+Allow LuxCode to continuously understand:
+
+* what is happening
+* what changed
+* what failed
+* what succeeded
+* what is stuck
+* what requires attention
+
+This is the foundation of future autonomous operation.
+
+---
+
+2. CAPABILITIES (12)
+
+---
+
+system_health_monitoring
+
+workflow_monitoring
+
+task_monitoring
+
+verification_monitoring
+
+deployment_monitoring
+
+workspace_monitoring
+
+anomaly_detection
+
+drift_detection
+
+stuck_detection
+
+engineering_telemetry
+
+monitoring_summary_generation
+
+attention_priority_engine
+
+---
+
+3. MONITORING PIPELINE
+
+---
+
+Activity Detection
+
+&#8595;
+
+State Observation
+
+&#8595;
+
+Health Evaluation
+
+&#8595;
+
+Risk Evaluation
+
+&#8595;
+
+Anomaly Detection
+
+&#8595;
+
+Priority Classification
+
+&#8595;
+
+Monitoring Summary
+
+---
+
+4. MONITORING PROFILES
+
+---
+
+healthy_system
+
+active_system
+
+high_activity_system
+
+warning_state
+
+degraded_state
+
+critical_attention_required
+
+---
+
+5. ENGINEERING HEALTH MONITOR
+
+---
+
+Analyze:
+
+task_health
+
+workspace_health
+
+verification_health
+
+deployment_health
+
+memory_health
+
+decision_health
+
+Returns:
+
+overall_system_health
+
+health_score
+
+attention_level
+
+---
+
+6. ANOMALY DETECTOR
+
+---
+
+Detect:
+
+unexpected_behavior
+
+workflow_anomalies
+
+verification_anomalies
+
+deployment_anomalies
+
+dependency_anomalies
+
+Returns:
+
+anomaly_score
+
+anomaly_summary
+
+risk_level
+
+---
+
+7. DRIFT DETECTOR
+
+---
+
+Detect:
+
+workspace_drift
+
+clone_drift
+
+configuration_drift
+
+dependency_drift
+
+workflow_drift
+
+Returns:
+
+drift_score
+
+drift_summary
+
+recommended_action
+
+---
+
+8. ATTENTION PRIORITY ENGINE
+
+---
+
+Classify:
+
+low_priority
+
+normal_priority
+
+important
+
+high_priority
+
+critical
+
+Returns:
+
+priority_level
+
+priority_reason
+
+recommended_focus
+
+---
+
+9. OBSERVABILITY SCORE
+
+---
+
+Returns:
+
+health_score
+
+monitoring_score
+
+anomaly_score
+
+drift_score
+
+observability_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+10. ENDPOINTS
+
+---
+
+GET  /engineering-monitoring/status
+
+GET  /engineering-monitoring/capabilities
+
+POST /engineering-monitoring/preview
+
+POST /engineering-monitoring/health
+
+POST /engineering-monitoring/anomaly-analysis
+
+POST /engineering-monitoring/drift-analysis
+
+POST /engineering-monitoring/priority-analysis
+
+---
+
+11. FILES MODIFIED
+
+---
+
+engineering_observability_monitoring_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+12. SAFETY
+
+---
+
+monitoring_write=False
+
+repair_execution=False
+
+deployment_execution=False
+
+verification_execution=False
+
+system_modification=False
+
+All operations remain preview-only.
+
+================================================================================
+END OF LAYER 35.5 REPORT
+========================

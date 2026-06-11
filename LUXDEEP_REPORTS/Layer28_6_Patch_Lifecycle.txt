@@ -1,0 +1,62 @@
+========================================================================
+LAYER 28.6 — PATCH LIFECYCLE — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+========================================================================
+
+TASK: Layer 28.6 — Patch Lifecycle Preview
+GOAL: Lifecycle stage tracking preview with current/completed/remaining stages
+      and 16 integrated layers.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+patch_lifecycle_preview.py (391 satır, 17,870 byte)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py (→ 12,264) — import, PatchLifecyclePreviewRequest model, 3 routes
+endpoint_coverage_matrix.py (→ 274) — 3 entries in patch_application_layer_28
+scripts/smoke_check.py (→ 8,518) — check_patch_lifecycle_preview() + registration
+lux_fault_report.py (→ 1,632) — import, _fault_report_patch_lifecycle(), section
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/patch-lifecycle-status
+GET  /debug/patch-lifecycle-registry
+POST /debug/patch-lifecycle-preview
+
+LIFECYCLE PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       lifecycle_complete  1.00  — full cycle, 11 stages complete
+websocket_stream    approval            0.36  — blocked at approval, 7 remaining
+workspace_export    lifecycle_complete  1.00  — full cycle, low risk
+luxway_permission   approval            0.36  — blocked at approval, 7 remaining
+debug_intelligence  lifecycle_complete  1.00  — full cycle, scaffold
+
+OUTPUT FIELDS
+--------------------------------------------------------------------------------
+lifecycle_id          — profile identifier
+target_issue          — detected issue
+target_component      — affected component
+current_stage         — current lifecycle stage
+completed_stages      — list of completed stages
+remaining_stages      — list of remaining stages
+stage_history         — dict of stage -> status
+approval_stage        — approved / blocked / not_reached
+risk_stage            — assessed_low / assessed_medium / assessed_high
+application_stage     — applied / not_reached
+rollback_stage        — not_required / mandatory / not_reached
+validation_stage      — validated / blocked / not_reached
+recovery_stage        — not_required / required / not_reached
+audit_stage           — audited / not_reached
+lifecycle_readiness   — bool
+completion_score      — float 0.0–1.0
+recommended_next_action — action recommendation
+confidence_score      — aggregated confidence
+
+16 INTEGRATIONS: 28.5 → 28.4 → 28.3 → 28.2 → 28.1 → 27.6 → 27.5 → 27.4 → 27.3 → 27.2 → 27.1 → 26.7 → 26.6 → 25.6 → 25.5 → 25.4
+
+SAFETY: All read_only. No actual patch lifecycle execution.
+PROBLEMS: None.
+
+FINAL: TAMAMLANDI — 1 created, 4 edited, 3 endpoints, 16 integrations
+========================================================================

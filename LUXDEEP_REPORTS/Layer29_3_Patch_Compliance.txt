@@ -1,0 +1,55 @@
+========================================================================
+LAYER 29.3 — PATCH COMPLIANCE — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+========================================================================
+
+TASK: Layer 29.3 — Patch Compliance Preview
+GOAL: Compliance preview with status/violation tracking, requirements mapping,
+      and 20 integrated layers.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+patch_compliance_preview.py (437 satır, 18,204 byte)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py (→ 12,374) — import, PatchCompliancePreviewRequest model, 3 routes
+endpoint_coverage_matrix.py (→ 295) — new patch_compliance_layer_29 group (3 entries)
+scripts/smoke_check.py (→ 8,770) — check_patch_compliance_preview() + registration
+lux_fault_report.py (→ 1,690) — import, _fault_report_patch_compliance(), 2 sections
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/patch-compliance-status
+GET  /debug/patch-compliance-registry
+POST /debug/patch-compliance-preview
+
+COMPLIANCE PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       pass       ready      — flow_safety, 0 violations
+websocket_stream    violation  BLOCKED    — stream_integrity, 2 violations
+workspace_export    pass       ready      — export_safety, 0 violations
+luxway_permission   violation  BLOCKED    — platform_privacy, 3 violations
+debug_intelligence  pass       ready      — scaffold_safety, 0 violations
+
+OUTPUT FIELDS
+--------------------------------------------------------------------------------
+compliance_id         — profile identifier
+compliance_category   — category classification
+compliance_status     — pass / violation
+compliance_requirements — requirement list
+compliance_violations — violation list
+compliance_exceptions — exception list
+compliance_risk_level — low / high
+compliance_readiness  — bool (3 ready, 2 blocked)
+required_actions      — action items to resolve violations
+recommended_next_action — action recommendation
+confidence_score      — aggregated confidence
+
+20 INTEGRATIONS: 29.2 → 29.1 → 28.6 → 28.5 → 28.4 → 28.3 → 28.2 → 28.1 → 27.6 → 27.5 → 27.4 → 27.3 → 27.2 → 27.1 → 26.7 → 26.6 → 25.6 → 25.5 → 25.4
+
+SAFETY: All read_only. No actual compliance enforcement.
+PROBLEMS: None.
+
+FINAL: TAMAMLANDI — 1 created, 4 edited, 3 endpoints, 20 integrations
+========================================================================

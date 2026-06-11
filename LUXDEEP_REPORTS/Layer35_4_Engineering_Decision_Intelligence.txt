@@ -1,0 +1,345 @@
+================================================================================
+LAYER 35.4 — ENGINEERING DECISION INTELLIGENCE PREVIEW
+======================================================
+
+Report Date        : 2026-06-11
+Layer              : 35.4
+Module             : engineering_decision_intelligence_preview.py
+Series             : LuxCode Autonomous Engineering Suite
+Version            : 1.0
+Status             : engineering_decision_ready
+Operation Mode     : read_only_preview_only
+Integration        : 35.3 Engineering Knowledge Graph Intelligence,
+35.2 Engineering Memory & Failure Intelligence,
+35.1 Autonomous Engineering Coordinator,
+35.0 Deployment Verification Intelligence,
+34.9 Clone Workspace Intelligence,
+34.8 Verification Intelligence,
+34.7 Autonomous Repair Intelligence
+-----------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 35.4 introduces Engineering Decision Intelligence Preview.
+
+This layer becomes the decision-making engine of LuxCode.
+
+Until now LuxCode could:
+
+* detect
+* analyze
+* verify
+* compare
+* map
+
+Now LuxCode begins deciding.
+
+Primary Goal:
+
+Select the safest, most efficient and most verified engineering path.
+
+Core Rule:
+
+Never choose based on a single signal.
+
+Use:
+
+Knowledge Graph
+
+*
+
+Memory
+
+*
+
+Verification
+
+*
+
+Repair Analysis
+
+*
+
+Deployment Analysis
+
+to create decisions.
+
+---
+
+2. CAPABILITIES (12)
+
+---
+
+strategy_selection
+
+decision_ranking
+
+path_comparison
+
+risk_weighting
+
+confidence_weighting
+
+repair_decision_analysis
+
+verification_decision_analysis
+
+deployment_decision_analysis
+
+alternative_path_generation
+
+decision_summary_generation
+
+decision_conflict_detection
+
+decision_health_analysis
+
+---
+
+3. DECISION PIPELINE
+
+---
+
+Problem
+
+&#8595;
+
+Analysis
+
+&#8595;
+
+Possible Strategies
+
+&#8595;
+
+Historical Review
+
+&#8595;
+
+Knowledge Graph Review
+
+&#8595;
+
+Verification Review
+
+&#8595;
+
+Risk Comparison
+
+&#8595;
+
+Decision Recommendation
+
+---
+
+4. DECISION PROFILES
+
+---
+
+4.1 clear_decision
+
+Health: 0.95
+
+Risk: 0.05
+
+Recommendation:
+
+execute_preferred_strategy
+
+---
+
+4.2 low_risk_choice
+
+Health: 0.88
+
+Risk: 0.12
+
+Recommendation:
+
+recommended_path
+
+---
+
+4.3 balanced_decision
+
+Health: 0.72
+
+Risk: 0.32
+
+Recommendation:
+
+compare_alternatives
+
+---
+
+4.4 conflicting_signals
+
+Health: 0.52
+
+Risk: 0.60
+
+Recommendation:
+
+additional_analysis
+
+---
+
+4.5 high_uncertainty
+
+Health: 0.30
+
+Risk: 0.85
+
+Recommendation:
+
+do_not_commit
+
+---
+
+5. STRATEGY SELECTION ENGINE
+
+---
+
+Analyze:
+
+repair_options
+
+verification_options
+
+deployment_options
+
+rollback_options
+
+Returns:
+
+preferred_strategy
+
+alternative_strategies
+
+decision_confidence
+
+---
+
+6. DECISION CONFLICT DETECTOR
+
+---
+
+Detect:
+
+verification_conflicts
+
+dependency_conflicts
+
+memory_conflicts
+
+graph_conflicts
+
+deployment_conflicts
+
+Returns:
+
+conflict_summary
+
+conflict_risk
+
+resolution_recommendation
+
+---
+
+7. RISK WEIGHTING ENGINE
+
+---
+
+Evaluate:
+
+repair_risk
+
+verification_risk
+
+deployment_risk
+
+dependency_risk
+
+rollback_risk
+
+Returns:
+
+weighted_risk_score
+
+weighted_confidence_score
+
+---
+
+8. DECISION SCORE
+
+---
+
+Returns:
+
+decision_confidence
+
+decision_risk
+
+strategy_score
+
+execution_readiness
+
+overall_decision_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+9. ENDPOINTS
+
+---
+
+GET  /engineering-decision/status
+
+GET  /engineering-decision/capabilities
+
+POST /engineering-decision/preview
+
+POST /engineering-decision/strategy-selection
+
+POST /engineering-decision/risk-analysis
+
+POST /engineering-decision/conflict-analysis
+
+POST /engineering-decision/decision-score
+
+---
+
+10. FILES MODIFIED
+
+---
+
+engineering_decision_intelligence_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+11. SAFETY
+
+---
+
+decision_execution=False
+
+repair_execution=False
+
+deployment_execution=False
+
+verification_execution=False
+
+All operations remain preview-only.
+
+================================================================================
+END OF LAYER 35.4 REPORT
+========================

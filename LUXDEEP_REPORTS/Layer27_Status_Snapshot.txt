@@ -1,0 +1,83 @@
+================================================================================
+LAYER 27 STATUS SNAPSHOT — TEST REPORT
+Date: 2026-06-10
+Mode: Read-only scaffold
+================================================================================
+
+LAYER SUMMARY
+--------------------------------------------------------------------------------
+Layer 27 Status Snapshot aggregates all 27.1–27.6 layers into a single
+health-check endpoint, showing completeness, safety, and readiness.
+
+INCLUDED LAYERS
+--------------------------------------------------------------------------------
+27.1 Patch Draft Engine
+27.2 Change Preview Engine
+27.3 Diff Preview Engine
+27.4 Patch Risk Matrix
+27.5 Patch Approval Engine
+27.6 Patch Execution Readiness
+
+ENDPOINT COUNT
+--------------------------------------------------------------------------------
+18 endpoints across Layer 27 (3 per sub-layer × 6)
++ 2 snapshot endpoints = 20 total in Layer 27 group
+
+INTEGRATION COUNT
+--------------------------------------------------------------------------------
+7 connected layers: 26.7, 26.6, 25.6, 25.5, 25.4, 24, 23
+
+SAFETY SUMMARY
+--------------------------------------------------------------------------------
+All layers: read_only=True, all write/commit/push/deploy flags False.
+No file writes, memory writes, DB writes, git writes, patch apply, or
+subprocess execution across any Layer 27 component.
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+1. app.py (12,072 → 12,082)
+   - import: layer27_status_snapshot
+   - routes: /debug/layer27-status + /debug/layer27-full-status
+
+2. endpoint_coverage_matrix.py (252 → 254)
+   - 2 entries: layer27-status, layer27-full-status
+
+3. scripts/smoke_check.py (8,100 → 8,155)
+   - check_layer27_status_snapshot() (55 satır, 40+ assertion)
+   - Status: 6 layer, 18 endpoint, safety, readiness
+   - Full: 6 full_details, integration/endpoint totals
+
+4. lux_fault_report.py (1,444 → 1,446)
+   - import + 2 x layer27_snapshot section
+
+FILES CREATED
+--------------------------------------------------------------------------------
+1. layer27_status_snapshot.py (166 satır, 5,770 byte)
+   - layer27_status_snapshot() → aggregated status
+   - layer27_full_status() → detailed per-layer status
+
+TEST RESULTS
+--------------------------------------------------------------------------------
+check_layer27_status_snapshot() → 40+ assertion:
+- snapshot_status, layer_27_complete, layer_count=6, endpoint_count=18
+- All 6 layers in implemented_layers and layer_statuses
+- all_read_only=True, all safety flags False
+- development_readiness: all 4 gates True
+- Full status: 6 full_details, total_integrations >= 6, total_endpoints >= 18
+
+FINAL STATUS
+--------------------------------------------------------------------------------
+Layer 27 Status Snapshot: TAMAMLANDI
+- 1 file created, 4 edited
+- 2 endpoints: /debug/layer27-status, /debug/layer27-full-status
+- Commit yok, push yok
+
+RECOMMENDATIONS
+--------------------------------------------------------------------------------
+1. Layer 27 scaffold is now complete (27.1–27.6 + aggregator).
+2. Next step: Layer 27 production hardening (real patch execution).
+3. Consider creating similar aggregators for Layers 24, 25, 26.
+
+================================================================================
+END OF REPORT
+================================================================================

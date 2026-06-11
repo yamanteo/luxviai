@@ -1,0 +1,145 @@
+================================================================================
+LAYER 31.5 — RUNTIME RECOVERY INTELLIGENCE PREVIEW
+================================================================================
+Report Timestamp: 2026-06-11T00:00:00Z
+
+================================================================================
+1. IMPLEMENTATION OVERVIEW
+================================================================================
+
+Module:          runtime_recovery_intelligence_preview.py
+Status:          COMPLETED
+Layer:           31.5
+Prerequisite:    Layer 31.4 — Runtime Drift Intelligence Preview
+
+This layer introduces runtime recovery intelligence as a read-only preview
+system that profiles and reports on recovery readiness and resilience across
+key runtime areas: crash recovery, state recovery, connection recovery, file
+recovery, session recovery, dependency recovery, configuration recovery, data
+recovery, and deployment rollback recovery.
+
+================================================================================
+2. RECOVERY PROFILES REGISTERED
+================================================================================
+
+  ID                       | Component                        | Status    | Score
+  -------------------------+----------------------------------+-----------+------
+  crash_recovery           | application_crash_runtime        | warning   | 0.48
+  state_recovery           | state_persistence_runtime        | pass      | 0.76
+  connection_recovery      | websocket_connection_runtime     | warning   | 0.42
+  file_recovery            | file_io_runtime                  | warning   | 0.54
+  session_recovery         | session_resume_runtime           | pass      | 0.80
+  dependency_recovery      | external_dependency_runtime      | degraded  | 0.38
+  configuration_recovery   | configuration_recovery_runtime   | pass      | 0.72
+  data_recovery            | data_recovery_runtime            | warning   | 0.46
+  deployment_recovery      | deployment_rollback_runtime      | degraded  | 0.36
+
+  Overall Recovery Score:  0.55 (degraded)
+  Profiles:                9 total (2 degraded, 4 warning, 3 pass)
+
+================================================================================
+3. ENDPOINTS REGISTERED
+================================================================================
+
+  GET  /debug/runtime-recovery-status      -> status metadata
+  GET  /debug/runtime-recovery-registry    -> full registry of all recovery profiles
+  POST /debug/runtime-recovery-preview     -> per-component recovery preview
+
+================================================================================
+4. INTEGRATIONS
+================================================================================
+
+  Upstream layers consulted for recovery signals:
+    * Layer 31.4 — Runtime Drift Intelligence
+    * Layer 31.3 — Runtime Risk Intelligence
+    * Layer 31.2 — Runtime Stability Intelligence
+    * Layer 31.1 — System Health Intelligence
+    * Layer 30   — Status Snapshot
+    * Layer 29   — Status Snapshot
+    * 29.8       — Patch Confidence
+    * 29.7       — Patch Assurance
+    * 29.6       — Patch Accountability
+    * 29.5       — Patch Oversight
+    * 29.4       — Patch Governance
+    * 29.3       — Patch Compliance
+    * 29.2       — Patch Policy Evaluation
+    * 29.1       — Patch Permission Enforcement
+
+  Downstream consumers:
+    * app.py                          — 3 route handlers registered
+    * lux_fault_report.py             — 2 section entries added
+    * endpoint_coverage_matrix.py     — endpoint group added
+    * scripts/smoke_check.py          — 1 test case + registry entry added
+
+================================================================================
+5. PROTECTED AREAS (NOT MODIFIED)
+================================================================================
+
+  * chat           — untouched
+  * stream         — untouched
+  * websocket      — untouched
+  * typewriter     — untouched
+  * stop/continue  — untouched
+  * static/index.html — untouched
+
+================================================================================
+6. FORBIDDEN OPERATIONS (NOT PERFORMED)
+================================================================================
+
+  [OK] Auto-fix        — not performed
+  [OK] Patch apply     — not performed
+  [OK] Commit          — not performed
+  [OK] Push            — not performed
+  [OK] Deploy          — not performed
+  [OK] Subprocess exec — not performed
+  [OK] Database write  — not performed
+  [OK] Memory write    — not performed
+  [OK] Git write       — not performed
+
+================================================================================
+7. FILES MODIFIED / CREATED
+================================================================================
+
+  NEW:
+    runtime_recovery_intelligence_preview.py    (506 lines)
+
+  MODIFIED:
+    app.py                                      +import +model +3 endpoints
+    lux_fault_report.py                         +import +function +2 entries
+    endpoint_coverage_matrix.py                 +1 endpoint group (3 entries)
+    scripts/smoke_check.py                      +1 test method +1 registry entry
+
+  CREATED:
+    Layer31_5_Runtime_Recovery_Intelligence.txt  (this report)
+
+================================================================================
+8. OUTPUT FIELDS (per preview response)
+================================================================================
+
+  recovery_id              — unique profile identifier
+  recovery_category        — category of recovery (crash_resilience, etc.)
+  recovery_status          — pass / warning / degraded / blocked
+  recovery_score           — numeric score (0.0-1.0)
+  recovery_findings        — list of evidence items
+  recovery_warnings        — list of warning conditions
+  recovery_blockers        — list of blocking issues
+  recovery_risk_level      — low / medium / high
+  recovery_recommendations — recommended remediation steps
+  recovery_summary         — human-readable summary
+  required_actions         — concrete action items
+  recommended_next_action  — single next step
+  confidence_score         — confidence in the assessment
+  recovery_signals         — integration signals from upstream layers
+
+================================================================================
+9. COMPLETION STATUS
+================================================================================
+
+  Layer 31.5 — Runtime Recovery Intelligence Preview: COMPLETE
+  No commit performed.
+  No push performed.
+  All changes are read-only scaffold previews.
+
+================================================================================
+END OF LAYER 31.5 REPORT
+================================================================================

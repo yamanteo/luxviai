@@ -1,0 +1,301 @@
+================================================================================
+LAYER 36.6 — ENGINEERING BRAIN DYNAMIC PRIORITY & QUEUE INTELLIGENCE PREVIEW
+============================================================================
+
+Report Date        : 2026-06-11
+Layer              : 36.6
+Module             : engineering_brain_dynamic_priority_queue_preview.py
+Series             : LuxCode Engineering Brain Architecture
+Version            : 1.0
+Status             : dynamic_priority_ready
+Operation Mode     : read_only_preview_only
+Integration        : 36.5 Engineering Brain User Intent Continuity Intelligence,
+36.4 Engineering Brain Multi-Session Continuity Intelligence,
+36.3 Engineering Brain Persistent Execution Intelligence,
+36.2 Engineering Brain Task Consciousness,
+36.1 Engineering Brain Workspace Consciousness,
+36.0 LuxCode Engineering Brain Core
+-----------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 36.6 introduces Engineering Brain Dynamic Priority & Queue Intelligence.
+
+This layer becomes the real-time prioritization and queue management engine
+of LuxCode.
+
+Goal:
+
+Continuously determine:
+
+* what should happen now
+* what should happen next
+* what can wait
+* what must be escalated
+* what should be postponed
+
+Primary Mission:
+
+Tasks compete.
+
+Commands compete.
+
+User requests compete.
+
+Workspace events compete.
+
+LuxCode must continuously prioritize.
+
+---
+
+2. CAPABILITIES (12)
+
+---
+
+dynamic_priority_analysis
+
+queue_health_monitoring
+
+priority_shift_detection
+
+command_queue_management
+
+task_queue_management
+
+follow_up_queue_management
+
+execution_order_generation
+
+queue_conflict_detection
+
+priority_reconciliation
+
+queue_summary_generation
+
+queue_health_analysis
+
+priority_attention_engine
+
+---
+
+3. PRIORITY PIPELINE
+
+---
+
+Task Detection
+
+&#8595;
+
+Queue Analysis
+
+&#8595;
+
+Priority Scoring
+
+&#8595;
+
+Conflict Analysis
+
+&#8595;
+
+Execution Ordering
+
+&#8595;
+
+Priority Validation
+
+&#8595;
+
+Queue Optimization
+
+&#8595;
+
+Priority Summary
+
+---
+
+4. PRIORITY STATES
+
+---
+
+critical_priority
+
+high_priority
+
+normal_priority
+
+background_priority
+
+deferred_priority
+
+blocked_priority
+
+---
+
+5. PRIORITY ENGINE
+
+---
+
+Analyze:
+
+active_tasks
+
+queued_tasks
+
+added_commands
+
+follow_ups
+
+workspace_events
+
+Returns:
+
+priority_map
+
+priority_score
+
+recommended_order
+
+---
+
+6. QUEUE MANAGEMENT ENGINE
+
+---
+
+Track:
+
+active_queue
+
+pending_queue
+
+deferred_queue
+
+future_queue
+
+Returns:
+
+queue_health
+
+queue_complexity
+
+queue_status
+
+---
+
+7. EXECUTION ORDER ENGINE
+
+---
+
+Generate:
+
+recommended_execution_order
+
+dependency_aware_order
+
+risk_aware_order
+
+intent_aware_order
+
+Returns:
+
+execution_plan
+
+execution_confidence
+
+---
+
+8. PRIORITY RECONCILIATION ENGINE
+
+---
+
+Resolve:
+
+competing_priorities
+
+conflicting_commands
+
+user_priority_changes
+
+interrupted_tasks
+
+Returns:
+
+reconciliation_summary
+
+recommended_priority_structure
+
+---
+
+9. DYNAMIC PRIORITY SCORE
+
+---
+
+Returns:
+
+priority_health
+
+queue_health
+
+execution_order_health
+
+attention_health
+
+overall_priority_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+10. ENDPOINTS
+
+---
+
+GET  /dynamic-priority/status
+
+GET  /dynamic-priority/capabilities
+
+POST /dynamic-priority/preview
+
+POST /dynamic-priority/priority-analysis
+
+POST /dynamic-priority/queue-analysis
+
+POST /dynamic-priority/execution-order
+
+POST /dynamic-priority/reconciliation
+
+---
+
+11. FILES MODIFIED
+
+---
+
+engineering_brain_dynamic_priority_queue_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+12. SAFETY
+
+---
+
+queue_execution=False
+
+priority_override=False
+
+command_execution=False
+
+deployment_execution=False
+
+All operations remain preview-only.
+
+================================================================================
+END OF LAYER 36.6 REPORT
+========================

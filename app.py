@@ -159,6 +159,438 @@ from patch_draft_engine_preview import (
     patch_draft_registry,
     patch_draft_status,
 )
+from change_preview_engine_preview import (
+    build_change_preview,
+    change_preview_registry,
+    change_preview_status,
+)
+from diff_preview_engine_preview import (
+    build_diff_preview,
+    diff_preview_registry,
+    diff_preview_status,
+)
+from patch_risk_matrix_preview import (
+    build_patch_risk_preview,
+    patch_risk_registry,
+    patch_risk_status,
+)
+from patch_approval_engine_preview import (
+    build_patch_approval_preview,
+    patch_approval_registry,
+    patch_approval_status,
+)
+from patch_execution_readiness_preview import (
+    build_patch_execution_preview,
+    patch_execution_registry,
+    patch_execution_status,
+)
+from layer27_status_snapshot import layer27_full_status, layer27_status_snapshot
+from layer28_status_snapshot import layer28_full_status, layer28_status_snapshot
+from layer29_status_snapshot import layer29_full_status, layer29_status_snapshot
+from production_readiness_preview import (
+    build_production_readiness_preview,
+    production_readiness_registry,
+    production_readiness_status,
+)
+from operational_readiness_preview import (
+    build_operational_readiness_preview,
+    operational_readiness_registry,
+    operational_readiness_status,
+)
+from system_readiness_preview import (
+    build_system_readiness_preview,
+    system_readiness_registry,
+    system_readiness_status,
+)
+from validation_readiness_preview import (
+    build_validation_readiness_preview,
+    validation_readiness_registry,
+    validation_readiness_status,
+)
+from release_readiness_preview import (
+    build_release_readiness_preview,
+    release_readiness_registry,
+    release_readiness_status,
+)
+from layer30_status_snapshot import layer30_full_status, layer30_status_snapshot
+from system_health_intelligence_preview import (
+    build_system_health_intelligence_preview,
+    system_health_intelligence_registry,
+    system_health_intelligence_status,
+)
+from runtime_stability_intelligence_preview import (
+    build_runtime_stability_intelligence_preview,
+    runtime_stability_intelligence_registry,
+    runtime_stability_intelligence_status,
+)
+from runtime_risk_intelligence_preview import (
+    build_runtime_risk_intelligence_preview,
+    runtime_risk_intelligence_registry,
+    runtime_risk_intelligence_status,
+)
+from runtime_drift_intelligence_preview import (
+    build_runtime_drift_intelligence_preview,
+    runtime_drift_intelligence_registry,
+    runtime_drift_intelligence_status,
+)
+from runtime_recovery_intelligence_preview import (
+    build_runtime_recovery_intelligence_preview,
+    runtime_recovery_intelligence_registry,
+    runtime_recovery_intelligence_status,
+)
+from runtime_anomaly_intelligence_preview import (
+    build_runtime_anomaly_intelligence_preview,
+    runtime_anomaly_intelligence_registry,
+    runtime_anomaly_intelligence_status,
+)
+from regression_intelligence_preview import (
+    build_regression_intelligence_preview,
+    regression_intelligence_registry,
+    regression_intelligence_status,
+)
+from failure_memory_intelligence_preview import (
+    build_failure_memory_intelligence_preview,
+    failure_memory_intelligence_registry,
+    failure_memory_intelligence_status,
+)
+from dependency_intelligence_preview import (
+    build_dependency_intelligence_preview,
+    dependency_intelligence_registry,
+    dependency_intelligence_status,
+)
+from root_cause_intelligence_preview import (
+    build_root_cause_intelligence_preview,
+    root_cause_intelligence_registry,
+    root_cause_intelligence_status,
+)
+from change_memory_intelligence_preview import (
+    build_change_memory_intelligence_preview,
+    change_memory_intelligence_registry,
+    change_memory_intelligence_status,
+)
+from failed_change_intelligence_preview import (
+    build_failed_change_intelligence_preview,
+    failed_change_intelligence_registry,
+    failed_change_intelligence_status,
+)
+from change_planning_intelligence_preview import (
+    build_change_planning_intelligence_preview,
+    change_planning_intelligence_registry,
+    change_planning_intelligence_status,
+)
+from clone_workspace_intelligence_preview import (
+    build_clone_workspace_intelligence_preview,
+    clone_workspace_intelligence_registry,
+    clone_workspace_intelligence_status,
+    clone_workspace_intelligence_capabilities,
+    clone_workspace_intelligence_preview as clone_workspace_intelligence_preview_fn,
+    clone_workspace_intelligence_difference_analysis,
+    clone_workspace_intelligence_sync_analysis,
+    clone_workspace_intelligence_conflict_analysis,
+    clone_workspace_intelligence_transfer_plan,
+    clone_workspace_intelligence_recovery_plan,
+)
+from deployment_verification_intelligence_preview import (
+    deployment_verification_intelligence_status,
+    deployment_verification_intelligence_capabilities,
+    deployment_verification_intelligence_preview,
+    deployment_verification_intelligence_readiness,
+    deployment_verification_intelligence_environment,
+    deployment_verification_intelligence_release_score,
+)
+from autonomous_engineering_coordinator_preview import (
+    autonomous_engineering_coordinator_status,
+    autonomous_engineering_coordinator_capabilities,
+    autonomous_engineering_coordinator_preview,
+    autonomous_engineering_coordinator_workflow,
+    autonomous_engineering_coordinator_health,
+    autonomous_engineering_coordinator_delivery_review,
+)
+from engineering_memory_failure_intelligence_preview import (
+    engineering_memory_intelligence_status,
+    engineering_memory_intelligence_capabilities,
+    engineering_memory_intelligence_preview,
+    engineering_memory_similar_issues,
+    engineering_memory_failure_analysis,
+    engineering_memory_success_analysis,
+    engineering_memory_loop_analysis,
+)
+from engineering_knowledge_graph_intelligence_preview import (
+    engineering_graph_intelligence_status,
+    engineering_graph_intelligence_capabilities,
+    engineering_graph_intelligence_preview,
+    engineering_graph_intelligence_relationships,
+    engineering_graph_intelligence_dependencies,
+    engineering_graph_intelligence_impact_analysis,
+    engineering_graph_intelligence_summary,
+)
+from engineering_decision_intelligence_preview import (
+    engineering_decision_intelligence_status,
+    engineering_decision_intelligence_capabilities,
+    engineering_decision_intelligence_preview,
+    engineering_decision_intelligence_strategy,
+    engineering_decision_intelligence_risk_analysis,
+    engineering_decision_intelligence_conflict_analysis,
+    engineering_decision_intelligence_decision_score,
+)
+from engineering_observability_monitoring_preview import (
+    engineering_monitoring_intelligence_status,
+    engineering_monitoring_intelligence_capabilities,
+    engineering_monitoring_intelligence_preview,
+    engineering_monitoring_intelligence_health,
+    engineering_monitoring_intelligence_anomaly_analysis,
+    engineering_monitoring_intelligence_drift_analysis,
+    engineering_monitoring_intelligence_priority_analysis,
+)
+from engineering_prediction_forecast_intelligence_preview import (
+    engineering_forecast_intelligence_status,
+    engineering_forecast_intelligence_capabilities,
+    engineering_forecast_intelligence_preview,
+    engineering_forecast_intelligence_failure_prediction,
+    engineering_forecast_intelligence_deployment_prediction,
+    engineering_forecast_intelligence_dependency_prediction,
+    engineering_forecast_intelligence_trend_analysis,
+)
+from engineering_strategy_intelligence_preview import (
+    engineering_strategy_intelligence_status,
+    engineering_strategy_intelligence_capabilities,
+    engineering_strategy_intelligence_preview,
+    engineering_strategy_intelligence_generate,
+    engineering_strategy_intelligence_compare,
+    engineering_strategy_intelligence_roadmap,
+    engineering_strategy_intelligence_risk_analysis,
+)
+from engineering_autonomy_intelligence_preview import (
+    engineering_autonomy_intelligence_status,
+    engineering_autonomy_intelligence_capabilities,
+    engineering_autonomy_intelligence_preview,
+    engineering_autonomy_intelligence_recommendation,
+    engineering_autonomy_intelligence_boundary_analysis,
+    engineering_autonomy_intelligence_confirmation_analysis,
+    engineering_autonomy_intelligence_autonomy_score,
+)
+from engineering_self_reflection_meta_intelligence_preview import (
+    engineering_meta_intelligence_status,
+    engineering_meta_intelligence_capabilities,
+    engineering_meta_intelligence_preview,
+    engineering_meta_intelligence_reflection,
+    engineering_meta_intelligence_reasoning_review,
+    engineering_meta_intelligence_consistency_analysis,
+    engineering_meta_intelligence_alternative_analysis,
+)
+from luxcode_engineering_brain_core_preview import (
+    luxcode_engineering_brain_core_status,
+    luxcode_engineering_brain_core_capabilities,
+    luxcode_engineering_brain_core_preview,
+    luxcode_engineering_brain_core_reasoning,
+    luxcode_engineering_brain_core_planning,
+    luxcode_engineering_brain_core_recommendation,
+    luxcode_engineering_brain_core_health,
+)
+from engineering_brain_workspace_consciousness_preview import (
+    workspace_consciousness_intelligence_status,
+    workspace_consciousness_intelligence_capabilities,
+    workspace_consciousness_intelligence_preview,
+    workspace_consciousness_intelligence_attention_map,
+    workspace_consciousness_intelligence_focus_analysis,
+    workspace_consciousness_intelligence_queue_analysis,
+    workspace_consciousness_intelligence_workspace_health,
+)
+from engineering_brain_task_consciousness_preview import (
+    task_consciousness_intelligence_status,
+    task_consciousness_intelligence_capabilities,
+    task_consciousness_intelligence_preview,
+    task_consciousness_intelligence_task_analysis,
+    task_consciousness_intelligence_continuity_analysis,
+    task_consciousness_intelligence_queue_analysis as task_consciousness_queue_analysis,
+    task_consciousness_intelligence_conversation_analysis,
+)
+from engineering_brain_persistent_execution_intelligence_preview import (
+    persistent_execution_intelligence_status,
+    persistent_execution_intelligence_capabilities,
+    persistent_execution_intelligence_preview,
+    persistent_execution_intelligence_resume_analysis,
+    persistent_execution_intelligence_interruption_analysis,
+    persistent_execution_intelligence_recovery_analysis,
+    persistent_execution_intelligence_state_summary,
+)
+from engineering_brain_multi_session_continuity_preview import (
+    multi_session_continuity_intelligence_status,
+    multi_session_continuity_intelligence_capabilities,
+    multi_session_continuity_intelligence_preview,
+    multi_session_continuity_intelligence_snapshot,
+    multi_session_continuity_intelligence_resume_chain,
+    multi_session_continuity_intelligence_transition_analysis,
+    multi_session_continuity_intelligence_continuity_health,
+)
+from engineering_brain_user_intent_continuity_preview import (
+    user_intent_continuity_intelligence_status,
+    user_intent_continuity_intelligence_capabilities,
+    user_intent_continuity_intelligence_preview,
+    user_intent_continuity_intelligence_intent_analysis,
+    user_intent_continuity_intelligence_priority_analysis,
+    user_intent_continuity_intelligence_command_analysis,
+    user_intent_continuity_intelligence_reconciliation,
+)
+from engineering_brain_dynamic_priority_queue_preview import (
+    dynamic_priority_intelligence_status,
+    dynamic_priority_intelligence_capabilities,
+    dynamic_priority_intelligence_preview,
+    dynamic_priority_intelligence_priority_analysis,
+    dynamic_priority_intelligence_queue_analysis,
+    dynamic_priority_intelligence_execution_order,
+    dynamic_priority_intelligence_reconciliation as dynamic_priority_reconciliation,
+)
+from sandbox_repair_intelligence_preview import (
+    build_sandbox_repair_intelligence_preview,
+    sandbox_repair_intelligence_registry,
+    sandbox_repair_intelligence_status,
+)
+from verification_intelligence_preview import (
+    build_verification_intelligence_preview,
+    verification_intelligence_registry,
+    verification_intelligence_status,
+    verification_intelligence_capabilities,
+    verification_intelligence_preview as verification_intelligence_preview_fn,
+    verification_intelligence_coverage_analysis,
+    verification_intelligence_regression_detection,
+    verification_intelligence_sandbox_validation,
+    verification_intelligence_production_validation,
+    verification_intelligence_delivery_score,
+)
+from delivery_readiness_intelligence_preview import (
+    build_delivery_readiness_intelligence_preview,
+    delivery_readiness_intelligence_registry,
+    delivery_readiness_intelligence_status,
+)
+from luxcode_core_status_snapshot import (
+    luxcode_core_status_snapshot,
+    luxcode_core_health,
+    luxcode_core_readiness,
+)
+from github_bridge_intelligence_preview import (
+    build_github_bridge_intelligence_preview,
+    github_bridge_intelligence_status,
+    github_bridge_intelligence_registry,
+    github_bridge_intelligence_capabilities,
+)
+from terminal_bridge_intelligence_preview import (
+    build_terminal_bridge_intelligence_preview,
+    terminal_bridge_intelligence_status,
+    terminal_bridge_intelligence_registry,
+    terminal_bridge_intelligence_capabilities,
+)
+from deployment_bridge_intelligence_preview import (
+    build_deployment_bridge_intelligence_preview,
+    deployment_bridge_intelligence_status,
+    deployment_bridge_intelligence_registry,
+    deployment_bridge_intelligence_capabilities,
+)
+from device_action_intelligence_preview import (
+    build_device_action_intelligence_preview,
+    device_action_intelligence_status,
+    device_action_intelligence_registry,
+    device_action_intelligence_capabilities,
+)
+from workspace_intelligence_preview import (
+    workspace_intelligence_status,
+    workspace_intelligence_capabilities,
+    workspace_intelligence_preview,
+    workspace_intelligence_group_preview,
+    workspace_intelligence_suggestion_preview,
+    workspace_intelligence_project_map,
+)
+from task_orchestration_intelligence_preview import (
+    task_orchestration_intelligence_status,
+    task_orchestration_intelligence_capabilities,
+    task_orchestration_intelligence_queue,
+    task_orchestration_intelligence_watch,
+    task_orchestration_intelligence_preview as task_orchestration_preview,
+    task_orchestration_intelligence_add_command,
+    task_orchestration_intelligence_follow_up,
+)
+from autonomous_repair_intelligence_preview import (
+    autonomous_repair_intelligence_status,
+    autonomous_repair_intelligence_capabilities,
+    autonomous_repair_intelligence_preview,
+    autonomous_repair_root_cause_analysis,
+    autonomous_repair_strategy_generation,
+    autonomous_repair_dependency_impact_analysis,
+    autonomous_repair_simulation,
+    autonomous_repair_verification_plan,
+)
+from layer32_status_snapshot import layer32_status_snapshot, layer32_full_status
+from layer31_status_snapshot import layer31_status_snapshot, layer31_full_status
+from patch_permission_enforcement_preview import (
+    build_patch_permission_preview,
+    patch_permission_registry,
+    patch_permission_status,
+)
+from patch_policy_evaluation_preview import (
+    build_patch_policy_preview,
+    patch_policy_registry,
+    patch_policy_status,
+)
+from patch_compliance_preview import (
+    build_patch_compliance_preview,
+    patch_compliance_registry,
+    patch_compliance_status,
+)
+from patch_governance_preview import (
+    build_patch_governance_preview,
+    patch_governance_registry,
+    patch_governance_status,
+)
+from patch_oversight_preview import (
+    build_patch_oversight_preview,
+    patch_oversight_registry,
+    patch_oversight_status,
+)
+from patch_accountability_preview import (
+    build_patch_accountability_preview,
+    patch_accountability_registry,
+    patch_accountability_status,
+)
+from patch_assurance_preview import (
+    build_patch_assurance_preview,
+    patch_assurance_registry,
+    patch_assurance_status,
+)
+from patch_confidence_preview import (
+    build_patch_confidence_preview,
+    patch_confidence_registry,
+    patch_confidence_status,
+)
+from safe_patch_application_preview import (
+    build_safe_patch_preview,
+    safe_patch_registry,
+    safe_patch_status,
+)
+from patch_rollback_preview import (
+    build_patch_rollback_preview,
+    patch_rollback_registry,
+    patch_rollback_status,
+)
+from patch_validation_preview import (
+    build_patch_validation_preview,
+    patch_validation_registry,
+    patch_validation_status,
+)
+from patch_recovery_preview import (
+    build_patch_recovery_preview,
+    patch_recovery_registry,
+    patch_recovery_status,
+)
+from patch_audit_trail_preview import (
+    build_patch_audit_preview,
+    patch_audit_registry,
+    patch_audit_status,
+)
+from patch_lifecycle_preview import (
+    build_patch_lifecycle_preview,
+    patch_lifecycle_registry,
+    patch_lifecycle_status,
+)
 from investigation_context_preview import (
     build_investigation_context_preview,
     investigation_context_registry,
@@ -230,6 +662,102 @@ from visual_style_ratio import preview_visual_style_ratio
 from visual_style_registry import preview_visual_style, visual_style_registry
 from wake_sonic_preview import preview_wake_sonic, wake_sonic_registry, wake_sonic_schema, wake_sonic_status
 from voice_mode_registry import preview_voice_mode, voice_mode_registry, voice_status_snapshot
+
+from github_project_intelligence_preview import (
+    github_project_intelligence_status,
+    github_project_intelligence_capabilities,
+    github_project_intelligence_preview,
+)
+from terminal_intelligence_preview import (
+    terminal_intelligence_status,
+    terminal_intelligence_capabilities,
+    terminal_intelligence_preview,
+)
+from render_deployment_intelligence_preview import (
+    render_deployment_intelligence_status,
+    render_deployment_intelligence_capabilities,
+    render_deployment_intelligence_preview,
+)
+from project_intelligence_core_preview import (
+    project_intelligence_core_status,
+    project_intelligence_core_capabilities,
+    project_intelligence_core_preview,
+)
+from multi_project_intelligence_preview import (
+    multi_project_intelligence_status,
+    multi_project_intelligence_capabilities,
+    multi_project_intelligence_preview,
+)
+from workspace_agent_preview import (
+    workspace_agent_status,
+    workspace_agent_capabilities,
+    workspace_agent_preview,
+)
+from deployment_agent_preview import (
+    deployment_agent_status,
+    deployment_agent_capabilities,
+    deployment_agent_preview,
+)
+from github_bridge_consolidation_preview import (
+    github_bridge_consolidation_status,
+    github_bridge_consolidation_capabilities,
+    github_bridge_consolidation_preview,
+)
+from agent_core_preview import (
+    agent_core_status,
+    agent_core_capabilities,
+    agent_core_preview,
+)
+from autonomous_workflow_intelligence_preview import (
+    autonomous_workflow_intelligence_status,
+    autonomous_workflow_intelligence_capabilities,
+    autonomous_workflow_intelligence_preview,
+)
+from workflow_chain_intelligence_preview import (
+    workflow_chain_intelligence_status,
+    workflow_chain_intelligence_capabilities,
+    workflow_chain_intelligence_preview,
+)
+from workflow_orchestration_intelligence_preview import (
+    workflow_orchestration_intelligence_status,
+    workflow_orchestration_intelligence_capabilities,
+    workflow_orchestration_intelligence_preview,
+)
+from autonomous_task_network_intelligence_preview import (
+    autonomous_task_network_intelligence_status,
+    autonomous_task_network_intelligence_capabilities,
+    autonomous_task_network_intelligence_preview,
+)
+from autonomous_execution_planning_intelligence_preview import (
+    autonomous_execution_planning_intelligence_status,
+    autonomous_execution_planning_intelligence_capabilities,
+    autonomous_execution_planning_intelligence_preview,
+)
+from autonomous_execution_strategy_intelligence_preview import (
+    autonomous_execution_strategy_intelligence_status,
+    autonomous_execution_strategy_intelligence_capabilities,
+    autonomous_execution_strategy_intelligence_preview,
+)
+from autonomous_execution_simulation_intelligence_preview import (
+    autonomous_execution_simulation_intelligence_status,
+    autonomous_execution_simulation_intelligence_capabilities,
+    autonomous_execution_simulation_intelligence_preview,
+)
+from autonomous_execution_decision_intelligence_preview import (
+    autonomous_execution_decision_intelligence_status,
+    autonomous_execution_decision_intelligence_capabilities,
+    autonomous_execution_decision_intelligence_preview,
+)
+from autonomous_execution_governance_intelligence_preview import (
+    autonomous_execution_governance_intelligence_status,
+    autonomous_execution_governance_intelligence_capabilities,
+    autonomous_execution_governance_intelligence_preview,
+)
+from autonomous_agent_operating_model_preview import (
+    autonomous_agent_operating_model_status,
+    autonomous_agent_operating_model_capabilities,
+    autonomous_agent_operating_model_preview,
+)
 
 try:
     from dotenv import load_dotenv
@@ -913,6 +1441,312 @@ class PatchDraftPreviewRequest(BaseModel):
     command: str = Field(default="", max_length=2000)
     project_area: Optional[str] = Field(default=None, max_length=200)
     related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class ChangePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class DiffPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchRiskPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchApprovalPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchExecutionPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class SafePatchPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchRollbackPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchValidationPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchRecoveryPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchAuditTrailPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchLifecyclePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchPermissionPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchPolicyPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchCompliancePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchGovernancePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchOversightPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchAccountabilityPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchAssurancePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class PatchConfidencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class ProductionReadinessPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class OperationalReadinessPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class SystemReadinessPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class ValidationReadinessPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class ReleaseReadinessPreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class SystemHealthIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class RuntimeStabilityIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class RuntimeRiskIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class RuntimeDriftIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class RuntimeRecoveryIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class RuntimeAnomalyIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class RegressionIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class FailureMemoryIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class DependencyIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class RootCauseIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class ChangeMemoryIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class FailedChangeIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class ChangePlanningIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class CloneWorkspaceIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class SandboxRepairIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class VerificationIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class DeliveryReadinessIntelligencePreviewRequest(BaseModel):
+    target_issue: Optional[str] = Field(default=None, max_length=200)
+    command: str = Field(default="", max_length=2000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    related_layer: Optional[str] = Field(default=None, max_length=120)
+
+
+class AgentArchitecturePreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    repo_name: Optional[str] = Field(default=None, max_length=200)
+    task_type: Optional[str] = Field(default=None, max_length=120)
+    risk_level: Optional[str] = Field(default=None, max_length=80)
+    context: str = Field(default="", max_length=8000)
+
+
+class AutonomousAgentSystemsPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    workflow_name: Optional[str] = Field(default=None, max_length=200)
+    task_type: Optional[str] = Field(default=None, max_length=120)
+    autonomy_level: Optional[str] = Field(default=None, max_length=120)
+    risk_level: Optional[str] = Field(default=None, max_length=80)
+    context: str = Field(default="", max_length=8000)
 
 
 # =========================================================
@@ -8367,6 +9201,2091 @@ async def debug_patch_draft_registry():
 @app.post("/debug/patch-draft-preview")
 async def debug_patch_draft_preview(payload: PatchDraftPreviewRequest):
     return build_patch_draft_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/change-preview-status")
+async def debug_change_preview_status():
+    return change_preview_status()
+
+
+@app.get("/debug/change-preview-registry")
+async def debug_change_preview_registry():
+    return change_preview_registry()
+
+
+@app.post("/debug/change-preview")
+async def debug_change_preview(payload: ChangePreviewRequest):
+    return build_change_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/diff-preview-status")
+async def debug_diff_preview_status():
+    return diff_preview_status()
+
+
+@app.get("/debug/diff-preview-registry")
+async def debug_diff_preview_registry():
+    return diff_preview_registry()
+
+
+@app.post("/debug/diff-preview")
+async def debug_diff_preview(payload: DiffPreviewRequest):
+    return build_diff_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-risk-status")
+async def debug_patch_risk_status():
+    return patch_risk_status()
+
+
+@app.get("/debug/patch-risk-registry")
+async def debug_patch_risk_registry():
+    return patch_risk_registry()
+
+
+@app.post("/debug/patch-risk-preview")
+async def debug_patch_risk_preview(payload: PatchRiskPreviewRequest):
+    return build_patch_risk_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-approval-status")
+async def debug_patch_approval_status():
+    return patch_approval_status()
+
+
+@app.get("/debug/patch-approval-registry")
+async def debug_patch_approval_registry():
+    return patch_approval_registry()
+
+
+@app.post("/debug/patch-approval-preview")
+async def debug_patch_approval_preview(payload: PatchApprovalPreviewRequest):
+    return build_patch_approval_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-execution-status")
+async def debug_patch_execution_status():
+    return patch_execution_status()
+
+
+@app.get("/debug/patch-execution-registry")
+async def debug_patch_execution_registry():
+    return patch_execution_registry()
+
+
+@app.post("/debug/patch-execution-preview")
+async def debug_patch_execution_preview(payload: PatchExecutionPreviewRequest):
+    return build_patch_execution_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/layer27-status")
+async def debug_layer27_status():
+    return layer27_status_snapshot()
+
+
+@app.get("/debug/layer27-full-status")
+async def debug_layer27_full_status():
+    return layer27_full_status()
+
+
+@app.get("/debug/layer28-status")
+async def debug_layer28_status():
+    return layer28_status_snapshot()
+
+
+@app.get("/debug/layer28-full-status")
+async def debug_layer28_full_status():
+    return layer28_full_status()
+
+
+@app.get("/debug/layer29-status")
+async def debug_layer29_status():
+    return layer29_status_snapshot()
+
+
+@app.get("/debug/layer29-full-status")
+async def debug_layer29_full_status():
+    return layer29_full_status()
+
+
+@app.get("/debug/safe-patch-status")
+async def debug_safe_patch_status():
+    return safe_patch_status()
+
+
+@app.get("/debug/safe-patch-registry")
+async def debug_safe_patch_registry():
+    return safe_patch_registry()
+
+
+@app.post("/debug/safe-patch-preview")
+async def debug_safe_patch_preview(payload: SafePatchPreviewRequest):
+    return build_safe_patch_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-rollback-status")
+async def debug_patch_rollback_status():
+    return patch_rollback_status()
+
+
+@app.get("/debug/patch-rollback-registry")
+async def debug_patch_rollback_registry():
+    return patch_rollback_registry()
+
+
+@app.post("/debug/patch-rollback-preview")
+async def debug_patch_rollback_preview(payload: PatchRollbackPreviewRequest):
+    return build_patch_rollback_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-validation-status")
+async def debug_patch_validation_status():
+    return patch_validation_status()
+
+
+@app.get("/debug/patch-validation-registry")
+async def debug_patch_validation_registry():
+    return patch_validation_registry()
+
+
+@app.post("/debug/patch-validation-preview")
+async def debug_patch_validation_preview(payload: PatchValidationPreviewRequest):
+    return build_patch_validation_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-recovery-status")
+async def debug_patch_recovery_status():
+    return patch_recovery_status()
+
+
+@app.get("/debug/patch-recovery-registry")
+async def debug_patch_recovery_registry():
+    return patch_recovery_registry()
+
+
+@app.post("/debug/patch-recovery-preview")
+async def debug_patch_recovery_preview(payload: PatchRecoveryPreviewRequest):
+    return build_patch_recovery_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-audit-status")
+async def debug_patch_audit_status():
+    return patch_audit_status()
+
+
+@app.get("/debug/patch-audit-registry")
+async def debug_patch_audit_registry():
+    return patch_audit_registry()
+
+
+@app.post("/debug/patch-audit-preview")
+async def debug_patch_audit_preview(payload: PatchAuditTrailPreviewRequest):
+    return build_patch_audit_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-lifecycle-status")
+async def debug_patch_lifecycle_status():
+    return patch_lifecycle_status()
+
+
+@app.get("/debug/patch-lifecycle-registry")
+async def debug_patch_lifecycle_registry():
+    return patch_lifecycle_registry()
+
+
+@app.post("/debug/patch-lifecycle-preview")
+async def debug_patch_lifecycle_preview(payload: PatchLifecyclePreviewRequest):
+    return build_patch_lifecycle_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-permission-status")
+async def debug_patch_permission_status():
+    return patch_permission_status()
+
+
+@app.get("/debug/patch-permission-registry")
+async def debug_patch_permission_registry():
+    return patch_permission_registry()
+
+
+@app.post("/debug/patch-permission-preview")
+async def debug_patch_permission_preview(payload: PatchPermissionPreviewRequest):
+    return build_patch_permission_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-policy-status")
+async def debug_patch_policy_status():
+    return patch_policy_status()
+
+
+@app.get("/debug/patch-policy-registry")
+async def debug_patch_policy_registry():
+    return patch_policy_registry()
+
+
+@app.post("/debug/patch-policy-preview")
+async def debug_patch_policy_preview(payload: PatchPolicyPreviewRequest):
+    return build_patch_policy_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-compliance-status")
+async def debug_patch_compliance_status():
+    return patch_compliance_status()
+
+
+@app.get("/debug/patch-compliance-registry")
+async def debug_patch_compliance_registry():
+    return patch_compliance_registry()
+
+
+@app.post("/debug/patch-compliance-preview")
+async def debug_patch_compliance_preview(payload: PatchCompliancePreviewRequest):
+    return build_patch_compliance_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-governance-status")
+async def debug_patch_governance_status():
+    return patch_governance_status()
+
+
+@app.get("/debug/patch-governance-registry")
+async def debug_patch_governance_registry():
+    return patch_governance_registry()
+
+
+@app.post("/debug/patch-governance-preview")
+async def debug_patch_governance_preview(payload: PatchGovernancePreviewRequest):
+    return build_patch_governance_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-oversight-status")
+async def debug_patch_oversight_status():
+    return patch_oversight_status()
+
+
+@app.get("/debug/patch-oversight-registry")
+async def debug_patch_oversight_registry():
+    return patch_oversight_registry()
+
+
+@app.post("/debug/patch-oversight-preview")
+async def debug_patch_oversight_preview(payload: PatchOversightPreviewRequest):
+    return build_patch_oversight_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-accountability-status")
+async def debug_patch_accountability_status():
+    return patch_accountability_status()
+
+
+@app.get("/debug/patch-accountability-registry")
+async def debug_patch_accountability_registry():
+    return patch_accountability_registry()
+
+
+@app.post("/debug/patch-accountability-preview")
+async def debug_patch_accountability_preview(payload: PatchAccountabilityPreviewRequest):
+    return build_patch_accountability_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-assurance-status")
+async def debug_patch_assurance_status():
+    return patch_assurance_status()
+
+
+@app.get("/debug/patch-assurance-registry")
+async def debug_patch_assurance_registry():
+    return patch_assurance_registry()
+
+
+@app.post("/debug/patch-assurance-preview")
+async def debug_patch_assurance_preview(payload: PatchAssurancePreviewRequest):
+    return build_patch_assurance_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/patch-confidence-status")
+async def debug_patch_confidence_status():
+    return patch_confidence_status()
+
+
+@app.get("/debug/patch-confidence-registry")
+async def debug_patch_confidence_registry():
+    return patch_confidence_registry()
+
+
+@app.post("/debug/patch-confidence-preview")
+async def debug_patch_confidence_preview(payload: PatchConfidencePreviewRequest):
+    return build_patch_confidence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/production-readiness-status")
+async def debug_production_readiness_status():
+    return production_readiness_status()
+
+
+@app.get("/debug/production-readiness-registry")
+async def debug_production_readiness_registry():
+    return production_readiness_registry()
+
+
+@app.post("/debug/production-readiness-preview")
+async def debug_production_readiness_preview(payload: ProductionReadinessPreviewRequest):
+    return build_production_readiness_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/operational-readiness-status")
+async def debug_operational_readiness_status():
+    return operational_readiness_status()
+
+
+@app.get("/debug/operational-readiness-registry")
+async def debug_operational_readiness_registry():
+    return operational_readiness_registry()
+
+
+@app.post("/debug/operational-readiness-preview")
+async def debug_operational_readiness_preview(payload: OperationalReadinessPreviewRequest):
+    return build_operational_readiness_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/system-readiness-status")
+async def debug_system_readiness_status():
+    return system_readiness_status()
+
+
+@app.get("/debug/system-readiness-registry")
+async def debug_system_readiness_registry():
+    return system_readiness_registry()
+
+
+@app.post("/debug/system-readiness-preview")
+async def debug_system_readiness_preview(payload: SystemReadinessPreviewRequest):
+    return build_system_readiness_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/validation-readiness-status")
+async def debug_validation_readiness_status():
+    return validation_readiness_status()
+
+
+@app.get("/debug/validation-readiness-registry")
+async def debug_validation_readiness_registry():
+    return validation_readiness_registry()
+
+
+@app.post("/debug/validation-readiness-preview")
+async def debug_validation_readiness_preview(payload: ValidationReadinessPreviewRequest):
+    return build_validation_readiness_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/layer30-status")
+async def debug_layer30_status():
+    return layer30_status_snapshot()
+
+
+@app.get("/debug/layer30-full-status")
+async def debug_layer30_full_status():
+    return layer30_full_status()
+
+
+@app.get("/debug/system-health-status")
+async def debug_system_health_status():
+    return system_health_intelligence_status()
+
+
+@app.get("/debug/system-health-registry")
+async def debug_system_health_registry():
+    return system_health_intelligence_registry()
+
+
+@app.post("/debug/system-health-preview")
+async def debug_system_health_preview(payload: SystemHealthIntelligencePreviewRequest):
+    return build_system_health_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/layer31-status")
+async def debug_layer31_status():
+    return layer31_status_snapshot()
+
+
+@app.get("/debug/layer31-full-status")
+async def debug_layer31_full_status():
+    return layer31_full_status()
+
+
+@app.get("/debug/layer32-status")
+async def debug_layer32_status():
+    return layer32_status_snapshot()
+
+
+@app.get("/debug/layer32-full-status")
+async def debug_layer32_full_status():
+    return layer32_full_status()
+
+
+@app.get("/debug/runtime-recovery-status")
+async def debug_runtime_recovery_status():
+    return runtime_recovery_intelligence_status()
+
+
+@app.get("/debug/runtime-recovery-registry")
+async def debug_runtime_recovery_registry():
+    return runtime_recovery_intelligence_registry()
+
+
+@app.post("/debug/runtime-recovery-preview")
+async def debug_runtime_recovery_preview(payload: RuntimeRecoveryIntelligencePreviewRequest):
+    return build_runtime_recovery_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/runtime-anomaly-status")
+async def debug_runtime_anomaly_status():
+    return runtime_anomaly_intelligence_status()
+
+
+@app.get("/debug/runtime-anomaly-registry")
+async def debug_runtime_anomaly_registry():
+    return runtime_anomaly_intelligence_registry()
+
+
+@app.post("/debug/runtime-anomaly-preview")
+async def debug_runtime_anomaly_preview(payload: RuntimeAnomalyIntelligencePreviewRequest):
+    return build_runtime_anomaly_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/regression-status")
+async def debug_regression_status():
+    return regression_intelligence_status()
+
+
+@app.get("/debug/regression-registry")
+async def debug_regression_registry():
+    return regression_intelligence_registry()
+
+
+@app.post("/debug/regression-preview")
+async def debug_regression_preview(payload: RegressionIntelligencePreviewRequest):
+    return build_regression_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/failure-memory-status")
+async def debug_failure_memory_status():
+    return failure_memory_intelligence_status()
+
+
+@app.get("/debug/failure-memory-registry")
+async def debug_failure_memory_registry():
+    return failure_memory_intelligence_registry()
+
+
+@app.post("/debug/failure-memory-preview")
+async def debug_failure_memory_preview(payload: FailureMemoryIntelligencePreviewRequest):
+    return build_failure_memory_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/dependency-status")
+async def debug_dependency_status():
+    return dependency_intelligence_status()
+
+
+@app.get("/debug/dependency-registry")
+async def debug_dependency_registry():
+    return dependency_intelligence_registry()
+
+
+@app.post("/debug/dependency-preview")
+async def debug_dependency_preview(payload: DependencyIntelligencePreviewRequest):
+    return build_dependency_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/root-cause-status")
+async def debug_root_cause_status():
+    return root_cause_intelligence_status()
+
+
+@app.get("/debug/root-cause-registry")
+async def debug_root_cause_registry():
+    return root_cause_intelligence_registry()
+
+
+@app.post("/debug/root-cause-preview")
+async def debug_root_cause_preview(payload: RootCauseIntelligencePreviewRequest):
+    return build_root_cause_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/change-memory-status")
+async def debug_change_memory_status():
+    return change_memory_intelligence_status()
+
+
+@app.get("/debug/change-memory-registry")
+async def debug_change_memory_registry():
+    return change_memory_intelligence_registry()
+
+
+@app.post("/debug/change-memory-preview")
+async def debug_change_memory_preview(payload: ChangeMemoryIntelligencePreviewRequest):
+    return build_change_memory_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/failed-change-status")
+async def debug_failed_change_status():
+    return failed_change_intelligence_status()
+
+
+@app.get("/debug/failed-change-registry")
+async def debug_failed_change_registry():
+    return failed_change_intelligence_registry()
+
+
+@app.post("/debug/failed-change-preview")
+async def debug_failed_change_preview(payload: FailedChangeIntelligencePreviewRequest):
+    return build_failed_change_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/change-planning-status")
+async def debug_change_planning_status():
+    return change_planning_intelligence_status()
+
+
+@app.get("/debug/change-planning-registry")
+async def debug_change_planning_registry():
+    return change_planning_intelligence_registry()
+
+
+@app.post("/debug/change-planning-preview")
+async def debug_change_planning_preview(payload: ChangePlanningIntelligencePreviewRequest):
+    return build_change_planning_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/clone-workspace-status")
+async def debug_clone_workspace_status():
+    return clone_workspace_intelligence_status()
+
+
+@app.get("/debug/clone-workspace-registry")
+async def debug_clone_workspace_registry():
+    return clone_workspace_intelligence_registry()
+
+
+@app.post("/debug/clone-workspace-preview")
+async def debug_clone_workspace_preview(payload: CloneWorkspaceIntelligencePreviewRequest):
+    return build_clone_workspace_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/sandbox-repair-status")
+async def debug_sandbox_repair_status():
+    return sandbox_repair_intelligence_status()
+
+
+@app.get("/debug/sandbox-repair-registry")
+async def debug_sandbox_repair_registry():
+    return sandbox_repair_intelligence_registry()
+
+
+@app.post("/debug/sandbox-repair-preview")
+async def debug_sandbox_repair_preview(payload: SandboxRepairIntelligencePreviewRequest):
+    return build_sandbox_repair_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/verification-status")
+async def debug_verification_status():
+    return verification_intelligence_status()
+
+
+@app.get("/debug/verification-registry")
+async def debug_verification_registry():
+    return verification_intelligence_registry()
+
+
+@app.post("/debug/verification-preview")
+async def debug_verification_preview(payload: VerificationIntelligencePreviewRequest):
+    return build_verification_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/delivery-readiness-status")
+async def debug_delivery_readiness_status():
+    return delivery_readiness_intelligence_status()
+
+
+@app.get("/debug/delivery-readiness-registry")
+async def debug_delivery_readiness_registry():
+    return delivery_readiness_intelligence_registry()
+
+
+@app.post("/debug/delivery-readiness-preview")
+async def debug_delivery_readiness_preview(payload: DeliveryReadinessIntelligencePreviewRequest):
+    return build_delivery_readiness_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/luxcode-core-status")
+async def debug_luxcode_core_status():
+    return luxcode_core_status_snapshot()
+
+
+@app.get("/debug/luxcode-core-health")
+async def debug_luxcode_core_health():
+    return luxcode_core_health()
+
+
+@app.get("/debug/luxcode-core-readiness")
+async def debug_luxcode_core_readiness():
+    return luxcode_core_readiness()
+
+
+@app.get("/github-bridge/status")
+async def github_bridge_status():
+    return github_bridge_intelligence_status()
+
+
+@app.get("/github-bridge/capabilities")
+async def github_bridge_capabilities():
+    return github_bridge_intelligence_capabilities()
+
+
+@app.post("/github-bridge/preview")
+async def github_bridge_preview():
+    return build_github_bridge_intelligence_preview()
+
+
+@app.get("/terminal-bridge/status")
+async def terminal_bridge_status():
+    return terminal_bridge_intelligence_status()
+
+
+@app.get("/terminal-bridge/capabilities")
+async def terminal_bridge_capabilities():
+    return terminal_bridge_intelligence_capabilities()
+
+
+@app.post("/terminal-bridge/preview")
+async def terminal_bridge_preview():
+    return build_terminal_bridge_intelligence_preview()
+
+
+@app.get("/deployment-bridge/status")
+async def deployment_bridge_status():
+    return deployment_bridge_intelligence_status()
+
+
+@app.get("/deployment-bridge/capabilities")
+async def deployment_bridge_capabilities():
+    return deployment_bridge_intelligence_capabilities()
+
+
+@app.post("/deployment-bridge/preview")
+async def deployment_bridge_preview():
+    return build_deployment_bridge_intelligence_preview()
+
+
+@app.get("/device-action/status")
+async def device_action_status():
+    return device_action_intelligence_status()
+
+
+@app.get("/device-action/capabilities")
+async def device_action_capabilities():
+    return device_action_intelligence_capabilities()
+
+
+@app.post("/device-action/preview")
+async def device_action_preview():
+    return build_device_action_intelligence_preview()
+
+
+@app.get("/workspace-intelligence/status")
+async def workspace_intelligence_status_endpoint():
+    return workspace_intelligence_status()
+
+
+@app.get("/workspace-intelligence/capabilities")
+async def workspace_intelligence_capabilities_endpoint():
+    return workspace_intelligence_capabilities()
+
+
+@app.post("/workspace-intelligence/preview")
+async def workspace_intelligence_preview_endpoint():
+    return workspace_intelligence_preview()
+
+
+@app.post("/workspace-intelligence/group-preview")
+async def workspace_intelligence_group_preview_endpoint():
+    return workspace_intelligence_group_preview()
+
+
+@app.post("/workspace-intelligence/suggestion-preview")
+async def workspace_intelligence_suggestion_preview_endpoint():
+    return workspace_intelligence_suggestion_preview()
+
+
+@app.post("/workspace-intelligence/project-map")
+async def workspace_intelligence_project_map_endpoint():
+    return workspace_intelligence_project_map()
+
+
+@app.get("/task-orchestration/status")
+async def task_orchestration_status_endpoint():
+    return task_orchestration_intelligence_status()
+
+
+@app.get("/task-orchestration/capabilities")
+async def task_orchestration_capabilities_endpoint():
+    return task_orchestration_intelligence_capabilities()
+
+
+@app.get("/task-orchestration/queue")
+async def task_orchestration_queue_endpoint():
+    return task_orchestration_intelligence_queue()
+
+
+@app.get("/task-orchestration/watch")
+async def task_orchestration_watch_endpoint():
+    return task_orchestration_intelligence_watch()
+
+
+@app.post("/task-orchestration/preview")
+async def task_orchestration_preview_endpoint():
+    return task_orchestration_preview()
+
+
+@app.post("/task-orchestration/add-command")
+async def task_orchestration_add_command_endpoint():
+    return task_orchestration_intelligence_add_command()
+
+
+@app.post("/task-orchestration/follow-up")
+async def task_orchestration_follow_up_endpoint():
+    return task_orchestration_intelligence_follow_up()
+
+
+@app.get("/autonomous-repair/status")
+async def autonomous_repair_status_endpoint():
+    return autonomous_repair_intelligence_status()
+
+
+@app.get("/autonomous-repair/capabilities")
+async def autonomous_repair_capabilities_endpoint():
+    return autonomous_repair_intelligence_capabilities()
+
+
+@app.post("/autonomous-repair/preview")
+async def autonomous_repair_preview_endpoint():
+    return autonomous_repair_intelligence_preview()
+
+
+@app.post("/autonomous-repair/root-cause")
+async def autonomous_repair_root_cause_endpoint():
+    return autonomous_repair_root_cause_analysis()
+
+
+@app.post("/autonomous-repair/strategy")
+async def autonomous_repair_strategy_endpoint():
+    return autonomous_repair_strategy_generation()
+
+
+@app.post("/autonomous-repair/dependency-analysis")
+async def autonomous_repair_dependency_analysis_endpoint():
+    return autonomous_repair_dependency_impact_analysis()
+
+
+@app.post("/autonomous-repair/simulation")
+async def autonomous_repair_simulation_endpoint():
+    return autonomous_repair_simulation()
+
+
+@app.post("/autonomous-repair/verification-plan")
+async def autonomous_repair_verification_plan_endpoint():
+    return autonomous_repair_verification_plan()
+
+
+@app.get("/verification-intelligence/status")
+async def verification_intelligence_status_endpoint():
+    return verification_intelligence_status()
+
+
+@app.get("/verification-intelligence/capabilities")
+async def verification_intelligence_capabilities_endpoint():
+    return verification_intelligence_capabilities()
+
+
+@app.post("/verification-intelligence/preview")
+async def verification_intelligence_preview_endpoint():
+    return build_verification_intelligence_preview()
+
+
+@app.post("/verification-intelligence/coverage")
+async def verification_intelligence_coverage_endpoint():
+    return verification_intelligence_coverage_analysis()
+
+
+@app.post("/verification-intelligence/regression")
+async def verification_intelligence_regression_endpoint():
+    return verification_intelligence_regression_detection()
+
+
+@app.post("/verification-intelligence/sandbox")
+async def verification_intelligence_sandbox_endpoint():
+    return verification_intelligence_sandbox_validation()
+
+
+@app.post("/verification-intelligence/production")
+async def verification_intelligence_production_endpoint():
+    return verification_intelligence_production_validation()
+
+
+@app.post("/verification-intelligence/delivery-score")
+async def verification_intelligence_delivery_score_endpoint():
+    return verification_intelligence_delivery_score()
+
+
+@app.get("/clone-workspace/status")
+async def clone_workspace_status_endpoint():
+    return clone_workspace_intelligence_status()
+
+
+@app.get("/clone-workspace/capabilities")
+async def clone_workspace_capabilities_endpoint():
+    return clone_workspace_intelligence_capabilities()
+
+
+@app.post("/clone-workspace/preview")
+async def clone_workspace_preview_endpoint():
+    return build_clone_workspace_intelligence_preview()
+
+
+@app.post("/clone-workspace/difference-analysis")
+async def clone_workspace_difference_analysis_endpoint():
+    return clone_workspace_intelligence_difference_analysis()
+
+
+@app.post("/clone-workspace/sync-analysis")
+async def clone_workspace_sync_analysis_endpoint():
+    return clone_workspace_intelligence_sync_analysis()
+
+
+@app.post("/clone-workspace/conflict-analysis")
+async def clone_workspace_conflict_analysis_endpoint():
+    return clone_workspace_intelligence_conflict_analysis()
+
+
+@app.post("/clone-workspace/transfer-plan")
+async def clone_workspace_transfer_plan_endpoint():
+    return clone_workspace_intelligence_transfer_plan()
+
+
+@app.post("/clone-workspace/recovery-plan")
+async def clone_workspace_recovery_plan_endpoint():
+    return clone_workspace_intelligence_recovery_plan()
+
+
+@app.get("/deployment-verification/status")
+async def deployment_verification_status_endpoint():
+    return deployment_verification_intelligence_status()
+
+
+@app.get("/deployment-verification/capabilities")
+async def deployment_verification_capabilities_endpoint():
+    return deployment_verification_intelligence_capabilities()
+
+
+@app.post("/deployment-verification/preview")
+async def deployment_verification_preview_endpoint():
+    return deployment_verification_intelligence_preview()
+
+
+@app.post("/deployment-verification/readiness")
+async def deployment_verification_readiness_endpoint():
+    return deployment_verification_intelligence_readiness()
+
+
+@app.post("/deployment-verification/environment")
+async def deployment_verification_environment_endpoint():
+    return deployment_verification_intelligence_environment()
+
+
+@app.post("/deployment-verification/release-score")
+async def deployment_verification_release_score_endpoint():
+    return deployment_verification_intelligence_release_score()
+
+
+@app.get("/engineering-coordinator/status")
+async def engineering_coordinator_status_endpoint():
+    return autonomous_engineering_coordinator_status()
+
+
+@app.get("/engineering-coordinator/capabilities")
+async def engineering_coordinator_capabilities_endpoint():
+    return autonomous_engineering_coordinator_capabilities()
+
+
+@app.post("/engineering-coordinator/preview")
+async def engineering_coordinator_preview_endpoint():
+    return autonomous_engineering_coordinator_preview()
+
+
+@app.post("/engineering-coordinator/workflow")
+async def engineering_coordinator_workflow_endpoint():
+    return autonomous_engineering_coordinator_workflow()
+
+
+@app.post("/engineering-coordinator/health")
+async def engineering_coordinator_health_endpoint():
+    return autonomous_engineering_coordinator_health()
+
+
+@app.post("/engineering-coordinator/delivery-review")
+async def engineering_coordinator_delivery_review_endpoint():
+    return autonomous_engineering_coordinator_delivery_review()
+
+
+@app.get("/engineering-memory/status")
+async def engineering_memory_status_endpoint():
+    return engineering_memory_intelligence_status()
+
+
+@app.get("/engineering-memory/capabilities")
+async def engineering_memory_capabilities_endpoint():
+    return engineering_memory_intelligence_capabilities()
+
+
+@app.post("/engineering-memory/preview")
+async def engineering_memory_preview_endpoint():
+    return engineering_memory_intelligence_preview()
+
+
+@app.post("/engineering-memory/similar-issues")
+async def engineering_memory_similar_issues_endpoint():
+    return engineering_memory_similar_issues()
+
+
+@app.post("/engineering-memory/failure-analysis")
+async def engineering_memory_failure_analysis_endpoint():
+    return engineering_memory_failure_analysis()
+
+
+@app.post("/engineering-memory/success-analysis")
+async def engineering_memory_success_analysis_endpoint():
+    return engineering_memory_success_analysis()
+
+
+@app.post("/engineering-memory/loop-analysis")
+async def engineering_memory_loop_analysis_endpoint():
+    return engineering_memory_loop_analysis()
+
+
+@app.get("/engineering-graph/status")
+async def engineering_graph_status_endpoint():
+    return engineering_graph_intelligence_status()
+
+
+@app.get("/engineering-graph/capabilities")
+async def engineering_graph_capabilities_endpoint():
+    return engineering_graph_intelligence_capabilities()
+
+
+@app.post("/engineering-graph/preview")
+async def engineering_graph_preview_endpoint():
+    return engineering_graph_intelligence_preview()
+
+
+@app.post("/engineering-graph/relationships")
+async def engineering_graph_relationships_endpoint():
+    return engineering_graph_intelligence_relationships()
+
+
+@app.post("/engineering-graph/dependencies")
+async def engineering_graph_dependencies_endpoint():
+    return engineering_graph_intelligence_dependencies()
+
+
+@app.post("/engineering-graph/impact-analysis")
+async def engineering_graph_impact_analysis_endpoint():
+    return engineering_graph_intelligence_impact_analysis()
+
+
+@app.post("/engineering-graph/summary")
+async def engineering_graph_summary_endpoint():
+    return engineering_graph_intelligence_summary()
+
+
+@app.get("/engineering-decision/status")
+async def engineering_decision_status_endpoint():
+    return engineering_decision_intelligence_status()
+
+
+@app.get("/engineering-decision/capabilities")
+async def engineering_decision_capabilities_endpoint():
+    return engineering_decision_intelligence_capabilities()
+
+
+@app.post("/engineering-decision/preview")
+async def engineering_decision_preview_endpoint():
+    return engineering_decision_intelligence_preview()
+
+
+@app.post("/engineering-decision/strategy-selection")
+async def engineering_decision_strategy_endpoint():
+    return engineering_decision_intelligence_strategy()
+
+
+@app.post("/engineering-decision/risk-analysis")
+async def engineering_decision_risk_analysis_endpoint():
+    return engineering_decision_intelligence_risk_analysis()
+
+
+@app.post("/engineering-decision/conflict-analysis")
+async def engineering_decision_conflict_analysis_endpoint():
+    return engineering_decision_intelligence_conflict_analysis()
+
+
+@app.post("/engineering-decision/decision-score")
+async def engineering_decision_decision_score_endpoint():
+    return engineering_decision_intelligence_decision_score()
+
+
+@app.get("/engineering-monitoring/status")
+async def engineering_monitoring_status_endpoint():
+    return engineering_monitoring_intelligence_status()
+
+
+@app.get("/engineering-monitoring/capabilities")
+async def engineering_monitoring_capabilities_endpoint():
+    return engineering_monitoring_intelligence_capabilities()
+
+
+@app.post("/engineering-monitoring/preview")
+async def engineering_monitoring_preview_endpoint():
+    return engineering_monitoring_intelligence_preview()
+
+
+@app.post("/engineering-monitoring/health")
+async def engineering_monitoring_health_endpoint():
+    return engineering_monitoring_intelligence_health()
+
+
+@app.post("/engineering-monitoring/anomaly-analysis")
+async def engineering_monitoring_anomaly_analysis_endpoint():
+    return engineering_monitoring_intelligence_anomaly_analysis()
+
+
+@app.post("/engineering-monitoring/drift-analysis")
+async def engineering_monitoring_drift_analysis_endpoint():
+    return engineering_monitoring_intelligence_drift_analysis()
+
+
+@app.post("/engineering-monitoring/priority-analysis")
+async def engineering_monitoring_priority_analysis_endpoint():
+    return engineering_monitoring_intelligence_priority_analysis()
+
+
+@app.get("/engineering-forecast/status")
+async def engineering_forecast_status_endpoint():
+    return engineering_forecast_intelligence_status()
+
+
+@app.get("/engineering-forecast/capabilities")
+async def engineering_forecast_capabilities_endpoint():
+    return engineering_forecast_intelligence_capabilities()
+
+
+@app.post("/engineering-forecast/preview")
+async def engineering_forecast_preview_endpoint():
+    return engineering_forecast_intelligence_preview()
+
+
+@app.post("/engineering-forecast/failure-prediction")
+async def engineering_forecast_failure_prediction_endpoint():
+    return engineering_forecast_intelligence_failure_prediction()
+
+
+@app.post("/engineering-forecast/deployment-prediction")
+async def engineering_forecast_deployment_prediction_endpoint():
+    return engineering_forecast_intelligence_deployment_prediction()
+
+
+@app.post("/engineering-forecast/dependency-prediction")
+async def engineering_forecast_dependency_prediction_endpoint():
+    return engineering_forecast_intelligence_dependency_prediction()
+
+
+@app.post("/engineering-forecast/trend-analysis")
+async def engineering_forecast_trend_analysis_endpoint():
+    return engineering_forecast_intelligence_trend_analysis()
+
+
+@app.get("/engineering-strategy/status")
+async def engineering_strategy_status_endpoint():
+    return engineering_strategy_intelligence_status()
+
+
+@app.get("/engineering-strategy/capabilities")
+async def engineering_strategy_capabilities_endpoint():
+    return engineering_strategy_intelligence_capabilities()
+
+
+@app.post("/engineering-strategy/preview")
+async def engineering_strategy_preview_endpoint():
+    return engineering_strategy_intelligence_preview()
+
+
+@app.post("/engineering-strategy/generate")
+async def engineering_strategy_generate_endpoint():
+    return engineering_strategy_intelligence_generate()
+
+
+@app.post("/engineering-strategy/compare")
+async def engineering_strategy_compare_endpoint():
+    return engineering_strategy_intelligence_compare()
+
+
+@app.post("/engineering-strategy/roadmap")
+async def engineering_strategy_roadmap_endpoint():
+    return engineering_strategy_intelligence_roadmap()
+
+
+@app.post("/engineering-strategy/risk-analysis")
+async def engineering_strategy_risk_analysis_endpoint():
+    return engineering_strategy_intelligence_risk_analysis()
+
+
+@app.get("/engineering-autonomy/status")
+async def engineering_autonomy_status_endpoint():
+    return engineering_autonomy_intelligence_status()
+
+
+@app.get("/engineering-autonomy/capabilities")
+async def engineering_autonomy_capabilities_endpoint():
+    return engineering_autonomy_intelligence_capabilities()
+
+
+@app.post("/engineering-autonomy/preview")
+async def engineering_autonomy_preview_endpoint():
+    return engineering_autonomy_intelligence_preview()
+
+
+@app.post("/engineering-autonomy/recommendation")
+async def engineering_autonomy_recommendation_endpoint():
+    return engineering_autonomy_intelligence_recommendation()
+
+
+@app.post("/engineering-autonomy/boundary-analysis")
+async def engineering_autonomy_boundary_analysis_endpoint():
+    return engineering_autonomy_intelligence_boundary_analysis()
+
+
+@app.post("/engineering-autonomy/confirmation-analysis")
+async def engineering_autonomy_confirmation_analysis_endpoint():
+    return engineering_autonomy_intelligence_confirmation_analysis()
+
+
+@app.post("/engineering-autonomy/autonomy-score")
+async def engineering_autonomy_autonomy_score_endpoint():
+    return engineering_autonomy_intelligence_autonomy_score()
+
+
+@app.get("/engineering-meta/status")
+async def engineering_meta_status_endpoint():
+    return engineering_meta_intelligence_status()
+
+
+@app.get("/engineering-meta/capabilities")
+async def engineering_meta_capabilities_endpoint():
+    return engineering_meta_intelligence_capabilities()
+
+
+@app.post("/engineering-meta/preview")
+async def engineering_meta_preview_endpoint():
+    return engineering_meta_intelligence_preview()
+
+
+@app.post("/engineering-meta/reflection")
+async def engineering_meta_reflection_endpoint():
+    return engineering_meta_intelligence_reflection()
+
+
+@app.post("/engineering-meta/reasoning-review")
+async def engineering_meta_reasoning_review_endpoint():
+    return engineering_meta_intelligence_reasoning_review()
+
+
+@app.post("/engineering-meta/consistency-analysis")
+async def engineering_meta_consistency_analysis_endpoint():
+    return engineering_meta_intelligence_consistency_analysis()
+
+
+@app.post("/engineering-meta/alternative-analysis")
+async def engineering_meta_alternative_analysis_endpoint():
+    return engineering_meta_intelligence_alternative_analysis()
+
+
+@app.get("/engineering-brain/status")
+async def engineering_brain_status_endpoint():
+    return luxcode_engineering_brain_core_status()
+
+
+@app.get("/engineering-brain/capabilities")
+async def engineering_brain_capabilities_endpoint():
+    return luxcode_engineering_brain_core_capabilities()
+
+
+@app.post("/engineering-brain/preview")
+async def engineering_brain_preview_endpoint():
+    return luxcode_engineering_brain_core_preview()
+
+
+@app.post("/engineering-brain/reasoning")
+async def engineering_brain_reasoning_endpoint():
+    return luxcode_engineering_brain_core_reasoning()
+
+
+@app.post("/engineering-brain/planning")
+async def engineering_brain_planning_endpoint():
+    return luxcode_engineering_brain_core_planning()
+
+
+@app.post("/engineering-brain/recommendation")
+async def engineering_brain_recommendation_endpoint():
+    return luxcode_engineering_brain_core_recommendation()
+
+
+@app.post("/engineering-brain/health")
+async def engineering_brain_health_endpoint():
+    return luxcode_engineering_brain_core_health()
+
+
+@app.get("/workspace-consciousness/status")
+async def workspace_consciousness_status_endpoint():
+    return workspace_consciousness_intelligence_status()
+
+
+@app.get("/workspace-consciousness/capabilities")
+async def workspace_consciousness_capabilities_endpoint():
+    return workspace_consciousness_intelligence_capabilities()
+
+
+@app.post("/workspace-consciousness/preview")
+async def workspace_consciousness_preview_endpoint():
+    return workspace_consciousness_intelligence_preview()
+
+
+@app.post("/workspace-consciousness/attention-map")
+async def workspace_consciousness_attention_map_endpoint():
+    return workspace_consciousness_intelligence_attention_map()
+
+
+@app.post("/workspace-consciousness/focus-analysis")
+async def workspace_consciousness_focus_analysis_endpoint():
+    return workspace_consciousness_intelligence_focus_analysis()
+
+
+@app.post("/workspace-consciousness/queue-analysis")
+async def workspace_consciousness_queue_analysis_endpoint():
+    return workspace_consciousness_intelligence_queue_analysis()
+
+
+@app.post("/workspace-consciousness/workspace-health")
+async def workspace_consciousness_workspace_health_endpoint():
+    return workspace_consciousness_intelligence_workspace_health()
+
+
+@app.get("/task-consciousness/status")
+async def task_consciousness_status_endpoint():
+    return task_consciousness_intelligence_status()
+
+
+@app.get("/task-consciousness/capabilities")
+async def task_consciousness_capabilities_endpoint():
+    return task_consciousness_intelligence_capabilities()
+
+
+@app.post("/task-consciousness/preview")
+async def task_consciousness_preview_endpoint():
+    return task_consciousness_intelligence_preview()
+
+
+@app.post("/task-consciousness/task-analysis")
+async def task_consciousness_task_analysis_endpoint():
+    return task_consciousness_intelligence_task_analysis()
+
+
+@app.post("/task-consciousness/continuity-analysis")
+async def task_consciousness_continuity_analysis_endpoint():
+    return task_consciousness_intelligence_continuity_analysis()
+
+
+@app.post("/task-consciousness/queue-analysis")
+async def task_consciousness_queue_analysis_endpoint():
+    return task_consciousness_queue_analysis()
+
+
+@app.post("/task-consciousness/conversation-analysis")
+async def task_consciousness_conversation_analysis_endpoint():
+    return task_consciousness_intelligence_conversation_analysis()
+
+
+@app.get("/persistent-execution/status")
+async def persistent_execution_status_endpoint():
+    return persistent_execution_intelligence_status()
+
+
+@app.get("/persistent-execution/capabilities")
+async def persistent_execution_capabilities_endpoint():
+    return persistent_execution_intelligence_capabilities()
+
+
+@app.post("/persistent-execution/preview")
+async def persistent_execution_preview_endpoint():
+    return persistent_execution_intelligence_preview()
+
+
+@app.post("/persistent-execution/resume-analysis")
+async def persistent_execution_resume_analysis_endpoint():
+    return persistent_execution_intelligence_resume_analysis()
+
+
+@app.post("/persistent-execution/interruption-analysis")
+async def persistent_execution_interruption_analysis_endpoint():
+    return persistent_execution_intelligence_interruption_analysis()
+
+
+@app.post("/persistent-execution/recovery-analysis")
+async def persistent_execution_recovery_analysis_endpoint():
+    return persistent_execution_intelligence_recovery_analysis()
+
+
+@app.post("/persistent-execution/state-summary")
+async def persistent_execution_state_summary_endpoint():
+    return persistent_execution_intelligence_state_summary()
+
+
+@app.get("/multi-session/status")
+async def multi_session_status_endpoint():
+    return multi_session_continuity_intelligence_status()
+
+
+@app.get("/multi-session/capabilities")
+async def multi_session_capabilities_endpoint():
+    return multi_session_continuity_intelligence_capabilities()
+
+
+@app.post("/multi-session/preview")
+async def multi_session_preview_endpoint():
+    return multi_session_continuity_intelligence_preview()
+
+
+@app.post("/multi-session/snapshot")
+async def multi_session_snapshot_endpoint():
+    return multi_session_continuity_intelligence_snapshot()
+
+
+@app.post("/multi-session/resume-chain")
+async def multi_session_resume_chain_endpoint():
+    return multi_session_continuity_intelligence_resume_chain()
+
+
+@app.post("/multi-session/transition-analysis")
+async def multi_session_transition_analysis_endpoint():
+    return multi_session_continuity_intelligence_transition_analysis()
+
+
+@app.post("/multi-session/continuity-health")
+async def multi_session_continuity_health_endpoint():
+    return multi_session_continuity_intelligence_continuity_health()
+
+
+@app.get("/intent-continuity/status")
+async def intent_continuity_status_endpoint():
+    return user_intent_continuity_intelligence_status()
+
+
+@app.get("/intent-continuity/capabilities")
+async def intent_continuity_capabilities_endpoint():
+    return user_intent_continuity_intelligence_capabilities()
+
+
+@app.post("/intent-continuity/preview")
+async def intent_continuity_preview_endpoint():
+    return user_intent_continuity_intelligence_preview()
+
+
+@app.post("/intent-continuity/intent-analysis")
+async def intent_continuity_intent_analysis_endpoint():
+    return user_intent_continuity_intelligence_intent_analysis()
+
+
+@app.post("/intent-continuity/priority-analysis")
+async def intent_continuity_priority_analysis_endpoint():
+    return user_intent_continuity_intelligence_priority_analysis()
+
+
+@app.post("/intent-continuity/command-analysis")
+async def intent_continuity_command_analysis_endpoint():
+    return user_intent_continuity_intelligence_command_analysis()
+
+
+@app.post("/intent-continuity/reconciliation")
+async def intent_continuity_reconciliation_endpoint():
+    return user_intent_continuity_intelligence_reconciliation()
+
+
+@app.get("/dynamic-priority/status")
+async def dynamic_priority_status_endpoint():
+    return dynamic_priority_intelligence_status()
+
+
+@app.get("/dynamic-priority/capabilities")
+async def dynamic_priority_capabilities_endpoint():
+    return dynamic_priority_intelligence_capabilities()
+
+
+@app.post("/dynamic-priority/preview")
+async def dynamic_priority_preview_endpoint():
+    return dynamic_priority_intelligence_preview()
+
+
+@app.post("/dynamic-priority/priority-analysis")
+async def dynamic_priority_priority_analysis_endpoint():
+    return dynamic_priority_intelligence_priority_analysis()
+
+
+@app.post("/dynamic-priority/queue-analysis")
+async def dynamic_priority_queue_analysis_endpoint():
+    return dynamic_priority_intelligence_queue_analysis()
+
+
+@app.post("/dynamic-priority/execution-order")
+async def dynamic_priority_execution_order_endpoint():
+    return dynamic_priority_intelligence_execution_order()
+
+
+@app.post("/dynamic-priority/reconciliation")
+async def dynamic_priority_reconciliation_endpoint():
+    return dynamic_priority_reconciliation()
+
+
+# =========================================================
+# LAYER 37.x — AGENT ARCHITECTURE PREVIEWS
+# =========================================================
+@app.get("/github-project-intelligence/status")
+async def github_project_intelligence_status_endpoint():
+    return github_project_intelligence_status()
+
+
+@app.get("/github-project-intelligence/capabilities")
+async def github_project_intelligence_capabilities_endpoint():
+    return github_project_intelligence_capabilities()
+
+
+@app.post("/github-project-intelligence/preview")
+async def github_project_intelligence_preview_endpoint(payload: AgentArchitecturePreviewRequest):
+    return github_project_intelligence_preview(
+        target_issue=payload.project_area,
+        command=payload.command,
+        project_area=payload.project_area,
+        repo_name=payload.repo_name,
+        task_type=payload.task_type,
+        risk_level=payload.risk_level,
+        context=payload.context,
+    )
+
+
+@app.get("/terminal-intelligence/status")
+async def terminal_intelligence_status_endpoint():
+    return terminal_intelligence_status()
+
+
+@app.get("/terminal-intelligence/capabilities")
+async def terminal_intelligence_capabilities_endpoint():
+    return terminal_intelligence_capabilities()
+
+
+@app.post("/terminal-intelligence/preview")
+async def terminal_intelligence_preview_endpoint(payload: AgentArchitecturePreviewRequest):
+    return terminal_intelligence_preview(
+        target_issue=payload.project_area,
+        command=payload.command,
+        project_area=payload.project_area,
+        repo_name=payload.repo_name,
+        task_type=payload.task_type,
+        risk_level=payload.risk_level,
+        context=payload.context,
+    )
+
+
+@app.get("/render-deployment-intelligence/status")
+async def render_deployment_intelligence_status_endpoint():
+    return render_deployment_intelligence_status()
+
+
+@app.get("/render-deployment-intelligence/capabilities")
+async def render_deployment_intelligence_capabilities_endpoint():
+    return render_deployment_intelligence_capabilities()
+
+
+@app.post("/render-deployment-intelligence/preview")
+async def render_deployment_intelligence_preview_endpoint(payload: AgentArchitecturePreviewRequest):
+    return render_deployment_intelligence_preview(
+        target_issue=payload.project_area,
+        command=payload.command,
+        project_area=payload.project_area,
+        repo_name=payload.repo_name,
+        task_type=payload.task_type,
+        risk_level=payload.risk_level,
+        context=payload.context,
+    )
+
+
+@app.get("/project-intelligence-core/status")
+async def project_intelligence_core_status_endpoint():
+    return project_intelligence_core_status()
+
+
+@app.get("/project-intelligence-core/capabilities")
+async def project_intelligence_core_capabilities_endpoint():
+    return project_intelligence_core_capabilities()
+
+
+@app.post("/project-intelligence-core/preview")
+async def project_intelligence_core_preview_endpoint(payload: AgentArchitecturePreviewRequest):
+    return project_intelligence_core_preview(
+        target_issue=payload.project_area,
+        command=payload.command,
+        project_area=payload.project_area,
+        repo_name=payload.repo_name,
+        task_type=payload.task_type,
+        risk_level=payload.risk_level,
+        context=payload.context,
+    )
+
+
+@app.get("/multi-project-intelligence/status")
+async def multi_project_intelligence_status_endpoint():
+    return multi_project_intelligence_status()
+
+
+@app.get("/multi-project-intelligence/capabilities")
+async def multi_project_intelligence_capabilities_endpoint():
+    return multi_project_intelligence_capabilities()
+
+
+@app.post("/multi-project-intelligence/preview")
+async def multi_project_intelligence_preview_endpoint(payload: AgentArchitecturePreviewRequest):
+    return multi_project_intelligence_preview(
+        target_issue=payload.project_area,
+        command=payload.command,
+        project_area=payload.project_area,
+        repo_name=payload.repo_name,
+        task_type=payload.task_type,
+        risk_level=payload.risk_level,
+        context=payload.context,
+    )
+
+
+@app.get("/workspace-agent/status")
+async def workspace_agent_status_endpoint():
+    return workspace_agent_status()
+
+
+@app.get("/workspace-agent/capabilities")
+async def workspace_agent_capabilities_endpoint():
+    return workspace_agent_capabilities()
+
+
+@app.post("/workspace-agent/preview")
+async def workspace_agent_preview_endpoint(payload: AgentArchitecturePreviewRequest):
+    return workspace_agent_preview(
+        target_issue=payload.project_area,
+        command=payload.command,
+        project_area=payload.project_area,
+        repo_name=payload.repo_name,
+        task_type=payload.task_type,
+        risk_level=payload.risk_level,
+        context=payload.context,
+    )
+
+
+@app.get("/deployment-agent/status")
+async def deployment_agent_status_endpoint():
+    return deployment_agent_status()
+
+
+@app.get("/deployment-agent/capabilities")
+async def deployment_agent_capabilities_endpoint():
+    return deployment_agent_capabilities()
+
+
+@app.post("/deployment-agent/preview")
+async def deployment_agent_preview_endpoint(payload: AgentArchitecturePreviewRequest):
+    return deployment_agent_preview(
+        target_issue=payload.project_area,
+        command=payload.command,
+        project_area=payload.project_area,
+        repo_name=payload.repo_name,
+        task_type=payload.task_type,
+        risk_level=payload.risk_level,
+        context=payload.context,
+    )
+
+
+@app.get("/github-bridge-consolidation/status")
+async def github_bridge_consolidation_status_endpoint():
+    return github_bridge_consolidation_status()
+
+
+@app.get("/github-bridge-consolidation/capabilities")
+async def github_bridge_consolidation_capabilities_endpoint():
+    return github_bridge_consolidation_capabilities()
+
+
+@app.post("/github-bridge-consolidation/preview")
+async def github_bridge_consolidation_preview_endpoint(payload: AgentArchitecturePreviewRequest):
+    return github_bridge_consolidation_preview(
+        target_issue=payload.project_area,
+        command=payload.command,
+        project_area=payload.project_area,
+        repo_name=payload.repo_name,
+        task_type=payload.task_type,
+        risk_level=payload.risk_level,
+        context=payload.context,
+    )
+
+
+@app.get("/debug/layer37-status")
+async def debug_layer37_status_endpoint():
+    return agent_core_status()
+
+
+@app.get("/agent-core/capabilities")
+async def agent_core_capabilities_endpoint():
+    return agent_core_capabilities()
+
+
+@app.post("/agent-core/preview")
+async def agent_core_preview_endpoint(payload: AgentArchitecturePreviewRequest):
+    return agent_core_preview(
+        target_issue=payload.project_area,
+        command=payload.command,
+        project_area=payload.project_area,
+        repo_name=payload.repo_name,
+        task_type=payload.task_type,
+        risk_level=payload.risk_level,
+        context=payload.context,
+    )
+
+
+@app.get("/autonomous-workflow-intelligence/status")
+async def autonomous_workflow_intelligence_status_endpoint():
+    return autonomous_workflow_intelligence_status()
+
+
+@app.get("/autonomous-workflow-intelligence/capabilities")
+async def autonomous_workflow_intelligence_capabilities_endpoint():
+    return autonomous_workflow_intelligence_capabilities()
+
+
+@app.post("/autonomous-workflow-intelligence/preview")
+async def autonomous_workflow_intelligence_preview_endpoint(payload: AutonomousAgentSystemsPreviewRequest):
+    return autonomous_workflow_intelligence_preview(payload.dict())
+
+
+@app.get("/workflow-chain-intelligence/status")
+async def workflow_chain_intelligence_status_endpoint():
+    return workflow_chain_intelligence_status()
+
+
+@app.get("/workflow-chain-intelligence/capabilities")
+async def workflow_chain_intelligence_capabilities_endpoint():
+    return workflow_chain_intelligence_capabilities()
+
+
+@app.post("/workflow-chain-intelligence/preview")
+async def workflow_chain_intelligence_preview_endpoint(payload: AutonomousAgentSystemsPreviewRequest):
+    return workflow_chain_intelligence_preview(payload.dict())
+
+
+@app.get("/workflow-orchestration-intelligence/status")
+async def workflow_orchestration_intelligence_status_endpoint():
+    return workflow_orchestration_intelligence_status()
+
+
+@app.get("/workflow-orchestration-intelligence/capabilities")
+async def workflow_orchestration_intelligence_capabilities_endpoint():
+    return workflow_orchestration_intelligence_capabilities()
+
+
+@app.post("/workflow-orchestration-intelligence/preview")
+async def workflow_orchestration_intelligence_preview_endpoint(payload: AutonomousAgentSystemsPreviewRequest):
+    return workflow_orchestration_intelligence_preview(payload.dict())
+
+
+@app.get("/autonomous-task-network-intelligence/status")
+async def autonomous_task_network_intelligence_status_endpoint():
+    return autonomous_task_network_intelligence_status()
+
+
+@app.get("/autonomous-task-network-intelligence/capabilities")
+async def autonomous_task_network_intelligence_capabilities_endpoint():
+    return autonomous_task_network_intelligence_capabilities()
+
+
+@app.post("/autonomous-task-network-intelligence/preview")
+async def autonomous_task_network_intelligence_preview_endpoint(payload: AutonomousAgentSystemsPreviewRequest):
+    return autonomous_task_network_intelligence_preview(payload.dict())
+
+
+@app.get("/autonomous-execution-planning-intelligence/status")
+async def autonomous_execution_planning_intelligence_status_endpoint():
+    return autonomous_execution_planning_intelligence_status()
+
+
+@app.get("/autonomous-execution-planning-intelligence/capabilities")
+async def autonomous_execution_planning_intelligence_capabilities_endpoint():
+    return autonomous_execution_planning_intelligence_capabilities()
+
+
+@app.post("/autonomous-execution-planning-intelligence/preview")
+async def autonomous_execution_planning_intelligence_preview_endpoint(payload: AutonomousAgentSystemsPreviewRequest):
+    return autonomous_execution_planning_intelligence_preview(payload.dict())
+
+
+@app.get("/autonomous-execution-strategy-intelligence/status")
+async def autonomous_execution_strategy_intelligence_status_endpoint():
+    return autonomous_execution_strategy_intelligence_status()
+
+
+@app.get("/autonomous-execution-strategy-intelligence/capabilities")
+async def autonomous_execution_strategy_intelligence_capabilities_endpoint():
+    return autonomous_execution_strategy_intelligence_capabilities()
+
+
+@app.post("/autonomous-execution-strategy-intelligence/preview")
+async def autonomous_execution_strategy_intelligence_preview_endpoint(payload: AutonomousAgentSystemsPreviewRequest):
+    return autonomous_execution_strategy_intelligence_preview(payload.dict())
+
+
+@app.get("/autonomous-execution-simulation-intelligence/status")
+async def autonomous_execution_simulation_intelligence_status_endpoint():
+    return autonomous_execution_simulation_intelligence_status()
+
+
+@app.get("/autonomous-execution-simulation-intelligence/capabilities")
+async def autonomous_execution_simulation_intelligence_capabilities_endpoint():
+    return autonomous_execution_simulation_intelligence_capabilities()
+
+
+@app.post("/autonomous-execution-simulation-intelligence/preview")
+async def autonomous_execution_simulation_intelligence_preview_endpoint(payload: AutonomousAgentSystemsPreviewRequest):
+    return autonomous_execution_simulation_intelligence_preview(payload.dict())
+
+
+@app.get("/autonomous-execution-decision-intelligence/status")
+async def autonomous_execution_decision_intelligence_status_endpoint():
+    return autonomous_execution_decision_intelligence_status()
+
+
+@app.get("/autonomous-execution-decision-intelligence/capabilities")
+async def autonomous_execution_decision_intelligence_capabilities_endpoint():
+    return autonomous_execution_decision_intelligence_capabilities()
+
+
+@app.post("/autonomous-execution-decision-intelligence/preview")
+async def autonomous_execution_decision_intelligence_preview_endpoint(payload: AutonomousAgentSystemsPreviewRequest):
+    return autonomous_execution_decision_intelligence_preview(payload.dict())
+
+
+@app.get("/autonomous-execution-governance-intelligence/status")
+async def autonomous_execution_governance_intelligence_status_endpoint():
+    return autonomous_execution_governance_intelligence_status()
+
+
+@app.get("/autonomous-execution-governance-intelligence/capabilities")
+async def autonomous_execution_governance_intelligence_capabilities_endpoint():
+    return autonomous_execution_governance_intelligence_capabilities()
+
+
+@app.post("/autonomous-execution-governance-intelligence/preview")
+async def autonomous_execution_governance_intelligence_preview_endpoint(payload: AutonomousAgentSystemsPreviewRequest):
+    return autonomous_execution_governance_intelligence_preview(payload.dict())
+
+
+@app.get("/debug/layer38-status")
+async def debug_layer38_status_endpoint():
+    return autonomous_agent_operating_model_status()
+
+
+@app.get("/autonomous-agent-operating-model/capabilities")
+async def autonomous_agent_operating_model_capabilities_endpoint():
+    return autonomous_agent_operating_model_capabilities()
+
+
+@app.post("/autonomous-agent-operating-model/preview")
+async def autonomous_agent_operating_model_preview_endpoint(payload: AutonomousAgentSystemsPreviewRequest):
+    return autonomous_agent_operating_model_preview(payload.dict())
+
+
+@app.get("/debug/runtime-drift-status")
+async def debug_runtime_drift_status():
+    return runtime_drift_intelligence_status()
+
+
+@app.get("/debug/runtime-drift-registry")
+async def debug_runtime_drift_registry():
+    return runtime_drift_intelligence_registry()
+
+
+@app.post("/debug/runtime-drift-preview")
+async def debug_runtime_drift_preview(payload: RuntimeDriftIntelligencePreviewRequest):
+    return build_runtime_drift_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/runtime-stability-status")
+async def debug_runtime_stability_status():
+    return runtime_stability_intelligence_status()
+
+
+@app.get("/debug/runtime-stability-registry")
+async def debug_runtime_stability_registry():
+    return runtime_stability_intelligence_registry()
+
+
+@app.post("/debug/runtime-stability-preview")
+async def debug_runtime_stability_preview(payload: RuntimeStabilityIntelligencePreviewRequest):
+    return build_runtime_stability_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/runtime-risk-status")
+async def debug_runtime_risk_status():
+    return runtime_risk_intelligence_status()
+
+
+@app.get("/debug/runtime-risk-registry")
+async def debug_runtime_risk_registry():
+    return runtime_risk_intelligence_registry()
+
+
+@app.post("/debug/runtime-risk-preview")
+async def debug_runtime_risk_preview(payload: RuntimeRiskIntelligencePreviewRequest):
+    return build_runtime_risk_intelligence_preview(
+        target_issue=payload.target_issue,
+        command=payload.command,
+        project_area=payload.project_area,
+        related_layer=payload.related_layer,
+    )
+
+
+@app.get("/debug/release-readiness-status")
+async def debug_release_readiness_status():
+    return release_readiness_status()
+
+
+@app.get("/debug/release-readiness-registry")
+async def debug_release_readiness_registry():
+    return release_readiness_registry()
+
+
+@app.post("/debug/release-readiness-preview")
+async def debug_release_readiness_preview(payload: ReleaseReadinessPreviewRequest):
+    return build_release_readiness_preview(
         target_issue=payload.target_issue,
         command=payload.command,
         project_area=payload.project_area,

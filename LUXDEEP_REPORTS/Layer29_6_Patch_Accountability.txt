@@ -1,0 +1,78 @@
+========================================================================
+LAYER 29.6 — PATCH ACCOUNTABILITY — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+========================================================================
+
+TASK: Layer 29.6 — Patch Accountability Preview
+GOAL: Accountability preview with owner/scope tracking, finding mapping,
+      and 23 integrated layers.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+patch_accountability_preview.py (~470 lines, ~20 KB)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py — import, PatchAccountabilityPreviewRequest model, 3 routes
+endpoint_coverage_matrix.py — new patch_accountability_layer_29 group (3 entries)
+scripts/smoke_check.py — check_patch_accountability_preview() + registration
+lux_fault_report.py — import, _fault_report_patch_accountability(), 2 sections
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/patch-accountability-status
+GET  /debug/patch-accountability-registry
+POST /debug/patch-accountability-preview
+
+ACCOUNTABILITY PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       pass       ready      — runtime_team, flow_safety
+websocket_stream    violation  BLOCKED    — stream_team, stream_integrity
+workspace_export    pass       ready      — export_team, export_safety
+luxway_permission   violation  BLOCKED    — platform_team, platform_privacy
+debug_intelligence  pass       ready      — scaffold_team, scaffold_safety
+
+OUTPUT FIELDS
+--------------------------------------------------------------------------------
+accountability_id           — profile identifier
+accountability_category     — category classification
+accountability_status       — pass / violation
+accountability_owner        — responsible team/owner
+accountability_scope        — scope description
+accountability_findings     — finding list
+accountability_requirements — requirement list
+accountability_exceptions   — exception list
+accountability_risk_level   — low / high
+accountability_readiness    — bool (3 ready, 2 blocked)
+required_actions            — action items to resolve gaps
+recommended_next_action     — action recommendation
+confidence_score            — aggregated confidence
+
+23 INTEGRATIONS: 29.5 → 29.4 → 29.3 → 29.2 → 29.1 → 28.6 → 28.5 → 28.4 → 28.3 → 28.2 → 28.1 → 27.6 → 27.5 → 27.4 → 27.3 → 27.2 → 27.1 → 26.7 → 26.6 → 25.6 → 25.5 → 25.4
+
+ACCOUNTABILITY VS OVERSIGHT
+--------------------------------------------------------------------------------
+Adds ownership assignment (accountability_owner) and scope boundaries.
+Extends oversight with explicit ownership responsibility tracking.
+All endpoints are read-only scaffold; no real enforcement actions performed.
+
+INTEGRATION LAYERS (partial)
+--------------------------------------------------------------------------------
+29.5 Patch Oversight         — oversight_status, oversight_readiness
+29.4 Patch Governance        — governance_status, governance_readiness
+29.3 Patch Compliance        — compliance_status, compliance_readiness
+29.2 Patch Policy Evaluation — policy_result, policy_readiness
+29.1 Patch Permission        — permission_level, permission_readiness
+...
+25.4 Safe Change Boundary    — blocked_actions
+
+HEALTH CHECK
+--------------------------------------------------------------------------------
+- No files over-written: incremental edits only
+- app.py not replaced: 3 targeted edits
+- All new endpoints read-only: no writes, no subprocesses
+- All existing flags set to False: safe by default
+- Fault report section added: patch_accountability
+- Smoke check method added with 22 integration signal assertions
+- Endpoint coverage matrix updated with 3 new entries
+- Protected areas (chat, stream, websocket, typewriter, stop/continue, static/index.html) untouched

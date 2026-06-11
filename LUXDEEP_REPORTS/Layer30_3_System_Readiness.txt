@@ -1,0 +1,73 @@
+========================================================================
+LAYER 30.3 — SYSTEM READINESS — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+========================================================================
+
+TASK: Layer 30.3 — System Readiness Preview
+GOAL: System-level readiness assessment with full-stack blocker tracking,
+      and 24 integrated layers across Layers 25–30.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+system_readiness_preview.py (~530 lines, ~24 KB)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py — import, SystemReadinessPreviewRequest model, 3 routes
+endpoint_coverage_matrix.py — new system_readiness_layer_30 group (3 entries)
+scripts/smoke_check.py — check_system_readiness_preview() + registration
+lux_fault_report.py — import, _fault_report_system_readiness(), 2 sections
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/system-readiness-status
+GET  /debug/system-readiness-registry
+POST /debug/system-readiness-preview
+
+SYSTEM READINESS PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       pass       ready  score:0.82 — 0 blockers
+websocket_stream    violation  BLOCK  score:0.18 — 2 blockers
+workspace_export    pass       ready  score:0.81 — 0 blockers
+luxway_permission   violation  BLOCK  score:0.12 — 2 blockers
+debug_intelligence  pass       ready  score:0.88 — 0 blockers
+
+OUTPUT FIELDS
+--------------------------------------------------------------------------------
+system_id               — profile identifier
+system_category         — category classification
+system_status           — pass / violation
+system_score            — numeric system score
+system_requirements     — requirement list
+system_findings         — finding list
+system_blockers         — system blocker list
+system_risk_level       — low / high
+system_recommendations  — recommendation list
+system_readiness        — bool (0 ready, 5 not ready)
+required_actions        — action items to resolve blockers
+recommended_next_action — action recommendation
+confidence_score        — aggregated confidence
+
+24 INTEGRATIONS: 30.2 → 30.1 → 29 Snapshot → 29.8 → ... → 25.4
+
+LAYER 30 STACK STATUS
+--------------------------------------------------------------------------------
+30.1 Production Readiness     ✓  deployment-awareness scaffold
+30.2 Operational Readiness    ✓  ops-awareness scaffold
+30.3 System Readiness         ✓  system-awareness scaffold (new)
+
+All three remain read-only scaffold; no deployment actions performed.
+System readiness=False for all components — gated behind all lower layers.
+debug_intelligence leads with system_score=0.88.
+luxway_permission trails at 0.12 with full-stack blocker cascade.
+
+HEALTH CHECK
+--------------------------------------------------------------------------------
+- No files over-written: incremental edits only
+- app.py not replaced: 3 targeted edits
+- All new endpoints read-only: no writes, no subprocesses
+- All existing flags set to False: safe by default
+- Fault report section added: system_readiness
+- Smoke check method added with 24 integration signal assertions
+- Endpoint coverage matrix updated with 3 new entries
+- Protected areas (chat, stream, websocket, typewriter, stop/continue, static/index.html) untouched

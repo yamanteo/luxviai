@@ -1,0 +1,208 @@
+================================================================================
+LAYER 36.9 — EXECUTION BRAIN CORE PREVIEW
+================================================================================
+
+Report Date        : 2026-06-11
+Layer              : 36.9
+Module             : execution_brain_core_preview.py
+Series             : LuxCode Execution Brain Architecture
+Version            : 1.0
+Status             : execution_brain_core_ready
+Operation Mode     : read_only_preview_only
+Integration        : 36.8 Command Intelligence,
+36.7 Adaptive Execution,
+36.6 Dynamic Priority & Queue,
+36.5 User Intent Continuity,
+36.4 Multi Session Continuity,
+36.3 Persistent Execution,
+36.2 Task Consciousness
+-----------------------
+
+1. OVERVIEW
+
+---
+
+Layer 36.9 introduces Execution Brain Core.
+
+This is the convergence layer of the entire execution architecture.
+
+Goal:
+
+Unify all execution-related intelligence under a single brain.
+
+Execution Brain becomes responsible for:
+
+* task awareness
+* continuity
+* queues
+* commands
+* priorities
+* adaptation
+* recovery
+* user intent tracking
+
+---
+
+2. EXECUTION BRAIN COMPONENTS
+
+---
+
+Task Consciousness
+
+Persistent Execution
+
+Multi Session Continuity
+
+User Intent Continuity
+
+Dynamic Priority & Queue
+
+Adaptive Execution
+
+Command Intelligence
+
+---
+
+3. PRIMARY MISSION
+
+---
+
+Always know:
+
+What is running?
+
+What is waiting?
+
+What changed?
+
+What was added?
+
+What should happen next?
+
+What should happen after completion?
+
+What should be resumed?
+
+---
+
+4. EXECUTION BRAIN PIPELINE
+
+---
+
+Task Intake
+
+&#8595;
+
+Intent Detection
+
+&#8595;
+
+Command Analysis
+
+&#8595;
+
+Priority Analysis
+
+&#8595;
+
+Queue Planning
+
+&#8595;
+
+Adaptive Execution
+
+&#8595;
+
+Continuity Validation
+
+&#8595;
+
+Completion
+
+---
+
+5. EXECUTION STATES
+
+---
+
+idle
+
+observing
+
+tracking
+
+executing
+
+adapting
+
+recovering
+
+resuming
+
+waiting
+
+completed
+
+---
+
+6. EXECUTION BRAIN SCORE
+
+---
+
+Returns:
+
+intent_score
+
+command_score
+
+queue_score
+
+continuity_score
+
+adaptation_score
+
+execution_brain_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+7. ENDPOINTS
+
+---
+
+GET  /execution-brain/status
+
+GET  /execution-brain/capabilities
+
+POST /execution-brain/preview
+
+POST /execution-brain/reasoning
+
+POST /execution-brain/continuity
+
+POST /execution-brain/queue-analysis
+
+POST /execution-brain/summary
+
+---
+
+8. SAFETY
+
+---
+
+execution=False
+
+command_execution=False
+
+deployment_execution=False
+
+system_actions=False
+
+All operations remain preview-only.
+
+================================================================================
+END OF LAYER 36.9 REPORT
+========================

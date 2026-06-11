@@ -1,0 +1,89 @@
+========================================================================
+LAYER 29.4 — PATCH GOVERNANCE — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+========================================================================
+
+TASK: Layer 29.4 — Patch Governance Preview
+GOAL: Governance preview with status/violation tracking, controls mapping,
+      and 20 integrated layers.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+patch_governance_preview.py (461 lines, 19,368 bytes)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py (→ 12,394) — import, PatchGovernancePreviewRequest model, 3 routes
+endpoint_coverage_matrix.py (→ 299) — new patch_governance_layer_29 group (3 entries)
+scripts/smoke_check.py (→ 8,810) — check_patch_governance_preview() + registration
+lux_fault_report.py (→ 1,760) — import, _fault_report_patch_governance(), 2 sections
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/patch-governance-status
+GET  /debug/patch-governance-registry
+POST /debug/patch-governance-preview
+
+GOVERNANCE PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       pass       ready      — flow_safety, 2 controls active
+websocket_stream    violation  BLOCKED    — stream_integrity, 2 controls violated
+workspace_export    pass       ready      — export_safety, 1 control active
+luxway_permission   violation  BLOCKED    — platform_privacy, 3 controls violated
+debug_intelligence  pass       ready      — scaffold_safety, 1 control active
+
+OUTPUT FIELDS
+--------------------------------------------------------------------------------
+governance_id           — profile identifier
+governance_category     — category classification
+governance_status       — pass / violation
+governance_requirements — requirement list
+governance_controls     — control list
+governance_exceptions   — exception list
+governance_risk_level   — low / high
+governance_readiness    — bool (3 ready, 2 blocked)
+required_actions        — action items to resolve violations
+recommended_next_action — action recommendation
+confidence_score        — aggregated confidence
+
+20 INTEGRATIONS: 29.3 → 29.2 → 29.1 → 28.6 → 28.5 → 28.4 → 28.3 → 28.2 → 28.1 → 27.6 → 27.5 → 27.4 → 27.3 → 27.2 → 27.1 → 26.7 → 26.6 → 25.6 → 25.5 → 25.4
+
+GOVERNANCE VS COMPLIANCE
+--------------------------------------------------------------------------------
+Added patch_compliance integration to governance layer for cross-layer oversight.
+Governance extends compliance with explicit control gates and exception policies.
+All endpoints are read-only scaffold; no real enforcement actions performed.
+
+INTEGRATION LAYERS
+--------------------------------------------------------------------------------
+29.3 Patch Compliance        — compliance_status, compliance_readiness
+29.2 Patch Policy Evaluation — policy_result, policy_readiness
+29.1 Patch Permission        — permission_level, permission_readiness
+28.6 Patch Lifecycle         — lifecycle_readiness, completion_score
+28.5 Patch Audit Trail       — audit_readiness, audit_completeness
+28.4 Patch Recovery          — recovery_required, recovery_readiness
+28.3 Patch Validation        — validation_status, validation_risk_level
+28.2 Patch Rollback          — rollback_required, rollback_readiness
+28.1 Safe Patch Application  — application_ready
+27.6 Patch Execution         — execution_ready, go_no_go_status
+27.5 Patch Approval          — approval_required
+27.4 Patch Risk Matrix       — risk_score, risk_level
+27.3 Diff Preview            — affected_files
+27.2 Change Preview          — risk_areas
+27.1 Patch Draft             — recommended_files
+26.7 Multi-Agent Coordinator — combined_risks, overall_confidence
+26.6 Evidence Store          — risk_reasoning
+25.6 Verification Planner    — required_tests
+25.5 Safe Patch Planner      — estimated_complexity
+25.4 Safe Change Boundary    — blocked_actions
+
+HEALTH CHECK
+--------------------------------------------------------------------------------
+- No files over-written: incremental edits only
+- app.py not replaced: 3 targeted edits added
+- All new endpoints read-only: no writes, no subprocesses
+- All existing flags set to False: safe by default
+- Fault report section added: patch_governance
+- Smoke check method added with 20 integration signal assertions
+- Endpoint coverage matrix updated with 3 new entries
+- Layer 28 and 27 snapshots referenced but not modified

@@ -1,0 +1,61 @@
+========================================================================
+LAYER 28.5 — PATCH AUDIT TRAIL — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+========================================================================
+
+TASK: Layer 28.5 — Patch Audit Trail Preview
+GOAL: Audit trail preview with full event timeline, decision chain,
+      affected-layer mapping, and 15 integrated layers.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+patch_audit_trail_preview.py (440 satır, 22,541 byte)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py (→ 12,197) — import, PatchAuditTrailPreviewRequest model, 3 routes
+endpoint_coverage_matrix.py (→ 271) — 3 entries in patch_application_layer_28
+scripts/smoke_check.py (→ 8,472) — check_patch_audit_trail_preview() (56 satır)
+lux_fault_report.py (→ 1,637) — import, _fault_report_patch_audit_trail(), section
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/patch-audit-status
+GET  /debug/patch-audit-registry
+POST /debug/patch-audit-preview
+
+AUDIT PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       ready    comprehensive  — 9 timeline events, 16 layers
+websocket_stream    ready    comprehensive  — 9 timeline events, BLOCKED stages captured
+workspace_export    ready    comprehensive  — 9 timeline events, low risk
+luxway_permission   ready    comprehensive  — 9 timeline events, BLOCKED stages captured
+debug_intelligence  ready    comprehensive  — 9 timeline events, scaffold audit
+
+OUTPUT FIELDS
+--------------------------------------------------------------------------------
+audit_id              — profile identifier
+target_issue          — detected issue
+target_component      — affected component
+timeline_events       — date-ordered event list (9 per profile)
+approval_events       — approval decision history
+risk_events           — risk assessment record
+validation_events     — validation status record
+rollback_events       — rollback requirement record
+recovery_events       — recovery requirement record
+affected_layers       — 28.5 → 25.4 (16 layers)
+affected_files        — file list
+affected_endpoints    — endpoint list
+decision_chain        — full chain from draft to audit_trail
+audit_completeness     — comprehensive for all profiles
+audit_readiness       — bool (all ready)
+recommended_next_action — action recommendation
+confidence_score      — aggregated confidence (0.0–1.0)
+
+15 INTEGRATIONS: 28.4 → 28.3 → 28.2 → 28.1 → 27.6 → 27.5 → 27.4 → 27.3 → 27.2 → 27.1 → 26.7 → 26.6 → 25.6 → 25.5 → 25.4
+
+SAFETY: All read_only. No actual audit logging.
+PROBLEMS: None.
+
+FINAL: TAMAMLANDI — 1 created, 4 edited, 3 endpoints, 15 integrations
+========================================================================

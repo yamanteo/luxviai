@@ -1,0 +1,307 @@
+================================================================================
+LAYER 35.8 — ENGINEERING AUTONOMY INTELLIGENCE PREVIEW
+======================================================
+
+Report Date        : 2026-06-11
+Layer              : 35.8
+Module             : engineering_autonomy_intelligence_preview.py
+Series             : LuxCode Autonomous Engineering Suite
+Version            : 1.0
+Status             : engineering_autonomy_ready
+Operation Mode     : read_only_preview_only
+Integration        : 35.7 Engineering Strategy Intelligence,
+35.6 Engineering Prediction & Forecast Intelligence,
+35.5 Engineering Observability & Monitoring Intelligence,
+35.4 Engineering Decision Intelligence,
+35.3 Engineering Knowledge Graph Intelligence,
+35.2 Engineering Memory & Failure Intelligence,
+35.1 Autonomous Engineering Coordinator
+---------------------------------------
+
+1. OVERVIEW
+
+---
+
+Layer 35.8 introduces Engineering Autonomy Intelligence Preview.
+
+This layer becomes the autonomy planning engine of LuxCode.
+
+Goal:
+
+Determine how much autonomy is appropriate for a given task.
+
+Not maximum autonomy.
+
+Not minimum autonomy.
+
+Appropriate autonomy.
+
+Core Principle:
+
+The safest level of autonomy that still achieves the objective.
+
+---
+
+2. CAPABILITIES (12)
+
+---
+
+autonomy_level_analysis
+
+permission_requirement_analysis
+
+risk_based_autonomy
+
+verification_based_autonomy
+
+deployment_based_autonomy
+
+workspace_based_autonomy
+
+repair_based_autonomy
+
+autonomy_recommendation_engine
+
+human_confirmation_analysis
+
+autonomy_boundary_detection
+
+autonomy_summary_generation
+
+autonomy_health_analysis
+
+---
+
+3. AUTONOMY PIPELINE
+
+---
+
+Task Analysis
+
+&#8595;
+
+Risk Analysis
+
+&#8595;
+
+Verification Review
+
+&#8595;
+
+Decision Review
+
+&#8595;
+
+Boundary Analysis
+
+&#8595;
+
+Autonomy Recommendation
+
+&#8595;
+
+Human Confirmation Review
+
+&#8595;
+
+Execution Readiness Assessment
+
+---
+
+4. AUTONOMY LEVELS
+
+---
+
+Level 0
+
+Observation Only
+
+No Actions
+
+---
+
+Level 1
+
+Recommendations Only
+
+Human Decides
+
+---
+
+Level 2
+
+Guided Actions
+
+Human Approval Required
+
+---
+
+Level 3
+
+Semi-Autonomous Execution
+
+Verification Required
+
+---
+
+Level 4
+
+High Autonomy
+
+Restricted Domains Only
+
+---
+
+Level 5
+
+Future Research Only
+
+Disabled
+
+---
+
+5. AUTONOMY RECOMMENDATION ENGINE
+
+---
+
+Analyze:
+
+task_risk
+
+verification_confidence
+
+deployment_confidence
+
+memory_confidence
+
+strategy_confidence
+
+Returns:
+
+recommended_autonomy_level
+
+autonomy_reasoning
+
+required_confirmations
+
+---
+
+6. HUMAN CONFIRMATION ENGINE
+
+---
+
+Determine:
+
+approval_required
+
+review_required
+
+verification_required
+
+deployment_approval_required
+
+Returns:
+
+confirmation_requirements
+
+confirmation_risk
+
+---
+
+7. AUTONOMY BOUNDARY ENGINE
+
+---
+
+Detect:
+
+unsafe_autonomy
+
+excessive_autonomy
+
+insufficient_autonomy
+
+boundary_conflicts
+
+Returns:
+
+boundary_status
+
+boundary_risk
+
+recommended_limit
+
+---
+
+8. AUTONOMY SCORE
+
+---
+
+Returns:
+
+autonomy_confidence
+
+autonomy_risk
+
+boundary_score
+
+approval_score
+
+overall_autonomy_score
+
+Scale:
+
+0.00 &#8594; 1.00
+
+---
+
+9. ENDPOINTS
+
+---
+
+GET  /engineering-autonomy/status
+
+GET  /engineering-autonomy/capabilities
+
+POST /engineering-autonomy/preview
+
+POST /engineering-autonomy/recommendation
+
+POST /engineering-autonomy/boundary-analysis
+
+POST /engineering-autonomy/confirmation-analysis
+
+POST /engineering-autonomy/autonomy-score
+
+---
+
+10. FILES MODIFIED
+
+---
+
+engineering_autonomy_intelligence_preview.py
+
+app.py
+
+endpoint_coverage_matrix.py
+
+---
+
+11. SAFETY
+
+---
+
+automatic_execution=False
+
+deployment_execution=False
+
+repair_execution=False
+
+verification_execution=False
+
+autonomy_level_5_enabled=False
+
+All outputs remain advisory only.
+
+================================================================================
+END OF LAYER 35.8 REPORT
+========================

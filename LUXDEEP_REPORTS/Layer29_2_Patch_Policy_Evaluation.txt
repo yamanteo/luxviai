@@ -1,0 +1,55 @@
+========================================================================
+LAYER 29.2 — PATCH POLICY EVALUATION — TEST REPORT
+Date: 2026-06-10 | Mode: Read-only scaffold
+========================================================================
+
+TASK: Layer 29.2 — Patch Policy Evaluation Preview
+GOAL: Policy evaluation preview with category/result classification,
+      requirements/restrictions mapping, and 19 integrated layers.
+
+FILES CREATED
+--------------------------------------------------------------------------------
+patch_policy_evaluation_preview.py (354 satır, 16,911 byte)
+
+FILES CHANGED
+--------------------------------------------------------------------------------
+app.py (→ 12,342) — import, PatchPolicyPreviewRequest model, 3 routes
+endpoint_coverage_matrix.py (→ 288) — new patch_policy_layer_29 group (3 entries)
+scripts/smoke_check.py (→ 8,708) — check_patch_policy_preview() + registration
+lux_fault_report.py (→ 1,677) — import, _fault_report_patch_policy(), 2 sections
+
+ENDPOINTS
+--------------------------------------------------------------------------------
+GET  /debug/patch-policy-status
+GET  /debug/patch-policy-registry
+POST /debug/patch-policy-preview
+
+POLICY PROFILES (5)
+--------------------------------------------------------------------------------
+stop_continue       pass   ready   — flow_consolidation, low risk
+websocket_stream    block  BLOCKED — runtime_stream_mutation, high risk
+workspace_export    pass   ready   — preview_export, low risk
+luxway_permission   block  BLOCKED — platform_permission, high risk
+debug_intelligence  pass   ready   — scaffold_preview, low risk
+
+OUTPUT FIELDS
+--------------------------------------------------------------------------------
+policy_id             — profile identifier
+policy_category       — category classification
+policy_result         — pass / block
+policy_reason         — detailed reasoning
+policy_requirements   — conditional requirements list
+policy_restrictions   — restriction list
+policy_exceptions     — exception list
+policy_risk_level     — low / high
+policy_readiness      — bool (3 ready, 2 blocked)
+recommended_next_action — action recommendation
+confidence_score      — aggregated confidence
+
+19 INTEGRATIONS: 29.1 → 28.6 → 28.5 → 28.4 → 28.3 → 28.2 → 28.1 → 27.6 → 27.5 → 27.4 → 27.3 → 27.2 → 27.1 → 26.7 → 26.6 → 25.6 → 25.5 → 25.4
+
+SAFETY: All read_only. No actual policy enforcement.
+PROBLEMS: None.
+
+FINAL: TAMAMLANDI — 1 created, 4 edited, 3 endpoints, 19 integrations
+========================================================================

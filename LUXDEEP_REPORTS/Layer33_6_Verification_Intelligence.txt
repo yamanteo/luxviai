@@ -1,0 +1,128 @@
+================================================================================
+LAYER 33.6 — VERIFICATION INTELLIGENCE PREVIEW
+================================================================================
+Report Date        : 2026-06-11
+Layer              : 33.6
+Status             : verification_intelligence_ready
+Module             : verification_intelligence_preview.py
+Series             : LuxCode Verification Engine
+Integration        : 33.5 Sandbox Repair Intelligence,
+                     33.4 Clone Workspace Intelligence,
+                     33.3 Change Planning Intelligence,
+                     33.2 Failed Change Intelligence,
+                     33.1 Change Memory Intelligence,
+                     32.5 Dependency Intelligence,
+                     32.4 Root Cause Intelligence
+--------------------------------------------------------------------------------
+
+1. OVERVIEW
+--------------------------------------------------------------------------------
+Layer 33.6 introduces Verification Intelligence Preview — a read-only analysis
+system for the LuxCode Verification Engine.
+
+Verification Model:
+  REAL_SYSTEM → MASTER_CLONE → WORKING_CLONE → SANDBOX → VERIFICATION
+  → DELIVERY_CANDIDATE
+
+Verification Gates:
+  sandbox_gate | dependency_gate | integration_gate
+  workflow_gate | regression_gate | production_validation_gate
+
+Delivery Rule:
+  Delivery Candidate may only be created if ALL verification gates pass.
+
+Fail Conditions:
+  Any FAIL condition blocks Delivery Candidate.
+
+Loop Protection:
+  Detects repeated verification failures, unstable repairs,
+  false-positive passes, and regression failures.
+  Uses all Layer 33.1–33.5 intelligence.
+
+2. VERIFICATION PROFILES
+--------------------------------------------------------------------------------
+
+  2.1 sandbox_verification
+  - Status: pass | Score: 0.85 | Risk: low
+  - Gates: all pass except production_validation (pending)
+  - Readiness: ready_for_production_validation
+
+  2.2 dependency_verification
+  - Status: pass | Score: 0.78 | Risk: low
+  - Gates: all pass except production_validation (pending)
+  - Readiness: ready_for_production_validation
+
+  2.3 integration_verification
+  - Status: degraded | Score: 0.52 | Risk: high
+  - Gates: integration_gate FAIL, production_validation BLOCKED
+  - Loop Protection: integration_contract_drift_loop triggered
+  - Required: fix fallback path test, complete circuit breaker
+
+  2.4 workflow_verification
+  - Status: warning | Score: 0.62 | Risk: medium
+  - Gates: workflow_gate WARNING, production_validation CONDITIONAL
+  - Required: resolve gate skip warning
+
+  2.5 regression_verification
+  - Status: pass | Score: 0.74 | Risk: low
+  - Gates: all pass except production_validation (pending)
+  - Readiness: ready_for_production_validation
+
+  2.6 production_validation
+  - Status: pass | Score: 0.82 | Risk: low
+  - Gates: ALL 6 GATES PASS
+  - Readiness: delivery_ready
+  - Confirmation: repair is correct, stable, safe, regression-free,
+    dependency-safe, integration-safe, workflow-safe
+
+3. GATE SUMMARY
+--------------------------------------------------------------------------------
+  Gate                        | Pass | Fail | Warning | Blocked
+  ----------------------------|------|------|---------|--------
+  sandbox_gate                |   6  |   0  |    0    |    0
+  dependency_gate             |   6  |   0  |    0    |    0
+  integration_gate            |   5  |   1  |    0    |    0
+  workflow_gate               |   5  |   0  |    1    |    0
+  regression_gate             |   6  |   0  |    0    |    0
+  production_validation_gate  |   1  |   0  |    0    |    1
+
+4. ENDPOINTS REGISTERED
+--------------------------------------------------------------------------------
+  GET  /debug/verification-status    → verification_intelligence_status()
+  GET  /debug/verification-registry  → verification_intelligence_registry()
+  POST /debug/verification-preview   → build_verification_intelligence_preview()
+
+5. FILES MODIFIED
+--------------------------------------------------------------------------------
+  File                                    | Change
+  ----------------------------------------|---------------------------------------
+  verification_intelligence_preview.py    | CREATED (588 lines, 6 profiles)
+  app.py                                  | +import, +model, +3 endpoints
+  lux_fault_report.py                     | +import, +function, +2 section refs
+  endpoint_coverage_matrix.py             | +verification endpoint group
+  scripts/smoke_check.py                  | +3 endpoint assertions, +check method,
+                                         |  +registration entry
+
+6. TECHNOLOGY SUPPORT
+--------------------------------------------------------------------------------
+  Python, HTML, CSS, JavaScript, TypeScript, JSON, YAML, Database,
+  Infrastructure, API, Workflow, Documentation
+
+7. SAFETY FLAGS
+--------------------------------------------------------------------------------
+  All safety flags set to False:
+    file_write, memory_write, db_write, git_write, commit, push, deploy,
+    auto_fix, patch_apply, subprocess_execution
+
+8. COMPLIANCE
+--------------------------------------------------------------------------------
+  FORBIDDEN operations NOT performed:
+    Auto-fix, Patch apply, Commit, Push, Deploy,
+    Subprocess execution, Database write, Memory write, Git write
+
+  Protected areas (chat, stream, websocket, typewriter, stop/continue,
+  static/index.html) were NOT modified.
+
+================================================================================
+END OF LAYER 33.6 REPORT
+================================================================================

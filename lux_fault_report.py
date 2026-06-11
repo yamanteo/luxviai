@@ -29,6 +29,117 @@ from verifier_agent_preview import build_verifier_agent_preview
 from evidence_store_preview import build_evidence_store_preview
 from multi_agent_coordinator_preview import build_coordinator_preview
 from patch_draft_engine_preview import build_patch_draft_preview, patch_draft_registry
+from change_preview_engine_preview import build_change_preview, change_preview_registry
+from diff_preview_engine_preview import build_diff_preview, diff_preview_registry
+from patch_risk_matrix_preview import build_patch_risk_preview, patch_risk_registry
+from patch_approval_engine_preview import build_patch_approval_preview, patch_approval_registry
+from patch_execution_readiness_preview import build_patch_execution_preview, patch_execution_registry
+from layer27_status_snapshot import layer27_status_snapshot
+from layer28_status_snapshot import layer28_status_snapshot
+from safe_patch_application_preview import build_safe_patch_preview, safe_patch_registry
+from patch_rollback_preview import build_patch_rollback_preview, patch_rollback_registry
+from patch_validation_preview import build_patch_validation_preview, patch_validation_registry
+from patch_recovery_preview import build_patch_recovery_preview, patch_recovery_registry
+from patch_audit_trail_preview import build_patch_audit_preview, patch_audit_registry
+from patch_lifecycle_preview import build_patch_lifecycle_preview, patch_lifecycle_registry
+from patch_permission_enforcement_preview import build_patch_permission_preview, patch_permission_registry
+from patch_policy_evaluation_preview import build_patch_policy_preview, patch_policy_registry
+from patch_compliance_preview import build_patch_compliance_preview, patch_compliance_registry
+from patch_governance_preview import build_patch_governance_preview, patch_governance_registry
+from patch_oversight_preview import build_patch_oversight_preview, patch_oversight_registry
+from patch_accountability_preview import build_patch_accountability_preview, patch_accountability_registry
+from patch_assurance_preview import build_patch_assurance_preview, patch_assurance_registry
+from patch_confidence_preview import build_patch_confidence_preview, patch_confidence_registry
+from layer29_status_snapshot import layer29_status_snapshot
+from production_readiness_preview import build_production_readiness_preview, production_readiness_registry
+from operational_readiness_preview import build_operational_readiness_preview, operational_readiness_registry
+from system_readiness_preview import build_system_readiness_preview, system_readiness_registry
+from validation_readiness_preview import build_validation_readiness_preview, validation_readiness_registry
+from release_readiness_preview import build_release_readiness_preview, release_readiness_registry
+from layer30_status_snapshot import layer30_status_snapshot
+from system_health_intelligence_preview import (
+    build_system_health_intelligence_preview,
+    system_health_intelligence_registry,
+    system_health_intelligence_status,
+)
+from runtime_stability_intelligence_preview import (
+    build_runtime_stability_intelligence_preview,
+    runtime_stability_intelligence_registry,
+    runtime_stability_intelligence_status,
+)
+from runtime_risk_intelligence_preview import (
+    build_runtime_risk_intelligence_preview,
+    runtime_risk_intelligence_registry,
+    runtime_risk_intelligence_status,
+)
+from runtime_drift_intelligence_preview import (
+    build_runtime_drift_intelligence_preview,
+    runtime_drift_intelligence_registry,
+    runtime_drift_intelligence_status,
+)
+from runtime_recovery_intelligence_preview import (
+    build_runtime_recovery_intelligence_preview,
+    runtime_recovery_intelligence_registry,
+    runtime_recovery_intelligence_status,
+)
+from runtime_anomaly_intelligence_preview import (
+    build_runtime_anomaly_intelligence_preview,
+    runtime_anomaly_intelligence_registry,
+    runtime_anomaly_intelligence_status,
+)
+from regression_intelligence_preview import (
+    build_regression_intelligence_preview,
+    regression_intelligence_registry,
+    regression_intelligence_status,
+)
+from failure_memory_intelligence_preview import (
+    build_failure_memory_intelligence_preview,
+    failure_memory_intelligence_registry,
+    failure_memory_intelligence_status,
+)
+from dependency_intelligence_preview import (
+    build_dependency_intelligence_preview,
+    dependency_intelligence_registry,
+    dependency_intelligence_status,
+)
+from root_cause_intelligence_preview import (
+    build_root_cause_intelligence_preview,
+    root_cause_intelligence_registry,
+    root_cause_intelligence_status,
+)
+from change_memory_intelligence_preview import (
+    build_change_memory_intelligence_preview,
+    change_memory_intelligence_registry,
+    change_memory_intelligence_status,
+)
+from failed_change_intelligence_preview import (
+    build_failed_change_intelligence_preview,
+    failed_change_intelligence_registry,
+    failed_change_intelligence_status,
+)
+from change_planning_intelligence_preview import (
+    build_change_planning_intelligence_preview,
+    change_planning_intelligence_registry,
+    change_planning_intelligence_status,
+)
+# lazy imports: clone_workspace_intelligence_preview functions imported inside functions
+from sandbox_repair_intelligence_preview import (
+    build_sandbox_repair_intelligence_preview,
+    sandbox_repair_intelligence_registry,
+    sandbox_repair_intelligence_status,
+)
+from verification_intelligence_preview import (
+    build_verification_intelligence_preview,
+    verification_intelligence_registry,
+    verification_intelligence_status,
+)
+from delivery_readiness_intelligence_preview import (
+    build_delivery_readiness_intelligence_preview,
+    delivery_readiness_intelligence_registry,
+    delivery_readiness_intelligence_status,
+)
+from layer32_status_snapshot import layer32_status_snapshot, layer32_full_status
+from layer31_status_snapshot import layer31_status_snapshot, layer31_full_status
 from root_flow_auditor_preview import build_root_flow_audit
 from safe_self_check_runner_preview import build_self_check_preview
 
@@ -829,6 +940,1191 @@ def _fault_report_patch_draft() -> List[Dict[str, Any]]:
     return output
 
 
+def _fault_report_change_preview() -> List[Dict[str, Any]]:
+    registry = change_preview_registry()
+    previews = registry.get("previews", [])
+    output: List[Dict[str, Any]] = []
+    for item in previews[:5]:
+        preview = build_change_preview(
+            target_issue=str(item.get("id", "")),
+            command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")),
+            related_layer="Layer 27.2",
+        )
+        output.append(
+            {
+                "Hedef Sorun": preview.get("target_issue"),
+                "Etkilenen Alanlar": preview.get("affected_areas", []),
+                "Önce Özeti": preview.get("before_summary"),
+                "Sonra Özeti": preview.get("after_summary"),
+                "Tahmini Etkiler": preview.get("predicted_effects", []),
+                "Risk Alanları": preview.get("risk_areas", []),
+                "Onay Gereksinimi": preview.get("approval_required"),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
+def _fault_report_diff_preview() -> List[Dict[str, Any]]:
+    registry = diff_preview_registry()
+    diffs = registry.get("diffs", [])
+    output: List[Dict[str, Any]] = []
+    for item in diffs[:5]:
+        preview = build_diff_preview(
+            target_issue=str(item.get("id", "")),
+            command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")),
+            related_layer="Layer 27.3",
+        )
+        output.append(
+            {
+                "Hedef Sorun": preview.get("target_issue"),
+                "Etkilenen Dosyalar": preview.get("affected_files", []),
+                "Önce Kod Özeti": preview.get("before_code_summary"),
+                "Sonra Kod Özeti": preview.get("after_code_summary"),
+                "Tahmini Hunk Sayısı": preview.get("diff_hunks_expected"),
+                "Tahmini Değişiklikler": preview.get("predicted_changes", []),
+                "Risk Alanları": preview.get("risk_areas", []),
+                "Onay Gereksinimi": preview.get("approval_required"),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
+def _fault_report_patch_risk_matrix() -> List[Dict[str, Any]]:
+    registry = patch_risk_registry()
+    risks = registry.get("risks", [])
+    output: List[Dict[str, Any]] = []
+    for item in risks[:5]:
+        preview = build_patch_risk_preview(
+            target_issue=str(item.get("id", "")),
+            command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")),
+            related_layer="Layer 27.4",
+        )
+        output.append(
+            {
+                "Hedef Sorun": preview.get("target_issue"),
+                "Hedef Bileşen": preview.get("target_component"),
+                "Etkilenen Dosyalar": preview.get("affected_files", []),
+                "Etkilenen Layer'lar": preview.get("affected_layers", []),
+                "Etkilenen Endpoint'ler": preview.get("affected_endpoints", []),
+                "Risk Skoru": preview.get("risk_score"),
+                "Risk Seviyesi": preview.get("risk_level"),
+                "Risk Sebepleri": preview.get("risk_reasons", []),
+                "Bağımlılık Riski": preview.get("dependency_risk"),
+                "Çalışma Zamanı Riski": preview.get("runtime_risk"),
+                "Regresyon Riski": preview.get("regression_risk"),
+                "Sınır Riski": preview.get("boundary_risk"),
+                "Doğrulama Gerekli": preview.get("verification_required"),
+                "Önerilen Testler": preview.get("recommended_tests", []),
+                "Onay Gereksinimi": preview.get("approval_required"),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
+def _fault_report_patch_approval() -> List[Dict[str, Any]]:
+    registry = patch_approval_registry()
+    approvals = registry.get("approvals", [])
+    output: List[Dict[str, Any]] = []
+    for item in approvals[:5]:
+        preview = build_patch_approval_preview(
+            target_issue=str(item.get("id", "")),
+            command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")),
+            related_layer="Layer 27.5",
+        )
+        output.append(
+            {
+                "Hedef Sorun": preview.get("target_issue"),
+                "Hedef Bileşen": preview.get("target_component"),
+                "Onay Gerekli": preview.get("approval_required"),
+                "Onay Seviyesi": preview.get("approval_level"),
+                "Onay Sebebi": preview.get("approval_reason"),
+                "Onay Kaynağı": preview.get("approval_source"),
+                "İnsan İncelemesi Gerekli": preview.get("human_review_required"),
+                "Sınır Engelli": preview.get("blocked_by_boundary"),
+                "Engel Sebepleri": preview.get("blocked_reasons", []),
+                "Devam Etmek Güvenli": preview.get("safe_to_continue"),
+                "Önerilen Sonraki Adım": preview.get("recommended_next_action"),
+                "Önerilen Onay Yolu": preview.get("recommended_approval_path"),
+                "Gerekli Doğrulamalar": preview.get("required_validations", []),
+                "Gerekli Testler": preview.get("required_tests", []),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
+def _fault_report_patch_execution_readiness() -> List[Dict[str, Any]]:
+    registry = patch_execution_registry()
+    executions = registry.get("executions", [])
+    output: List[Dict[str, Any]] = []
+    for item in executions[:5]:
+        preview = build_patch_execution_preview(
+            target_issue=str(item.get("id", "")),
+            command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")),
+            related_layer="Layer 27.6",
+        )
+        output.append(
+            {
+                "Hedef Sorun": preview.get("target_issue"),
+                "Hedef Bileşen": preview.get("target_component"),
+                "Çalıştırmaya Hazır": preview.get("execution_ready"),
+                "Hazırlık Skoru": preview.get("readiness_score"),
+                "Go/No-Go Durumu": preview.get("go_no_go_status"),
+                "Engeller": preview.get("blockers", []),
+                "Engel Sebepleri": preview.get("blocking_reasons", []),
+                "Eksik Gereksinimler": preview.get("missing_requirements", []),
+                "Gerekli Onaylar": preview.get("required_approvals", []),
+                "Gerekli Doğrulamalar": preview.get("required_validations", []),
+                "Gerekli Testler": preview.get("required_tests", []),
+                "Doğrulama Hazır": preview.get("verification_ready"),
+                "Geri Alma Gerekli": preview.get("rollback_required"),
+                "Geri Alma Stratejisi": preview.get("rollback_strategy"),
+                "Çalıştırma Yolu": preview.get("execution_path"),
+                "Önerilen Sonraki Adım": preview.get("recommended_next_action"),
+                "confidence_score": preview.get("confidence_score"),
+            }
+        )
+    return output
+
+
+def _fault_report_patch_rollback() -> List[Dict[str, Any]]:
+    registry = patch_rollback_registry()
+    rollbacks = registry.get("rollbacks", [])
+    output: List[Dict[str, Any]] = []
+    for item in rollbacks[:5]:
+        preview = build_patch_rollback_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 28.2")
+        output.append({
+            "Hedef Sorun": preview.get("target_issue"), "Hedef Bileşen": preview.get("target_component"),
+            "Rollback Gerekli": preview.get("rollback_required"), "Rollback Seviyesi": preview.get("rollback_level"),
+            "Rollback Sebebi": preview.get("rollback_reason"),
+            "Tetikleme Koşulları": preview.get("rollback_trigger_conditions", []),
+            "Rollback Adımları": preview.get("rollback_steps", []),
+            "Doğrulama Adımları": preview.get("rollback_validation_steps", []),
+            "Rollback Risk Seviyesi": preview.get("rollback_risk_level"),
+            "Rollback Risk Sebepleri": preview.get("rollback_risk_reasons", []),
+            "Rollback Bağımlılıkları": preview.get("rollback_dependencies", []),
+            "Güvenli Sınır": preview.get("rollback_safe_boundary"),
+            "Kurtarma Planı": preview.get("rollback_recovery_plan"),
+            "Rollback Hazır": preview.get("rollback_readiness"),
+            "Önerilen Sonraki Adım": preview.get("recommended_next_action"),
+            "confidence_score": preview.get("confidence_score"),
+        })
+    return output
+
+
+def _fault_report_patch_validation() -> List[Dict[str, Any]]:
+    reg = patch_validation_registry()
+    vs = reg.get("validations", [])
+    out: List[Dict[str, Any]] = []
+    for item in vs[:5]:
+        pv = build_patch_validation_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 28.3")
+        out.append({"Hedef Sorun": pv.get("target_issue"), "Hedef Bileşen": pv.get("target_component"),
+                     "Doğrulama Gerekli": pv.get("validation_required"), "Doğrulama Durumu": pv.get("validation_status"),
+                     "Doğrulama Stratejisi": pv.get("validation_strategy"),
+                     "Doğrulama Adımları": pv.get("validation_steps", []),
+                     "Doğrulama Kapsamı": pv.get("validation_scope", []),
+                     "Doğrulama Risk Seviyesi": pv.get("validation_risk_level"),
+                     "Doğrulama Risk Sebepleri": pv.get("validation_risk_reasons", []),
+                     "Gerekli Kontroller": pv.get("required_checks", []),
+                     "Gerekli Testler": pv.get("required_tests", []),
+                     "Başarı Kriterleri": pv.get("success_criteria", []),
+                     "Başarısızlık Kriterleri": pv.get("failure_criteria", []),
+                     "Rollback Tetikleyici": pv.get("rollback_trigger"),
+                     "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+                     "confidence_score": pv.get("confidence_score")})
+    return out
+
+
+def _fault_report_patch_recovery() -> List[Dict[str, Any]]:
+    reg = patch_recovery_registry()
+    rs = reg.get("recoveries", [])
+    out: List[Dict[str, Any]] = []
+    for item in rs[:5]:
+        pv = build_patch_recovery_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 28.4")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Hata Türü": pv.get("failure_type"),
+            "Hata Kapsamı": pv.get("failure_scope"),
+            "Kurtarma Gerekli": pv.get("recovery_required"),
+            "Kurtarma Stratejisi": pv.get("recovery_strategy"),
+            "Kurtarma Adımları": pv.get("recovery_steps", []),
+            "Kurtarma Bağımlılıkları": pv.get("recovery_dependencies", []),
+            "Kurtarma Risk Seviyesi": pv.get("recovery_risk_level"),
+            "Kurtarma Risk Sebepleri": pv.get("recovery_risk_reasons", []),
+            "Rollback Bağımlılığı": pv.get("rollback_dependency"),
+            "Validasyon Bağımlılığı": pv.get("validation_dependency"),
+            "Kurtarma Hazır": pv.get("recovery_readiness"),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_patch_audit_trail() -> List[Dict[str, Any]]:
+    reg = patch_audit_registry()
+    audits = reg.get("audits", [])
+    out: List[Dict[str, Any]] = []
+    for item in audits[:5]:
+        pv = build_patch_audit_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 28.5")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Audit ID": pv.get("audit_id"),
+            "Olay Sayısı": len(pv.get("timeline_events", [])),
+            "Etkilenen Katmanlar": pv.get("affected_layers", []),
+            "Etkilenen Dosyalar": pv.get("affected_files", []),
+            "Etkilenen Endpointler": pv.get("affected_endpoints", []),
+            "Karar Zinciri": pv.get("decision_chain", []),
+            "Denetim Tamamlığı": pv.get("audit_completeness"),
+            "Denetim Hazır": pv.get("audit_readiness"),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_patch_lifecycle() -> List[Dict[str, Any]]:
+    reg = patch_lifecycle_registry()
+    lifecycles = reg.get("lifecycles", [])
+    out: List[Dict[str, Any]] = []
+    for item in lifecycles[:5]:
+        pv = build_patch_lifecycle_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 28.6")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Lifecycle ID": pv.get("lifecycle_id"),
+            "Mevcut Aşama": pv.get("current_stage"),
+            "Tamamlanan Aşamalar": pv.get("completed_stages", []),
+            "Kalan Aşamalar": pv.get("remaining_stages", []),
+            "Yaşam Döngüsü Hazır": pv.get("lifecycle_readiness"),
+            "Tamamlanma Skoru": pv.get("completion_score"),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_patch_permission() -> List[Dict[str, Any]]:
+    reg = patch_permission_registry()
+    permissions = reg.get("permissions", [])
+    out: List[Dict[str, Any]] = []
+    for item in permissions[:5]:
+        pv = build_patch_permission_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 29.1")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "İzin Seviyesi": pv.get("permission_level"),
+            "İzin Kaynağı": pv.get("permission_source"),
+            "İzin Verilenler": pv.get("allowed_actions", []),
+            "Engellenenler": pv.get("blocked_actions", []),
+            "Gerekli Onaylar": pv.get("required_approvals", []),
+            "Gerekli Validasyonlar": pv.get("required_validations", []),
+            "Gerekli Sınırlar": pv.get("required_boundaries", []),
+            "İzin Risk Seviyesi": pv.get("permission_risk_level"),
+            "İzin Hazır": pv.get("permission_readiness"),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_patch_policy() -> List[Dict[str, Any]]:
+    reg = patch_policy_registry()
+    policies = reg.get("policies", [])
+    out: List[Dict[str, Any]] = []
+    for item in policies[:5]:
+        pv = build_patch_policy_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 29.2")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Politika Kategorisi": pv.get("policy_category"),
+            "Politika Sonucu": pv.get("policy_result"),
+            "Politika Sebebi": pv.get("policy_reason"),
+            "Politika Gereksinimleri": pv.get("policy_requirements", []),
+            "Politika Kısıtlamaları": pv.get("policy_restrictions", []),
+            "Politika İstisnaları": pv.get("policy_exceptions", []),
+            "Politika Risk Seviyesi": pv.get("policy_risk_level"),
+            "Politika Hazır": pv.get("policy_readiness"),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_patch_compliance() -> List[Dict[str, Any]]:
+    reg = patch_compliance_registry()
+    compliances = reg.get("compliances", [])
+    out: List[Dict[str, Any]] = []
+    for item in compliances[:5]:
+        pv = build_patch_compliance_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 29.3")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Uyum Kategorisi": pv.get("compliance_category"),
+            "Uyum Durumu": pv.get("compliance_status"),
+            "Uyum Gereksinimleri": pv.get("compliance_requirements", []),
+            "Uyum İhlalleri": pv.get("compliance_violations", []),
+            "Uyum İstisnaları": pv.get("compliance_exceptions", []),
+            "Uyum Risk Seviyesi": pv.get("compliance_risk_level"),
+            "Uyum Hazır": pv.get("compliance_readiness"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_patch_governance() -> List[Dict[str, Any]]:
+    reg = patch_governance_registry()
+    governances = reg.get("governances", [])
+    out: List[Dict[str, Any]] = []
+    for item in governances[:5]:
+        pv = build_patch_governance_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 29.4")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Yönetişim Kategorisi": pv.get("governance_category"),
+            "Yönetişim Durumu": pv.get("governance_status"),
+            "Yönetişim Gereksinimleri": pv.get("governance_requirements", []),
+            "Yönetişim Kontrolleri": pv.get("governance_controls", []),
+            "Yönetişim İstisnaları": pv.get("governance_exceptions", []),
+            "Yönetişim Risk Seviyesi": pv.get("governance_risk_level"),
+            "Yönetişim Hazır": pv.get("governance_readiness"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_patch_oversight() -> List[Dict[str, Any]]:
+    reg = patch_oversight_registry()
+    oversights = reg.get("oversights", [])
+    out: List[Dict[str, Any]] = []
+    for item in oversights[:5]:
+        pv = build_patch_oversight_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 29.5")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Gözetim Kategorisi": pv.get("oversight_category"),
+            "Gözetim Durumu": pv.get("oversight_status"),
+            "Gözetim Bulguları": pv.get("oversight_findings", []),
+            "Gözetim Kontrolleri": pv.get("oversight_controls", []),
+            "Gözetim İstisnaları": pv.get("oversight_exceptions", []),
+            "Gözetim Risk Seviyesi": pv.get("oversight_risk_level"),
+            "Gözetim Hazır": pv.get("oversight_readiness"),
+            "Gözetim Önerileri": pv.get("oversight_recommendations", []),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_patch_accountability() -> List[Dict[str, Any]]:
+    reg = patch_accountability_registry()
+    accountabilities = reg.get("accountabilities", [])
+    out: List[Dict[str, Any]] = []
+    for item in accountabilities[:5]:
+        pv = build_patch_accountability_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 29.6")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Hesap Verebilirlik Kategorisi": pv.get("accountability_category"),
+            "Hesap Verebilirlik Durumu": pv.get("accountability_status"),
+            "Sahip": pv.get("accountability_owner"),
+            "Kapsam": pv.get("accountability_scope"),
+            "Bulgular": pv.get("accountability_findings", []),
+            "Gereksinimler": pv.get("accountability_requirements", []),
+            "İstisnalar": pv.get("accountability_exceptions", []),
+            "Risk Seviyesi": pv.get("accountability_risk_level"),
+            "Hazır": pv.get("accountability_readiness"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_patch_assurance() -> List[Dict[str, Any]]:
+    reg = patch_assurance_registry()
+    assurances = reg.get("assurances", [])
+    out: List[Dict[str, Any]] = []
+    for item in assurances[:5]:
+        pv = build_patch_assurance_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 29.7")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Güvence Kategorisi": pv.get("assurance_category"),
+            "Güvence Durumu": pv.get("assurance_status"),
+            "Kapsam": pv.get("assurance_scope"),
+            "Bulgular": pv.get("assurance_findings", []),
+            "Kontroller": pv.get("assurance_controls", []),
+            "Gereksinimler": pv.get("assurance_requirements", []),
+            "İstisnalar": pv.get("assurance_exceptions", []),
+            "Risk Seviyesi": pv.get("assurance_risk_level"),
+            "Hazır": pv.get("assurance_readiness"),
+            "Güvence Skoru": pv.get("assurance_score"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_patch_confidence() -> List[Dict[str, Any]]:
+    reg = patch_confidence_registry()
+    confidences = reg.get("confidences", [])
+    out: List[Dict[str, Any]] = []
+    for item in confidences[:5]:
+        pv = build_patch_confidence_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 29.8")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Güven Kategorisi": pv.get("confidence_category"),
+            "Güven Durumu": pv.get("confidence_status"),
+            "Güven Skoru": pv.get("confidence_score"),
+            "Güven Faktörleri": pv.get("confidence_factors", []),
+            "Bulgular": pv.get("confidence_findings", []),
+            "Gereksinimler": pv.get("confidence_requirements", []),
+            "İstisnalar": pv.get("confidence_exceptions", []),
+            "Risk Seviyesi": pv.get("confidence_risk_level"),
+            "Hazır": pv.get("confidence_readiness"),
+            "Gerekçe": pv.get("confidence_reasoning"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+        })
+    return out
+
+
+def _fault_report_production_readiness() -> List[Dict[str, Any]]:
+    reg = production_readiness_registry()
+    readiness_items = reg.get("readiness_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in readiness_items[:5]:
+        pv = build_production_readiness_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 30.1")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Hazırlık Kategorisi": pv.get("readiness_category"),
+            "Hazırlık Durumu": pv.get("readiness_status"),
+            "Hazırlık Skoru": pv.get("readiness_score"),
+            "Gereksinimler": pv.get("readiness_requirements", []),
+            "Bulgular": pv.get("readiness_findings", []),
+            "Engelleyiciler": pv.get("readiness_blockers", []),
+            "Risk Seviyesi": pv.get("readiness_risk_level"),
+            "Öneriler": pv.get("readiness_recommendations", []),
+            "Üretime Hazır": pv.get("production_ready"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_operational_readiness() -> List[Dict[str, Any]]:
+    reg = operational_readiness_registry()
+    operational_items = reg.get("operational_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in operational_items[:5]:
+        pv = build_operational_readiness_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 30.2")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Operasyonel Kategori": pv.get("operational_category"),
+            "Operasyonel Durum": pv.get("operational_status"),
+            "Operasyonel Skor": pv.get("operational_score"),
+            "Gereksinimler": pv.get("operational_requirements", []),
+            "Bulgular": pv.get("operational_findings", []),
+            "Engelleyiciler": pv.get("operational_blockers", []),
+            "Risk Seviyesi": pv.get("operational_risk_level"),
+            "Öneriler": pv.get("operational_recommendations", []),
+            "Operasyonel Hazır": pv.get("operational_readiness"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_system_readiness() -> List[Dict[str, Any]]:
+    reg = system_readiness_registry()
+    system_items = reg.get("system_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in system_items[:5]:
+        pv = build_system_readiness_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 30.3")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Sistem Kategorisi": pv.get("system_category"),
+            "Sistem Durumu": pv.get("system_status"),
+            "Sistem Skoru": pv.get("system_score"),
+            "Gereksinimler": pv.get("system_requirements", []),
+            "Bulgular": pv.get("system_findings", []),
+            "Engelleyiciler": pv.get("system_blockers", []),
+            "Risk Seviyesi": pv.get("system_risk_level"),
+            "Öneriler": pv.get("system_recommendations", []),
+            "Sistem Hazır": pv.get("system_readiness"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_validation_readiness() -> List[Dict[str, Any]]:
+    reg = validation_readiness_registry()
+    validation_items = reg.get("validation_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in validation_items[:5]:
+        pv = build_validation_readiness_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 30.4")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Doğrulama Kategorisi": pv.get("validation_category"),
+            "Doğrulama Durumu": pv.get("validation_status"),
+            "Doğrulama Skoru": pv.get("validation_score"),
+            "Gereksinimler": pv.get("validation_requirements", []),
+            "Bulgular": pv.get("validation_findings", []),
+            "Engelleyiciler": pv.get("validation_blockers", []),
+            "Risk Seviyesi": pv.get("validation_risk_level"),
+            "Öneriler": pv.get("validation_recommendations", []),
+            "Doğrulama Hazır": pv.get("validation_readiness"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_release_readiness() -> List[Dict[str, Any]]:
+    reg = release_readiness_registry()
+    release_items = reg.get("release_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in release_items[:5]:
+        pv = build_release_readiness_preview(
+            target_issue=str(item.get("id", "")), command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")), related_layer="Layer 30.5")
+        out.append({
+            "Hedef Sorun": pv.get("target_issue"),
+            "Hedef Bileşen": pv.get("target_component"),
+            "Sürüm Kategorisi": pv.get("release_category"),
+            "Sürüm Durumu": pv.get("release_status"),
+            "Sürüm Skoru": pv.get("release_score"),
+            "Gereksinimler": pv.get("release_requirements", []),
+            "Bulgular": pv.get("release_findings", []),
+            "Engelleyiciler": pv.get("release_blockers", []),
+            "Risk Seviyesi": pv.get("release_risk_level"),
+            "Öneriler": pv.get("release_recommendations", []),
+            "Sürüm Hazır": pv.get("release_readiness"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_system_health_intelligence() -> List[Dict[str, Any]]:
+    reg = system_health_intelligence_registry()
+    health_items = reg.get("health_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in health_items[:5]:
+        pv = build_system_health_intelligence_preview(
+            target_issue=str(item.get("health_id", "")), command=str(item.get("health_id", "")),
+            project_area=str(item.get("health_id", "")), related_layer="Layer 31.1")
+        out.append({
+            "Hedef Bileşen": pv.get("target_component"),
+            "Sağlık ID": pv.get("health_id"),
+            "Sağlık Kategorisi": pv.get("health_category"),
+            "Sağlık Durumu": pv.get("health_status"),
+            "Sağlık Skoru": pv.get("health_score"),
+            "Bulgular": pv.get("health_findings", []),
+            "Uyarılar": pv.get("health_warnings", []),
+            "Engelleyiciler": pv.get("health_blockers", []),
+            "Risk Seviyesi": pv.get("health_risk_level"),
+            "Öneriler": pv.get("health_recommendations", []),
+            "Sağlık Özeti": pv.get("health_summary"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_layer31_status_snapshot() -> List[Dict[str, Any]]:
+    ss = layer31_status_snapshot()
+    return [{
+        "Katman Sayısı": ss.get("layer_count"),
+        "Uç Nokta Sayısı": ss.get("endpoint_count"),
+        "Entegrasyon Sayısı": ss.get("integration_count"),
+        "Genel Runtime Skoru": ss.get("overall_runtime_score"),
+        "Genel Runtime Durumu": ss.get("overall_runtime_status"),
+        "Sağlık Skoru": ss.get("health_score"),
+        "Sağlık Durumu": ss.get("health_status"),
+        "Stabilite Skoru": ss.get("stability_score"),
+        "Stabilite Durumu": ss.get("stability_status"),
+        "Risk Skoru": ss.get("risk_score"),
+        "Risk Durumu": ss.get("risk_status"),
+        "Sapma Skoru": ss.get("drift_score"),
+        "Sapma Durumu": ss.get("drift_status"),
+        "Kurtarma Skoru": ss.get("recovery_score"),
+        "Kurtarma Durumu": ss.get("recovery_status"),
+        "Önerilen Sonraki Katman": ss.get("recommended_next_layer"),
+        "confidence_score": 0.85,
+    }]
+
+
+def _fault_report_layer32_status_snapshot() -> List[Dict[str, Any]]:
+    ss = layer32_status_snapshot()
+    return [{
+        "Katman Sayısı": ss.get("layer_count"),
+        "Uç Nokta Sayısı": ss.get("endpoint_count"),
+        "Entegrasyon Sayısı": ss.get("integration_count"),
+        "Genel Layer32 Skoru": ss.get("overall_layer32_score"),
+        "Genel Layer32 Durumu": ss.get("overall_layer32_status"),
+        "Anomali Skoru": ss.get("anomaly_score"),
+        "Anomali Durumu": ss.get("anomaly_status"),
+        "Regresyon Skoru": ss.get("regression_score"),
+        "Regresyon Durumu": ss.get("regression_status"),
+        "Hata Hafıza Skoru": ss.get("failure_memory_score"),
+        "Hata Hafıza Durumu": ss.get("failure_memory_status"),
+        "Kök Neden Skoru": ss.get("root_cause_score"),
+        "Kök Neden Durumu": ss.get("root_cause_status"),
+        "Bağımlılık Skoru": ss.get("dependency_score"),
+        "Bağımlılık Durumu": ss.get("dependency_status"),
+        "Önerilen Sonraki Katman": ss.get("recommended_next_layer"),
+        "confidence_score": 0.85,
+    }]
+
+
+def _fault_report_runtime_recovery_intelligence() -> List[Dict[str, Any]]:
+    reg = runtime_recovery_intelligence_registry()
+    recovery_items = reg.get("recovery_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in recovery_items[:5]:
+        pv = build_runtime_recovery_intelligence_preview(
+            target_issue=str(item.get("recovery_id", "")), command=str(item.get("recovery_id", "")),
+            project_area=str(item.get("recovery_id", "")), related_layer="Layer 31.5")
+        out.append({
+            "Hedef Bileşen": pv.get("target_component"),
+            "Kurtarma ID": pv.get("recovery_id"),
+            "Kurtarma Kategorisi": pv.get("recovery_category"),
+            "Kurtarma Durumu": pv.get("recovery_status"),
+            "Kurtarma Skoru": pv.get("recovery_score"),
+            "Bulgular": pv.get("recovery_findings", []),
+            "Uyarılar": pv.get("recovery_warnings", []),
+            "Engelleyiciler": pv.get("recovery_blockers", []),
+            "Risk Seviyesi": pv.get("recovery_risk_level"),
+            "Öneriler": pv.get("recovery_recommendations", []),
+            "Kurtarma Özeti": pv.get("recovery_summary"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_runtime_anomaly_intelligence() -> List[Dict[str, Any]]:
+    reg = runtime_anomaly_intelligence_registry()
+    anomaly_items = reg.get("anomaly_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in anomaly_items[:5]:
+        pv = build_runtime_anomaly_intelligence_preview(
+            target_issue=str(item.get("anomaly_id", "")), command=str(item.get("anomaly_id", "")),
+            project_area=str(item.get("anomaly_id", "")), related_layer="Layer 32.1")
+        out.append({
+            "Hedef Bileşen": pv.get("target_component"),
+            "Anomali ID": pv.get("anomaly_id"),
+            "Anomali Kategorisi": pv.get("anomaly_category"),
+            "Anomali Durumu": pv.get("anomaly_status"),
+            "Anomali Skoru": pv.get("anomaly_score"),
+            "Bulgular": pv.get("anomaly_findings", []),
+            "Uyarılar": pv.get("anomaly_warnings", []),
+            "Engelleyiciler": pv.get("anomaly_blockers", []),
+            "Risk Seviyesi": pv.get("anomaly_risk_level"),
+            "Öneriler": pv.get("anomaly_recommendations", []),
+            "Anomali Özeti": pv.get("anomaly_summary"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_regression_intelligence() -> List[Dict[str, Any]]:
+    reg = regression_intelligence_registry()
+    regression_items = reg.get("regression_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in regression_items[:5]:
+        pv = build_regression_intelligence_preview(
+            target_issue=str(item.get("regression_id", "")), command=str(item.get("regression_id", "")),
+            project_area=str(item.get("regression_id", "")), related_layer="Layer 32.2")
+        out.append({
+            "Hedef Bileşen": pv.get("target_component"),
+            "Regresyon ID": pv.get("regression_id"),
+            "Regresyon Kategorisi": pv.get("regression_category"),
+            "Regresyon Durumu": pv.get("regression_status"),
+            "Regresyon Skoru": pv.get("regression_score"),
+            "Bulgular": pv.get("regression_findings", []),
+            "Uyarılar": pv.get("regression_warnings", []),
+            "Engelleyiciler": pv.get("regression_blockers", []),
+            "Risk Seviyesi": pv.get("regression_risk_level"),
+            "Öneriler": pv.get("regression_recommendations", []),
+            "Regresyon Özeti": pv.get("regression_summary"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_failure_memory_intelligence() -> List[Dict[str, Any]]:
+    reg = failure_memory_intelligence_registry()
+    failure_items = reg.get("failure_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in failure_items[:5]:
+        pv = build_failure_memory_intelligence_preview(
+            target_issue=str(item.get("failure_id", "")), command=str(item.get("failure_id", "")),
+            project_area=str(item.get("failure_id", "")), related_layer="Layer 32.3")
+        out.append({
+            "Hedef Bileşen": pv.get("target_component"),
+            "Hata ID": pv.get("failure_id"),
+            "Hata Kategorisi": pv.get("failure_category"),
+            "Hata Durumu": pv.get("failure_status"),
+            "Hata Skoru": pv.get("failure_score"),
+            "Bulgular": pv.get("failure_findings", []),
+            "Tekrar Eden Desenler": pv.get("failure_patterns", []),
+            "Tekrarlama Seviyesi": pv.get("failure_recurrence_level"),
+            "Benzer Hatalar": pv.get("similar_failures", []),
+            "Başarılı Çözümler": pv.get("successful_resolutions", []),
+            "Başarısız Çözümler": pv.get("failed_resolutions", []),
+            "Risk Seviyesi": pv.get("failure_risk_level"),
+            "Hata Özeti": pv.get("failure_summary"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_dependency_intelligence() -> List[Dict[str, Any]]:
+    reg = dependency_intelligence_registry()
+    dependency_items = reg.get("dependency_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in dependency_items[:5]:
+        pv = build_dependency_intelligence_preview(
+            target_issue=str(item.get("dependency_id", "")), command=str(item.get("dependency_id", "")),
+            project_area=str(item.get("dependency_id", "")), related_layer="Layer 32.5")
+        out.append({
+            "Hedef Bileşen": pv.get("dependency_id"),
+            "Bağımlılık ID": pv.get("dependency_id"),
+            "Bağımlılık Kategorisi": pv.get("dependency_category"),
+            "Bağımlılık Türü": pv.get("dependency_type"),
+            "Bağımlılık Durumu": pv.get("dependency_status"),
+            "Bağımlılık Skoru": pv.get("dependency_score"),
+            "Etkilenen Dosyalar": pv.get("affected_files", []),
+            "Etkilenen Modüller": pv.get("affected_modules", []),
+            "Etkilenen Sistemler": pv.get("affected_systems", []),
+            "Tetiklenen Sistemler": pv.get("triggered_systems", []),
+            "Etkilenilen Sistemler": pv.get("impacted_by_systems", []),
+            "Bulgular": pv.get("dependency_findings", []),
+            "Risk Seviyesi": pv.get("dependency_risk_level"),
+            "Öneriler": pv.get("dependency_recommendations", []),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_root_cause_intelligence() -> List[Dict[str, Any]]:
+    reg = root_cause_intelligence_registry()
+    root_cause_items = reg.get("root_cause_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in root_cause_items[:5]:
+        pv = build_root_cause_intelligence_preview(
+            target_issue=str(item.get("root_cause_id", "")), command=str(item.get("root_cause_id", "")),
+            project_area=str(item.get("root_cause_id", "")), related_layer="Layer 32.4")
+        out.append({
+            "Kök Neden ID": pv.get("root_cause_id"),
+            "Kök Neden Kategorisi": pv.get("root_cause_category"),
+            "Kök Neden Durumu": pv.get("root_cause_status"),
+            "Kök Neden Skoru": pv.get("root_cause_score"),
+            "Bulgular": pv.get("root_cause_findings", []),
+            "Olası Nedenler": pv.get("probable_causes", []),
+            "Katkıda Bulunan Faktörler": pv.get("contributing_factors", []),
+            "Bağımlılık Bağlantıları": pv.get("dependency_links", []),
+            "Tetikleyici Zinciri": pv.get("trigger_chain", []),
+            "Neden Güveni": pv.get("cause_confidence"),
+            "Risk Seviyesi": pv.get("root_cause_risk_level"),
+            "Özet": pv.get("root_cause_summary"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_change_memory_intelligence() -> List[Dict[str, Any]]:
+    reg = change_memory_intelligence_registry()
+    change_items = reg.get("change_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in change_items[:5]:
+        pv = build_change_memory_intelligence_preview(
+            target_issue=str(item.get("change_id", "")), command=str(item.get("change_id", "")),
+            project_area=str(item.get("change_id", "")), related_layer="Layer 33.1")
+        out.append({
+            "Değişiklik ID": pv.get("change_id"),
+            "Değişiklik Kategorisi": pv.get("change_category"),
+            "Değişiklik Türü": pv.get("change_type"),
+            "Değişiklik Durumu": pv.get("change_status"),
+            "Değişiklik Skoru": pv.get("change_score"),
+            "Bulgular": pv.get("change_summary"),
+            "Desenler": pv.get("change_patterns", []),
+            "Benzer Değişiklikler": pv.get("similar_changes", []),
+            "Başarılı Değişiklikler": pv.get("successful_changes", []),
+            "Başarısız Değişiklikler": pv.get("failed_changes", []),
+            "Tekrarlama Seviyesi": pv.get("change_recurrence_level"),
+            "Risk Seviyesi": pv.get("change_risk_level"),
+            "Öneriler": pv.get("change_recommendations", []),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("change_confidence"),
+        })
+    return out
+
+
+def _fault_report_failed_change_intelligence() -> List[Dict[str, Any]]:
+    reg = failed_change_intelligence_registry()
+    failed_change_items = reg.get("failed_change_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in failed_change_items[:5]:
+        pv = build_failed_change_intelligence_preview(
+            target_issue=str(item.get("failed_change_id", "")), command=str(item.get("failed_change_id", "")),
+            project_area=str(item.get("failed_change_id", "")), related_layer="Layer 33.2")
+        out.append({
+            "Başarısız Değişiklik ID": pv.get("failed_change_id"),
+            "Başarısız Değişiklik Kategorisi": pv.get("failed_change_category"),
+            "Başarısız Değişiklik Türü": pv.get("failed_change_type"),
+            "Başarısız Değişiklik Durumu": pv.get("failed_change_status"),
+            "Başarısız Değişiklik Skoru": pv.get("failed_change_score"),
+            "Bulgular": pv.get("failed_change_summary"),
+            "Başarısız Desenler": pv.get("failed_change_patterns", []),
+            "Benzer Başarısızlıklar": pv.get("similar_failed_changes", []),
+            "Tekrarlanan Başarısızlıklar": pv.get("repeated_failures", []),
+            "Tekrarlama Seviyesi": pv.get("failure_recurrence_level"),
+            "Risk Seviyesi": pv.get("failure_risk_level"),
+            "Kaçınma Önerileri": pv.get("avoidance_recommendations", []),
+            "Öneriler": pv.get("failure_recommendations", []),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("failure_confidence"),
+        })
+    return out
+
+
+def _fault_report_change_planning_intelligence() -> List[Dict[str, Any]]:
+    reg = change_planning_intelligence_registry()
+    plan_items = reg.get("plan_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in plan_items[:5]:
+        pv = build_change_planning_intelligence_preview(
+            target_issue=str(item.get("plan_id", "")), command=str(item.get("plan_id", "")),
+            project_area=str(item.get("plan_id", "")), related_layer="Layer 33.3")
+        out.append({
+            "Plan ID": pv.get("plan_id"),
+            "Plan Türü": pv.get("plan_type"),
+            "Plan Durumu": pv.get("plan_status"),
+            "Plan Skoru": pv.get("plan_score"),
+            "Önerilen Strateji": pv.get("recommended_strategy"),
+            "Alternatif Stratejiler": pv.get("alternative_strategies", []),
+            "Kaçınılacak Stratejiler": pv.get("avoided_strategies", []),
+            "Gerekli Dosyalar": pv.get("required_files", []),
+            "Etkilenen Dosyalar": pv.get("affected_files", []),
+            "Bağımlılık Zinciri": pv.get("dependency_chain", []),
+            "Tahmini Risk": pv.get("estimated_risk"),
+            "Tahmini Karmaşıklık": pv.get("estimated_complexity"),
+            "Tahmini Çaba": pv.get("estimated_effort"),
+            "Doğrulama Adımları": pv.get("validation_steps", []),
+            "Geri Alma Stratejisi": pv.get("rollback_strategy"),
+            "Özet": pv.get("plan_summary"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_clone_workspace_intelligence() -> List[Dict[str, Any]]:
+    from clone_workspace_intelligence_preview import clone_workspace_intelligence_registry, build_clone_workspace_intelligence_preview
+    reg = clone_workspace_intelligence_registry()
+    workspace_items = reg.get("workspace_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in workspace_items[:5]:
+        pv = build_clone_workspace_intelligence_preview(
+            target_issue=str(item.get("workspace_id", "")), command=str(item.get("workspace_id", "")),
+            project_area=str(item.get("workspace_id", "")), related_layer="Layer 33.4")
+        out.append({
+            "Çalışma Alanı ID": pv.get("workspace_id"),
+            "Çalışma Alanı Türü": pv.get("workspace_type"),
+            "Çalışma Alanı Durumu": pv.get("workspace_status"),
+            "Ana Klon Durumu": pv.get("master_clone_status"),
+            "Çalışma Klonu Durumu": pv.get("working_clone_status"),
+            "Senkronizasyon Durumu": pv.get("sync_status"),
+            "Senkronizasyon Skoru": pv.get("sync_score"),
+            "Klon Bütünlük Skoru": pv.get("clone_integrity_score"),
+            "Klon Sağlık Skoru": pv.get("clone_health_score"),
+            "Özet": pv.get("workspace_summary"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_sandbox_repair_intelligence() -> List[Dict[str, Any]]:
+    reg = sandbox_repair_intelligence_registry()
+    repair_items = reg.get("repair_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in repair_items[:5]:
+        pv = build_sandbox_repair_intelligence_preview(
+            target_issue=str(item.get("repair_id", "")), command=str(item.get("repair_id", "")),
+            project_area=str(item.get("repair_id", "")), related_layer="Layer 33.5")
+        out.append({
+            "Onarım ID": pv.get("repair_id"),
+            "Onarım Türü": pv.get("repair_type"),
+            "Onarım Durumu": pv.get("repair_status"),
+            "Onarım Skoru": pv.get("repair_score"),
+            "Strateji": pv.get("repair_strategy"),
+            "Adımlar": pv.get("repair_steps", []),
+            "Çalışma Klonu Durumu": pv.get("working_clone_status"),
+            "Sandbox Durumu": pv.get("sandbox_status"),
+            "Sandbox Bütünlük Skoru": pv.get("sandbox_integrity_score"),
+            "Sandbox Sağlık Skoru": pv.get("sandbox_health_score"),
+            "Onarım Doğrulama Skoru": pv.get("repair_validation_score"),
+            "Risk Seviyesi": pv.get("repair_risk_level"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("repair_confidence"),
+        })
+    return out
+
+
+def _fault_report_verification_intelligence() -> List[Dict[str, Any]]:
+    reg = verification_intelligence_registry()
+    verification_items = reg.get("verification_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in verification_items[:5]:
+        pv = build_verification_intelligence_preview(
+            target_issue=str(item.get("verification_id", "")), command=str(item.get("verification_id", "")),
+            project_area=str(item.get("verification_id", "")), related_layer="Layer 33.6")
+        out.append({
+            "Doğrulama ID": pv.get("verification_id"),
+            "Doğrulama Türü": pv.get("verification_type"),
+            "Doğrulama Durumu": pv.get("verification_status"),
+            "Doğrulama Skoru": pv.get("verification_score"),
+            "Özet": pv.get("verification_summary"),
+            "Sandbox Doğrulama": pv.get("sandbox_verification_status"),
+            "Bağımlılık Doğrulama": pv.get("dependency_verification_status"),
+            "Entegrasyon Doğrulama": pv.get("integration_verification_status"),
+            "İş Akışı Doğrulama": pv.get("workflow_verification_status"),
+            "Regresyon Doğrulama": pv.get("regression_verification_status"),
+            "Üretim Doğrulama": pv.get("production_validation_status"),
+            "Tüm Kapılar Geçti": pv.get("verification_signals", {}).get("all_gates_passed"),
+            "Risk Seviyesi": pv.get("verification_risk_level"),
+            "Hazırlık": pv.get("verification_readiness"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("verification_confidence"),
+        })
+    return out
+
+
+def _fault_report_delivery_readiness_intelligence() -> List[Dict[str, Any]]:
+    reg = delivery_readiness_intelligence_registry()
+    delivery_items = reg.get("delivery_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in delivery_items[:5]:
+        pv = build_delivery_readiness_intelligence_preview(
+            target_issue=str(item.get("delivery_id", "")), command=str(item.get("delivery_id", "")),
+            project_area=str(item.get("delivery_id", "")), related_layer="Layer 33.7")
+        out.append({
+            "Teslimat ID": pv.get("delivery_id"),
+            "Teslimat Durumu": pv.get("delivery_status"),
+            "Teslimat Skoru": pv.get("delivery_score"),
+            "Özet": pv.get("delivery_summary"),
+            "Güven": pv.get("delivery_confidence"),
+            "Risk Seviyesi": pv.get("delivery_risk_level"),
+            "Hazırlık": pv.get("delivery_readiness"),
+            "Sürüm Adayı": pv.get("release_candidate_status"),
+            "Blokerlar": pv.get("release_blockers", []),
+            "Uyarılar": pv.get("release_warnings", []),
+            "Dağıtım Hazırlığı": pv.get("deployment_readiness"),
+            "Geri Alma Hazırlığı": pv.get("rollback_readiness"),
+            "Devir Hazırlığı": pv.get("handoff_readiness"),
+            "Dokümantasyon Hazırlığı": pv.get("documentation_readiness"),
+            "Nihai Tavsiye": pv.get("final_delivery_recommendation"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("delivery_confidence"),
+        })
+    return out
+
+
+def _fault_report_runtime_drift_intelligence() -> List[Dict[str, Any]]:
+    reg = runtime_drift_intelligence_registry()
+    drift_items = reg.get("drift_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in drift_items[:5]:
+        pv = build_runtime_drift_intelligence_preview(
+            target_issue=str(item.get("drift_id", "")), command=str(item.get("drift_id", "")),
+            project_area=str(item.get("drift_id", "")), related_layer="Layer 31.4")
+        out.append({
+            "Hedef Bileşen": pv.get("target_component"),
+            "Sapma ID": pv.get("drift_id"),
+            "Sapma Kategorisi": pv.get("drift_category"),
+            "Sapma Durumu": pv.get("drift_status"),
+            "Sapma Skoru": pv.get("drift_score"),
+            "Bulgular": pv.get("drift_findings", []),
+            "Uyarılar": pv.get("drift_warnings", []),
+            "Engelleyiciler": pv.get("drift_blockers", []),
+            "Risk Seviyesi": pv.get("drift_risk_level"),
+            "Öneriler": pv.get("drift_recommendations", []),
+            "Sapma Özeti": pv.get("drift_summary"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_runtime_risk_intelligence() -> List[Dict[str, Any]]:
+    reg = runtime_risk_intelligence_registry()
+    risk_items = reg.get("risk_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in risk_items[:5]:
+        pv = build_runtime_risk_intelligence_preview(
+            target_issue=str(item.get("risk_id", "")), command=str(item.get("risk_id", "")),
+            project_area=str(item.get("risk_id", "")), related_layer="Layer 31.3")
+        out.append({
+            "Hedef Bileşen": pv.get("target_component"),
+            "Risk ID": pv.get("risk_id"),
+            "Risk Kategorisi": pv.get("risk_category"),
+            "Risk Durumu": pv.get("risk_status"),
+            "Risk Skoru": pv.get("risk_score"),
+            "Bulgular": pv.get("risk_findings", []),
+            "Uyarılar": pv.get("risk_warnings", []),
+            "Engelleyiciler": pv.get("risk_blockers", []),
+            "Risk Seviyesi": pv.get("risk_level"),
+            "Öneriler": pv.get("risk_recommendations", []),
+            "Risk Özeti": pv.get("risk_summary"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_runtime_stability_intelligence() -> List[Dict[str, Any]]:
+    reg = runtime_stability_intelligence_registry()
+    stability_items = reg.get("stability_items", [])
+    out: List[Dict[str, Any]] = []
+    for item in stability_items[:5]:
+        pv = build_runtime_stability_intelligence_preview(
+            target_issue=str(item.get("stability_id", "")), command=str(item.get("stability_id", "")),
+            project_area=str(item.get("stability_id", "")), related_layer="Layer 31.2")
+        out.append({
+            "Hedef Bileşen": pv.get("target_component"),
+            "Kararlılık ID": pv.get("stability_id"),
+            "Kararlılık Kategorisi": pv.get("stability_category"),
+            "Kararlılık Durumu": pv.get("stability_status"),
+            "Kararlılık Skoru": pv.get("stability_score"),
+            "Bulgular": pv.get("stability_findings", []),
+            "Uyarılar": pv.get("stability_warnings", []),
+            "Engelleyiciler": pv.get("stability_blockers", []),
+            "Risk Seviyesi": pv.get("stability_risk_level"),
+            "Öneriler": pv.get("stability_recommendations", []),
+            "Kararlılık Özeti": pv.get("stability_summary"),
+            "Gerekli Aksiyonlar": pv.get("required_actions", []),
+            "Önerilen Sonraki Adım": pv.get("recommended_next_action"),
+            "confidence_score": pv.get("confidence_score"),
+        })
+    return out
+
+
+def _fault_report_safe_patch_application() -> List[Dict[str, Any]]:
+    registry = safe_patch_registry()
+    patches = registry.get("patches", [])
+    output: List[Dict[str, Any]] = []
+    for item in patches[:5]:
+        preview = build_safe_patch_preview(
+            target_issue=str(item.get("id", "")),
+            command=str(item.get("id", "")),
+            project_area=str(item.get("id", "")),
+            related_layer="Layer 28.1",
+        )
+        output.append({
+            "Hedef Sorun": preview.get("target_issue"),
+            "Hedef Bileşen": preview.get("target_component"),
+            "Patch Plan ID": preview.get("patch_plan_id"),
+            "Uygulamaya Hazır": preview.get("application_ready"),
+            "Uygulama Adımları": preview.get("application_steps", []),
+            "Etkilenen Dosyalar": preview.get("affected_files", []),
+            "Etkilenen Fonksiyonlar": preview.get("affected_functions", []),
+            "Ön Kontroller": preview.get("pre_checks", []),
+            "Son Kontroller": preview.get("post_checks", []),
+            "Geri Alma Planı": preview.get("rollback_plan"),
+            "Onay Gerekli": preview.get("approval_required"),
+            "Doğrulama Gerekli": preview.get("verification_required"),
+            "Risk Seviyesi": preview.get("risk_level"),
+            "confidence_score": preview.get("confidence_score"),
+        })
+    return output
+
+
 def fault_report_status() -> Dict[str, Any]:
     return {
         "layer": "24",
@@ -1169,6 +2465,53 @@ def fault_report_registry() -> Dict[str, Any]:
             "evidence_store": _fault_report_evidence_store(),
             "coordinator": _fault_report_coordinator(),
             "patch_draft": _fault_report_patch_draft(),
+            "change_preview": _fault_report_change_preview(),
+            "diff_preview": _fault_report_diff_preview(),
+            "patch_risk_matrix": _fault_report_patch_risk_matrix(),
+            "patch_approval": _fault_report_patch_approval(),
+            "patch_execution_readiness": _fault_report_patch_execution_readiness(),
+            "layer27_snapshot": layer27_status_snapshot(),
+            "layer28_snapshot": layer28_status_snapshot(),
+            "layer29_snapshot": layer29_status_snapshot(),
+            "layer30_snapshot": layer30_status_snapshot(),
+            "safe_patch_application": _fault_report_safe_patch_application(),
+            "patch_rollback": _fault_report_patch_rollback(),
+            "patch_validation": _fault_report_patch_validation(),
+            "patch_recovery": _fault_report_patch_recovery(),
+            "patch_audit_trail": _fault_report_patch_audit_trail(),
+            "patch_lifecycle": _fault_report_patch_lifecycle(),
+            "patch_permission_enforcement": _fault_report_patch_permission(),
+            "patch_policy_evaluation": _fault_report_patch_policy(),
+            "patch_compliance": _fault_report_patch_compliance(),
+            "patch_governance": _fault_report_patch_governance(),
+            "patch_oversight": _fault_report_patch_oversight(),
+            "patch_accountability": _fault_report_patch_accountability(),
+            "patch_assurance": _fault_report_patch_assurance(),
+            "patch_confidence": _fault_report_patch_confidence(),
+            "production_readiness": _fault_report_production_readiness(),
+            "operational_readiness": _fault_report_operational_readiness(),
+            "system_readiness": _fault_report_system_readiness(),
+            "validation_readiness": _fault_report_validation_readiness(),
+            "release_readiness": _fault_report_release_readiness(),
+            "system_health_intelligence": _fault_report_system_health_intelligence(),
+            "runtime_stability_intelligence": _fault_report_runtime_stability_intelligence(),
+            "runtime_risk_intelligence": _fault_report_runtime_risk_intelligence(),
+            "runtime_drift_intelligence": _fault_report_runtime_drift_intelligence(),
+            "runtime_recovery_intelligence": _fault_report_runtime_recovery_intelligence(),
+            "runtime_anomaly_intelligence": _fault_report_runtime_anomaly_intelligence(),
+            "regression_intelligence": _fault_report_regression_intelligence(),
+            "failure_memory_intelligence": _fault_report_failure_memory_intelligence(),
+            "dependency_intelligence": _fault_report_dependency_intelligence(),
+            "root_cause_intelligence": _fault_report_root_cause_intelligence(),
+            "change_memory_intelligence": _fault_report_change_memory_intelligence(),
+            "failed_change_intelligence": _fault_report_failed_change_intelligence(),
+            "change_planning_intelligence": _fault_report_change_planning_intelligence(),
+            "clone_workspace_intelligence": _fault_report_clone_workspace_intelligence(),
+            "sandbox_repair_intelligence": _fault_report_sandbox_repair_intelligence(),
+            "verification_intelligence": _fault_report_verification_intelligence(),
+            "delivery_readiness_intelligence": _fault_report_delivery_readiness_intelligence(),
+            "layer31_status_snapshot": _fault_report_layer31_status_snapshot(),
+            "layer32_status_snapshot": _fault_report_layer32_status_snapshot(),
         },
         "related_integrations": {
             "future_ready": [
@@ -1261,6 +2604,50 @@ def build_fault_report_preview(
             "evidence_store": _fault_report_evidence_store(),
             "coordinator": _fault_report_coordinator(),
             "patch_draft": _fault_report_patch_draft(),
+            "change_preview": _fault_report_change_preview(),
+            "diff_preview": _fault_report_diff_preview(),
+            "patch_risk_matrix": _fault_report_patch_risk_matrix(),
+            "patch_approval": _fault_report_patch_approval(),
+            "patch_execution_readiness": _fault_report_patch_execution_readiness(),
+            "layer27_snapshot": layer27_status_snapshot(),
+            "layer28_snapshot": layer28_status_snapshot(),
+            "layer29_snapshot": layer29_status_snapshot(),
+            "layer30_snapshot": layer30_status_snapshot(),
+            "safe_patch_application": _fault_report_safe_patch_application(),
+            "patch_rollback": _fault_report_patch_rollback(),
+            "patch_validation": _fault_report_patch_validation(),
+            "patch_permission_enforcement": _fault_report_patch_permission(),
+            "patch_policy_evaluation": _fault_report_patch_policy(),
+            "patch_compliance": _fault_report_patch_compliance(),
+            "patch_governance": _fault_report_patch_governance(),
+            "patch_oversight": _fault_report_patch_oversight(),
+            "patch_accountability": _fault_report_patch_accountability(),
+            "patch_assurance": _fault_report_patch_assurance(),
+            "patch_confidence": _fault_report_patch_confidence(),
+            "production_readiness": _fault_report_production_readiness(),
+            "operational_readiness": _fault_report_operational_readiness(),
+            "system_readiness": _fault_report_system_readiness(),
+            "validation_readiness": _fault_report_validation_readiness(),
+            "release_readiness": _fault_report_release_readiness(),
+            "system_health_intelligence": _fault_report_system_health_intelligence(),
+            "runtime_stability_intelligence": _fault_report_runtime_stability_intelligence(),
+            "runtime_risk_intelligence": _fault_report_runtime_risk_intelligence(),
+            "runtime_drift_intelligence": _fault_report_runtime_drift_intelligence(),
+            "runtime_recovery_intelligence": _fault_report_runtime_recovery_intelligence(),
+            "runtime_anomaly_intelligence": _fault_report_runtime_anomaly_intelligence(),
+            "regression_intelligence": _fault_report_regression_intelligence(),
+            "failure_memory_intelligence": _fault_report_failure_memory_intelligence(),
+            "dependency_intelligence": _fault_report_dependency_intelligence(),
+            "root_cause_intelligence": _fault_report_root_cause_intelligence(),
+            "change_memory_intelligence": _fault_report_change_memory_intelligence(),
+            "failed_change_intelligence": _fault_report_failed_change_intelligence(),
+            "change_planning_intelligence": _fault_report_change_planning_intelligence(),
+            "clone_workspace_intelligence": _fault_report_clone_workspace_intelligence(),
+            "sandbox_repair_intelligence": _fault_report_sandbox_repair_intelligence(),
+            "verification_intelligence": _fault_report_verification_intelligence(),
+            "delivery_readiness_intelligence": _fault_report_delivery_readiness_intelligence(),
+            "layer31_status_snapshot": _fault_report_layer31_status_snapshot(),
+            "layer32_status_snapshot": _fault_report_layer32_status_snapshot(),
         },
         "fallback_used": fallback,
         "read_only": True,
