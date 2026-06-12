@@ -1,0 +1,43 @@
+TASK FILE SELECTION GUIDE
+
+A. master_router_consolidation
+- Layer34_41_Code_Gap_Closure_Master_Status.txt
+- Layer34_41_Architecture_Code_Alignment_Report.txt
+- Smoke_Optimization_Report.txt
+- endpoint_coverage_matrix.py only Layer 37-41 sections
+- scripts/smoke_check.py only registry/CLI/check sections
+- app.py only Layer 37-41 imports/models/routes
+
+B. smoke_debug
+- scripts/smoke_check.py
+- Smoke_Optimization_Report.txt
+- app.py only imports/routes needed
+- endpoint_coverage_matrix.py
+
+C. layer_validation
+- target layer modules
+- app.py related imports/routes
+- endpoint_coverage_matrix.py related entries
+- scripts/smoke_check.py related checks
+- target layer validation report
+
+D. router_preview_build
+- app.py related route/model patterns
+- endpoint_coverage_matrix.py
+- scripts/smoke_check.py
+- Layer34_41_Code_Gap_Closure_Master_Status.txt
+- Layer34_41_Architecture_Code_Alignment_Report.txt
+- latest router/consolidation plan if exists
+
+E. ui_task
+- static/index.html
+- relevant CSS/JS/static files
+- do not include app.py unless backend route needed
+
+F. avoid_by_default
+- .git
+- __pycache__
+- venv
+- node_modules
+- huge logs
+- old superseded reports unless historical comparison needed

@@ -1,0 +1,27 @@
+SELECTED FILES FOR TASK: master_router_consolidation
+
+Use this as a copy checklist for AI Studio. Prefer section-only copies when noted.
+
+- LUXDEEP_REPORTS/Layer34_41_Code_Gap_Closure_Master_Status.txt
+  reason: Series-wide status anchor.
+  scope: full file needed
+
+- LUXDEEP_REPORTS/Layer34_41_Architecture_Code_Alignment_Report.txt
+  reason: Architecture/code alignment evidence.
+  scope: full file needed
+
+- LUXDEEP_REPORTS/Smoke_Optimization_Report.txt
+  reason: Smoke timeout and optimization context.
+  scope: full file needed
+
+- endpoint_coverage_matrix.py
+  reason: Endpoint registry alignment for Layers 37-41.
+  scope: section only: Layer 37-41 endpoint groups
+
+- scripts/smoke_check.py
+  reason: Smoke registry and check implementation.
+  scope: section only: registry, CLI, Layer 37-41 checks
+
+- app.py
+  reason: Import, request model, and route wiring patterns.
+  scope: section only: Layer 37-41 imports/models/routes

@@ -1,0 +1,13 @@
+AI STUDIO START HERE
+
+This folder is not the whole repository. It is a compact context pack generated for Google AI Studio / Gemini.
+
+Working rules for AI Studio:
+- Ask for the exact source files or file sections before writing code.
+- Do not behave as if you have live repository access.
+- Do not claim that you ran tests, committed, pushed, deployed, or inspected files unless the user supplied that evidence.
+- Do not enable real execution, action, write, terminal, GitHub, deployment, memory, or DB behavior.
+- Keep chat, stream, WebSocket, typewriter, and durdur flows untouched unless the user explicitly asks for that scope.
+- Treat static/index.html as out of scope unless the task is a UI task.
+- Prefer read-only previews, static analysis, and section-specific recommendations.
+- ChatGPT/Codex remains the final architecture and implementation control point for this repo.
