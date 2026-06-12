@@ -10392,6 +10392,105 @@ class SmokeRunner:
 
         return f"luxcode master router read-only verified for {len(COMMAND_ROUTING_TABLE)} commands"
 
+    def check_lux_debug_intelligence_read_only(self) -> str:
+        """Verify Lux debug intelligence core is local-first, read-only, and endpoint-backed."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        from lux_debug_intelligence_core import (
+            analyze_lux_debug_request,
+            get_lux_debug_schema,
+            get_lux_debug_status,
+        )
+
+        client = TestClient(luxapp.app)
+
+        schema = client.get("/lux-debug/schema")
+        assert schema.status_code == 200, f"/lux-debug/schema returned {schema.status_code}"
+        schema_data = schema.json()
+        for flag, expected in {
+            "read_only": True,
+            "real_execution_blocked": True,
+            "file_write_blocked": True,
+            "external_api_used": False,
+            "local_first": True,
+        }.items():
+            assert schema_data.get(flag) is expected, f"schema {flag} mismatch: {schema_data}"
+        assert "issue_text" in schema_data.get("input_fields", []), schema_data
+        assert "full_debug_preview" in schema_data.get("supported_modes", []), schema_data
+
+        status = client.get("/debug/lux-debug-status")
+        assert status.status_code == 200, f"/debug/lux-debug-status returned {status.status_code}"
+        status_data = status.json()
+        assert status_data.get("read_only") is True, status_data
+        assert status_data.get("real_execution_blocked") is True, status_data
+        assert status_data.get("file_write_blocked") is True, status_data
+        assert status_data.get("external_api_used") is False, status_data
+        assert status_data.get("local_first") is True, status_data
+        assert status_data.get("patch_application_enabled") is False, status_data
+        assert status_data.get("terminal_execution_enabled") is False, status_data
+        assert status_data.get("github_action_enabled") is False, status_data
+        assert status_data.get("deployment_enabled") is False, status_data
+        assert status_data.get("env_file_access_enabled") is False, status_data
+
+        direct_schema = get_lux_debug_schema()
+        direct_status = get_lux_debug_status()
+        assert direct_schema.get("read_only") is True, direct_schema
+        assert direct_status.get("terminal_execution_enabled") is False, direct_status
+
+        preview = analyze_lux_debug_request(
+            issue_text="Bu hatayı bul app.py endpoint coverage smoke",
+            traceback_text='File "app.py", line 1, in <module>',
+            suspected_files=["app.py", ".env", "../outside.py"],
+            changed_files=["endpoint_coverage_matrix.py", "scripts/smoke_check.py"],
+            repository_root=str(ROOT),
+            max_files=5,
+            mode="full_debug_preview",
+        )
+        assert preview.get("read_only") is True, preview
+        assert preview.get("real_execution_blocked") is True, preview
+        assert preview.get("file_write_blocked") is True, preview
+        assert preview.get("external_api_used") is False, preview
+        assert preview.get("local_first") is True, preview
+        assert preview.get("root_cause_hypotheses"), preview
+        assert preview.get("patch_plan"), preview
+        assert all(item.get("approval_required") is True for item in preview.get("patch_plan", [])), preview
+        assert preview.get("verification_plan"), preview
+        selected = {item.get("relative_path") for item in preview.get("selected_context", [])}
+        assert "app.py" in selected, selected
+        assert ".env" not in selected, selected
+        assert any(".env" in item for item in preview.get("missing_information", [])), preview
+        assert any("traversal rejected" in item for item in preview.get("missing_information", [])), preview
+
+        endpoint_preview = client.post(
+            "/lux-debug/analyze",
+            json={
+                "issue_text": "Bu hatayı bul route schema smoke",
+                "suspected_files": ["app.py"],
+                "repository_root": str(ROOT),
+                "max_files": 4,
+                "mode": "diagnose",
+            },
+        )
+        assert endpoint_preview.status_code == 200, f"/lux-debug/analyze returned {endpoint_preview.status_code}"
+        endpoint_data = endpoint_preview.json()
+        assert endpoint_data.get("mode") == "diagnose", endpoint_data
+        assert endpoint_data.get("read_only") is True, endpoint_data
+        assert endpoint_data.get("real_execution_blocked") is True, endpoint_data
+        assert endpoint_data.get("file_write_blocked") is True, endpoint_data
+        assert endpoint_data.get("external_api_used") is False, endpoint_data
+        assert endpoint_data.get("local_first") is True, endpoint_data
+
+        fallback = analyze_lux_debug_request(issue_text="", repository_root=str(ROOT), mode="invalid")
+        assert fallback.get("mode") == "full_debug_preview", fallback
+        assert fallback.get("safe_next_step"), fallback
+        assert fallback.get("read_only") is True, fallback
+
+        return "lux debug intelligence read-only schema/analyze/status verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -10421,6 +10520,7 @@ class SmokeRunner:
             ("agent_analyze_hub_read_only", self.check_agent_analyze_hub_read_only, None, "core"),
             ("router_preview_read_only", self.check_router_preview_read_only, None, "core"),
             ("luxcode_master_router_read_only", self.check_luxcode_master_router_read_only, None, "core"),
+            ("lux_debug_intelligence_read_only", self.check_lux_debug_intelligence_read_only, None, "core"),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints, None, "core"),
             ("debug_agent_panel", self.check_debug_agent_panel, None, "core"),
             ("mode_registry_preview", self.check_mode_registry_preview, None, "core"),
@@ -10616,6 +10716,7 @@ class SmokeRunner:
             ("agent_analyze_hub_read_only", self.check_agent_analyze_hub_read_only),
             ("router_preview_read_only", self.check_router_preview_read_only),
             ("luxcode_master_router_read_only", self.check_luxcode_master_router_read_only),
+            ("lux_debug_intelligence_read_only", self.check_lux_debug_intelligence_read_only),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),

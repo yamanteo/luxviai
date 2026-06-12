@@ -859,6 +859,11 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode-master-router/preview", "POST", "34-41", "read-only luxcode master router preview"),
         _endpoint("/debug/luxcode-master-router-status", "GET", "34-41", "luxcode master router status"),
     ],
+    "lux_debug_intelligence": [
+        _endpoint("/lux-debug/schema", "GET", "debug_intelligence", "lux debug intelligence schema"),
+        _endpoint("/lux-debug/analyze", "POST", "debug_intelligence", "local-first read-only debug analysis"),
+        _endpoint("/debug/lux-debug-status", "GET", "debug_intelligence", "lux debug intelligence status"),
+    ],
 }
 
 

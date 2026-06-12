@@ -913,6 +913,11 @@ from luxcode_master_router_preview import (
     luxcode_master_router_schema,
     luxcode_master_router_status,
 )
+from lux_debug_intelligence_core import (
+    analyze_lux_debug_request,
+    get_lux_debug_schema,
+    get_lux_debug_status,
+)
 
 try:
     from dotenv import load_dotenv
@@ -1940,6 +1945,16 @@ class AutonomousOperationsSystemsPreviewRequest(BaseModel):
 class LuxCodeMasterRouterPreviewRequest(BaseModel):
     command: str = Field(default="", max_length=4000)
     context: str = Field(default="", max_length=8000)
+
+
+class LuxDebugAnalyzeRequest(BaseModel):
+    issue_text: str = Field(default="", max_length=8000)
+    traceback_text: str = Field(default="", max_length=12000)
+    suspected_files: List[str] = Field(default_factory=list)
+    changed_files: List[str] = Field(default_factory=list)
+    repository_root: Optional[str] = Field(default=None, max_length=600)
+    max_files: int = Field(default=8, ge=1, le=20)
+    mode: str = Field(default="full_debug_preview", max_length=80)
 
 
 # =========================================================
@@ -11874,6 +11889,29 @@ async def luxcode_master_router_preview_endpoint(payload: LuxCodeMasterRouterPre
 @app.get("/debug/luxcode-master-router-status")
 async def debug_luxcode_master_router_status_endpoint():
     return luxcode_master_router_status()
+
+
+@app.get("/lux-debug/schema")
+async def lux_debug_schema_endpoint():
+    return get_lux_debug_schema()
+
+
+@app.post("/lux-debug/analyze")
+async def lux_debug_analyze_endpoint(payload: LuxDebugAnalyzeRequest):
+    return analyze_lux_debug_request(
+        issue_text=payload.issue_text,
+        traceback_text=payload.traceback_text,
+        suspected_files=payload.suspected_files,
+        changed_files=payload.changed_files,
+        repository_root=payload.repository_root,
+        max_files=payload.max_files,
+        mode=payload.mode,
+    )
+
+
+@app.get("/debug/lux-debug-status")
+async def debug_lux_debug_status_endpoint():
+    return get_lux_debug_status()
 
 
 @app.get("/debug/runtime-drift-status")
