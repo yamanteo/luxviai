@@ -858,6 +858,56 @@ from agent_execution_master_status_preview import (
     agent_execution_master_capabilities,
     agent_execution_master_preview,
 )
+from autonomous_operations_core_preview import (
+    autonomous_operations_core_status,
+    autonomous_operations_core_capabilities,
+    autonomous_operations_core_preview,
+)
+from autonomous_operations_planning_preview import (
+    autonomous_operations_planning_status,
+    autonomous_operations_planning_capabilities,
+    autonomous_operations_planning_preview,
+)
+from autonomous_operations_scheduling_preview import (
+    autonomous_operations_scheduling_status,
+    autonomous_operations_scheduling_capabilities,
+    autonomous_operations_scheduling_preview,
+)
+from autonomous_operations_monitoring_preview import (
+    autonomous_operations_monitoring_status,
+    autonomous_operations_monitoring_capabilities,
+    autonomous_operations_monitoring_preview,
+)
+from autonomous_operations_continuity_preview import (
+    autonomous_operations_continuity_status,
+    autonomous_operations_continuity_capabilities,
+    autonomous_operations_continuity_preview,
+)
+from autonomous_operations_governance_preview import (
+    autonomous_operations_governance_status,
+    autonomous_operations_governance_capabilities,
+    autonomous_operations_governance_preview,
+)
+from autonomous_operations_optimization_preview import (
+    autonomous_operations_optimization_status,
+    autonomous_operations_optimization_capabilities,
+    autonomous_operations_optimization_preview,
+)
+from autonomous_operations_orchestrator_preview import (
+    autonomous_operations_orchestrator_status,
+    autonomous_operations_orchestrator_capabilities,
+    autonomous_operations_orchestrator_preview,
+)
+from autonomous_operations_supervisor_preview import (
+    autonomous_operations_supervisor_status,
+    autonomous_operations_supervisor_capabilities,
+    autonomous_operations_supervisor_preview,
+)
+from autonomous_operations_master_status_preview import (
+    autonomous_operations_master_status,
+    autonomous_operations_master_capabilities,
+    autonomous_operations_master_preview,
+)
 
 try:
     from dotenv import load_dotenv
@@ -1865,6 +1915,17 @@ class AgentExecutionSystemsPreviewRequest(BaseModel):
     project_area: Optional[str] = Field(default=None, max_length=200)
     execution_type: Optional[str] = Field(default=None, max_length=160)
     target_system: Optional[str] = Field(default=None, max_length=160)
+    task_type: Optional[str] = Field(default=None, max_length=120)
+    risk_level: Optional[str] = Field(default=None, max_length=80)
+    confirmation_state: Optional[str] = Field(default=None, max_length=120)
+    context: str = Field(default="", max_length=8000)
+
+
+class AutonomousOperationsSystemsPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
+    project_area: Optional[str] = Field(default=None, max_length=200)
+    operations_scope: Optional[str] = Field(default=None, max_length=160)
+    operations_state: Optional[str] = Field(default=None, max_length=160)
     task_type: Optional[str] = Field(default=None, max_length=120)
     risk_level: Optional[str] = Field(default=None, max_length=80)
     confirmation_state: Optional[str] = Field(default=None, max_length=120)
@@ -11633,6 +11694,161 @@ async def agent_execution_master_capabilities_endpoint():
 @app.post("/agent-execution-master/preview")
 async def agent_execution_master_preview_endpoint(payload: AgentExecutionSystemsPreviewRequest):
     return agent_execution_master_preview(payload.dict())
+
+
+# =========================================================
+# LAYER 41.x — AUTONOMOUS OPERATIONS SYSTEMS PREVIEWS
+# =========================================================
+
+
+@app.get("/autonomous-operations-core/status")
+async def autonomous_operations_core_status_endpoint():
+    return autonomous_operations_core_status()
+
+
+@app.get("/autonomous-operations-core/capabilities")
+async def autonomous_operations_core_capabilities_endpoint():
+    return autonomous_operations_core_capabilities()
+
+
+@app.post("/autonomous-operations-core/preview")
+async def autonomous_operations_core_preview_endpoint(payload: AutonomousOperationsSystemsPreviewRequest):
+    return autonomous_operations_core_preview(payload.dict())
+
+
+@app.get("/autonomous-operations-planning/status")
+async def autonomous_operations_planning_status_endpoint():
+    return autonomous_operations_planning_status()
+
+
+@app.get("/autonomous-operations-planning/capabilities")
+async def autonomous_operations_planning_capabilities_endpoint():
+    return autonomous_operations_planning_capabilities()
+
+
+@app.post("/autonomous-operations-planning/preview")
+async def autonomous_operations_planning_preview_endpoint(payload: AutonomousOperationsSystemsPreviewRequest):
+    return autonomous_operations_planning_preview(payload.dict())
+
+
+@app.get("/autonomous-operations-scheduling/status")
+async def autonomous_operations_scheduling_status_endpoint():
+    return autonomous_operations_scheduling_status()
+
+
+@app.get("/autonomous-operations-scheduling/capabilities")
+async def autonomous_operations_scheduling_capabilities_endpoint():
+    return autonomous_operations_scheduling_capabilities()
+
+
+@app.post("/autonomous-operations-scheduling/preview")
+async def autonomous_operations_scheduling_preview_endpoint(payload: AutonomousOperationsSystemsPreviewRequest):
+    return autonomous_operations_scheduling_preview(payload.dict())
+
+
+@app.get("/autonomous-operations-monitoring/status")
+async def autonomous_operations_monitoring_status_endpoint():
+    return autonomous_operations_monitoring_status()
+
+
+@app.get("/autonomous-operations-monitoring/capabilities")
+async def autonomous_operations_monitoring_capabilities_endpoint():
+    return autonomous_operations_monitoring_capabilities()
+
+
+@app.post("/autonomous-operations-monitoring/preview")
+async def autonomous_operations_monitoring_preview_endpoint(payload: AutonomousOperationsSystemsPreviewRequest):
+    return autonomous_operations_monitoring_preview(payload.dict())
+
+
+@app.get("/autonomous-operations-continuity/status")
+async def autonomous_operations_continuity_status_endpoint():
+    return autonomous_operations_continuity_status()
+
+
+@app.get("/autonomous-operations-continuity/capabilities")
+async def autonomous_operations_continuity_capabilities_endpoint():
+    return autonomous_operations_continuity_capabilities()
+
+
+@app.post("/autonomous-operations-continuity/preview")
+async def autonomous_operations_continuity_preview_endpoint(payload: AutonomousOperationsSystemsPreviewRequest):
+    return autonomous_operations_continuity_preview(payload.dict())
+
+
+@app.get("/autonomous-operations-governance/status")
+async def autonomous_operations_governance_status_endpoint():
+    return autonomous_operations_governance_status()
+
+
+@app.get("/autonomous-operations-governance/capabilities")
+async def autonomous_operations_governance_capabilities_endpoint():
+    return autonomous_operations_governance_capabilities()
+
+
+@app.post("/autonomous-operations-governance/preview")
+async def autonomous_operations_governance_preview_endpoint(payload: AutonomousOperationsSystemsPreviewRequest):
+    return autonomous_operations_governance_preview(payload.dict())
+
+
+@app.get("/autonomous-operations-optimization/status")
+async def autonomous_operations_optimization_status_endpoint():
+    return autonomous_operations_optimization_status()
+
+
+@app.get("/autonomous-operations-optimization/capabilities")
+async def autonomous_operations_optimization_capabilities_endpoint():
+    return autonomous_operations_optimization_capabilities()
+
+
+@app.post("/autonomous-operations-optimization/preview")
+async def autonomous_operations_optimization_preview_endpoint(payload: AutonomousOperationsSystemsPreviewRequest):
+    return autonomous_operations_optimization_preview(payload.dict())
+
+
+@app.get("/autonomous-operations-orchestrator/status")
+async def autonomous_operations_orchestrator_status_endpoint():
+    return autonomous_operations_orchestrator_status()
+
+
+@app.get("/autonomous-operations-orchestrator/capabilities")
+async def autonomous_operations_orchestrator_capabilities_endpoint():
+    return autonomous_operations_orchestrator_capabilities()
+
+
+@app.post("/autonomous-operations-orchestrator/preview")
+async def autonomous_operations_orchestrator_preview_endpoint(payload: AutonomousOperationsSystemsPreviewRequest):
+    return autonomous_operations_orchestrator_preview(payload.dict())
+
+
+@app.get("/autonomous-operations-supervisor/status")
+async def autonomous_operations_supervisor_status_endpoint():
+    return autonomous_operations_supervisor_status()
+
+
+@app.get("/autonomous-operations-supervisor/capabilities")
+async def autonomous_operations_supervisor_capabilities_endpoint():
+    return autonomous_operations_supervisor_capabilities()
+
+
+@app.post("/autonomous-operations-supervisor/preview")
+async def autonomous_operations_supervisor_preview_endpoint(payload: AutonomousOperationsSystemsPreviewRequest):
+    return autonomous_operations_supervisor_preview(payload.dict())
+
+
+@app.get("/debug/layer41-status")
+async def debug_layer41_status_endpoint():
+    return autonomous_operations_master_status()
+
+
+@app.get("/autonomous-operations-master/capabilities")
+async def autonomous_operations_master_capabilities_endpoint():
+    return autonomous_operations_master_capabilities()
+
+
+@app.post("/autonomous-operations-master/preview")
+async def autonomous_operations_master_preview_endpoint(payload: AutonomousOperationsSystemsPreviewRequest):
+    return autonomous_operations_master_preview(payload.dict())
 
 
 @app.get("/debug/runtime-drift-status")

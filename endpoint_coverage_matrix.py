@@ -804,6 +804,56 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/agent-execution-master/capabilities", "GET", "40.9", "agent execution master capabilities"),
         _endpoint("/agent-execution-master/preview", "POST", "40.9", "read-only agent execution master preview"),
     ],
+    "autonomous_operations_core_layer_41_0": [
+        _endpoint("/autonomous-operations-core/status", "GET", "41.0", "autonomous operations core status"),
+        _endpoint("/autonomous-operations-core/capabilities", "GET", "41.0", "autonomous operations core capabilities"),
+        _endpoint("/autonomous-operations-core/preview", "POST", "41.0", "read-only autonomous operations core preview"),
+    ],
+    "autonomous_operations_planning_layer_41_1": [
+        _endpoint("/autonomous-operations-planning/status", "GET", "41.1", "autonomous operations planning status"),
+        _endpoint("/autonomous-operations-planning/capabilities", "GET", "41.1", "autonomous operations planning capabilities"),
+        _endpoint("/autonomous-operations-planning/preview", "POST", "41.1", "read-only autonomous operations planning preview"),
+    ],
+    "autonomous_operations_scheduling_layer_41_2": [
+        _endpoint("/autonomous-operations-scheduling/status", "GET", "41.2", "autonomous operations scheduling status"),
+        _endpoint("/autonomous-operations-scheduling/capabilities", "GET", "41.2", "autonomous operations scheduling capabilities"),
+        _endpoint("/autonomous-operations-scheduling/preview", "POST", "41.2", "read-only autonomous operations scheduling preview"),
+    ],
+    "autonomous_operations_monitoring_layer_41_3": [
+        _endpoint("/autonomous-operations-monitoring/status", "GET", "41.3", "autonomous operations monitoring status"),
+        _endpoint("/autonomous-operations-monitoring/capabilities", "GET", "41.3", "autonomous operations monitoring capabilities"),
+        _endpoint("/autonomous-operations-monitoring/preview", "POST", "41.3", "read-only autonomous operations monitoring preview"),
+    ],
+    "autonomous_operations_continuity_layer_41_4": [
+        _endpoint("/autonomous-operations-continuity/status", "GET", "41.4", "autonomous operations continuity status"),
+        _endpoint("/autonomous-operations-continuity/capabilities", "GET", "41.4", "autonomous operations continuity capabilities"),
+        _endpoint("/autonomous-operations-continuity/preview", "POST", "41.4", "read-only autonomous operations continuity preview"),
+    ],
+    "autonomous_operations_governance_layer_41_5": [
+        _endpoint("/autonomous-operations-governance/status", "GET", "41.5", "autonomous operations governance status"),
+        _endpoint("/autonomous-operations-governance/capabilities", "GET", "41.5", "autonomous operations governance capabilities"),
+        _endpoint("/autonomous-operations-governance/preview", "POST", "41.5", "read-only autonomous operations governance preview"),
+    ],
+    "autonomous_operations_optimization_layer_41_6": [
+        _endpoint("/autonomous-operations-optimization/status", "GET", "41.6", "autonomous operations optimization status"),
+        _endpoint("/autonomous-operations-optimization/capabilities", "GET", "41.6", "autonomous operations optimization capabilities"),
+        _endpoint("/autonomous-operations-optimization/preview", "POST", "41.6", "read-only autonomous operations optimization preview"),
+    ],
+    "autonomous_operations_orchestrator_layer_41_7": [
+        _endpoint("/autonomous-operations-orchestrator/status", "GET", "41.7", "autonomous operations orchestrator status"),
+        _endpoint("/autonomous-operations-orchestrator/capabilities", "GET", "41.7", "autonomous operations orchestrator capabilities"),
+        _endpoint("/autonomous-operations-orchestrator/preview", "POST", "41.7", "read-only autonomous operations orchestrator preview"),
+    ],
+    "autonomous_operations_supervisor_layer_41_8": [
+        _endpoint("/autonomous-operations-supervisor/status", "GET", "41.8", "autonomous operations supervisor status"),
+        _endpoint("/autonomous-operations-supervisor/capabilities", "GET", "41.8", "autonomous operations supervisor capabilities"),
+        _endpoint("/autonomous-operations-supervisor/preview", "POST", "41.8", "read-only autonomous operations supervisor preview"),
+    ],
+    "autonomous_operations_master_status_layer_41_9": [
+        _endpoint("/debug/layer41-status", "GET", "41.9", "layer 41 autonomous operations systems status"),
+        _endpoint("/autonomous-operations-master/capabilities", "GET", "41.9", "autonomous operations master capabilities"),
+        _endpoint("/autonomous-operations-master/preview", "POST", "41.9", "read-only autonomous operations master preview"),
+    ],
 }
 
 

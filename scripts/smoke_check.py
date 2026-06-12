@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import shutil
@@ -16,6 +17,20 @@ from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 DEBUG_USER_ID = "debug_smoke"
+
+SMOKE_MODE = "full"
+SELECTED_LAYER = None  # int | None
+SELECTED_LAYER_RANGE = None  # tuple[int, int] | None
+SELECTED_CHECK = None  # str | None
+QUICK_MODE = False
+
+
+@dataclass
+class CheckDef:
+    name: str
+    fn: Callable[[], str | None]
+    layer: int | None = None
+    category: str = "core"
 
 
 @dataclass
@@ -10229,8 +10244,291 @@ class SmokeRunner:
 
         return "40.x all endpoints 200, safety flags verified"
 
+
+    def check_layer41_autonomous_operations_systems_previews(self) -> str:
+        """Verify all 41.x endpoints return 200 with read-only safety flags."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+
+        modules = [
+            ("autonomous-operations-core", "41.0"),
+            ("autonomous-operations-planning", "41.1"),
+            ("autonomous-operations-scheduling", "41.2"),
+            ("autonomous-operations-monitoring", "41.3"),
+            ("autonomous-operations-continuity", "41.4"),
+            ("autonomous-operations-governance", "41.5"),
+            ("autonomous-operations-optimization", "41.6"),
+            ("autonomous-operations-orchestrator", "41.7"),
+            ("autonomous-operations-supervisor", "41.8"),
+        ]
+        false_safety_flags = [
+            "autonomous_operations_enabled",
+            "operations_execution_performed",
+            "operations_plan_applied",
+            "schedule_created",
+            "monitoring_started",
+            "continuity_state_written",
+            "governance_override",
+            "optimization_applied",
+            "orchestration_performed",
+            "supervisor_action_performed",
+            "command_executed",
+            "github_write_performed",
+            "deployment_triggered",
+        ]
+
+        for name, layer in modules:
+            s = client.get(f"/{name}/status")
+            assert s.status_code == 200, f"/{name}/status returned {s.status_code}"
+            data = s.json()
+            assert data.get("layer") == layer, f"/{name}/status layer mismatch: {data.get('layer')}"
+            assert data.get("read_only") is True, f"/{name}/status read_only not True"
+            safety = data.get("safety", {})
+            assert safety.get("read_only") is True, f"/{name}/status safety read_only not True"
+            assert safety.get("autonomous_operations_enabled") is False
+
+            c = client.get(f"/{name}/capabilities")
+            assert c.status_code == 200, f"/{name}/capabilities returned {c.status_code}"
+
+            p = client.post(
+                f"/{name}/preview",
+                json={
+                    "command": "test autonomous operations preview",
+                    "project_area": "layer41",
+                    "operations_scope": "planning",
+                    "operations_state": "idle",
+                    "risk_level": "medium",
+                    "confirmation_state": "not_confirmed",
+                },
+            )
+            assert p.status_code == 200, f"/{name}/preview returned {p.status_code}"
+            pdata = p.json()
+            assert pdata.get("read_only") is True, f"/{name}/preview read_only not True"
+            psafety = pdata.get("safety", {})
+            assert psafety.get("read_only") is True, f"/{name}/preview safety read_only not True"
+            for flag in false_safety_flags:
+                assert psafety.get(flag) is False, f"/{name}/preview {flag} not False"
+
+        ls = client.get("/debug/layer41-status")
+        assert ls.status_code == 200, f"/debug/layer41-status returned {ls.status_code}"
+        lsdata = ls.json()
+        assert lsdata.get("series_status") == "autonomous_operations_systems_preview_scaffold_implemented", lsdata
+        assert lsdata.get("implemented_count") == 10, lsdata
+        assert lsdata.get("real_autonomous_operations_enabled") is False, lsdata
+
+        ac = client.get("/autonomous-operations-master/capabilities")
+        assert ac.status_code == 200
+        ap = client.post("/autonomous-operations-master/preview", json={"command": "test"})
+        assert ap.status_code == 200
+        apdata = ap.json()
+        assert apdata.get("read_only") is True
+        apsafety = apdata.get("safety", {})
+        for flag in false_safety_flags:
+            assert apsafety.get(flag) is False, f"/autonomous-operations-master/preview {flag} not False"
+
+        return "41.x all endpoints 200, safety flags verified"
+
+    def _build_check_registry(self) -> list[CheckDef]:
+        """Build structured check registry for filtering."""
+        raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
+            ("py_compile_app", self.check_py_compile_app, None, "core"),
+            ("compileall_learning", self.check_compileall_learning, None, "core"),
+            ("health_shape_16_layers", self.check_health_shape, None, "core"),
+            ("count_guard", self.check_count_guard, None, "core"),
+            ("line_format_guard", self.check_line_format_guard, None, "core"),
+            ("format_prompt_cleanup", self.check_format_prompt_and_cleanup, None, "core"),
+            ("identity_guard", self.check_identity_guard, None, "core"),
+            ("double_response_trim", self.check_double_response_trim, None, "core"),
+            ("frontend_resume_scaffold", self.check_frontend_resume_scaffold, None, "core"),
+            ("cost_logger_privacy", self.check_cost_logger_privacy, None, "core"),
+            ("practical_support_passive", self.check_practical_support, None, "core"),
+            ("token_budget_observe_only", self.check_token_budget, None, "core"),
+            ("efficiency_router_shadow", self.check_efficiency_and_shadow, None, "core"),
+            ("auto_continuation", self.check_auto_continuation, None, "core"),
+            ("api_schema_in_process", self.check_api_schema, None, "core"),
+            ("agent_capabilities_schema", self.check_agent_capabilities_api, None, "core"),
+            ("agent_privacy_rules", self.check_agent_privacy_rules_present, None, "core"),
+            ("luxway_status_inactive", self.check_luxway_capabilities_planned_inactive, None, "core"),
+            ("memory_schema_fields", self.check_memory_schema_contains_fields, None, "core"),
+            ("memory_preview_raw_data", self.check_memory_preview_signal_privacy, None, "core"),
+            ("agent_high_risk_confirmation", self.check_high_risk_agent_confirmation, None, "core"),
+            ("agent_preview_intent_read_only", self.check_agent_preview_intent_read_only, None, "core"),
+            ("agent_plan_action_read_only", self.check_agent_plan_action_read_only, None, "core"),
+            ("agent_analyze_hub_read_only", self.check_agent_analyze_hub_read_only, None, "core"),
+            ("router_preview_read_only", self.check_router_preview_read_only, None, "core"),
+            ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints, None, "core"),
+            ("debug_agent_panel", self.check_debug_agent_panel, None, "core"),
+            ("mode_registry_preview", self.check_mode_registry_preview, None, "core"),
+            ("permission_boundary_preview", self.check_permission_boundary_preview, None, "core"),
+            ("agent_decision_trace_preview", self.check_agent_decision_trace_preview, None, "core"),
+            ("layer14_status_snapshot", self.check_layer14_status_snapshot, 14, "layer"),
+            ("workspace_schema_preview", self.check_workspace_schema_preview, 15, "layer"),
+            ("visual_style_registry_preview", self.check_visual_style_registry_preview, 16, "layer"),
+            ("visual_status_snapshot", self.check_visual_status_snapshot, 16, "layer"),
+            ("voice_speed_preview", self.check_voice_speed_preview, 17, "layer"),
+            ("night_radio_voice_preview", self.check_night_radio_voice_preview, 17, "layer"),
+            ("voice_audio_status_snapshot", self.check_voice_audio_status_snapshot, 17, "layer"),
+            ("audio_signal_preview", self.check_audio_signal_preview, None, "core"),
+            ("audio_privacy_boundary_preview", self.check_audio_privacy_boundary_preview, None, "core"),
+            ("model_router_config_preview", self.check_model_router_config_preview, None, "core"),
+            ("model_router_hint_preview", self.check_model_router_hint_preview, None, "core"),
+            ("cost_privacy_policy_preview", self.check_cost_privacy_policy_preview, None, "core"),
+            ("safe_memory_retrieval_preview", self.check_safe_memory_retrieval_preview, None, "core"),
+            ("routing_simulation_preview", self.check_routing_simulation_preview, None, "core"),
+            ("model_router_full_status_snapshot", self.check_model_router_full_status_snapshot, None, "core"),
+            ("production_hardening_backlog_registry", self.check_production_hardening_backlog_registry, None, "core"),
+            ("root_flow_auditor_preview", self.check_root_flow_auditor_preview, None, "core"),
+            ("safe_self_check_runner_preview", self.check_safe_self_check_runner_preview, None, "core"),
+            ("codex_handoff_builder_preview", self.check_codex_handoff_builder_preview, None, "core"),
+            ("bug_intake_investigation_planner_preview", self.check_bug_intake_investigation_planner_preview, None, "core"),
+            ("credit_saver_engine_preview", self.check_credit_saver_engine_preview, None, "core"),
+            ("debug_intelligence_core_preview", self.check_debug_intelligence_core_preview, None, "core"),
+            ("layer23_status_snapshot", self.check_layer23_status_snapshot, 23, "layer"),
+            ("patch_recovery_preview", self.check_patch_recovery_preview, 28, "layer"),
+            ("patch_audit_trail_preview", self.check_patch_audit_trail_preview, 28, "layer"),
+            ("lux_fault_report_preview", self.check_lux_fault_report_preview, None, "core"),
+            ("investigation_context_preview", self.check_investigation_context_preview, None, "core"),
+            ("patch_lifecycle_preview", self.check_patch_lifecycle_preview, 28, "layer"),
+            ("layer28_status_snapshot", self.check_layer28_status_snapshot, 28, "layer"),
+            ("layer29_status_snapshot", self.check_layer29_status_snapshot, 29, "layer"),
+            ("layer30_status_snapshot", self.check_layer30_status_snapshot, 30, "layer"),
+            ("production_readiness_preview", self.check_production_readiness_preview, 30, "layer"),
+            ("operational_readiness_preview", self.check_operational_readiness_preview, 30, "layer"),
+            ("system_readiness_preview", self.check_system_readiness_preview, 30, "layer"),
+            ("validation_readiness_preview", self.check_validation_readiness_preview, 30, "layer"),
+            ("release_readiness_preview", self.check_release_readiness_preview, 30, "layer"),
+            ("system_health_intelligence_preview", self.check_system_health_intelligence_preview, 31, "layer"),
+            ("runtime_stability_intelligence_preview", self.check_runtime_stability_intelligence_preview, 31, "layer"),
+            ("runtime_risk_intelligence_preview", self.check_runtime_risk_intelligence_preview, 31, "layer"),
+            ("runtime_drift_intelligence_preview", self.check_runtime_drift_intelligence_preview, 31, "layer"),
+            ("runtime_recovery_intelligence_preview", self.check_runtime_recovery_intelligence_preview, 31, "layer"),
+            ("runtime_anomaly_intelligence_preview", self.check_runtime_anomaly_intelligence_preview, 32, "layer"),
+            ("regression_intelligence_preview", self.check_regression_intelligence_preview, 32, "layer"),
+            ("failure_memory_intelligence_preview", self.check_failure_memory_intelligence_preview, 32, "layer"),
+            ("dependency_intelligence_preview", self.check_dependency_intelligence_preview, 32, "layer"),
+            ("root_cause_intelligence_preview", self.check_root_cause_intelligence_preview, 32, "layer"),
+            ("change_memory_intelligence_preview", self.check_change_memory_intelligence_preview, 33, "layer"),
+            ("failed_change_intelligence_preview", self.check_failed_change_intelligence_preview, 33, "layer"),
+            ("change_planning_intelligence_preview", self.check_change_planning_intelligence_preview, 33, "layer"),
+            ("clone_workspace_intelligence_preview", self.check_clone_workspace_intelligence_preview, 33, "layer"),
+            ("sandbox_repair_intelligence_preview", self.check_sandbox_repair_intelligence_preview, 33, "layer"),
+            ("verification_intelligence_preview", self.check_verification_intelligence_preview, 33, "layer"),
+            ("delivery_readiness_intelligence_preview", self.check_delivery_readiness_intelligence_preview, 33, "layer"),
+            ("layer31_status_snapshot", self.check_layer31_status_snapshot, 31, "layer"),
+            ("layer32_status_snapshot", self.check_layer32_status_snapshot, 32, "layer"),
+            ("patch_permission_preview", self.check_patch_permission_preview, 29, "layer"),
+            ("patch_policy_preview", self.check_patch_policy_preview, 29, "layer"),
+            ("patch_compliance_preview", self.check_patch_compliance_preview, 29, "layer"),
+            ("patch_governance_preview", self.check_patch_governance_preview, 29, "layer"),
+            ("patch_oversight_preview", self.check_patch_oversight_preview, 29, "layer"),
+            ("patch_accountability_preview", self.check_patch_accountability_preview, 29, "layer"),
+            ("patch_assurance_preview", self.check_patch_assurance_preview, 29, "layer"),
+            ("patch_confidence_preview", self.check_patch_confidence_preview, 29, "layer"),
+            ("investigation_timeline_preview", self.check_investigation_timeline_preview, None, "core"),
+            ("knowledge_extractor_preview", self.check_knowledge_extractor_preview, None, "core"),
+            ("repeated_pattern_detector_preview", self.check_repeated_pattern_detector_preview, None, "core"),
+            ("investigation_starter_preview", self.check_investigation_starter_preview, None, "core"),
+            ("investigation_priority_preview", self.check_investigation_priority_preview, None, "core"),
+            ("task_planner_preview", self.check_task_planner_preview, None, "core"),
+            ("dev_agent_explorer_preview", self.check_dev_agent_explorer_preview, None, "core"),
+            ("dependency_mapper_preview", self.check_dependency_mapper_preview, None, "core"),
+            ("impact_analyzer_preview", self.check_impact_analyzer_preview, None, "core"),
+            ("change_boundary_preview", self.check_change_boundary_preview, None, "core"),
+            ("patch_planner_preview", self.check_patch_planner_preview, None, "core"),
+            ("verification_planner_preview", self.check_verification_planner_preview, None, "core"),
+            ("dev_agent_readiness_snapshot", self.check_dev_agent_readiness_snapshot, 25, "layer"),
+            ("agent_constitution_engine_preview", self.check_agent_constitution_engine_preview, 26, "layer"),
+            ("project_rules_loader_preview", self.check_project_rules_loader_preview, 26, "layer"),
+            ("explorer_agent_preview", self.check_explorer_agent_preview, 26, "layer"),
+            ("planner_agent_preview", self.check_planner_agent_preview, 26, "layer"),
+            ("verifier_agent_preview", self.check_verifier_agent_preview, 26, "layer"),
+            ("evidence_store_preview", self.check_evidence_store_preview, 26, "layer"),
+            ("multi_agent_coordinator_preview", self.check_coordinator_preview, 26, "layer"),
+            ("patch_draft_engine_preview", self.check_patch_draft_engine_preview, 27, "layer"),
+            ("change_preview_engine", self.check_change_preview_engine, 27, "layer"),
+            ("system_control_audit_preview", self.check_system_control_audit_preview, None, "core"),
+            ("endpoint_coverage_matrix_preview", self.check_endpoint_coverage_matrix_preview, None, "core"),
+            ("live_readiness_checklist_preview", self.check_live_readiness_checklist_preview, None, "core"),
+            ("master_status_summary_preview", self.check_master_status_summary_preview, None, "core"),
+            ("lux_character_status", self.check_lux_character_status, None, "core"),
+            ("location_weather_context", self.check_location_weather_context, None, "core"),
+            ("conversation_summary_command", self.check_conversation_summary_command, None, "core"),
+            ("layer21_status_snapshot", self.check_layer21_status_snapshot, 21, "layer"),
+            ("layer22_future_candidates_preview", self.check_layer22_future_candidates_preview, 22, "layer"),
+            ("layer22_full_status_snapshot", self.check_layer22_full_status_snapshot, 22, "layer"),
+            ("layer22_candidate_scoring_preview", self.check_layer22_candidate_scoring_preview, 22, "layer"),
+            ("finality_sense_preview", self.check_finality_sense_preview, None, "core"),
+            ("adaptive_interface_preview", self.check_adaptive_interface_preview, None, "core"),
+            ("ambient_workspace_preview", self.check_ambient_workspace_preview, None, "core"),
+            ("intention_timeline_preview", self.check_intention_timeline_preview, None, "core"),
+            ("autonomy_dial_preview", self.check_autonomy_dial_preview, None, "core"),
+            ("ethical_boundary_preview", self.check_ethical_boundary_preview, None, "core"),
+            ("background_support_registry_preview", self.check_background_support_registry_preview, None, "core"),
+            ("meta_intelligence_core_preview", self.check_meta_intelligence_core_preview, None, "core"),
+            ("emotional_reflection_support_preview", self.check_emotional_reflection_support_preview, None, "core"),
+            ("context_bridge_preview", self.check_context_bridge_preview, None, "core"),
+            ("device_bridge_preview", self.check_device_bridge_preview, None, "core"),
+            ("pointer_context_preview", self.check_pointer_context_preview, None, "core"),
+            ("drive_mode_preview", self.check_drive_mode_preview, None, "core"),
+            ("wake_sonic_preview", self.check_wake_sonic_preview, None, "core"),
+            ("luxway_capability_preview", self.check_luxway_capability_preview, None, "core"),
+            ("luxway_permission_model_preview", self.check_luxway_permission_model_preview, None, "core"),
+            ("luxway_weekly_report_preview", self.check_luxway_weekly_report_preview, None, "core"),
+            ("luxway_data_preview", self.check_luxway_data_preview, None, "core"),
+            ("luxway_device_safety_preview", self.check_luxway_device_safety_preview, None, "core"),
+            ("luxway_full_status_snapshot", self.check_luxway_full_status_snapshot, None, "core"),
+            ("ws_stream_schema_in_process", self.check_ws_stream_schema, None, "core"),
+            ("live_server_health", self.check_live_server_health, None, "core"),
+            ("local_privacy_scan", self.check_local_privacy_scan, None, "core"),
+            ("layer37_architecture_previews", self.check_layer37_architecture_previews, 37, "layer"),
+            ("layer38_autonomous_agent_systems_previews", self.check_layer38_autonomous_agent_systems_previews, 38, "layer"),
+            ("layer39_agent_runtime_systems_previews", self.check_layer39_agent_runtime_systems_previews, 39, "layer"),
+            ("layer40_agent_execution_systems_previews", self.check_layer40_agent_execution_systems_previews, 40, "layer"),
+            ("layer41_autonomous_operations_systems_previews", self.check_layer41_autonomous_operations_systems_previews, 41, "layer"),
+        ]
+        return [CheckDef(name=item[0], fn=item[1], layer=item[2], category=item[3]) for item in raw]
+
+    def _get_filtered_checks(self, registry: list[CheckDef]) -> list[CheckDef]:
+        if SELECTED_CHECK:
+            match_lower = SELECTED_CHECK.lower()
+            return [c for c in registry if match_lower in c.name.lower()]
+        if SELECTED_LAYER is not None:
+            return [c for c in registry if c.layer == SELECTED_LAYER]
+        if SELECTED_LAYER_RANGE is not None:
+            lo, hi = SELECTED_LAYER_RANGE
+            return [c for c in registry if c.layer is not None and lo <= c.layer <= hi]
+        if QUICK_MODE:
+            quick_layers = {37, 38, 39, 40, 41}
+            return [c for c in registry if c.layer in quick_layers]
+        return registry
+
     def run(self) -> int:
         print(f"ROOT {ROOT}")
+        all_checks = self._build_check_registry()
+        filtered_checks = self._get_filtered_checks(all_checks)
+
+        if SELECTED_CHECK:
+            SMOKE_MODE = "targeted"
+        elif SELECTED_LAYER is not None or SELECTED_LAYER_RANGE is not None:
+            SMOKE_MODE = "targeted"
+        elif QUICK_MODE:
+            SMOKE_MODE = "quick"
+        else:
+            SMOKE_MODE = "full"
+
+        print(f"SMOKE MODE: {SMOKE_MODE}")
+        if SMOKE_MODE in ("targeted", "quick"):
+            selected_names = [c.name for c in filtered_checks]
+            print(f"Selected checks: {', '.join(selected_names)}")
+        if not filtered_checks:
+            print("No matching checks found. Use --help for options.")
+            return 1
+
         checks: list[tuple[str, Callable[[], str | None]]] = [
             ("py_compile_app", self.check_py_compile_app),
             ("compileall_learning", self.check_compileall_learning),
@@ -10385,10 +10683,11 @@ class SmokeRunner:
             ("layer38_autonomous_agent_systems_previews", self.check_layer38_autonomous_agent_systems_previews),
             ("layer39_agent_runtime_systems_previews", self.check_layer39_agent_runtime_systems_previews),
             ("layer40_agent_execution_systems_previews", self.check_layer40_agent_execution_systems_previews),
+            ("layer41_autonomous_operations_systems_previews", self.check_layer41_autonomous_operations_systems_previews),
         ]
         try:
-            for name, fn in checks:
-                self.check(name, fn)
+            for cdef in filtered_checks:
+                self.check(cdef.name, cdef.fn)
         finally:
             self.cleanup()
 
@@ -10404,4 +10703,33 @@ class SkipCheck(Exception):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="LuxCode Smoke Check Script")
+    parser.add_argument("--layer", type=int, default=None, help="Run checks for a specific layer number (e.g. 37)")
+    parser.add_argument("--layers", type=str, default=None, help="Run checks for a layer range (e.g. 37-41)")
+    parser.add_argument("--check", type=str, default=None, help="Run checks matching a name pattern (e.g. layer41)")
+    parser.add_argument("--quick", action="store_true", default=False, help="Quick mode: run only critical layer 37-41 checks")
+    parser.add_argument("--full", action="store_true", default=False, help="Explicit full run (default behavior)")
+    args = parser.parse_args()
+
+    if args.layer and args.layers:
+        print("ERROR: Use --layer OR --layers, not both.")
+        raise SystemExit(1)
+    if args.check and (args.layer or args.layers):
+        print("ERROR: --check is exclusive with --layer/--layers.")
+        raise SystemExit(1)
+
+    if args.layer:
+        SELECTED_LAYER = args.layer
+    elif args.layers:
+        parts = args.layers.split("-")
+        if len(parts) == 2:
+            SELECTED_LAYER_RANGE = (int(parts[0]), int(parts[1]))
+        else:
+            print(f"ERROR: Invalid layer range '{args.layers}'. Use format: 37-41")
+            raise SystemExit(1)
+    elif args.check:
+        SELECTED_CHECK = args.check
+    elif args.quick:
+        QUICK_MODE = True
+
     raise SystemExit(SmokeRunner().run())
