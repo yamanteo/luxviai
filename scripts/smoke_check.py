@@ -10491,6 +10491,108 @@ class SmokeRunner:
 
         return "lux debug intelligence read-only schema/analyze/status verified"
 
+    def check_lux_safe_patch_draft_read_only(self) -> str:
+        """Verify Safe Patch Draft Engine is local-first, read-only, and endpoint-backed."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        from lux_safe_patch_draft_engine import (
+            build_safe_patch_draft,
+            get_safe_patch_draft_schema,
+            get_safe_patch_draft_status,
+        )
+
+        client = TestClient(luxapp.app)
+
+        expected_flags = {
+            "approval_required": True,
+            "can_apply_now": False,
+            "destructive_action_blocked": True,
+            "file_write_blocked": True,
+            "real_execution_blocked": True,
+            "read_only": True,
+            "external_api_used": False,
+            "local_first": True,
+        }
+
+        schema = client.get("/lux-safe-patch/schema")
+        assert schema.status_code == 200, f"/lux-safe-patch/schema returned {schema.status_code}"
+        schema_data = schema.json()
+        for flag, expected in expected_flags.items():
+            assert schema_data.get(flag) is expected, f"schema {flag} mismatch: {schema_data}"
+        assert "full_patch_preview" in schema_data.get("supported_modes", []), schema_data
+        assert "requested_files" in schema_data.get("input_fields", []), schema_data
+
+        status = client.get("/debug/lux-safe-patch-status")
+        assert status.status_code == 200, f"/debug/lux-safe-patch-status returned {status.status_code}"
+        status_data = status.json()
+        for flag, expected in expected_flags.items():
+            assert status_data.get(flag) is expected, f"status {flag} mismatch: {status_data}"
+        assert status_data.get("target_file_write_enabled") is False, status_data
+        assert status_data.get("terminal_execution_enabled") is False, status_data
+        assert status_data.get("github_action_enabled") is False, status_data
+        assert status_data.get("deployment_enabled") is False, status_data
+        assert status_data.get("env_file_access_enabled") is False, status_data
+
+        direct_schema = get_safe_patch_draft_schema()
+        direct_status = get_safe_patch_draft_status()
+        assert direct_schema.get("read_only") is True, direct_schema
+        assert direct_status.get("can_apply_now") is False, direct_status
+
+        preview = build_safe_patch_draft(
+            issue_summary="Endpoint schema drift requires app coverage and targeted smoke draft",
+            root_cause_hypotheses=[
+                {
+                    "title": "Endpoint coverage drift",
+                    "related_files": ["app.py", "endpoint_coverage_matrix.py", "scripts/smoke_check.py"],
+                    "evidence": ["route integration needs coverage and smoke validation"],
+                }
+            ],
+            selected_context=[
+                {"relative_path": "app.py", "line_start": 1, "line_end": 40, "reasons": ["route surface"]},
+                {"relative_path": "endpoint_coverage_matrix.py", "reasons": ["coverage surface"]},
+                {"relative_path": "scripts/smoke_check.py", "reasons": ["smoke surface"]},
+            ],
+            requested_files=["app.py", ".env", "../outside.py"],
+            forbidden_files=["static/index.html", ".env"],
+            repository_root=str(ROOT),
+            mode="full_patch_preview",
+            max_patch_files=5,
+            max_hunks_per_file=2,
+        )
+        for flag, expected in expected_flags.items():
+            assert preview.get(flag) is expected, f"preview {flag} mismatch: {preview}"
+        assert preview.get("patch_steps"), preview
+        assert preview.get("patch_targets"), preview
+        selected = {item.get("target_file") for item in preview.get("patch_targets", [])}
+        assert "app.py" in selected, selected
+        assert ".env" not in selected, selected
+        assert any(".env" in item.get("reason", "") for item in preview.get("blocked_items", [])), preview
+        assert any("traversal rejected" in item.get("reason", "") for item in preview.get("blocked_items", [])), preview
+        assert "# DRAFT ONLY" in preview.get("unified_diff_draft", ""), preview
+        assert preview.get("recommended_handoff") in {"local", "codex", "gemini_cline", "whale", "human"}, preview
+
+        endpoint_preview = client.post(
+            "/lux-safe-patch/preview",
+            json={
+                "issue_summary": "Add endpoint coverage draft",
+                "requested_files": ["app.py"],
+                "repository_root": str(ROOT),
+                "mode": "preview",
+                "max_patch_files": 2,
+            },
+        )
+        assert endpoint_preview.status_code == 200, f"/lux-safe-patch/preview returned {endpoint_preview.status_code}"
+        endpoint_data = endpoint_preview.json()
+        for flag, expected in expected_flags.items():
+            assert endpoint_data.get(flag) is expected, f"endpoint {flag} mismatch: {endpoint_data}"
+        assert endpoint_data.get("can_apply_now") is False, endpoint_data
+
+        return "lux safe patch draft read-only schema/preview/status verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -10521,6 +10623,7 @@ class SmokeRunner:
             ("router_preview_read_only", self.check_router_preview_read_only, None, "core"),
             ("luxcode_master_router_read_only", self.check_luxcode_master_router_read_only, None, "core"),
             ("lux_debug_intelligence_read_only", self.check_lux_debug_intelligence_read_only, None, "core"),
+            ("lux_safe_patch_draft_read_only", self.check_lux_safe_patch_draft_read_only, None, "core"),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints, None, "core"),
             ("debug_agent_panel", self.check_debug_agent_panel, None, "core"),
             ("mode_registry_preview", self.check_mode_registry_preview, None, "core"),
@@ -10717,6 +10820,7 @@ class SmokeRunner:
             ("router_preview_read_only", self.check_router_preview_read_only),
             ("luxcode_master_router_read_only", self.check_luxcode_master_router_read_only),
             ("lux_debug_intelligence_read_only", self.check_lux_debug_intelligence_read_only),
+            ("lux_safe_patch_draft_read_only", self.check_lux_safe_patch_draft_read_only),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),

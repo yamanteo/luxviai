@@ -864,6 +864,11 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/lux-debug/analyze", "POST", "debug_intelligence", "local-first read-only debug analysis"),
         _endpoint("/debug/lux-debug-status", "GET", "debug_intelligence", "lux debug intelligence status"),
     ],
+    "lux_safe_patch_draft": [
+        _endpoint("/lux-safe-patch/schema", "GET", "safe_patch_draft", "safe patch draft schema"),
+        _endpoint("/lux-safe-patch/preview", "POST", "safe_patch_draft", "local-first read-only safe patch draft"),
+        _endpoint("/debug/lux-safe-patch-status", "GET", "safe_patch_draft", "safe patch draft status"),
+    ],
 }
 
 

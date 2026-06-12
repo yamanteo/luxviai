@@ -918,6 +918,11 @@ from lux_debug_intelligence_core import (
     get_lux_debug_schema,
     get_lux_debug_status,
 )
+from lux_safe_patch_draft_engine import (
+    build_safe_patch_draft,
+    get_safe_patch_draft_schema,
+    get_safe_patch_draft_status,
+)
 
 try:
     from dotenv import load_dotenv
@@ -1955,6 +1960,19 @@ class LuxDebugAnalyzeRequest(BaseModel):
     repository_root: Optional[str] = Field(default=None, max_length=600)
     max_files: int = Field(default=8, ge=1, le=20)
     mode: str = Field(default="full_debug_preview", max_length=80)
+
+
+class LuxSafePatchDraftRequest(BaseModel):
+    issue_summary: str = Field(default="", max_length=12000)
+    root_cause_hypotheses: List[Dict[str, Any]] = Field(default_factory=list)
+    selected_context: List[Dict[str, Any]] = Field(default_factory=list)
+    requested_files: List[str] = Field(default_factory=list)
+    forbidden_files: List[str] = Field(default_factory=list)
+    repository_root: Optional[str] = Field(default=None, max_length=600)
+    change_intent: str = Field(default="", max_length=12000)
+    mode: str = Field(default="full_patch_preview", max_length=80)
+    max_patch_files: int = Field(default=4, ge=1, le=12)
+    max_hunks_per_file: int = Field(default=3, ge=1, le=8)
 
 
 # =========================================================
@@ -11912,6 +11930,32 @@ async def lux_debug_analyze_endpoint(payload: LuxDebugAnalyzeRequest):
 @app.get("/debug/lux-debug-status")
 async def debug_lux_debug_status_endpoint():
     return get_lux_debug_status()
+
+
+@app.get("/lux-safe-patch/schema")
+async def lux_safe_patch_schema_endpoint():
+    return get_safe_patch_draft_schema()
+
+
+@app.post("/lux-safe-patch/preview")
+async def lux_safe_patch_preview_endpoint(payload: LuxSafePatchDraftRequest):
+    return build_safe_patch_draft(
+        issue_summary=payload.issue_summary,
+        root_cause_hypotheses=payload.root_cause_hypotheses,
+        selected_context=payload.selected_context,
+        requested_files=payload.requested_files,
+        forbidden_files=payload.forbidden_files,
+        repository_root=payload.repository_root,
+        change_intent=payload.change_intent,
+        mode=payload.mode,
+        max_patch_files=payload.max_patch_files,
+        max_hunks_per_file=payload.max_hunks_per_file,
+    )
+
+
+@app.get("/debug/lux-safe-patch-status")
+async def debug_lux_safe_patch_status_endpoint():
+    return get_safe_patch_draft_status()
 
 
 @app.get("/debug/runtime-drift-status")
