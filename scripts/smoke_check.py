@@ -10333,6 +10333,65 @@ class SmokeRunner:
 
         return "41.x all endpoints 200, safety flags verified"
 
+    def check_luxcode_master_router_read_only(self) -> str:
+        """Verify LuxCode master router stays read-only and blocks real execution."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        from luxcode_master_router_preview import (
+            COMMAND_ROUTING_TABLE,
+            build_luxcode_master_router_preview,
+        )
+
+        client = TestClient(luxapp.app)
+
+        schema = client.get("/luxcode-master-router/schema")
+        assert schema.status_code == 200, f"/luxcode-master-router/schema returned {schema.status_code}"
+        schema_data = schema.json()
+        assert schema_data.get("read_only") is True, schema_data
+
+        status = client.get("/debug/luxcode-master-router-status")
+        assert status.status_code == 200, f"/debug/luxcode-master-router-status returned {status.status_code}"
+        status_data = status.json()
+        assert status_data.get("read_only") is True, status_data
+        assert status_data.get("real_execution_blocked") is True, status_data
+
+        confirmation_families = {
+            "patch_planning",
+            "workflow_planning",
+            "release_readiness",
+            "execution_preview",
+            "rollback_assessment",
+        }
+
+        for command, expected in COMMAND_ROUTING_TABLE.items():
+            preview = build_luxcode_master_router_preview(command, context="smoke")
+            assert preview.get("primary_layer"), f"{command} primary_layer empty"
+            assert isinstance(preview.get("recommended_preview_chain"), list), command
+            assert preview.get("read_only") is True, command
+            assert preview.get("real_execution_blocked") is True, command
+            if expected.get("route_family") in confirmation_families:
+                assert preview.get("requires_confirmation") is True, command
+
+        endpoint_preview = client.post("/luxcode-master-router/preview", json={"command": "patch plan"})
+        assert endpoint_preview.status_code == 200, f"/luxcode-master-router/preview returned {endpoint_preview.status_code}"
+        endpoint_data = endpoint_preview.json()
+        assert endpoint_data.get("read_only") is True, endpoint_data
+        assert endpoint_data.get("real_execution_blocked") is True, endpoint_data
+
+        unknown = build_luxcode_master_router_preview("definitely unknown router command")
+        assert unknown.get("route_family") == "unknown", unknown
+        assert unknown.get("primary_layer"), unknown
+        assert isinstance(unknown.get("recommended_preview_chain"), list), unknown
+        assert unknown.get("read_only") is True, unknown
+        assert unknown.get("real_execution_blocked") is True, unknown
+        assert unknown.get("requires_confirmation") is True, unknown
+
+        return f"luxcode master router read-only verified for {len(COMMAND_ROUTING_TABLE)} commands"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -10361,6 +10420,7 @@ class SmokeRunner:
             ("agent_plan_action_read_only", self.check_agent_plan_action_read_only, None, "core"),
             ("agent_analyze_hub_read_only", self.check_agent_analyze_hub_read_only, None, "core"),
             ("router_preview_read_only", self.check_router_preview_read_only, None, "core"),
+            ("luxcode_master_router_read_only", self.check_luxcode_master_router_read_only, None, "core"),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints, None, "core"),
             ("debug_agent_panel", self.check_debug_agent_panel, None, "core"),
             ("mode_registry_preview", self.check_mode_registry_preview, None, "core"),
@@ -10555,6 +10615,7 @@ class SmokeRunner:
             ("agent_plan_action_read_only", self.check_agent_plan_action_read_only),
             ("agent_analyze_hub_read_only", self.check_agent_analyze_hub_read_only),
             ("router_preview_read_only", self.check_router_preview_read_only),
+            ("luxcode_master_router_read_only", self.check_luxcode_master_router_read_only),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),

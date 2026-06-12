@@ -908,6 +908,11 @@ from autonomous_operations_master_status_preview import (
     autonomous_operations_master_capabilities,
     autonomous_operations_master_preview,
 )
+from luxcode_master_router_preview import (
+    build_luxcode_master_router_preview,
+    luxcode_master_router_schema,
+    luxcode_master_router_status,
+)
 
 try:
     from dotenv import load_dotenv
@@ -1929,6 +1934,11 @@ class AutonomousOperationsSystemsPreviewRequest(BaseModel):
     task_type: Optional[str] = Field(default=None, max_length=120)
     risk_level: Optional[str] = Field(default=None, max_length=80)
     confirmation_state: Optional[str] = Field(default=None, max_length=120)
+    context: str = Field(default="", max_length=8000)
+
+
+class LuxCodeMasterRouterPreviewRequest(BaseModel):
+    command: str = Field(default="", max_length=4000)
     context: str = Field(default="", max_length=8000)
 
 
@@ -11849,6 +11859,21 @@ async def autonomous_operations_master_capabilities_endpoint():
 @app.post("/autonomous-operations-master/preview")
 async def autonomous_operations_master_preview_endpoint(payload: AutonomousOperationsSystemsPreviewRequest):
     return autonomous_operations_master_preview(payload.dict())
+
+
+@app.get("/luxcode-master-router/schema")
+async def luxcode_master_router_schema_endpoint():
+    return luxcode_master_router_schema()
+
+
+@app.post("/luxcode-master-router/preview")
+async def luxcode_master_router_preview_endpoint(payload: LuxCodeMasterRouterPreviewRequest):
+    return build_luxcode_master_router_preview(command=payload.command, context=payload.context)
+
+
+@app.get("/debug/luxcode-master-router-status")
+async def debug_luxcode_master_router_status_endpoint():
+    return luxcode_master_router_status()
 
 
 @app.get("/debug/runtime-drift-status")

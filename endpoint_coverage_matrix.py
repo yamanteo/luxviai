@@ -854,6 +854,11 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/autonomous-operations-master/capabilities", "GET", "41.9", "autonomous operations master capabilities"),
         _endpoint("/autonomous-operations-master/preview", "POST", "41.9", "read-only autonomous operations master preview"),
     ],
+    "luxcode_master_router": [
+        _endpoint("/luxcode-master-router/schema", "GET", "34-41", "luxcode master router schema"),
+        _endpoint("/luxcode-master-router/preview", "POST", "34-41", "read-only luxcode master router preview"),
+        _endpoint("/debug/luxcode-master-router-status", "GET", "34-41", "luxcode master router status"),
+    ],
 }
 
 
