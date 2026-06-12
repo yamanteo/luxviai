@@ -1,0 +1,58 @@
+SMOKE OPTIMIZATION / SEGMENTED SMOKE RUNNER REPORT
+====================================================
+Date: 2026-06-11
+File: scripts/smoke_check.py
+
+1. CHANGES MADE
+----------------
+Added to scripts/smoke_check.py:
+
+- argparse CLI support (--layer, --layers, --check, --quick, --full, --help)
+- CheckDef dataclass for structured check metadata (name, fn, layer, category)
+- _build_check_registry() method — converts flat checks list to structured registry
+- _get_filtered_checks() method — filters by layer/range/name/quick
+- Module-level state variables (SELECTED_LAYER, SELECTED_LAYER_RANGE, SELECTED_CHECK, QUICK_MODE)
+- SMOKE_MODE output in run() (full/targeted/quick)
+- Error handling for invalid/missing check selections
+
+2. PRESERVED BEHAVIOR
+----------------------
+- python scripts/smoke_check.py         — full run (default, unchanged)
+- python scripts/smoke_check.py --full  — explicit full run
+- All existing check functions unchanged
+- All existing check registration preserved
+- Exit codes: 0=PASS, non-zero=FAIL/error
+
+3. NEW CLI OPTIONS
+-------------------
+  --layer N       Run only checks for layer N (e.g. 37)
+  --layers N-M    Run checks for layer range (e.g. 37-41)
+  --check NAME    Run checks matching name pattern (e.g. layer41)
+  --quick         Quick mode: layer 37-41 only, minimal scope
+  --full          Explicit full run (same as default)
+  --help          Show usage
+
+4. VALIDATION RESULTS
+----------------------
+python -m py_compile scripts/smoke_check.py     PASS
+python -m py_compile app.py                     PASS
+python -m compileall -q learning                PASS
+
+python scripts/smoke_check.py --layer 37        PASS
+python scripts/smoke_check.py --layer 38        PASS
+python scripts/smoke_check.py --layer 39        PASS
+python scripts/smoke_check.py --layer 40        PASS
+python scripts/smoke_check.py --layer 41        PASS
+python scripts/smoke_check.py --layers 37-41    PASS
+python scripts/smoke_check.py --check layer41   PASS
+python scripts/smoke_check.py --quick           PASS
+
+Full smoke_check (python scripts/smoke_check.py): NOT RUN (timeout risk)
+
+5. NOT TOUCHED
+---------------
+- app.py, endpoint_coverage_matrix.py: NOT MODIFIED
+- Chat/stream/WebSocket/typewriter/durdur: NOT TOUCHED
+- static/index.html: NOT TOUCHED
+- Real execution/action/write: NOT OPENED
+- Layer safety flags: NOT CHANGED

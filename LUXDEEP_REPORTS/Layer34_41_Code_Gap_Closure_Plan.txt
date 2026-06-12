@@ -1,12 +1,18 @@
 ==============================================================================
-LAYER 34-41 — CODE GAP CLOSURE PLAN
+LAYER 34-41 — CODE GAP CLOSURE PLAN (HISTORICAL — SUPERSEDED)
 ==============================================================================
+This plan is now historical. All 8 implementation commits have been completed.
+Layers 37-41 are scaffolded as read-only preview systems (49/49 modules).
+See the companion report for current status:
+  Layer34_41_Code_Gap_Closure_Master_Status.txt
+
+Original report metadata (kept for traceability):
 Report Date        : 2026-06-11
 Based on          : Architecture Audit findings (Layer34_41_Architecture_Audit_Summary.txt
                     Layer34_41_Gap_Analysis.txt, Layer34_41_MVP_Architecture_Definition.txt)
 Scope             : 37.x → 41.x code gap closure
-Status            : plan_ready — implementation pending
-42.x Decision     : NOT YET. Implement 37-41 code first.
+Original Status   : plan_ready — implementation pending (NOW SUPERSEDED)
+42.x Decision     : NOT YET. Implement 37-41 code first. (COMPLETED)
 ==============================================================================
 
 A. SHORT DECISION

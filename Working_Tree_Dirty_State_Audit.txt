@@ -1,0 +1,176 @@
+LUXCODE - WORKING TREE DIRTY STATE AUDIT / CLEANUP PLAN
+=======================================================
+Date: 2026-06-12
+Scope: Read-only dirty working tree audit after AI Studio context pack commit.
+Action boundary: No git add, commit, push, restore, delete, move, or source-code edit performed.
+
+Current branch
+--------------
+main
+
+Latest commit
+-------------
+1a2e8ee Add AI Studio context pack generator
+
+git status --short output
+-------------------------
+ M LUXDEEP_REPORTS/Layer34_41_Code_Gap_Closure_Plan.txt
+ M app.py
+ M endpoint_coverage_matrix.py
+ M scripts/smoke_check.py
+?? LUXDEEP_REPORTS/Layer34_41_Architecture_Code_Alignment_Report.txt
+?? LUXDEEP_REPORTS/Layer34_41_Code_Gap_Closure_Master_Status.txt
+?? LUXDEEP_REPORTS/Layer41_Code_Gap_Closure_Report.txt
+?? LUXDEEP_REPORTS/Layer41_Implementation_Status.txt
+?? LUXDEEP_REPORTS/Layer41_Validation_Report.txt
+?? LUXDEEP_REPORTS/Smoke_Optimization_Report.txt
+?? autonomous_operations_continuity_preview.py
+?? autonomous_operations_core_preview.py
+?? autonomous_operations_governance_preview.py
+?? autonomous_operations_master_status_preview.py
+?? autonomous_operations_monitoring_preview.py
+?? autonomous_operations_optimization_preview.py
+?? autonomous_operations_orchestrator_preview.py
+?? autonomous_operations_planning_preview.py
+?? autonomous_operations_scheduling_preview.py
+?? autonomous_operations_supervisor_preview.py
+?? klasor_haritasi.txt
+?? tum_proje_kodlari.txt
+
+Dirty file classification table
+-------------------------------
+| File | Status | Appears related to | Commit? | Ignore? | Revert? | Risk | Recommendation |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| LUXDEEP_REPORTS/Layer34_41_Code_Gap_Closure_Plan.txt | modified | Historical report / master closure update | Maybe with report bundle | No | No unless superseded wording unwanted | low | D. Historical report olarak bırakılmalı |
+| app.py | modified | Layer 41 validation fix / endpoint wiring | Yes, if Layer 41 is accepted | No | User decision required if Layer 41 should not exist | high | E. Kullanıcı kararı gerekli |
+| endpoint_coverage_matrix.py | modified | Layer 41 validation fix / endpoint coverage | Yes, if Layer 41 is accepted | No | User decision required if Layer 41 should not exist | high | E. Kullanıcı kararı gerekli |
+| scripts/smoke_check.py | modified | Layer 41 validation fix + smoke optimization CLI | Yes, split into Layer 41 + smoke optimization commits if accepted | No | User decision required because it changes smoke runner behavior | high | E. Kullanıcı kararı gerekli |
+| LUXDEEP_REPORTS/Layer34_41_Architecture_Code_Alignment_Report.txt | untracked | Historical report / architecture-code alignment | Yes if keeping master audit docs | No | No | low | D. Historical report olarak bırakılmalı |
+| LUXDEEP_REPORTS/Layer34_41_Code_Gap_Closure_Master_Status.txt | untracked | Historical report / master status | Yes if keeping master audit docs | No | No | low | D. Historical report olarak bırakılmalı |
+| LUXDEEP_REPORTS/Layer41_Code_Gap_Closure_Report.txt | untracked | Layer 41 validation fix report | Yes with Layer 41 bundle if accepted | No | No if Layer 41 accepted | low | A. Commit edilmeli after approval |
+| LUXDEEP_REPORTS/Layer41_Implementation_Status.txt | untracked | Layer 41 validation fix report | Yes with Layer 41 bundle if accepted | No | No if Layer 41 accepted | low | A. Commit edilmeli after approval |
+| LUXDEEP_REPORTS/Layer41_Validation_Report.txt | untracked | Layer 41 validation fix report | Yes with Layer 41 bundle if accepted | No | No if Layer 41 accepted | low | A. Commit edilmeli after approval |
+| LUXDEEP_REPORTS/Smoke_Optimization_Report.txt | untracked | Smoke optimization | Yes if smoke CLI optimization accepted | No | No if smoke optimization accepted | medium | E. Kullanıcı kararı gerekli |
+| autonomous_operations_continuity_preview.py | untracked | Layer 41 validation fix | Yes if Layer 41 accepted | No | No if Layer 41 accepted | medium | A. Commit edilmeli after approval |
+| autonomous_operations_core_preview.py | untracked | Layer 41 validation fix | Yes if Layer 41 accepted | No | No if Layer 41 accepted | medium | A. Commit edilmeli after approval |
+| autonomous_operations_governance_preview.py | untracked | Layer 41 validation fix | Yes if Layer 41 accepted | No | No if Layer 41 accepted | medium | A. Commit edilmeli after approval |
+| autonomous_operations_master_status_preview.py | untracked | Layer 41 validation fix | Yes if Layer 41 accepted | No | No if Layer 41 accepted | medium | A. Commit edilmeli after approval |
+| autonomous_operations_monitoring_preview.py | untracked | Layer 41 validation fix | Yes if Layer 41 accepted | No | No if Layer 41 accepted | medium | A. Commit edilmeli after approval |
+| autonomous_operations_optimization_preview.py | untracked | Layer 41 validation fix | Yes if Layer 41 accepted | No | No if Layer 41 accepted | medium | A. Commit edilmeli after approval |
+| autonomous_operations_orchestrator_preview.py | untracked | Layer 41 validation fix | Yes if Layer 41 accepted | No | No if Layer 41 accepted | medium | A. Commit edilmeli after approval |
+| autonomous_operations_planning_preview.py | untracked | Layer 41 validation fix | Yes if Layer 41 accepted | No | No if Layer 41 accepted | medium | A. Commit edilmeli after approval |
+| autonomous_operations_scheduling_preview.py | untracked | Layer 41 validation fix | Yes if Layer 41 accepted | No | No if Layer 41 accepted | medium | A. Commit edilmeli after approval |
+| autonomous_operations_supervisor_preview.py | untracked | Layer 41 validation fix | Yes if Layer 41 accepted | No | No if Layer 41 accepted | medium | A. Commit edilmeli after approval |
+| klasor_haritasi.txt | untracked | Unknown / generated project map | No by default | Yes, if reproducible/local artifact | Maybe delete after user approval | medium | C. Ignore edilmeli or remove after approval |
+| tum_proje_kodlari.txt | untracked | Unknown / generated full project dump | No by default | Yes, if reproducible/local artifact | Maybe delete after user approval | high | C. Ignore edilmeli or remove after approval |
+
+Diff stat summary
+-----------------
+ LUXDEEP_REPORTS/Layer34_41_Code_Gap_Closure_Plan.txt |  12 +-
+ app.py                                               | 218 +++++++++++++-
+ endpoint_coverage_matrix.py                          |  52 +++-
+ scripts/smoke_check.py                               | 334 ++++++++++++++++++++-
+ 4 files changed, 608 insertions(+), 8 deletions(-)
+
+Critical diff summaries
+-----------------------
+app.py:
+- Adds imports for autonomous_operations_* Layer 41 modules.
+- Adds AutonomousOperationsSystemsPreviewRequest Pydantic model.
+- Adds Layer 41 routes for /autonomous-operations-*/status, /capabilities, /preview.
+- Adds /debug/layer41-status and /autonomous-operations-master routes.
+- Risk: high because app route/import surface is dirty and depends on untracked Layer 41 modules.
+
+scripts/smoke_check.py:
+- Adds argparse import and global smoke filter state.
+- Adds CheckDef dataclass.
+- Adds check_layer41_autonomous_operations_systems_previews().
+- Adds structured check registry and filtering support for layer/range/check/quick modes.
+- Risk: high because it changes smoke runner behavior, not only Layer 41 endpoint coverage.
+
+endpoint_coverage_matrix.py:
+- Adds Layer 41 endpoint groups for autonomous operations core/planning/scheduling/monitoring/continuity/governance/optimization/orchestrator/supervisor/master.
+- Leaves no final newline in current diff.
+- Risk: high because coverage entries are dirty and tied to untracked Layer 41 modules.
+
+autonomous_operations_master_status_preview.py:
+- Untracked Layer 41 master status module.
+- Declares series_status autonomous_operations_systems_preview_scaffold_implemented.
+- Safety contract is read_only with real action flags false.
+- Risk: medium because untracked module appears coherent but uncommitted.
+
+Layer34_41_Code_Gap_Closure_Master_Status.txt:
+- Untracked master status report claiming Layers 37-41 are scaffolded, 49/49 modules implemented.
+- Should not be treated as committed truth until Layer 41 code decision is made.
+
+Layer34_41_Architecture_Code_Alignment_Report.txt:
+- Untracked alignment report correcting overclaims to preview_scaffold_implemented.
+- Useful historical/report artifact if Layer 41 is accepted.
+
+Smoke_Optimization_Report.txt:
+- Untracked report documenting smoke_check CLI segmentation.
+- It says app.py and endpoint_coverage_matrix.py were not modified, but current dirty state shows they are modified for Layer 41. Treat this report as smoke-only evidence, not full working tree evidence.
+
+AI_STUDIO_CONTEXT/*:
+- No dirty files detected after commit 1a2e8ee.
+
+scripts/build_ai_studio_context.py:
+- No dirty file detected after commit 1a2e8ee.
+
+Risk assessment
+---------------
+High risk dirty files exist: yes.
+Primary high risk items:
+- app.py
+- scripts/smoke_check.py
+- endpoint_coverage_matrix.py
+- tum_proje_kodlari.txt
+
+Reason:
+- The first three are core application/test/coverage files with uncommitted Layer 41 and smoke runner changes.
+- tum_proje_kodlari.txt is a large full-project dump and should not be committed by default.
+
+Layer 41 validation fix assessment
+----------------------------------
+Layer 41 validation fix appears uncommitted.
+Evidence:
+- 10 untracked autonomous_operations_* preview modules.
+- app.py Layer 41 imports/model/routes are modified.
+- endpoint_coverage_matrix.py Layer 41 entries are modified.
+- scripts/smoke_check.py Layer 41 check is modified.
+- Layer41 reports are untracked.
+
+Recommended cleanup plan
+------------------------
+1. User decision required: decide whether Layer 41 implementation is accepted.
+2. If accepted, split into at least two commits:
+   A. Layer 41 Autonomous Operations preview scaffold:
+      - autonomous_operations_*_preview.py
+      - app.py Layer 41 imports/model/routes
+      - endpoint_coverage_matrix.py Layer 41 entries
+      - scripts/smoke_check.py Layer 41 check only if separable
+      - Layer41_* reports
+   B. Smoke optimization:
+      - scripts/smoke_check.py CLI/check registry changes
+      - Smoke_Optimization_Report.txt
+3. Historical reports can be committed as a separate report bundle:
+   - Layer34_41_Code_Gap_Closure_Plan.txt
+   - Layer34_41_Code_Gap_Closure_Master_Status.txt
+   - Layer34_41_Architecture_Code_Alignment_Report.txt
+4. Do not commit generated local dumps by default:
+   - klasor_haritasi.txt
+   - tum_proje_kodlari.txt
+   Decide whether to delete them or add an ignore rule only after user approval.
+5. If Layer 41 is not accepted, revert app.py, endpoint_coverage_matrix.py, and scripts/smoke_check.py changes and remove Layer 41 untracked modules/reports only after explicit user approval.
+
+Do not proceed to 42.x until cleanup decision.
+
+Validation
+----------
+No compile/test validation required for this audit task.
+Report file created: Working_Tree_Dirty_State_Audit.txt
+
+Commit / push
+-------------
+No commit performed.
+No push performed.
