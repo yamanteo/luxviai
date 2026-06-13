@@ -42,6 +42,12 @@ from luxcode_terminal_process_runtime import (
     get_safe_runtime_metadata,
     plan_terminal_action,
 )
+from luxcode_live_app_interaction_testing import (
+    cancel_live_test_runtime,
+    execute_live_test,
+    get_safe_live_test_metadata,
+    plan_live_test,
+)
 
 
 TASK_STATES = {
@@ -291,6 +297,8 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "scope_expansion_request": _redact(task.get("scope_expansion_request", {})),
         "terminal_runtime_plan": _redact(task.get("terminal_runtime_plan", {})),
         "terminal_runtime_result": _redact(task.get("terminal_runtime_result", {})),
+        "live_test_plan": _redact(task.get("live_test_plan", {})),
+        "live_test_result": _redact(task.get("live_test_result", {})),
         "can_advance": can_advance,
         "requires_user_approval": state in {"awaiting_approval", "apply_prepared", "verification_prepared"},
         **SAFE_INVARIANTS,
@@ -454,6 +462,9 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
             "plan_luxcode_task_terminal_action",
             "execute_luxcode_task_terminal_action",
             "cancel_luxcode_task_terminal_runtime",
+            "plan_luxcode_task_live_test",
+            "execute_luxcode_task_live_test",
+            "cancel_luxcode_task_live_test",
         ],
         "integrated_engines": [
             "LuxCode Master Router Preview",
@@ -467,6 +478,7 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
         "persistence": get_task_persistence_status(),
         "autonomy_permission": get_autonomy_permission_status(),
         "terminal_runtime": "available_for_structured_actions",
+        "live_testing": "available_for_localhost_structured_scenarios",
         "automatic_apply_enabled": False,
         "automatic_rollback_enabled": False,
         **SAFE_INVARIANTS,
@@ -866,6 +878,7 @@ def get_task_orchestrator_status() -> Dict[str, Any]:
         },
         "autonomy_permission": get_autonomy_permission_status(),
         "terminal_runtime": "available_for_structured_actions",
+        "live_testing": "available_for_localhost_structured_scenarios",
         "task_count": len(_TASKS),
         "active_task_count": sum(1 for state in states if state not in TERMINAL_STATES and state != "paused"),
         "paused_task_count": states.count("paused"),
@@ -1057,3 +1070,49 @@ def cancel_luxcode_task_terminal_runtime(task_id: str, runtime_id: str = "") -> 
     result = cancel_terminal_runtime(task_id=task_id, runtime_id=runtime_id)
     task["terminal_runtime_result"] = result
     return _persist_and_summarize(task, event_type="terminal_runtime_cancel")
+
+
+def plan_luxcode_task_live_test(
+    task_id: str,
+    scenario: Dict[str, Any],
+    working_directory: str = ".",
+    service: Optional[Dict[str, Any]] = None,
+    approval_digest: str = "",
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    scenario = dict(scenario or {})
+    scenario.setdefault("task_id", task_id)
+    result = plan_live_test(
+        scenario=scenario,
+        repository_root=task.get("repository_root") or str(Path.cwd()),
+        working_directory=working_directory,
+        permission_profile=task.get("permission_profile", {}),
+        service=service,
+        approval_digest=approval_digest,
+    )
+    task["live_test_plan"] = result.get("plan", result)
+    return _persist_and_summarize(task, event_type="live_test_plan")
+
+
+def execute_luxcode_task_live_test(task_id: str, approval_digest: str = "") -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    result = execute_live_test(task.get("live_test_plan", {}), approval_digest=approval_digest)
+    if result.get("runtime"):
+        task["live_test_result"] = get_safe_live_test_metadata(result["runtime"])
+    else:
+        task["live_test_result"] = result
+    return _persist_and_summarize(task, event_type="live_test_execute")
+
+
+def cancel_luxcode_task_live_test(task_id: str, runtime_id: str = "") -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    target_runtime = runtime_id or task.get("live_test_result", {}).get("live_test_runtime_id") or task.get("live_test_plan", {}).get("live_test_runtime_id", "")
+    result = cancel_live_test_runtime(target_runtime, reason=f"task {task_id} cancelled")
+    task["live_test_result"] = result.get("runtime", result)
+    return _persist_and_summarize(task, event_type="live_test_cancel")

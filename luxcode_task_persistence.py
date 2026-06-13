@@ -357,6 +357,20 @@ def get_task_persistence_schema() -> Dict[str, Any]:
             "ownership",
         ],
         "process_restore_policy": "restored process records never auto-start execution",
+        "safe_live_test_metadata": [
+            "scenario_id",
+            "live_test_runtime_id",
+            "lifecycle_state",
+            "current_step",
+            "completed_steps",
+            "redacted_result_summary",
+            "evidence_metadata",
+            "browser_ownership_metadata",
+            "cleanup_state",
+            "restore_policy",
+            "audit_events",
+        ],
+        "live_test_restore_policy": "restored live test records never auto-start browser service or scenario execution",
         "persistence_disabled_by_default": True,
         **SAFE_INVARIANTS,
     }
@@ -762,6 +776,8 @@ def get_task_persistence_status(mode: Optional[str] = None, storage_root: Option
         "permission_restore_expands_scope": False,
         "safe_process_metadata_supported": True,
         "process_restore_auto_starts": False,
+        "safe_live_test_metadata_supported": True,
+        "live_test_restore_auto_starts": False,
         **SAFE_INVARIANTS,
     }
     if resolved_mode == "local_sqlite" and resolved_root:

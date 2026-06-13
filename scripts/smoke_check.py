@@ -11297,6 +11297,148 @@ class SmokeRunner:
 
         return "luxcode terminal process runtime local process flow verified"
 
+    def check_luxcode_live_app_interaction_testing_local(self) -> str:
+        """Verify Live App Testing drives a temp localhost fixture through a real isolated browser."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_live_app_interaction_testing.py",
+            ROOT / "luxcode_terminal_process_runtime.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+            ROOT / "static" / "index.html",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        live_paths = [ROOT / ".luxcode_runtime", ROOT / ".luxcode_live_test", ROOT / "luxcode_tasks.db", ROOT / ".luxcode_snapshots", ROOT / "luxcode_backups"]
+        live_state = {str(path): path.exists() for path in live_paths}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "scripts").mkdir(parents=True)
+            (repo / "scripts" / "fixture_app.py").write_text(
+                "from http.server import BaseHTTPRequestHandler, HTTPServer\n"
+                "import sys\n"
+                "HTML=b'''<!doctype html><html><body><h1 data-testid=\"title\">Fixture ready</h1><input data-testid=\"name-input\"><button data-testid=\"submit-button\" onclick=\"document.querySelector('[data-testid=result]').textContent='Hello '+document.querySelector('[data-testid=name-input]').value\">Submit</button><div data-testid=\"result\"></div><div data-testid=\"mobile-only\">mobile viewport ready</div></body></html>'''\n"
+                "class H(BaseHTTPRequestHandler):\n"
+                "    def log_message(self,*a): pass\n"
+                "    def do_GET(self):\n"
+                "        self.send_response(200); self.end_headers(); self.wfile.write(b'ok' if self.path=='/health' else HTML)\n"
+                "HTTPServer(('127.0.0.1', int(sys.argv[1])), H).serve_forever()\n",
+                encoding="utf-8",
+            )
+            import socket
+
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind(("127.0.0.1", 0))
+                port = int(sock.getsockname()[1])
+            base_url = f"http://127.0.0.1:{port}"
+
+            schema = client.get("/luxcode/live-testing/schema")
+            assert schema.status_code == 200, f"/luxcode/live-testing/schema returned {schema.status_code}"
+            schema_data = schema.json()
+            assert schema_data.get("raw_javascript_endpoint") is False, schema_data
+            assert "click" in schema_data.get("supported_actions", []), schema_data
+
+            registry = client.get("/luxcode/live-testing/registry")
+            assert registry.status_code == 200, f"/luxcode/live-testing/registry returned {registry.status_code}"
+            registry_data = registry.json()
+            if not registry_data.get("browser_adapter", {}).get("available"):
+                raise SkipCheck("local Chrome/Edge CDP browser unavailable")
+
+            profile = client.post(
+                "/luxcode-autonomy/profile",
+                json={
+                    "task_id": "live-smoke",
+                    "permission_mode": "controlled_access",
+                    "repository_root": str(repo),
+                    "command_text": "run tests for local live app",
+                    "scope_items": [{"path": ".", "type": "folder", "recursive": True, "rights": ["read", "write"]}],
+                },
+            ).json()["profile"]
+            scenario = {
+                "scenario_id": "smoke_form",
+                "task_id": "live-smoke",
+                "scenario_name": "smoke form",
+                "base_url": base_url,
+                "allowed_origin": base_url,
+                "viewport": "desktop",
+                "per_step_timeout_seconds": 5,
+                "scenario_timeout_seconds": 30,
+                "evidence_policy": {"screenshots": True, "structured": True},
+                "expected_final_state": "scenario_passed",
+                "headless": True,
+                "steps": [
+                    {"step_id": "viewport", "action_type": "set_viewport", "viewport": "mobile"},
+                    {"step_id": "nav", "action_type": "navigate", "target_url": base_url},
+                    {"step_id": "ready", "action_type": "wait_for_ready"},
+                    {"step_id": "fill", "action_type": "fill", "selector": {"type": "test_id", "value": "name-input"}, "value": "Ada token=abc123456789SECRET"},
+                    {"step_id": "submit", "action_type": "click", "selector": {"type": "test_id", "value": "submit-button"}},
+                    {"step_id": "assert", "action_type": "assert_text_contains", "selector": {"type": "test_id", "value": "result"}, "expected_text": "Hello Ada"},
+                    {"step_id": "mobile", "action_type": "assert_visible", "selector": {"type": "test_id", "value": "mobile-only"}},
+                    {"step_id": "shot", "action_type": "capture_screenshot"},
+                ],
+            }
+            service = {
+                "working_directory": ".",
+                "executable": "python",
+                "arguments": ["scripts/fixture_app.py", str(port)],
+                "timeout_seconds": 30,
+                "permission_profile": profile,
+                "health_check": {"check_type": "http_get", "host": "127.0.0.1", "port": port, "path": "/health", "retries": 10, "retry_interval": 0.1},
+            }
+
+            invalid = client.post("/luxcode/live-testing/validate-scenario", json={"scenario": {"scenario_id": "bad", "base_url": "https://example.com", "allowed_origin": "https://example.com", "steps": [{"step_id": "nav", "action_type": "navigate", "target_url": "https://example.com"}]}})
+            assert invalid.status_code == 200, invalid.text
+            assert invalid.json().get("valid") is False, invalid.json()
+
+            raw = dict(scenario)
+            raw["steps"] = [{"step_id": "raw", "action_type": "raw_javascript", "script": "alert(1)"}]
+            raw_check = client.post("/luxcode/live-testing/validate-scenario", json={"scenario": raw})
+            assert raw_check.status_code == 200, raw_check.text
+            assert raw_check.json().get("valid") is False, raw_check.json()
+
+            plan = client.post(
+                "/luxcode/live-testing/plan",
+                json={"scenario": scenario, "repository_root": str(repo), "working_directory": ".", "permission_profile": profile, "service": service},
+            )
+            assert plan.status_code == 200, f"/luxcode/live-testing/plan returned {plan.status_code}"
+            plan_data = plan.json()
+            assert plan_data.get("ok") is True, plan_data
+            assert plan_data["plan"]["permission_decision"]["allowed"] is True, plan_data
+
+            execute = client.post("/luxcode/live-testing/execute", json={"plan": plan_data["plan"]})
+            assert execute.status_code == 200, f"/luxcode/live-testing/execute returned {execute.status_code}"
+            runtime = execute.json().get("runtime", {})
+            assert runtime.get("state") == "scenario_passed", runtime
+            assert runtime.get("cleanup_state") == "cleaned", runtime
+            assert "abc123456789SECRET" not in str(runtime), runtime
+            runtime_id = runtime.get("live_test_runtime_id")
+
+            evidence = client.get(f"/luxcode/live-testing/evidence/{runtime_id}")
+            assert evidence.status_code == 200, f"/luxcode/live-testing/evidence returned {evidence.status_code}"
+            assert evidence.json().get("evidence"), evidence.json()
+            status = client.get("/debug/luxcode-live-testing-status")
+            assert status.status_code == 200, f"/debug/luxcode-live-testing-status returned {status.status_code}"
+            status_data = status.json()
+            assert status_data.get("raw_javascript_allowed") is False, status_data
+            assert status_data.get("external_network_used") is False, status_data
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during live testing smoke: {path}"
+        for path in live_paths:
+            assert path.exists() is live_state[str(path)], f"live artifact state changed during live testing smoke: {path}"
+
+        return "luxcode live app interaction testing local browser flow verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -11334,6 +11476,7 @@ class SmokeRunner:
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local, None, "core"),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local, None, "core"),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local, None, "core"),
+            ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local, None, "core"),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints, None, "core"),
             ("debug_agent_panel", self.check_debug_agent_panel, None, "core"),
             ("mode_registry_preview", self.check_mode_registry_preview, None, "core"),
@@ -11537,6 +11680,7 @@ class SmokeRunner:
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local),
+            ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),

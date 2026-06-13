@@ -981,6 +981,17 @@ from luxcode_terminal_process_runtime import (
     plan_terminal_action,
     stop_terminal_process,
 )
+from luxcode_live_app_interaction_testing import (
+    cancel_live_test_runtime,
+    execute_live_test,
+    get_live_test_evidence,
+    get_live_test_runtime,
+    get_live_testing_registry,
+    get_live_testing_schema,
+    get_live_testing_status,
+    plan_live_test,
+    validate_live_scenario,
+)
 
 try:
     from dotenv import load_dotenv
@@ -2255,6 +2266,28 @@ class LuxCodeTerminalRuntimeHealthRequest(BaseModel):
     retry_interval: float = Field(default=0.1, ge=0.01, le=2.0)
     expected_status_codes: List[int] = Field(default_factory=lambda: [200])
     response_size_limit: int = Field(default=2000, ge=100, le=20000)
+
+
+class LuxCodeLiveTestingPlanRequest(BaseModel):
+    scenario: Dict[str, Any] = Field(default_factory=dict)
+    repository_root: str = Field(default="", max_length=800)
+    working_directory: str = Field(default=".", max_length=800)
+    permission_profile: Dict[str, Any] = Field(default_factory=dict)
+    service: Dict[str, Any] = Field(default_factory=dict)
+    approval_digest: str = Field(default="", max_length=260)
+
+
+class LuxCodeLiveTestingExecuteRequest(BaseModel):
+    plan: Dict[str, Any] = Field(default_factory=dict)
+    approval_digest: str = Field(default="", max_length=260)
+
+
+class LuxCodeLiveTestingValidateRequest(BaseModel):
+    scenario: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LuxCodeLiveTestingCancelRequest(BaseModel):
+    reason: str = Field(default="user_requested", max_length=200)
 
 
 # =========================================================
@@ -12488,6 +12521,56 @@ async def luxcode_terminal_runtime_health_check_endpoint(payload: LuxCodeTermina
 @app.get("/debug/luxcode-terminal-runtime-status")
 async def debug_luxcode_terminal_runtime_status_endpoint():
     return get_terminal_runtime_status()
+
+
+@app.get("/luxcode/live-testing/schema")
+async def luxcode_live_testing_schema_endpoint():
+    return get_live_testing_schema()
+
+
+@app.get("/luxcode/live-testing/registry")
+async def luxcode_live_testing_registry_endpoint():
+    return get_live_testing_registry()
+
+
+@app.post("/luxcode/live-testing/plan")
+async def luxcode_live_testing_plan_endpoint(payload: LuxCodeLiveTestingPlanRequest):
+    data = payload.dict()
+    if not data.get("permission_profile"):
+        data["permission_profile"] = None
+    if not data.get("service"):
+        data["service"] = None
+    return plan_live_test(**data)
+
+
+@app.post("/luxcode/live-testing/execute")
+async def luxcode_live_testing_execute_endpoint(payload: LuxCodeLiveTestingExecuteRequest):
+    return execute_live_test(plan=payload.plan, approval_digest=payload.approval_digest)
+
+
+@app.get("/luxcode/live-testing/runtime/{runtime_id}")
+async def luxcode_live_testing_runtime_endpoint(runtime_id: str):
+    return get_live_test_runtime(runtime_id)
+
+
+@app.post("/luxcode/live-testing/runtime/{runtime_id}/cancel")
+async def luxcode_live_testing_cancel_endpoint(runtime_id: str, payload: LuxCodeLiveTestingCancelRequest):
+    return cancel_live_test_runtime(runtime_id=runtime_id, reason=payload.reason)
+
+
+@app.post("/luxcode/live-testing/validate-scenario")
+async def luxcode_live_testing_validate_endpoint(payload: LuxCodeLiveTestingValidateRequest):
+    return validate_live_scenario(payload.scenario)
+
+
+@app.get("/luxcode/live-testing/evidence/{runtime_id}")
+async def luxcode_live_testing_evidence_endpoint(runtime_id: str):
+    return get_live_test_evidence(runtime_id)
+
+
+@app.get("/debug/luxcode-live-testing-status")
+async def debug_luxcode_live_testing_status_endpoint():
+    return get_live_testing_status()
 
 
 @app.get("/debug/runtime-drift-status")

@@ -928,6 +928,17 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode/terminal-runtime/health-check", "POST", "terminal_runtime", "localhost tcp/http health check"),
         _endpoint("/debug/luxcode-terminal-runtime-status", "GET", "terminal_runtime", "terminal runtime status"),
     ],
+    "luxcode_live_testing": [
+        _endpoint("/luxcode/live-testing/schema", "GET", "live_testing", "live app testing schema"),
+        _endpoint("/luxcode/live-testing/registry", "GET", "live_testing", "browser action selector and viewport registry"),
+        _endpoint("/luxcode/live-testing/plan", "POST", "live_testing", "build permission-scoped localhost scenario plan"),
+        _endpoint("/luxcode/live-testing/execute", "POST", "live_testing", "execute approved local browser scenario"),
+        _endpoint("/luxcode/live-testing/runtime/{runtime_id}", "GET", "live_testing", "inspect live test runtime state"),
+        _endpoint("/luxcode/live-testing/runtime/{runtime_id}/cancel", "POST", "live_testing", "cancel owned live test runtime"),
+        _endpoint("/luxcode/live-testing/validate-scenario", "POST", "live_testing", "validate structured browser scenario"),
+        _endpoint("/luxcode/live-testing/evidence/{runtime_id}", "GET", "live_testing", "read redacted live test evidence metadata"),
+        _endpoint("/debug/luxcode-live-testing-status", "GET", "live_testing", "live testing status"),
+    ],
 }
 
 
