@@ -339,6 +339,24 @@ def get_task_persistence_schema() -> Dict[str, Any]:
             "integrity_hash",
         ],
         "permission_restore_policy": "restored permissions never expand scope automatically",
+        "safe_process_metadata": [
+            "runtime_id",
+            "task_id",
+            "action_type",
+            "executable",
+            "normalized_args",
+            "cwd",
+            "pid",
+            "exit_code",
+            "timeout",
+            "status",
+            "health_result",
+            "cleanup_result",
+            "redacted_stdout_stderr_summary",
+            "audit_events",
+            "ownership",
+        ],
+        "process_restore_policy": "restored process records never auto-start execution",
         "persistence_disabled_by_default": True,
         **SAFE_INVARIANTS,
     }
@@ -742,6 +760,8 @@ def get_task_persistence_status(mode: Optional[str] = None, storage_root: Option
         "hard_delete_approval_shape": _approval_token("{task_id}"),
         "safe_permission_metadata_supported": True,
         "permission_restore_expands_scope": False,
+        "safe_process_metadata_supported": True,
+        "process_restore_auto_starts": False,
         **SAFE_INVARIANTS,
     }
     if resolved_mode == "local_sqlite" and resolved_root:

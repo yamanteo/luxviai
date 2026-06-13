@@ -917,6 +917,17 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode-autonomy/warning-preview", "POST", "autonomy_permission", "plain-language warning preview"),
         _endpoint("/debug/luxcode-autonomy-status", "GET", "autonomy_permission", "autonomy permission controller status"),
     ],
+    "luxcode_terminal_runtime": [
+        _endpoint("/luxcode/terminal-runtime/schema", "GET", "terminal_runtime", "controlled terminal runtime schema"),
+        _endpoint("/luxcode/terminal-runtime/registry", "GET", "terminal_runtime", "safe executable and action registry"),
+        _endpoint("/luxcode/terminal-runtime/plan", "POST", "terminal_runtime", "build structured shell-false execution plan"),
+        _endpoint("/luxcode/terminal-runtime/execute", "POST", "terminal_runtime", "execute approved structured terminal action"),
+        _endpoint("/luxcode/terminal-runtime/process/{runtime_id}", "GET", "terminal_runtime", "inspect owned runtime process"),
+        _endpoint("/luxcode/terminal-runtime/process/{runtime_id}/stop", "POST", "terminal_runtime", "stop owned runtime process"),
+        _endpoint("/luxcode/terminal-runtime/check-port", "POST", "terminal_runtime", "localhost port availability check"),
+        _endpoint("/luxcode/terminal-runtime/health-check", "POST", "terminal_runtime", "localhost tcp/http health check"),
+        _endpoint("/debug/luxcode-terminal-runtime-status", "GET", "terminal_runtime", "terminal runtime status"),
+    ],
 }
 
 

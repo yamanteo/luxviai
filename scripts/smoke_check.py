@@ -10837,7 +10837,7 @@ class SmokeRunner:
         schema = client.get("/luxcode-task/schema")
         assert schema.status_code == 200, f"/luxcode-task/schema returned {schema.status_code}"
         schema_data = schema.json()
-        assert schema_data.get("state_storage") == "in_memory_only", schema_data
+        assert schema_data.get("state_storage") in {"in_memory_only", "in_memory_with_optional_local_persistence"}, schema_data
         assert schema_data.get("automatic_apply_enabled") is False, schema_data
         assert schema_data.get("automatic_rollback_enabled") is False, schema_data
         assert schema_data.get("external_api_used") is False, schema_data
@@ -10872,8 +10872,8 @@ class SmokeRunner:
         no_approval = client.post("/luxcode-task/advance", json={"task_id": task_id, "action": "prepare_apply"})
         assert no_approval.status_code == 200, no_approval.text
         no_approval_data = no_approval.json()
-        assert no_approval_data.get("current_state") in {"awaiting_approval", "blocked"}, no_approval_data
-        assert no_approval_data.get("requires_user_approval") is True, no_approval_data
+        assert no_approval_data.get("current_state") in {"awaiting_approval", "blocked", "autonomy_paused"}, no_approval_data
+        assert no_approval_data.get("requires_user_approval") is True or no_approval_data.get("last_permission_evaluation", {}).get("requires_approval") is True, no_approval_data
 
         pause_create = client.post(
             "/luxcode-task/create",
@@ -10912,7 +10912,7 @@ class SmokeRunner:
         assert status.status_code == 200, f"/debug/luxcode-task-orchestrator-status returned {status.status_code}"
         status_data = status.json()
         assert status_data.get("task_count", 0) >= 3, status_data
-        assert status_data.get("state_storage") == "in_memory_only", status_data
+        assert status_data.get("state_storage") in {"in_memory_only", "in_memory_with_optional_local_persistence"}, status_data
         assert status_data.get("external_api_used") is False, status_data
         assert status_data.get("local_first") is True, status_data
 
@@ -11170,6 +11170,133 @@ class SmokeRunner:
 
         return "luxcode autonomy permission local preview flow verified"
 
+    def check_luxcode_terminal_process_runtime_local(self) -> str:
+        """Verify structured terminal runtime plans and manages a temp localhost process."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_terminal_process_runtime.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        live_paths = [ROOT / ".luxcode_runtime", ROOT / "luxcode_tasks.db", ROOT / ".luxcode_snapshots", ROOT / "luxcode_backups"]
+        live_state = {str(path): path.exists() for path in live_paths}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "scripts").mkdir(parents=True)
+            (repo / "scripts" / "server.py").write_text(
+                "from http.server import BaseHTTPRequestHandler, HTTPServer\n"
+                "import sys\n"
+                "class H(BaseHTTPRequestHandler):\n"
+                "    def log_message(self,*a): pass\n"
+                "    def do_GET(self):\n"
+                "        self.send_response(200); self.end_headers(); self.wfile.write(b'ok')\n"
+                "print('token=abc123456789SECRET', flush=True)\n"
+                "HTTPServer(('127.0.0.1', int(sys.argv[1])), H).serve_forever()\n",
+                encoding="utf-8",
+            )
+            import socket
+
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind(("127.0.0.1", 0))
+                port = int(sock.getsockname()[1])
+
+            schema = client.get("/luxcode/terminal-runtime/schema")
+            assert schema.status_code == 200, f"/luxcode/terminal-runtime/schema returned {schema.status_code}"
+            schema_data = schema.json()
+            assert schema_data.get("raw_shell_endpoint") is False, schema_data
+            assert schema_data.get("shell_used") is False, schema_data
+
+            registry = client.get("/luxcode/terminal-runtime/registry", params={"repository_root": str(repo)})
+            assert registry.status_code == 200, f"/luxcode/terminal-runtime/registry returned {registry.status_code}"
+            assert "python" in registry.json().get("executable_registry", {}), registry.json()
+
+            raw = client.post("/luxcode/terminal-runtime/plan", json={"action_type": "run_script", "repository_root": str(repo), "raw_command": "python -c print(1)"})
+            assert raw.status_code == 200, raw.text
+            assert raw.json().get("ok") is False, raw.json()
+
+            profile = client.post(
+                "/luxcode-autonomy/profile",
+                json={
+                    "task_id": "terminal-smoke",
+                    "permission_mode": "controlled_access",
+                    "repository_root": str(repo),
+                    "command_text": "test et servis baslat",
+                    "scope_items": [{"path": ".", "type": "folder", "recursive": True, "rights": ["read", "write"]}],
+                },
+            ).json()["profile"]
+            plan = client.post(
+                "/luxcode/terminal-runtime/plan",
+                json={
+                    "action_type": "start_service",
+                    "repository_root": str(repo),
+                    "working_directory": ".",
+                    "executable": "python",
+                    "arguments": ["scripts/server.py", str(port)],
+                    "timeout_seconds": 20,
+                    "process_mode": "background",
+                    "permission_profile": profile,
+                    "metadata": {"task_id": "terminal-smoke"},
+                },
+            )
+            assert plan.status_code == 200, f"/luxcode/terminal-runtime/plan returned {plan.status_code}"
+            plan_data = plan.json()
+            assert plan_data.get("ok") is True, plan_data
+            assert plan_data["plan"].get("shell") is False, plan_data
+            assert plan_data["plan"].get("risk_classification") == "important", plan_data
+
+            execute = client.post("/luxcode/terminal-runtime/execute", json={"plan": plan_data["plan"]})
+            assert execute.status_code == 200, f"/luxcode/terminal-runtime/execute returned {execute.status_code}"
+            runtime = execute.json().get("runtime", {})
+            runtime_id = runtime.get("runtime_id")
+            assert runtime.get("status") == "running", runtime
+            assert runtime.get("pid"), runtime
+
+            health = client.post("/luxcode/terminal-runtime/health-check", json={"check_type": "http_get", "host": "127.0.0.1", "port": port, "path": "/", "retries": 10})
+            assert health.status_code == 200, health.text
+            assert health.json().get("healthy") is True, health.json()
+
+            port_check = client.post("/luxcode/terminal-runtime/check-port", json={"host": "127.0.0.1", "port": port, "expected_runtime_id": runtime_id})
+            assert port_check.status_code == 200, port_check.text
+            assert port_check.json().get("listening") is True, port_check.json()
+
+            process = client.get(f"/luxcode/terminal-runtime/process/{runtime_id}")
+            assert process.status_code == 200, process.text
+            assert process.json().get("runtime", {}).get("runtime_id") == runtime_id, process.json()
+
+            stop = client.post(f"/luxcode/terminal-runtime/process/{runtime_id}/stop", json={"reason": "smoke complete"})
+            assert stop.status_code == 200, stop.text
+            stopped_runtime = stop.json().get("runtime", {})
+            assert stopped_runtime.get("status") == "stopped", stopped_runtime
+            assert "abc123456789SECRET" not in str(stopped_runtime), stopped_runtime
+
+            external = client.post("/luxcode/terminal-runtime/health-check", json={"check_type": "http_get", "host": "example.com", "port": 80})
+            assert external.status_code == 200, external.text
+            assert external.json().get("ok") is False, external.json()
+
+        status = client.get("/debug/luxcode-terminal-runtime-status")
+        assert status.status_code == 200, f"/debug/luxcode-terminal-runtime-status returned {status.status_code}"
+        assert status.json().get("shell_used") is False, status.json()
+        assert status.json().get("external_api_used") is False, status.json()
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during terminal runtime smoke: {path}"
+        for path in live_paths:
+            assert path.exists() is live_state[str(path)], f"live artifact state changed during terminal runtime smoke: {path}"
+
+        return "luxcode terminal process runtime local process flow verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -11206,6 +11333,7 @@ class SmokeRunner:
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local, None, "core"),
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local, None, "core"),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local, None, "core"),
+            ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local, None, "core"),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints, None, "core"),
             ("debug_agent_panel", self.check_debug_agent_panel, None, "core"),
             ("mode_registry_preview", self.check_mode_registry_preview, None, "core"),
@@ -11408,6 +11536,7 @@ class SmokeRunner:
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local),
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local),
+            ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),

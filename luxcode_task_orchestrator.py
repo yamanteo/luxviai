@@ -36,6 +36,12 @@ from luxcode_task_persistence import (
     restore_active_tasks,
     save_task_state,
 )
+from luxcode_terminal_process_runtime import (
+    cancel_terminal_runtime,
+    execute_terminal_action,
+    get_safe_runtime_metadata,
+    plan_terminal_action,
+)
 
 
 TASK_STATES = {
@@ -283,6 +289,8 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "permission_audit": _redact(task.get("permission_audit", [])),
         "last_permission_evaluation": _redact(task.get("last_permission_evaluation", {})),
         "scope_expansion_request": _redact(task.get("scope_expansion_request", {})),
+        "terminal_runtime_plan": _redact(task.get("terminal_runtime_plan", {})),
+        "terminal_runtime_result": _redact(task.get("terminal_runtime_result", {})),
         "can_advance": can_advance,
         "requires_user_approval": state in {"awaiting_approval", "apply_prepared", "verification_prepared"},
         **SAFE_INVARIANTS,
@@ -443,6 +451,9 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
             "restore_luxcode_active_tasks",
             "approve_luxcode_task_scope_expansion",
             "revoke_luxcode_task_scope",
+            "plan_luxcode_task_terminal_action",
+            "execute_luxcode_task_terminal_action",
+            "cancel_luxcode_task_terminal_runtime",
         ],
         "integrated_engines": [
             "LuxCode Master Router Preview",
@@ -455,6 +466,7 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
         "known_limitation": "persistence is disabled until explicitly initialized",
         "persistence": get_task_persistence_status(),
         "autonomy_permission": get_autonomy_permission_status(),
+        "terminal_runtime": "available_for_structured_actions",
         "automatic_apply_enabled": False,
         "automatic_rollback_enabled": False,
         **SAFE_INVARIANTS,
@@ -853,6 +865,7 @@ def get_task_orchestrator_status() -> Dict[str, Any]:
             ),
         },
         "autonomy_permission": get_autonomy_permission_status(),
+        "terminal_runtime": "available_for_structured_actions",
         "task_count": len(_TASKS),
         "active_task_count": sum(1 for state in states if state not in TERMINAL_STATES and state != "paused"),
         "paused_task_count": states.count("paused"),
@@ -996,3 +1009,51 @@ def revoke_luxcode_task_scope(task_id: str, target_path: str = "") -> Dict[str, 
         task["safe_permission_metadata"] = get_safe_permission_metadata(result["profile"])
         task["next_safe_action"] = "Scope access revoked immediately."
     return _persist_and_summarize(task, event_type="scope_permission_revoke")
+
+
+def plan_luxcode_task_terminal_action(
+    task_id: str,
+    action_type: str,
+    working_directory: str = ".",
+    executable: str = "python",
+    arguments: Optional[List[Any]] = None,
+    timeout_seconds: int = 30,
+    process_mode: str = "foreground",
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    result = plan_terminal_action(
+        action_type=action_type,
+        repository_root=task.get("repository_root") or str(Path.cwd()),
+        working_directory=working_directory,
+        executable=executable,
+        arguments=arguments or [],
+        timeout_seconds=timeout_seconds,
+        process_mode=process_mode,
+        permission_profile=task.get("permission_profile", {}),
+        metadata={"task_id": task_id},
+    )
+    task["terminal_runtime_plan"] = result.get("plan", result)
+    return _persist_and_summarize(task, event_type="terminal_runtime_plan")
+
+
+def execute_luxcode_task_terminal_action(task_id: str, approval_digest: str = "") -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    result = execute_terminal_action(task.get("terminal_runtime_plan", {}), approval_digest=approval_digest)
+    if result.get("runtime"):
+        task["terminal_runtime_result"] = get_safe_runtime_metadata(result["runtime"])
+    else:
+        task["terminal_runtime_result"] = result
+    return _persist_and_summarize(task, event_type="terminal_runtime_execute")
+
+
+def cancel_luxcode_task_terminal_runtime(task_id: str, runtime_id: str = "") -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    result = cancel_terminal_runtime(task_id=task_id, runtime_id=runtime_id)
+    task["terminal_runtime_result"] = result
+    return _persist_and_summarize(task, event_type="terminal_runtime_cancel")

@@ -970,6 +970,17 @@ from luxcode_autonomy_permission_controller import (
     request_scope_expansion,
     revoke_scope_access,
 )
+from luxcode_terminal_process_runtime import (
+    check_port,
+    execute_terminal_action,
+    get_terminal_process,
+    get_terminal_runtime_registry,
+    get_terminal_runtime_schema,
+    get_terminal_runtime_status,
+    health_check,
+    plan_terminal_action,
+    stop_terminal_process,
+)
 
 try:
     from dotenv import load_dotenv
@@ -2199,6 +2210,51 @@ class LuxCodeAutonomyWarningRequest(BaseModel):
     backup_available: bool = True
     rollback_available: bool = True
     requires_approval: bool = True
+
+
+class LuxCodeTerminalRuntimePlanRequest(BaseModel):
+    action_type: str = Field(default="run_test", max_length=80)
+    repository_root: str = Field(default="", max_length=800)
+    working_directory: str = Field(default=".", max_length=800)
+    executable: str = Field(default="python", max_length=800)
+    arguments: List[Any] = Field(default_factory=list)
+    timeout_seconds: int = Field(default=30, ge=1, le=300)
+    expected_exit_codes: List[int] = Field(default_factory=lambda: [0])
+    process_mode: str = Field(default="foreground", max_length=40)
+    output_limit: int = Field(default=6000, ge=100, le=20000)
+    environment: Dict[str, Any] = Field(default_factory=dict)
+    environment_policy: Dict[str, Any] = Field(default_factory=dict)
+    permission_profile: Dict[str, Any] = Field(default_factory=dict)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    raw_command: str = Field(default="", max_length=2000)
+
+
+class LuxCodeTerminalRuntimeExecuteRequest(BaseModel):
+    plan: Dict[str, Any] = Field(default_factory=dict)
+    approval_digest: str = Field(default="", max_length=260)
+
+
+class LuxCodeTerminalRuntimeStopRequest(BaseModel):
+    reason: str = Field(default="user_requested", max_length=200)
+
+
+class LuxCodeTerminalRuntimePortRequest(BaseModel):
+    host: str = Field(default="127.0.0.1", max_length=80)
+    port: int = Field(default=0, ge=0, le=65535)
+    expected_runtime_id: str = Field(default="", max_length=120)
+    timeout_seconds: float = Field(default=0.5, ge=0.05, le=5.0)
+
+
+class LuxCodeTerminalRuntimeHealthRequest(BaseModel):
+    check_type: str = Field(default="tcp", max_length=40)
+    host: str = Field(default="127.0.0.1", max_length=80)
+    port: int = Field(default=0, ge=0, le=65535)
+    path: str = Field(default="/", max_length=300)
+    timeout_seconds: float = Field(default=1.0, ge=0.05, le=10.0)
+    retries: int = Field(default=3, ge=1, le=10)
+    retry_interval: float = Field(default=0.1, ge=0.01, le=2.0)
+    expected_status_codes: List[int] = Field(default_factory=lambda: [200])
+    response_size_limit: int = Field(default=2000, ge=100, le=20000)
 
 
 # =========================================================
@@ -12384,6 +12440,54 @@ async def luxcode_autonomy_warning_preview_endpoint(payload: LuxCodeAutonomyWarn
 @app.get("/debug/luxcode-autonomy-status")
 async def debug_luxcode_autonomy_status_endpoint():
     return get_autonomy_permission_status()
+
+
+@app.get("/luxcode/terminal-runtime/schema")
+async def luxcode_terminal_runtime_schema_endpoint():
+    return get_terminal_runtime_schema()
+
+
+@app.get("/luxcode/terminal-runtime/registry")
+async def luxcode_terminal_runtime_registry_endpoint(repository_root: Optional[str] = None):
+    return get_terminal_runtime_registry(repository_root=repository_root)
+
+
+@app.post("/luxcode/terminal-runtime/plan")
+async def luxcode_terminal_runtime_plan_endpoint(payload: LuxCodeTerminalRuntimePlanRequest):
+    data = payload.dict()
+    if not data.get("permission_profile"):
+        data["permission_profile"] = None
+    return plan_terminal_action(**data)
+
+
+@app.post("/luxcode/terminal-runtime/execute")
+async def luxcode_terminal_runtime_execute_endpoint(payload: LuxCodeTerminalRuntimeExecuteRequest):
+    return execute_terminal_action(plan=payload.plan, approval_digest=payload.approval_digest)
+
+
+@app.get("/luxcode/terminal-runtime/process/{runtime_id}")
+async def luxcode_terminal_runtime_process_endpoint(runtime_id: str):
+    return get_terminal_process(runtime_id)
+
+
+@app.post("/luxcode/terminal-runtime/process/{runtime_id}/stop")
+async def luxcode_terminal_runtime_stop_endpoint(runtime_id: str, payload: LuxCodeTerminalRuntimeStopRequest):
+    return stop_terminal_process(runtime_id=runtime_id, reason=payload.reason)
+
+
+@app.post("/luxcode/terminal-runtime/check-port")
+async def luxcode_terminal_runtime_check_port_endpoint(payload: LuxCodeTerminalRuntimePortRequest):
+    return check_port(**payload.dict())
+
+
+@app.post("/luxcode/terminal-runtime/health-check")
+async def luxcode_terminal_runtime_health_check_endpoint(payload: LuxCodeTerminalRuntimeHealthRequest):
+    return health_check(**payload.dict())
+
+
+@app.get("/debug/luxcode-terminal-runtime-status")
+async def debug_luxcode_terminal_runtime_status_endpoint():
+    return get_terminal_runtime_status()
 
 
 @app.get("/debug/runtime-drift-status")
