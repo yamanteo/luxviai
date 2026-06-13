@@ -10923,6 +10923,122 @@ class SmokeRunner:
 
         return "luxcode task orchestrator local preview flow verified"
 
+    def check_luxcode_task_persistence_local(self) -> str:
+        """Verify local task persistence uses only temporary SQLite storage."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        runtime_dir = ROOT / ".luxcode_runtime"
+        runtime_existed = runtime_dir.exists()
+        live_db = ROOT / "luxcode_tasks.db"
+        live_db_existed = live_db.exists()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            storage_root = str(Path(tmp) / "task-store")
+            schema = client.get("/luxcode-task-persistence/schema")
+            assert schema.status_code == 200, f"/luxcode-task-persistence/schema returned {schema.status_code}"
+            schema_data = schema.json()
+            assert schema_data.get("default_mode") == "disabled", schema_data
+            assert schema_data.get("external_api_used") is False, schema_data
+            assert schema_data.get("network_access_used") is False, schema_data
+
+            init = client.post(
+                "/luxcode-task-persistence/initialize",
+                json={"mode": "local_sqlite", "storage_root": storage_root, "privacy_mode": True},
+            )
+            assert init.status_code == 200, f"/luxcode-task-persistence/initialize returned {init.status_code}"
+            init_data = init.json()
+            assert init_data.get("ok") is True, init_data
+            assert init_data.get("durable") is True, init_data
+
+            create = client.post(
+                "/luxcode-task/create",
+                json={
+                    "original_request": "persist this task token=abcdefghijklmnop",
+                    "repository_root": str(ROOT),
+                    "suspected_files": ["app.py"],
+                    "requested_files": ["app.py"],
+                    "mode": "plan",
+                },
+            )
+            assert create.status_code == 200, f"/luxcode-task/create returned {create.status_code}"
+            task = create.json()
+            task_id = task.get("task_id")
+            assert task_id, task
+            assert task.get("persistence_status", {}).get("last_save_ok") is True, task
+
+            save = client.post("/luxcode-task-persistence/save", json={"task_id": task_id})
+            assert save.status_code == 200, f"/luxcode-task-persistence/save returned {save.status_code}"
+            assert save.json().get("ok") is True, save.json()
+
+            load = client.post("/luxcode-task-persistence/load", json={"task_id": task_id})
+            assert load.status_code == 200, f"/luxcode-task-persistence/load returned {load.status_code}"
+            load_data = load.json()
+            assert load_data.get("ok") is True, load_data
+            assert load_data.get("execution_triggered") is False, load_data
+
+            listed = client.post("/luxcode-task-persistence/list", json={"limit": 10})
+            assert listed.status_code == 200, f"/luxcode-task-persistence/list returned {listed.status_code}"
+            assert any(item.get("task_id") == task_id for item in listed.json().get("tasks", [])), listed.json()
+
+            active_create = client.post(
+                "/luxcode-task/create",
+                json={"original_request": "restore active", "repository_root": str(ROOT), "suspected_files": ["app.py"]},
+            )
+            active_id = active_create.json().get("task_id")
+            restore = client.post("/luxcode-task-persistence/restore-active", json={"limit": 10})
+            assert restore.status_code == 200, f"/luxcode-task-persistence/restore-active returned {restore.status_code}"
+            restore_data = restore.json()
+            assert restore_data.get("execution_triggered") is False, restore_data
+            assert any(item.get("task_id") == active_id and item.get("restored") for item in restore_data.get("restored_tasks", [])), restore_data
+
+            archive = client.post("/luxcode-task-persistence/archive", json={"task_id": task_id})
+            assert archive.status_code == 200, f"/luxcode-task-persistence/archive returned {archive.status_code}"
+            assert archive.json().get("archived") is True, archive.json()
+
+            soft_delete = client.post("/luxcode-task-persistence/delete", json={"task_id": active_id})
+            assert soft_delete.status_code == 200, f"/luxcode-task-persistence/delete returned {soft_delete.status_code}"
+            assert soft_delete.json().get("deleted") is True, soft_delete.json()
+
+            hard_block = client.post("/luxcode-task-persistence/delete", json={"task_id": active_id, "hard_delete": True})
+            assert hard_block.status_code == 200, hard_block.text
+            hard_block_data = hard_block.json()
+            assert hard_block_data.get("ok") is False, hard_block_data
+            assert "approval_token_required" in hard_block_data, hard_block_data
+
+            db_path = Path(storage_root) / "luxcode_tasks.db"
+            assert db_path.exists(), "temporary sqlite database was not created"
+            db_bytes = db_path.read_bytes()
+            assert b"abcdefghijklmnop" not in db_bytes, "secret-like token persisted"
+            assert b"DEEPSEEK_API_KEY" not in db_bytes, "secret key name persisted"
+
+        status = client.get("/debug/luxcode-task-persistence-status")
+        assert status.status_code == 200, f"/debug/luxcode-task-persistence-status returned {status.status_code}"
+        status_data = status.json()
+        assert status_data.get("external_api_used") is False, status_data
+        assert status_data.get("network_access_used") is False, status_data
+        assert status_data.get("shell_execution_used") is False, status_data
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during task persistence smoke: {path}"
+        assert runtime_dir.exists() is runtime_existed, "live .luxcode_runtime directory state changed during task persistence smoke"
+        assert live_db.exists() is live_db_existed, "live LuxCode persistence database state changed during task persistence smoke"
+
+        return "luxcode task persistence local sqlite flow verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -10957,6 +11073,7 @@ class SmokeRunner:
             ("lux_controlled_apply_approval_gated", self.check_lux_controlled_apply_approval_gated, None, "core"),
             ("lux_verification_recovery_local", self.check_lux_verification_recovery_local, None, "core"),
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local, None, "core"),
+            ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local, None, "core"),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints, None, "core"),
             ("debug_agent_panel", self.check_debug_agent_panel, None, "core"),
             ("mode_registry_preview", self.check_mode_registry_preview, None, "core"),
@@ -11157,6 +11274,7 @@ class SmokeRunner:
             ("lux_controlled_apply_approval_gated", self.check_lux_controlled_apply_approval_gated),
             ("lux_verification_recovery_local", self.check_lux_verification_recovery_local),
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local),
+            ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),

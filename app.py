@@ -940,15 +940,23 @@ from lux_verification_recovery_engine import (
 )
 from luxcode_task_orchestrator import (
     advance_luxcode_task,
+    archive_luxcode_persisted_task,
     approve_luxcode_task_step,
     cancel_luxcode_task,
+    configure_luxcode_task_persistence,
     create_luxcode_task,
+    delete_luxcode_persisted_task,
     get_luxcode_task_status,
     get_task_orchestrator_schema,
     get_task_orchestrator_status,
+    list_luxcode_persisted_tasks,
+    load_luxcode_task_from_persistence,
     pause_luxcode_task,
     resume_luxcode_task,
+    restore_luxcode_active_tasks,
+    save_luxcode_task_to_persistence,
 )
+from luxcode_task_persistence import get_task_persistence_schema, get_task_persistence_status
 
 try:
     from dotenv import load_dotenv
@@ -2070,6 +2078,46 @@ class LuxCodeTaskApprovalRequest(BaseModel):
 class LuxCodeTaskStateRequest(BaseModel):
     task_id: str = Field(default="", max_length=120)
     reason: str = Field(default="", max_length=1000)
+
+
+class LuxCodeTaskPersistenceInitializeRequest(BaseModel):
+    mode: str = Field(default="disabled", max_length=40)
+    storage_root: Optional[str] = Field(default=None, max_length=800)
+    privacy_mode: bool = True
+
+
+class LuxCodeTaskPersistenceSaveRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    expected_revision: Optional[int] = None
+
+
+class LuxCodeTaskPersistenceLoadRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    include_deleted: bool = False
+
+
+class LuxCodeTaskPersistenceListRequest(BaseModel):
+    include_archived: bool = False
+    include_deleted: bool = False
+    state: Optional[str] = Field(default=None, max_length=80)
+    limit: int = Field(default=50, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
+
+
+class LuxCodeTaskPersistenceArchiveRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    expected_revision: Optional[int] = None
+
+
+class LuxCodeTaskPersistenceDeleteRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    hard_delete: bool = False
+    approval_token: str = Field(default="", max_length=260)
+    confirmation_phrase: str = Field(default="", max_length=120)
+
+
+class LuxCodeTaskPersistenceRestoreRequest(BaseModel):
+    limit: int = Field(default=50, ge=1, le=100)
 
 
 # =========================================================
@@ -12156,6 +12204,51 @@ async def luxcode_task_status_endpoint(task_id: str):
 @app.get("/debug/luxcode-task-orchestrator-status")
 async def debug_luxcode_task_orchestrator_status_endpoint():
     return get_task_orchestrator_status()
+
+
+@app.get("/luxcode-task-persistence/schema")
+async def luxcode_task_persistence_schema_endpoint():
+    return get_task_persistence_schema()
+
+
+@app.post("/luxcode-task-persistence/initialize")
+async def luxcode_task_persistence_initialize_endpoint(payload: LuxCodeTaskPersistenceInitializeRequest):
+    return configure_luxcode_task_persistence(**payload.dict())
+
+
+@app.post("/luxcode-task-persistence/save")
+async def luxcode_task_persistence_save_endpoint(payload: LuxCodeTaskPersistenceSaveRequest):
+    return save_luxcode_task_to_persistence(task_id=payload.task_id, expected_revision=payload.expected_revision)
+
+
+@app.post("/luxcode-task-persistence/load")
+async def luxcode_task_persistence_load_endpoint(payload: LuxCodeTaskPersistenceLoadRequest):
+    return load_luxcode_task_from_persistence(task_id=payload.task_id, include_deleted=payload.include_deleted)
+
+
+@app.post("/luxcode-task-persistence/list")
+async def luxcode_task_persistence_list_endpoint(payload: LuxCodeTaskPersistenceListRequest):
+    return list_luxcode_persisted_tasks(**payload.dict())
+
+
+@app.post("/luxcode-task-persistence/archive")
+async def luxcode_task_persistence_archive_endpoint(payload: LuxCodeTaskPersistenceArchiveRequest):
+    return archive_luxcode_persisted_task(task_id=payload.task_id, expected_revision=payload.expected_revision)
+
+
+@app.post("/luxcode-task-persistence/delete")
+async def luxcode_task_persistence_delete_endpoint(payload: LuxCodeTaskPersistenceDeleteRequest):
+    return delete_luxcode_persisted_task(**payload.dict())
+
+
+@app.post("/luxcode-task-persistence/restore-active")
+async def luxcode_task_persistence_restore_active_endpoint(payload: LuxCodeTaskPersistenceRestoreRequest):
+    return restore_luxcode_active_tasks(limit=payload.limit)
+
+
+@app.get("/debug/luxcode-task-persistence-status")
+async def debug_luxcode_task_persistence_status_endpoint():
+    return get_task_persistence_status()
 
 
 @app.get("/debug/runtime-drift-status")

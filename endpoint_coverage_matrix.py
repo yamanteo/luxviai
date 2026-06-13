@@ -895,6 +895,17 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode-task/{task_id}", "GET", "task_orchestrator", "retrieve deterministic task state"),
         _endpoint("/debug/luxcode-task-orchestrator-status", "GET", "task_orchestrator", "task orchestrator status"),
     ],
+    "luxcode_task_persistence": [
+        _endpoint("/luxcode-task-persistence/schema", "GET", "task_persistence", "local task persistence schema"),
+        _endpoint("/luxcode-task-persistence/initialize", "POST", "task_persistence", "initialize disabled memory or temporary sqlite persistence"),
+        _endpoint("/luxcode-task-persistence/save", "POST", "task_persistence", "save in-memory task state to configured local store"),
+        _endpoint("/luxcode-task-persistence/load", "POST", "task_persistence", "load persisted task into orchestrator memory"),
+        _endpoint("/luxcode-task-persistence/list", "POST", "task_persistence", "list persisted safe task records"),
+        _endpoint("/luxcode-task-persistence/archive", "POST", "task_persistence", "archive persisted task without deleting history"),
+        _endpoint("/luxcode-task-persistence/delete", "POST", "task_persistence", "soft delete or approval-gated hard delete task record"),
+        _endpoint("/luxcode-task-persistence/restore-active", "POST", "task_persistence", "restore active persisted tasks without execution"),
+        _endpoint("/debug/luxcode-task-persistence-status", "GET", "task_persistence", "task persistence adapter status"),
+    ],
 }
 
 

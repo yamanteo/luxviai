@@ -18,6 +18,16 @@ from lux_verification_recovery_engine import (
     prepare_verification_run,
 )
 from luxcode_master_router_preview import build_luxcode_master_router_preview
+from luxcode_task_persistence import (
+    archive_task_state,
+    delete_task_state,
+    get_task_persistence_status,
+    initialize_task_store,
+    list_task_states,
+    load_task_state,
+    restore_active_tasks,
+    save_task_state,
+)
 
 
 TASK_STATES = {
@@ -55,6 +65,7 @@ SAFE_INVARIANTS = {
 DEFAULT_FORBIDDEN_FILES = [".env", "static/index.html"]
 
 _TASKS: Dict[str, Dict[str, Any]] = {}
+_PERSISTENCE_CONFIG: Dict[str, Any] = {"mode": "disabled", "storage_root": "", "enabled": False}
 
 
 def _now() -> str:
@@ -250,6 +261,11 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "pending_steps": _pending_for_state(state),
         "blocked_reasons": list(task.get("blocked_reasons", [])),
         "next_safe_action": task.get("next_safe_action", ""),
+        "persistence_status": dict(task.get("persistence_status", {})),
+        "persistence_warning": task.get("persistence_warning", ""),
+        "restored_from_persistence": bool(task.get("restored_from_persistence", False)),
+        "requires_explicit_resume": bool(task.get("requires_explicit_resume", False)),
+        "execution_triggered_on_restore": bool(task.get("execution_triggered_on_restore", False)),
         "can_advance": can_advance,
         "requires_user_approval": state in {"awaiting_approval", "apply_prepared", "verification_prepared"},
         **SAFE_INVARIANTS,
@@ -275,6 +291,55 @@ def _block(task: Dict[str, Any], reason: str, state: str = "blocked") -> Dict[st
     return _touch(task, state)
 
 
+def _persist_task(task: Dict[str, Any], event_type: str = "state_transition", previous_state: Optional[str] = None) -> None:
+    if not _PERSISTENCE_CONFIG.get("enabled"):
+        return
+    result = save_task_state(
+        task,
+        expected_revision=task.get("persistence_revision"),
+        mode=_PERSISTENCE_CONFIG.get("mode"),
+        storage_root=_PERSISTENCE_CONFIG.get("storage_root"),
+        event_type=event_type,
+        previous_state=previous_state,
+    )
+    task["persistence_status"] = {
+        "enabled": True,
+        "durable": bool(result.get("durable")),
+        "last_save_ok": bool(result.get("ok") and result.get("saved", True)),
+        "revision": result.get("revision", task.get("persistence_revision", 0)),
+    }
+    if result.get("ok") and result.get("revision") is not None:
+        task["persistence_revision"] = int(result["revision"])
+        task.pop("persistence_warning", None)
+    elif not result.get("ok"):
+        task["persistence_warning"] = result.get("error", "persistence save failed")
+        task["next_safe_action"] = "Retry persistence save or continue with in-memory task state."
+
+
+def _persist_and_summarize(task: Dict[str, Any], event_type: str = "state_transition", previous_state: Optional[str] = None) -> Dict[str, Any]:
+    _persist_task(task, event_type=event_type, previous_state=previous_state)
+    return _summary(task)
+
+
+def _restore_payload_to_task(payload: Dict[str, Any]) -> Tuple[bool, str]:
+    task_id = str(payload.get("task_id") or "")
+    state = str(payload.get("current_state") or "")
+    if not task_id:
+        return False, "restored task_id missing"
+    if state not in TASK_STATES:
+        return False, "restored task state invalid"
+    task = deepcopy(payload)
+    task.setdefault("completed_steps", [])
+    task.setdefault("blocked_reasons", [])
+    task.setdefault("pending_steps", _pending_for_state(state))
+    task.setdefault("safety_flags", dict(SAFE_INVARIANTS))
+    task["restored_from_persistence"] = True
+    task["requires_explicit_resume"] = True
+    task["execution_triggered_on_restore"] = False
+    _TASKS[task_id] = task
+    return True, ""
+
+
 def get_task_orchestrator_schema() -> Dict[str, Any]:
     return {
         "name": "LuxCode Task Orchestrator & Continuity Core",
@@ -289,6 +354,13 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
             "resume_luxcode_task",
             "get_luxcode_task_status",
             "get_task_orchestrator_status",
+            "configure_luxcode_task_persistence",
+            "save_luxcode_task_to_persistence",
+            "load_luxcode_task_from_persistence",
+            "list_luxcode_persisted_tasks",
+            "archive_luxcode_persisted_task",
+            "delete_luxcode_persisted_task",
+            "restore_luxcode_active_tasks",
         ],
         "integrated_engines": [
             "LuxCode Master Router Preview",
@@ -297,8 +369,9 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
             "Approval-Gated Controlled Apply Engine",
             "Local Verification Execution & Recovery Engine",
         ],
-        "state_storage": "in_memory_only",
-        "known_limitation": "in-memory state is lost on process restart",
+        "state_storage": "in_memory_with_optional_local_persistence",
+        "known_limitation": "persistence is disabled until explicitly initialized",
+        "persistence": get_task_persistence_status(),
         "automatic_apply_enabled": False,
         "automatic_rollback_enabled": False,
         **SAFE_INVARIANTS,
@@ -350,7 +423,7 @@ def create_luxcode_task(
         "safety_flags": dict(SAFE_INVARIANTS),
     }
     _TASKS[task_id] = task
-    return _summary(task)
+    return _persist_and_summarize(task, event_type="create")
 
 
 def _advance_route(task: Dict[str, Any]) -> None:
@@ -537,6 +610,7 @@ def advance_luxcode_task(
         return {"task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
     if task["current_state"] in EXECUTION_BLOCKED_STATES:
         return _summary(task)
+    previous_state = task["current_state"]
     if patch_steps is not None:
         task["approval_state"]["patch_steps"] = deepcopy(patch_steps)
     if verification_checks is not None:
@@ -558,7 +632,7 @@ def advance_luxcode_task(
         _execute_verification(task)
     else:
         _block(task, f"invalid transition from {state} via {action}")
-    return _summary(task)
+    return _persist_and_summarize(task, event_type=f"advance:{action}", previous_state=previous_state)
 
 
 def approve_luxcode_task_step(
@@ -579,6 +653,7 @@ def approve_luxcode_task_step(
         return {"task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
     if task["current_state"] in EXECUTION_BLOCKED_STATES:
         return _summary(task)
+    previous_state = task["current_state"]
     steps = _patch_steps(task, patch_steps)
     files = _unique(approved_files or [step.get("target_file") for step in steps if isinstance(step, dict)])
     hashes = dict(expected_file_hashes or _file_hashes(task["repository_root"], files))
@@ -586,10 +661,10 @@ def approve_luxcode_task_step(
     snapshot = _approval_snapshot(task, pid, steps, files, hashes)
     if repository_root and _safe_root(repository_root) != task["repository_root"]:
         _block(task, "approval repository root does not match task repository root", "awaiting_approval")
-        return _summary(task)
+        return _persist_and_summarize(task, event_type="approval_blocked", previous_state=previous_state)
     if patch_digest and patch_digest != snapshot["patch_digest"]:
         _block(task, "approval patch digest does not match current patch", "awaiting_approval")
-        return _summary(task)
+        return _persist_and_summarize(task, event_type="approval_blocked", previous_state=previous_state)
     task["approval_state"].update(
         {
             "approved": True,
@@ -608,17 +683,18 @@ def approve_luxcode_task_step(
     task["approval_state"].setdefault("approval_events", []).append({"approved_at": _now(), "patch_digest": snapshot["patch_digest"]})
     task["next_safe_action"] = "Advance to prepare controlled apply."
     _touch(task, "approval_verified", "approve_patch")
-    return _summary(task)
+    return _persist_and_summarize(task, event_type="approve", previous_state=previous_state)
 
 
 def cancel_luxcode_task(task_id: str, reason: str = "") -> Dict[str, Any]:
     task = _TASKS.get(task_id)
     if not task:
         return {"task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    previous_state = task["current_state"]
     task["cancellation_reason"] = reason
     task["next_safe_action"] = "Task cancelled; no execution transitions are allowed."
     _touch(task, "cancelled")
-    return _summary(task)
+    return _persist_and_summarize(task, event_type="cancel", previous_state=previous_state)
 
 
 def pause_luxcode_task(task_id: str, reason: str = "") -> Dict[str, Any]:
@@ -627,11 +703,12 @@ def pause_luxcode_task(task_id: str, reason: str = "") -> Dict[str, Any]:
         return {"task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
     if task["current_state"] in TERMINAL_STATES:
         return _summary(task)
+    previous_state = task["current_state"]
     task["previous_state_before_pause"] = task["current_state"]
     task["pause_reason"] = reason
     task["next_safe_action"] = "Resume before any execution transition."
     _touch(task, "paused")
-    return _summary(task)
+    return _persist_and_summarize(task, event_type="pause", previous_state=previous_state)
 
 
 def resume_luxcode_task(task_id: str) -> Dict[str, Any]:
@@ -640,11 +717,12 @@ def resume_luxcode_task(task_id: str) -> Dict[str, Any]:
         return {"task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
     if task["current_state"] != "paused":
         return _summary(task)
+    previous_state = task["current_state"]
     prior = task.get("previous_state_before_pause") or "created"
     task["pause_reason"] = task.get("pause_reason", "")
     task["next_safe_action"] = "Continue from the next safe checkpoint."
     _touch(task, prior)
-    return _summary(task)
+    return _persist_and_summarize(task, event_type="resume", previous_state=previous_state)
 
 
 def get_luxcode_task_status(task_id: str) -> Dict[str, Any]:
@@ -659,8 +737,15 @@ def get_task_orchestrator_status() -> Dict[str, Any]:
     return {
         "name": "LuxCode Task Orchestrator & Continuity Core",
         "status": "ready",
-        "state_storage": "in_memory_only",
-        "known_limitation": "in-memory state is lost on process restart",
+        "state_storage": "in_memory_with_optional_local_persistence",
+        "known_limitation": "persistence is disabled until explicitly initialized",
+        "persistence": {
+            "enabled": bool(_PERSISTENCE_CONFIG.get("enabled")),
+            **get_task_persistence_status(
+                mode=_PERSISTENCE_CONFIG.get("mode"),
+                storage_root=_PERSISTENCE_CONFIG.get("storage_root"),
+            ),
+        },
         "task_count": len(_TASKS),
         "active_task_count": sum(1 for state in states if state not in TERMINAL_STATES and state != "paused"),
         "paused_task_count": states.count("paused"),
@@ -679,3 +764,91 @@ def get_task_orchestrator_status() -> Dict[str, Any]:
         ],
         **SAFE_INVARIANTS,
     }
+
+
+def configure_luxcode_task_persistence(mode: str = "disabled", storage_root: Optional[str] = None, privacy_mode: bool = True) -> Dict[str, Any]:
+    result = initialize_task_store(mode=mode, storage_root=storage_root, privacy_mode=privacy_mode)
+    _PERSISTENCE_CONFIG.update({"mode": mode, "storage_root": storage_root or "", "enabled": mode != "disabled"})
+    return result
+
+
+def save_luxcode_task_to_persistence(task_id: str, expected_revision: Optional[int] = None) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    result = save_task_state(
+        task,
+        expected_revision=expected_revision if expected_revision is not None else task.get("persistence_revision"),
+        mode=_PERSISTENCE_CONFIG.get("mode"),
+        storage_root=_PERSISTENCE_CONFIG.get("storage_root"),
+        event_type="manual_save",
+    )
+    if result.get("ok") and result.get("revision") is not None:
+        task["persistence_revision"] = int(result["revision"])
+        task.pop("persistence_warning", None)
+    elif not result.get("ok"):
+        task["persistence_warning"] = result.get("error", "persistence save failed")
+    return result
+
+
+def load_luxcode_task_from_persistence(task_id: str, include_deleted: bool = False) -> Dict[str, Any]:
+    result = load_task_state(
+        task_id=task_id,
+        mode=_PERSISTENCE_CONFIG.get("mode"),
+        storage_root=_PERSISTENCE_CONFIG.get("storage_root"),
+        include_deleted=include_deleted,
+    )
+    if not result.get("ok") or not result.get("found"):
+        return result
+    ok, error = _restore_payload_to_task(result["task"])
+    if not ok:
+        return {"ok": False, "error": error, **SAFE_INVARIANTS}
+    return {"ok": True, "task": _summary(_TASKS[task_id]), "execution_triggered": False, **SAFE_INVARIANTS}
+
+
+def list_luxcode_persisted_tasks(**kwargs: Any) -> Dict[str, Any]:
+    return list_task_states(
+        mode=_PERSISTENCE_CONFIG.get("mode"),
+        storage_root=_PERSISTENCE_CONFIG.get("storage_root"),
+        **kwargs,
+    )
+
+
+def archive_luxcode_persisted_task(task_id: str, expected_revision: Optional[int] = None) -> Dict[str, Any]:
+    return archive_task_state(
+        task_id=task_id,
+        mode=_PERSISTENCE_CONFIG.get("mode"),
+        storage_root=_PERSISTENCE_CONFIG.get("storage_root"),
+        expected_revision=expected_revision,
+    )
+
+
+def delete_luxcode_persisted_task(
+    task_id: str,
+    hard_delete: bool = False,
+    approval_token: str = "",
+    confirmation_phrase: str = "",
+) -> Dict[str, Any]:
+    return delete_task_state(
+        task_id=task_id,
+        mode=_PERSISTENCE_CONFIG.get("mode"),
+        storage_root=_PERSISTENCE_CONFIG.get("storage_root"),
+        hard_delete=hard_delete,
+        approval_token=approval_token,
+        confirmation_phrase=confirmation_phrase,
+    )
+
+
+def restore_luxcode_active_tasks(limit: int = 50) -> Dict[str, Any]:
+    result = restore_active_tasks(
+        mode=_PERSISTENCE_CONFIG.get("mode"),
+        storage_root=_PERSISTENCE_CONFIG.get("storage_root"),
+        limit=limit,
+    )
+    if not result.get("ok"):
+        return result
+    restored = []
+    for payload in result.get("restored_tasks", []):
+        ok, error = _restore_payload_to_task(payload)
+        restored.append({"task_id": payload.get("task_id"), "restored": ok, "error": error, "execution_triggered": False})
+    return {"ok": True, "restored_tasks": restored, "restored_count": len(restored), "execution_triggered": False, **SAFE_INVARIANTS}
