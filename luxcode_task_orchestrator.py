@@ -88,6 +88,13 @@ TASK_STATES = {
     "test_matrix_review",
     "test_matrix_completed",
     "test_matrix_blocked",
+    "browser_selection_planned",
+    "browser_selected",
+    "browser_launching",
+    "browser_identity_verifying",
+    "browser_launch_completed",
+    "browser_launch_blocked",
+    "browser_identity_mismatch",
     "awaiting_scope_permission",
     "awaiting_irreversible_confirmation",
     "autonomy_paused",
@@ -323,6 +330,10 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "matrix_summary": _redact(task.get("matrix_summary", {})),
         "matrix_failures": _redact(task.get("matrix_failures", [])),
         "matrix_required_for_completion": bool(task.get("matrix_required_for_completion", False)),
+        "browser_launch_state": task.get("browser_launch_state", ""),
+        "browser_identity_state": task.get("browser_identity_state", ""),
+        "browser_launch_failures": _redact(task.get("browser_launch_failures", [])),
+        "browser_identity_mismatches": _redact(task.get("browser_identity_mismatches", [])),
         "skipped_target_reasons": _redact(task.get("skipped_target_reasons", {})),
         "can_advance": can_advance,
         "requires_user_approval": state in {"awaiting_approval", "apply_prepared", "verification_prepared"},
@@ -1234,6 +1245,8 @@ def plan_luxcode_task_test_matrix(
     task["test_matrix_plan"] = result.get("plan", result)
     task["selected_targets"] = requested_targets or []
     task["matrix_execution_state"] = "planned" if result.get("ok") else "blocked"
+    task["browser_launch_state"] = "browser_selection_planned" if result.get("ok") else "browser_launch_blocked"
+    task["browser_identity_state"] = "pending_identity_verification" if result.get("ok") else "not_started"
     task["matrix_required_for_completion"] = bool(matrix_required_for_completion)
     task["skipped_target_reasons"] = {item.get("target_id", ""): item.get("skip_reason", "") for item in result.get("plan", {}).get("skipped_targets", [])}
     _touch(task, "test_matrix_planned" if result.get("ok") else "test_matrix_blocked")
@@ -1256,10 +1269,27 @@ def execute_luxcode_task_test_matrix(task_id: str, retry_cell_ids: Optional[List
         task["matrix_failures"] = runtime.get("summary", {}).get("failures", [])
         task["matrix_execution_state"] = runtime.get("state", "test_matrix_review")
         task["test_matrix_result"] = metadata
+        results = runtime.get("results", [])
+        task["requested_browser_family"] = sorted({str(item.get("requested_browser_family", "")) for item in results if item.get("requested_browser_family")})
+        task["selected_browser_family"] = sorted({str(item.get("selected_browser_family", "")) for item in results if item.get("selected_browser_family")})
+        task["fallback_used"] = any(bool(item.get("fallback_used")) for item in results)
+        task["browser_launch_failures"] = [item for item in results if "browser_launch_failure" in item.get("failure_categories", [])][:10]
+        task["browser_identity_mismatches"] = [item for item in results if item.get("browser_identity_mismatch")][:10]
+        if task["browser_identity_mismatches"]:
+            task["browser_launch_state"] = "browser_identity_mismatch"
+            task["browser_identity_state"] = "browser_identity_mismatch"
+        elif task["browser_launch_failures"]:
+            task["browser_launch_state"] = "browser_launch_blocked"
+            task["browser_identity_state"] = "not_verified"
+        else:
+            task["browser_launch_state"] = "browser_launch_completed"
+            task["browser_identity_state"] = "verified"
     else:
         task["matrix_summary"] = result
         task["matrix_failures"] = [result]
         task["matrix_execution_state"] = "blocked"
+        task["browser_launch_state"] = "browser_launch_blocked"
+        task["browser_identity_state"] = "not_verified"
     summary_state = task.get("matrix_summary", {}).get("overall_status") if isinstance(task.get("matrix_summary"), dict) else ""
     if summary_state == "passed" and not task.get("matrix_required_for_completion"):
         _touch(task, "test_matrix_completed")

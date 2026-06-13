@@ -981,6 +981,17 @@ from luxcode_terminal_process_runtime import (
     plan_terminal_action,
     stop_terminal_process,
 )
+from luxcode_browser_launch_selection import (
+    build_browser_launch_request,
+    detect_browser_executables,
+    get_browser_launch_schema,
+    get_browser_launch_status,
+    launch_selected_browser,
+    normalize_browser_family,
+    select_browser_executable,
+    terminate_selected_browser,
+    verify_launched_browser_identity,
+)
 from luxcode_live_app_interaction_testing import (
     cancel_live_test_runtime,
     execute_live_test,
@@ -2289,6 +2300,57 @@ class LuxCodeTerminalRuntimeHealthRequest(BaseModel):
     retry_interval: float = Field(default=0.1, ge=0.01, le=2.0)
     expected_status_codes: List[int] = Field(default_factory=lambda: [200])
     response_size_limit: int = Field(default=2000, ge=100, le=20000)
+
+
+class LuxCodeBrowserLaunchDetectRequest(BaseModel):
+    repository_root: str = Field(default="", max_length=800)
+
+
+class LuxCodeBrowserLaunchSelectRequest(BaseModel):
+    requested_browser_family: str = Field(default="chrome", max_length=80)
+    detected_candidates: Dict[str, Any] = Field(default_factory=dict)
+    fallback_policy: Dict[str, Any] = Field(default_factory=dict)
+    task_authority: str = Field(default="", max_length=260)
+    matrix_target_metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LuxCodeBrowserLaunchRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    target_id: str = Field(default="", max_length=120)
+    requested_browser_family: str = Field(default="chrome", max_length=80)
+    selected_family: str = Field(default="", max_length=80)
+    selected_executable: str = Field(default="", max_length=800)
+    executable_digest: str = Field(default="", max_length=120)
+    launch_args: List[str] = Field(default_factory=list)
+    temporary_profile_dir: str = Field(default="", max_length=800)
+    remote_debugging_port: int = Field(default=0, ge=0, le=65535)
+    viewport: Dict[str, Any] = Field(default_factory=dict)
+    user_agent: str = Field(default="", max_length=500)
+    device_scale_factor: float = Field(default=1.0, ge=0.25, le=4.0)
+    touch: bool = False
+    locale: str = Field(default="en-US", max_length=40)
+    color_scheme: str = Field(default="light", max_length=20)
+    startup_timeout: int = Field(default=12, ge=1, le=60)
+    page_timeout: int = Field(default=30, ge=1, le=180)
+    cleanup_timeout: int = Field(default=10, ge=1, le=60)
+    expected_identity: str = Field(default="", max_length=800)
+    fallback_policy: Dict[str, Any] = Field(default_factory=dict)
+    authority_digest: str = Field(default="", max_length=260)
+    controlled_url: str = Field(default="about:blank", max_length=800)
+    explicit_launch_intent: bool = False
+    headless: bool = True
+
+
+class LuxCodeBrowserVerifyRequest(BaseModel):
+    runtime_id: str = Field(default="", max_length=160)
+    observed_product: Optional[str] = Field(default=None, max_length=500)
+    observed_executable: Optional[str] = Field(default=None, max_length=800)
+    expected_identity: Optional[str] = Field(default=None, max_length=120)
+
+
+class LuxCodeBrowserTerminateRequest(BaseModel):
+    runtime_id: str = Field(default="", max_length=160)
+    reason: str = Field(default="user_requested", max_length=200)
 
 
 class LuxCodeLiveTestingPlanRequest(BaseModel):
@@ -12633,6 +12695,73 @@ async def luxcode_terminal_runtime_health_check_endpoint(payload: LuxCodeTermina
 @app.get("/debug/luxcode-terminal-runtime-status")
 async def debug_luxcode_terminal_runtime_status_endpoint():
     return get_terminal_runtime_status()
+
+
+@app.get("/luxcode-browser-launch/schema")
+async def luxcode_browser_launch_schema_endpoint():
+    return get_browser_launch_schema()
+
+
+@app.post("/luxcode-browser-launch/detect")
+async def luxcode_browser_launch_detect_endpoint(payload: LuxCodeBrowserLaunchDetectRequest):
+    return detect_browser_executables(repository_root=payload.repository_root)
+
+
+@app.post("/luxcode-browser-launch/select")
+async def luxcode_browser_launch_select_endpoint(payload: LuxCodeBrowserLaunchSelectRequest):
+    return select_browser_executable(**payload.dict())
+
+
+@app.post("/luxcode-browser-launch/launch")
+async def luxcode_browser_launch_launch_endpoint(payload: LuxCodeBrowserLaunchRequest):
+    if not payload.explicit_launch_intent:
+        return {"ok": False, "blocked": True, "reason": "explicit launch intent required", "external_api_used": False, "local_first": True}
+    if not payload.authority_digest or not payload.selected_executable or not payload.controlled_url:
+        return {"ok": False, "blocked": True, "reason": "authority, selected executable, and controlled URL are required", "external_api_used": False, "local_first": True}
+    data = payload.dict()
+    request = build_browser_launch_request(
+        task_id=data.pop("task_id"),
+        target_id=data.pop("target_id"),
+        requested_browser_family=data.pop("requested_browser_family"),
+        selected_family=data.pop("selected_family"),
+        selected_executable=data.pop("selected_executable"),
+        executable_digest=data.pop("executable_digest"),
+        launch_args=data.pop("launch_args"),
+        temporary_profile_dir=data.pop("temporary_profile_dir"),
+        remote_debugging_port=data.pop("remote_debugging_port"),
+        viewport=data.pop("viewport"),
+        user_agent=data.pop("user_agent"),
+        device_scale_factor=data.pop("device_scale_factor"),
+        touch=data.pop("touch"),
+        locale=data.pop("locale"),
+        color_scheme=data.pop("color_scheme"),
+        startup_timeout=data.pop("startup_timeout"),
+        page_timeout=data.pop("page_timeout"),
+        cleanup_timeout=data.pop("cleanup_timeout"),
+        expected_identity=data.pop("expected_identity"),
+        fallback_policy=data.pop("fallback_policy"),
+        authority_digest=data.pop("authority_digest"),
+    )
+    if not request.get("ok"):
+        return request
+    request["controlled_url"] = payload.controlled_url
+    request["headless"] = payload.headless
+    return launch_selected_browser(request)
+
+
+@app.post("/luxcode-browser-launch/verify")
+async def luxcode_browser_launch_verify_endpoint(payload: LuxCodeBrowserVerifyRequest):
+    return verify_launched_browser_identity(**payload.dict())
+
+
+@app.post("/luxcode-browser-launch/terminate")
+async def luxcode_browser_launch_terminate_endpoint(payload: LuxCodeBrowserTerminateRequest):
+    return terminate_selected_browser(runtime_id=payload.runtime_id, reason=payload.reason)
+
+
+@app.get("/debug/luxcode-browser-launch-status")
+async def debug_luxcode_browser_launch_status_endpoint():
+    return get_browser_launch_status()
 
 
 @app.get("/luxcode/live-testing/schema")

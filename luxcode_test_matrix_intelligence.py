@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from luxcode_autonomy_permission_controller import evaluate_requested_action
+from luxcode_browser_launch_selection import detect_browser_executables, select_browser_executable
 from luxcode_live_app_interaction_testing import execute_live_test, get_live_testing_registry, plan_live_test
 from luxcode_terminal_process_runtime import stop_terminal_process
 
@@ -170,35 +171,49 @@ def _known_browser_candidates() -> Dict[str, List[str]]:
 
 
 def _detect_one_browser(family: str) -> Dict[str, Any]:
-    for raw in _known_browser_candidates().get(family, []):
-        if not raw:
-            continue
-        path = Path(raw)
-        try:
-            if path.exists() and path.is_file():
-                return {
-                    "target_id": family,
-                    "browser_family": family,
-                    "available": True,
-                    "browser_executable": str(path),
-                    "engine": "chromium_cdp" if family in {"chrome", "edge", "chromium_fallback", "yandex"} else "detected_non_cdp",
-                    "fallback_evidence": False,
-                    "skip_reason": "",
-                }
-        except OSError:
-            continue
+    detected = detect_browser_executables().get("detected", {})
+    lookup_family = "chromium" if family == "chromium_fallback" else family
+    info = detected.get(lookup_family, {})
+    if info.get("available") and info.get("first_available"):
+        selection = select_browser_executable(
+            requested_browser_family=family,
+            detected_candidates=detected,
+            fallback_policy={"allow_fallback": family == "chromium_fallback"},
+            task_authority="matrix-detection",
+            matrix_target_metadata={"target_id": family},
+        )
+        return {
+            "target_id": family,
+            "browser_family": family,
+            "requested_browser_family": family,
+            "selected_browser_family": selection.get("selected_family", lookup_family),
+            "available": True,
+            "browser_executable": selection.get("selected_executable", info.get("first_available", "")),
+            "selected_executable": selection.get("selected_executable", info.get("first_available", "")),
+            "exact_browser_match": bool(selection.get("exact_match", family != "chromium_fallback")),
+            "fallback_used": bool(selection.get("fallback_used", family == "chromium_fallback")),
+            "engine": "chromium_cdp" if family in {"chrome", "edge", "chromium_fallback", "yandex", "chromium"} else "detected_non_cdp",
+            "fallback_evidence": bool(selection.get("fallback_used", False)),
+            "launch_selection_reason": selection.get("selection_reason", "exact selected from detected candidate"),
+            "skip_reason": "",
+        }
     if family == "yandex" and _detect_one_browser("chrome").get("available"):
         return {
             "target_id": "yandex",
             "browser_family": "yandex",
+            "requested_browser_family": "yandex",
+            "selected_browser_family": "",
             "available": False,
             "browser_executable": "",
+            "selected_executable": "",
+            "exact_browser_match": False,
+            "fallback_used": True,
             "engine": "unavailable",
             "fallback_evidence": True,
             "fallback_family": "chrome",
             "skip_reason": "Yandex browser not installed; Chrome can provide Chromium compatibility evidence only",
         }
-    return {"target_id": family, "browser_family": family, "available": False, "browser_executable": "", "engine": "unavailable", "fallback_evidence": False, "skip_reason": f"{family} not detected in known safe locations"}
+    return {"target_id": family, "browser_family": family, "requested_browser_family": family, "selected_browser_family": "", "available": False, "browser_executable": "", "selected_executable": "", "exact_browser_match": False, "fallback_used": False, "engine": "unavailable", "fallback_evidence": False, "skip_reason": f"{family} not detected in known safe locations"}
 
 
 def _android_state() -> Dict[str, Any]:
@@ -220,6 +235,7 @@ def detect_available_test_targets(requested_targets: Optional[List[str]] = None,
     detected: List[Dict[str, Any]] = []
     desktop = {family: _detect_one_browser(family) for family in DESKTOP_BROWSERS}
     chromium_available = any(desktop.get(f, {}).get("available") and desktop[f].get("engine") == "chromium_cdp" for f in ("chrome", "edge", "chromium_fallback", "yandex"))
+    preview_family = next((f for f in ("chrome", "edge", "yandex", "chromium_fallback") if desktop.get(f, {}).get("available") and desktop[f].get("engine") == "chromium_cdp"), "")
     for target in requested:
         if target in desktop:
             detected.append(deepcopy(desktop[target]))
@@ -227,10 +243,16 @@ def detect_available_test_targets(requested_targets: Optional[List[str]] = None,
             detected.append({
                 "target_id": target,
                 "browser_family": target,
+                "requested_browser_family": preview_family or "chromium_fallback",
+                "selected_browser_family": desktop.get(preview_family, {}).get("selected_browser_family", preview_family),
                 "available": bool(include_mobile_previews and chromium_available),
-                "browser_executable": next((desktop[f]["browser_executable"] for f in ("chrome", "edge", "chromium_fallback", "yandex") if desktop.get(f, {}).get("available") and desktop[f].get("engine") == "chromium_cdp"), ""),
+                "browser_executable": desktop.get(preview_family, {}).get("browser_executable", ""),
+                "selected_executable": desktop.get(preview_family, {}).get("selected_executable", desktop.get(preview_family, {}).get("browser_executable", "")),
+                "exact_browser_match": bool(preview_family),
+                "fallback_used": target != "mobile_chrome",
                 "engine": "chromium_cdp_mobile_emulation",
                 "fallback_evidence": target != "mobile_chrome",
+                "launch_selection_reason": "responsive preview uses selected Chromium-family executable",
                 "skip_reason": "" if chromium_available else "Chromium-compatible browser unavailable for responsive preview",
             })
         elif target in {"android_emulator", "android_webview_preview"}:
@@ -406,6 +428,12 @@ def build_test_matrix_plan(
                             "target_id": target["target_id"],
                             "browser_family": target["browser_family"],
                             "browser_executable": target.get("browser_executable", ""),
+                            "requested_browser_family": target.get("requested_browser_family", target["browser_family"]),
+                            "selected_browser_family": target.get("selected_browser_family", target["browser_family"] if target.get("available") else ""),
+                            "selected_executable": target.get("selected_executable", target.get("browser_executable", "")),
+                            "exact_browser_match": bool(target.get("exact_browser_match", target.get("available") and not target.get("fallback_evidence"))),
+                            "fallback_used": bool(target.get("fallback_used", target.get("fallback_evidence"))),
+                            "launch_selection_reason": target.get("launch_selection_reason", ""),
                             "device_profile": device["profile_id"],
                             "viewport_width": device["width"],
                             "viewport_height": device["height"],
@@ -526,12 +554,29 @@ def _result_from_live(cell: Dict[str, Any], live_result: Dict[str, Any]) -> Dict
     runtime = live_result.get("runtime", live_result)
     categories = _failure_categories(runtime, cell)
     status = "passed" if runtime.get("state") == "scenario_passed" and not categories else "failed"
+    browser_identity = runtime.get("browser_identity", {})
+    browser = runtime.get("browser", {})
+    identity_verified = bool(browser.get("identity_verified")) and not bool(browser_identity.get("mismatch_detected"))
+    if status == "passed" and not identity_verified and cell.get("target_id") in DESKTOP_BROWSERS:
+        status = "partially_verified" if cell.get("fallback_used") else "failed"
+        if "browser_launch_failure" not in categories:
+            categories.append("browser_launch_failure")
     if runtime.get("state") == "timed_out":
         status = "timed_out"
     return {
         "cell_id": cell["cell_id"],
         "target_id": cell["target_id"],
         "browser_family": cell["browser_family"],
+        "requested_browser_family": cell.get("requested_browser_family", cell["browser_family"]),
+        "selected_browser_family": browser.get("selected_family", cell.get("selected_browser_family", "")),
+        "selected_executable": browser.get("selected_executable", cell.get("selected_executable", "")),
+        "exact_browser_match": bool(browser.get("selected_family") == cell.get("requested_browser_family") and identity_verified),
+        "fallback_used": bool(browser.get("fallback_used", cell.get("fallback_used"))),
+        "identity_verified": identity_verified,
+        "observed_browser_family": browser_identity.get("observed_family", browser.get("selected_family", "")),
+        "observed_browser_version": browser_identity.get("observed_identity", ""),
+        "browser_identity_mismatch": bool(browser_identity.get("mismatch_detected", False)),
+        "launch_selection_reason": cell.get("launch_selection_reason", ""),
         "device_profile": cell["device_profile"],
         "viewport": {"width": cell["viewport_width"], "height": cell["viewport_height"], "orientation": cell["orientation"], "device_scale_factor": cell["device_scale_factor"]},
         "network_profile": cell["network_profile"],
@@ -589,6 +634,26 @@ def execute_test_matrix(plan: Dict[str, Any], approval_digest: str = "", retry_c
             "base_url": base_url,
             "allowed_origin": base_url,
             "viewport": {"width": int(cell["viewport_width"]), "height": int(cell["viewport_height"]), "mobile_emulation": bool(cell.get("mobile_user_agent"))},
+            "target_id": cell.get("target_id", ""),
+            "requested_browser_family": cell.get("requested_browser_family", cell.get("browser_family", "")),
+            "browser_launch_request": {
+                "task_id": runtime.get("task_id", ""),
+                "target_id": cell.get("target_id", ""),
+                "requested_browser_family": cell.get("requested_browser_family", cell.get("browser_family", "")),
+                "selected_browser_family": cell.get("selected_browser_family", ""),
+                "selected_executable": cell.get("selected_executable", cell.get("browser_executable", "")),
+                "remote_debugging_port": 0,
+                "authority_digest": f"matrix-{cell['cell_id']}",
+                "controlled_url": base_url,
+                "expected_identity": cell.get("requested_browser_family", cell.get("browser_family", "")),
+                "fallback_policy": {"allow_fallback": bool(cell.get("fallback_used"))},
+            },
+            "matrix_target_metadata": {
+                "cell_id": cell.get("cell_id", ""),
+                "target_id": cell.get("target_id", ""),
+                "exact_browser_match": bool(cell.get("exact_browser_match")),
+                "fallback_used": bool(cell.get("fallback_used")),
+            },
             "headless": True,
             "per_step_timeout_seconds": 6,
             "scenario_timeout_seconds": int(cell.get("timeout_seconds", 45)),

@@ -11712,6 +11712,136 @@ class SmokeRunner:
 
         return "luxcode browser/device/screen/network test matrix verified"
 
+    def check_luxcode_browser_launch_selection_local(self) -> str:
+        """Verify exact browser-family selection and task-owned launch cleanup."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        import threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_browser_launch_selection.py",
+            ROOT / "luxcode_test_matrix_intelligence.py",
+            ROOT / "luxcode_live_app_interaction_testing.py",
+            ROOT / "luxcode_terminal_process_runtime.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        live_paths = [ROOT / ".luxcode_browser_launch", ROOT / ".luxcode_runtime", ROOT / ".luxcode_live_test", ROOT / ".luxcode_test_matrix", ROOT / "luxcode_tasks.db"]
+        live_state = {str(path): path.exists() for path in live_paths}
+
+        class FixtureHandler(BaseHTTPRequestHandler):
+            def log_message(self, *args: object) -> None:
+                pass
+
+            def do_GET(self) -> None:
+                body = b"luxcode browser launch fixture"
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(body)
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), FixtureHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        fixture_url = f"http://127.0.0.1:{server.server_address[1]}/"
+
+        schema = client.get("/luxcode-browser-launch/schema")
+        assert schema.status_code == 200, f"/luxcode-browser-launch/schema returned {schema.status_code}"
+        assert schema.json().get("shell_execution_allowed") is False, schema.json()
+
+        detect = client.post("/luxcode-browser-launch/detect", json={"repository_root": str(ROOT)})
+        assert detect.status_code == 200, f"/luxcode-browser-launch/detect returned {detect.status_code}"
+        detected = detect.json().get("detected", {})
+        family = next((name for name in ("chrome", "edge", "yandex", "chromium") if detected.get(name, {}).get("available")), "")
+        if not family:
+            raise SkipCheck("no safe local Chromium-family browser available")
+
+        selection = client.post(
+            "/luxcode-browser-launch/select",
+            json={
+                "requested_browser_family": family,
+                "detected_candidates": detected,
+                "fallback_policy": {"allow_fallback": False},
+                "task_authority": "smoke-browser-launch",
+                "matrix_target_metadata": {"target_id": family},
+            },
+        )
+        assert selection.status_code == 200, f"/luxcode-browser-launch/select returned {selection.status_code}"
+        selected = selection.json()
+        assert selected.get("ok") is True, selected
+        assert selected.get("selected_family") == family, selected
+        assert selected.get("exact_match") is True, selected
+
+        blocked = client.post(
+            "/luxcode-browser-launch/launch",
+            json={
+                "task_id": "browser-launch-smoke",
+                "target_id": family,
+                "requested_browser_family": family,
+                "selected_family": selected["selected_family"],
+                "selected_executable": selected["selected_executable"],
+                "authority_digest": "smoke-browser-launch",
+                "controlled_url": fixture_url,
+                "explicit_launch_intent": False,
+            },
+        )
+        assert blocked.status_code == 200, blocked.text
+        assert blocked.json().get("ok") is False, blocked.json()
+
+        launch = client.post(
+            "/luxcode-browser-launch/launch",
+            json={
+                "task_id": "browser-launch-smoke",
+                "target_id": family,
+                "requested_browser_family": family,
+                "selected_family": selected["selected_family"],
+                "selected_executable": selected["selected_executable"],
+                "executable_digest": selected.get("executable_digest", ""),
+                "authority_digest": "smoke-browser-launch",
+                "controlled_url": fixture_url,
+                "explicit_launch_intent": True,
+                "headless": True,
+                "cleanup_timeout": 5,
+            },
+        )
+        assert launch.status_code == 200, f"/luxcode-browser-launch/launch returned {launch.status_code}"
+        launched = launch.json()
+        assert launched.get("ok") is True, launched
+        runtime_id = launched["runtime_id"]
+        try:
+            verify = client.post("/luxcode-browser-launch/verify", json={"runtime_id": runtime_id, "expected_identity": family})
+            assert verify.status_code == 200, f"/luxcode-browser-launch/verify returned {verify.status_code}"
+            verified = verify.json()
+            assert verified.get("ok") is True, verified
+            assert verified.get("mismatch_detected") is False, verified
+            status = client.get("/debug/luxcode-browser-launch-status")
+            assert status.status_code == 200, f"/debug/luxcode-browser-launch-status returned {status.status_code}"
+            assert status.json().get("external_api_used") is False, status.json()
+        finally:
+            terminated = client.post("/luxcode-browser-launch/terminate", json={"runtime_id": runtime_id, "reason": "smoke cleanup"})
+            assert terminated.status_code == 200, f"/luxcode-browser-launch/terminate returned {terminated.status_code}"
+            assert terminated.json().get("ok") is True, terminated.json()
+
+        server.shutdown()
+        server.server_close()
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during browser launch smoke: {path}"
+        for path in live_paths:
+            assert path.exists() is live_state[str(path)], f"live artifact state changed during browser launch smoke: {path}"
+
+        return "luxcode browser family launch selection verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -11749,6 +11879,7 @@ class SmokeRunner:
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local, None, "core"),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local, None, "core"),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local, None, "core"),
+            ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local, None, "core"),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local, None, "core"),
             ("luxcode_network_access_local", self.check_luxcode_network_access_local, None, "core"),
             ("luxcode_test_matrix_local", self.check_luxcode_test_matrix_local, None, "core"),
@@ -11955,6 +12086,7 @@ class SmokeRunner:
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local),
+            ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local),
             ("luxcode_network_access_local", self.check_luxcode_network_access_local),
             ("luxcode_test_matrix_local", self.check_luxcode_test_matrix_local),

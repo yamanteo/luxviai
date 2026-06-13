@@ -21,6 +21,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from luxcode_autonomy_permission_controller import evaluate_requested_action
+from luxcode_browser_launch_selection import (
+    build_browser_launch_request,
+    detect_browser_executables,
+    launch_selected_browser,
+    select_browser_executable,
+    terminate_selected_browser,
+    verify_launched_browser_identity,
+)
 from luxcode_terminal_process_runtime import (
     execute_terminal_action,
     health_check,
@@ -260,20 +268,15 @@ def _selector_to_css(selector: Any) -> Tuple[str, str]:
 
 
 def _find_browser() -> Dict[str, Any]:
-    candidates = [
-        os.environ.get("LUXCODE_BROWSER_PATH", ""),
-        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
-        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-        shutil.which("chrome") or "",
-        shutil.which("msedge") or "",
-        shutil.which("chromium") or "",
-    ]
-    for candidate in candidates:
-        if candidate and Path(candidate).exists():
-            return {"available": True, "engine": "chromium_cdp", "path": str(Path(candidate))}
-    return {"available": False, "engine": "chromium_cdp", "path": "", "reason": "local Chrome/Edge binary not found"}
+    detected = detect_browser_executables()
+    if not detected.get("ok"):
+        return {"available": False, "engine": "chromium_cdp", "path": "", "reason": detected.get("reason", "browser detection failed")}
+    candidates = detected.get("detected", {})
+    for family in ("chrome", "edge", "yandex", "chromium"):
+        entry = candidates.get(family, {})
+        if entry.get("available") and entry.get("first_available"):
+            return {"available": True, "engine": "chromium_cdp", "path": entry["first_available"], "family": family}
+    return {"available": False, "engine": "chromium_cdp", "path": "", "reason": "local Chromium-family binary not found"}
 
 
 def _free_port() -> int:
@@ -552,37 +555,59 @@ def _new_page(port: int) -> str:
 
 
 def _launch_browser(runtime: Dict[str, Any], headless: bool = True) -> Tuple[_CDPClient, Path, int]:
-    browser = _find_browser()
-    if not browser.get("available"):
-        raise RuntimeError(browser.get("reason", "browser unavailable"))
-    temp_root = Path(tempfile.mkdtemp(prefix="luxlive-browser-"))
-    profile_dir = temp_root / "profile"
-    download_dir = temp_root / "downloads"
-    profile_dir.mkdir()
-    download_dir.mkdir()
-    port = _free_port()
-    args = [
-        browser["path"],
-        f"--remote-debugging-port={port}",
-        f"--user-data-dir={profile_dir}",
-        "--no-first-run",
-        "--no-default-browser-check",
-        "--disable-sync",
-        "--disable-extensions",
-        "--disable-background-networking",
-        "--disable-component-update",
-        "--disable-features=Translate,MediaRouter,OptimizationHints",
-        "--deny-permission-prompts",
-        "--disable-notifications",
-        f"--download-default-directory={download_dir}",
-        "about:blank",
-    ]
-    if headless:
-        args.insert(1, "--headless=new")
-    proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
-    _BROWSER_PROCESSES[runtime["live_test_runtime_id"]] = proc
-    runtime["browser"] = {"engine": browser["engine"], "pid": proc.pid, "owned_by_runtime": True, "temporary_profile": True, "headless": headless}
-    _audit(runtime, "browser_session_started", {"pid": proc.pid, "headless": headless})
+    scenario = runtime.get("scenario", {})
+    launch_request = deepcopy(scenario.get("browser_launch_request") or {})
+    if not launch_request:
+        requested_family = str(scenario.get("requested_browser_family") or "chrome")
+        detected = detect_browser_executables(runtime.get("repository_root", ""))
+        selection = select_browser_executable(
+            requested_browser_family=requested_family,
+            detected_candidates=detected.get("detected", {}),
+            fallback_policy={"allow_fallback": requested_family == "chromium_fallback"},
+            task_authority=runtime["live_test_runtime_id"],
+            matrix_target_metadata=scenario.get("matrix_target_metadata") or {},
+        )
+        if not selection.get("ok"):
+            raise RuntimeError(selection.get("reason", "browser unavailable"))
+        launch_request = build_browser_launch_request(
+            task_id=str(scenario.get("task_id", "")),
+            target_id=str(scenario.get("target_id", "")),
+            requested_browser_family=requested_family,
+            selected_family=selection["selected_family"],
+            selected_executable=selection["selected_executable"],
+            executable_digest=selection.get("executable_digest", ""),
+            remote_debugging_port=_free_port(),
+            viewport=scenario.get("viewport") if isinstance(scenario.get("viewport"), dict) else {},
+            expected_identity=str(scenario.get("base_url") or "about:blank"),
+            authority_digest=runtime["live_test_runtime_id"],
+            fallback_policy={"allow_fallback": requested_family == "chromium_fallback"},
+        )
+    launch_request["authority_digest"] = launch_request.get("authority_digest") or runtime["live_test_runtime_id"]
+    launch_request["headless"] = headless
+    launch_request["controlled_url"] = scenario.get("base_url") or launch_request.get("controlled_url") or "about:blank"
+    launched = launch_selected_browser(launch_request)
+    if not launched.get("ok"):
+        raise RuntimeError(launched.get("reason", "browser launch failed"))
+    port = int(launched.get("remote_debugging_port") or launch_request.get("remote_debugging_port") or 0)
+    if not port:
+        raise RuntimeError("browser launch did not provide a debug port")
+    temp_root = Path(str(launched.get("temporary_profile_dir") or launched.get("temp_root") or tempfile.mkdtemp(prefix="luxlive-browser-")))
+    runtime["browser_launch_runtime_id"] = launched["runtime_id"]
+    runtime["browser_launch_selection"] = _redact(launch_request)
+    runtime["browser_identity"] = verify_launched_browser_identity(launched["runtime_id"], expected_identity=launch_request.get("requested_browser_family"))
+    runtime["browser"] = {
+        "engine": "chromium_cdp",
+        "pid": launched.get("pid"),
+        "owned_by_runtime": True,
+        "temporary_profile": True,
+        "headless": headless,
+        "requested_family": launch_request.get("requested_browser_family"),
+        "selected_family": launched.get("selected_family"),
+        "selected_executable": launched.get("selected_executable"),
+        "identity_verified": not runtime["browser_identity"].get("mismatch_detected", True),
+        "fallback_used": bool(launched.get("fallback_used")),
+    }
+    _audit(runtime, "browser_session_started", {"pid": launched.get("pid"), "headless": headless, "family": launched.get("selected_family")})
     _wait_cdp(port)
     client = _CDPClient(_new_page(port))
     client.command("Runtime.enable")
@@ -880,6 +905,9 @@ def _cleanup_runtime(runtime: Dict[str, Any], client: Optional[_CDPClient], temp
     try:
         if client:
             client.close()
+        launch_runtime_id = str(runtime.get("browser_launch_runtime_id") or "")
+        if launch_runtime_id:
+            terminate_selected_browser(launch_runtime_id, reason="live test cleanup")
         proc = _BROWSER_PROCESSES.pop(runtime["live_test_runtime_id"], None)
         if proc and proc.poll() is None:
             proc.terminate()

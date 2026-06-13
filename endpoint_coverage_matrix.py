@@ -928,6 +928,15 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode/terminal-runtime/health-check", "POST", "terminal_runtime", "localhost tcp/http health check"),
         _endpoint("/debug/luxcode-terminal-runtime-status", "GET", "terminal_runtime", "terminal runtime status"),
     ],
+    "luxcode_browser_launch": [
+        _endpoint("/luxcode-browser-launch/schema", "GET", "browser_launch", "browser launch selection schema"),
+        _endpoint("/luxcode-browser-launch/detect", "POST", "browser_launch", "detect safe local browser executables"),
+        _endpoint("/luxcode-browser-launch/select", "POST", "browser_launch", "select exact requested browser family executable"),
+        _endpoint("/luxcode-browser-launch/launch", "POST", "browser_launch", "launch explicit task-owned selected browser"),
+        _endpoint("/luxcode-browser-launch/verify", "POST", "browser_launch", "verify launched browser identity evidence"),
+        _endpoint("/luxcode-browser-launch/terminate", "POST", "browser_launch", "terminate task-owned selected browser"),
+        _endpoint("/debug/luxcode-browser-launch-status", "GET", "browser_launch", "browser launch selection status"),
+    ],
     "luxcode_live_testing": [
         _endpoint("/luxcode/live-testing/schema", "GET", "live_testing", "live app testing schema"),
         _endpoint("/luxcode/live-testing/registry", "GET", "live_testing", "browser action selector and viewport registry"),

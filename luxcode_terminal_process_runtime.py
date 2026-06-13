@@ -35,6 +35,7 @@ ACTION_TYPES = {
     "check_process",
     "check_port",
     "health_check",
+    "probe_browser_version",
 }
 PROCESS_STATUSES = {
     "planned",
@@ -79,6 +80,7 @@ EXECUTION_OPS = {
     "check_process": "inspect",
     "check_port": "inspect",
     "health_check": "inspect",
+    "probe_browser_version": "inspect",
 }
 
 _RUNTIMES: Dict[str, Dict[str, Any]] = {}
@@ -229,6 +231,24 @@ def _resolve_executable(executable: str, repository_root: Optional[str]) -> Tupl
     return None, {}, "executable not in allowlist"
 
 
+def _resolve_browser_executable(executable: str) -> Tuple[Optional[str], Dict[str, Any], str]:
+    try:
+        from luxcode_browser_launch_selection import detect_browser_executables
+    except Exception as exc:
+        return None, {}, f"browser selection core unavailable: {type(exc).__name__}"
+    requested = Path(str(executable or "")).resolve()
+    detected = detect_browser_executables().get("detected", {})
+    for family, payload in detected.items():
+        for candidate in payload.get("candidates", []):
+            try:
+                resolved = Path(candidate.get("path", "")).resolve()
+            except OSError:
+                continue
+            if resolved == requested:
+                return str(resolved), {"name": family, "path": str(resolved), "allowed": True, "source": "browser_selection_core"}, ""
+    return None, {}, "browser executable not approved by selection core"
+
+
 def _validate_args(args: Iterable[Any]) -> Tuple[List[str], str]:
     normalized = []
     for arg in args or []:
@@ -339,7 +359,10 @@ def plan_terminal_action(
     cwd, cwd_rel, cwd_error = _safe_path(root, working_directory, must_exist=True)
     if cwd_error:
         return _safe_failure(cwd_error)
-    resolved_exe, executable_entry, exe_error = _resolve_executable(executable, str(root))
+    if action_type == "probe_browser_version":
+        resolved_exe, executable_entry, exe_error = _resolve_browser_executable(executable)
+    else:
+        resolved_exe, executable_entry, exe_error = _resolve_executable(executable, str(root))
     if exe_error:
         return _safe_failure(exe_error, scope_request=request_scope_expansion("", executable, "inspect", exe_error, str(root)))
     args, arg_error = _validate_args(arguments or [])
