@@ -18,6 +18,14 @@ from lux_verification_recovery_engine import (
     prepare_verification_run,
 )
 from luxcode_master_router_preview import build_luxcode_master_router_preview
+from luxcode_autonomy_permission_controller import (
+    approve_scope_expansion,
+    create_permission_profile,
+    evaluate_requested_action,
+    get_autonomy_permission_status,
+    get_safe_permission_metadata,
+    revoke_scope_access,
+)
 from luxcode_task_persistence import (
     archive_task_state,
     delete_task_state,
@@ -52,10 +60,14 @@ TASK_STATES = {
     "failed",
     "cancelled",
     "paused",
+    "awaiting_scope_permission",
+    "awaiting_irreversible_confirmation",
+    "autonomy_paused",
+    "budget_exhausted",
 }
 
 TERMINAL_STATES = {"cancelled", "blocked", "failed", "completed"}
-EXECUTION_BLOCKED_STATES = TERMINAL_STATES | {"paused"}
+EXECUTION_BLOCKED_STATES = TERMINAL_STATES | {"paused", "awaiting_scope_permission", "awaiting_irreversible_confirmation", "autonomy_paused", "budget_exhausted"}
 SAFE_INVARIANTS = {
     "scope_expansion_blocked": True,
     "destructive_action_blocked": True,
@@ -266,6 +278,11 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "restored_from_persistence": bool(task.get("restored_from_persistence", False)),
         "requires_explicit_resume": bool(task.get("requires_explicit_resume", False)),
         "execution_triggered_on_restore": bool(task.get("execution_triggered_on_restore", False)),
+        "permission_profile": _redact(task.get("permission_profile", {})),
+        "safe_permission_metadata": _redact(task.get("safe_permission_metadata", {})),
+        "permission_audit": _redact(task.get("permission_audit", [])),
+        "last_permission_evaluation": _redact(task.get("last_permission_evaluation", {})),
+        "scope_expansion_request": _redact(task.get("scope_expansion_request", {})),
         "can_advance": can_advance,
         "requires_user_approval": state in {"awaiting_approval", "apply_prepared", "verification_prepared"},
         **SAFE_INVARIANTS,
@@ -289,6 +306,69 @@ def _block(task: Dict[str, Any], reason: str, state: str = "blocked") -> Dict[st
         task["blocked_reasons"].append(reason)
     task["next_safe_action"] = "Resolve blocked reason or cancel the task."
     return _touch(task, state)
+
+
+def _operation_for_action(action: str, state: str) -> str:
+    if action == "route" or (action == "next" and state == "created"):
+        return "inspect"
+    if action == "diagnose" or (action == "next" and state == "routed"):
+        return "read"
+    if action in {"draft", "patch"} or (action == "next" and state == "diagnosis_ready"):
+        return "read"
+    if action == "prepare_apply" or (action == "next" and state == "approval_verified"):
+        return "edit_file"
+    if action == "apply" or (action == "next" and state == "apply_prepared"):
+        return "edit_file"
+    if action == "prepare_verification" or (action == "next" and state == "applied"):
+        return "run_validator"
+    if action == "execute_verification" or (action == "next" and state == "verification_prepared"):
+        return "run_validator"
+    return "inspect"
+
+
+def _target_for_operation(task: Dict[str, Any], operation: str) -> str:
+    files = task.get("changed_files") or task.get("selected_files") or task.get("requested_files") or []
+    return files[0] if files else ""
+
+
+def _permission_check(task: Dict[str, Any], action: str) -> Tuple[bool, Dict[str, Any]]:
+    profile = task.get("permission_profile")
+    if not profile:
+        return True, {}
+    operation = _operation_for_action(action, task.get("current_state", "created"))
+    target = _target_for_operation(task, operation)
+    result = evaluate_requested_action(
+        profile=profile,
+        task_id=task.get("task_id", ""),
+        operation=operation,
+        target_path=target,
+        metadata={
+            "files_changed": max(1, len(task.get("changed_files", []))) if operation in {"edit_file", "refactor"} else 0,
+            "validation_runs": len([step for step in task.get("completed_steps", []) if "verification" in step]),
+            "scope_expansions": profile.get("scope_expansion_count", 0),
+            "why_needed": "The task transition needs this selected file or folder.",
+        },
+        recovery_plan_available=True,
+    )
+    task.setdefault("permission_audit", []).append(result.get("audit", result))
+    task["last_permission_evaluation"] = result
+    if result.get("allowed"):
+        return True, result
+    task["previous_state_before_scope_pause"] = task.get("current_state", "created")
+    if result.get("state") == "awaiting_scope_permission":
+        task["scope_expansion_request"] = result.get("scope_request", {})
+        task["next_safe_action"] = "Review the scope-expansion request before continuing."
+        _touch(task, "awaiting_scope_permission")
+    elif result.get("state") == "budget_exhausted":
+        task["next_safe_action"] = result.get("reason", "Autonomy budget exhausted.")
+        _touch(task, "budget_exhausted")
+    elif result.get("state") == "awaiting_irreversible_confirmation":
+        task["next_safe_action"] = "Review irreversible-action confirmation before continuing."
+        _touch(task, "awaiting_irreversible_confirmation")
+    else:
+        task["next_safe_action"] = result.get("reason", "Permission approval is required before continuing.")
+        _touch(task, "autonomy_paused")
+    return False, result
 
 
 def _persist_task(task: Dict[str, Any], event_type: str = "state_transition", previous_state: Optional[str] = None) -> None:
@@ -361,6 +441,8 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
             "archive_luxcode_persisted_task",
             "delete_luxcode_persisted_task",
             "restore_luxcode_active_tasks",
+            "approve_luxcode_task_scope_expansion",
+            "revoke_luxcode_task_scope",
         ],
         "integrated_engines": [
             "LuxCode Master Router Preview",
@@ -372,6 +454,7 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
         "state_storage": "in_memory_with_optional_local_persistence",
         "known_limitation": "persistence is disabled until explicitly initialized",
         "persistence": get_task_persistence_status(),
+        "autonomy_permission": get_autonomy_permission_status(),
         "automatic_apply_enabled": False,
         "automatic_rollback_enabled": False,
         **SAFE_INVARIANTS,
@@ -388,6 +471,10 @@ def create_luxcode_task(
     selected_files: Optional[List[str]] = None,
     requested_files: Optional[List[str]] = None,
     forbidden_files: Optional[List[str]] = None,
+    permission_mode: str = "approval_required",
+    scope_items: Optional[List[Dict[str, Any]]] = None,
+    selected_folders: Optional[List[str]] = None,
+    autonomy_budgets: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     now = _now()
     root = _safe_root(repository_root)
@@ -422,6 +509,22 @@ def create_luxcode_task(
         "cancellation_reason": "",
         "safety_flags": dict(SAFE_INVARIANTS),
     }
+    permission = create_permission_profile(
+        task_id=task_id,
+        permission_mode=permission_mode,
+        repository_root=root or str(Path.cwd()),
+        command_text=original_request,
+        scope_items=scope_items,
+        selected_files=files,
+        selected_folders=selected_folders or [],
+        autonomy_budgets=autonomy_budgets,
+    )
+    if permission.get("ok"):
+        task["permission_profile"] = permission["profile"]
+        task["safe_permission_metadata"] = get_safe_permission_metadata(permission["profile"])
+    else:
+        task["permission_profile"] = {}
+        task["permission_warning"] = permission.get("reason", "permission profile could not be created")
     _TASKS[task_id] = task
     return _persist_and_summarize(task, event_type="create")
 
@@ -611,6 +714,9 @@ def advance_luxcode_task(
     if task["current_state"] in EXECUTION_BLOCKED_STATES:
         return _summary(task)
     previous_state = task["current_state"]
+    allowed, _permission_result = _permission_check(task, action)
+    if not allowed:
+        return _persist_and_summarize(task, event_type=f"permission_pause:{action}", previous_state=previous_state)
     if patch_steps is not None:
         task["approval_state"]["patch_steps"] = deepcopy(patch_steps)
     if verification_checks is not None:
@@ -746,6 +852,7 @@ def get_task_orchestrator_status() -> Dict[str, Any]:
                 storage_root=_PERSISTENCE_CONFIG.get("storage_root"),
             ),
         },
+        "autonomy_permission": get_autonomy_permission_status(),
         "task_count": len(_TASKS),
         "active_task_count": sum(1 for state in states if state not in TERMINAL_STATES and state != "paused"),
         "paused_task_count": states.count("paused"),
@@ -852,3 +959,40 @@ def restore_luxcode_active_tasks(limit: int = 50) -> Dict[str, Any]:
         ok, error = _restore_payload_to_task(payload)
         restored.append({"task_id": payload.get("task_id"), "restored": ok, "error": error, "execution_triggered": False})
     return {"ok": True, "restored_tasks": restored, "restored_count": len(restored), "execution_triggered": False, **SAFE_INVARIANTS}
+
+
+def approve_luxcode_task_scope_expansion(
+    task_id: str,
+    requested_path: str,
+    requested_operation: str = "read",
+    approval_option: str = "allow_read_once",
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    result = approve_scope_expansion(
+        profile=task.get("permission_profile", {}),
+        requested_path=requested_path,
+        requested_operation=requested_operation,
+        approval_option=approval_option,
+        repository_root=task.get("repository_root"),
+    )
+    if result.get("ok") and result.get("profile"):
+        task["permission_profile"] = result["profile"]
+        task["safe_permission_metadata"] = get_safe_permission_metadata(result["profile"])
+        if task.get("current_state") == "awaiting_scope_permission":
+            _touch(task, task.get("previous_state_before_scope_pause") or "created")
+        task["next_safe_action"] = "Scope permission updated; explicitly advance to continue."
+    return _persist_and_summarize(task, event_type="scope_permission_update")
+
+
+def revoke_luxcode_task_scope(task_id: str, target_path: str = "") -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    result = revoke_scope_access(profile=task.get("permission_profile", {}), target_path=target_path)
+    if result.get("ok") and result.get("profile"):
+        task["permission_profile"] = result["profile"]
+        task["safe_permission_metadata"] = get_safe_permission_metadata(result["profile"])
+        task["next_safe_action"] = "Scope access revoked immediately."
+    return _persist_and_summarize(task, event_type="scope_permission_revoke")

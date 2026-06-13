@@ -325,6 +325,20 @@ def get_task_persistence_schema() -> Dict[str, Any]:
         ],
         "hard_delete_requires": ["hard_delete=true", "exact task_id", "approval token", "confirmation phrase"],
         "payload_size_limit": PAYLOAD_SIZE_LIMIT,
+        "safe_permission_metadata": [
+            "permission_mode",
+            "scope_items",
+            "per_item_rights",
+            "operation_authority",
+            "permission_duration",
+            "project_identifier_hash",
+            "risk_policy",
+            "autonomy_budgets",
+            "revocation_state",
+            "revision",
+            "integrity_hash",
+        ],
+        "permission_restore_policy": "restored permissions never expand scope automatically",
         "persistence_disabled_by_default": True,
         **SAFE_INVARIANTS,
     }
@@ -726,6 +740,8 @@ def get_task_persistence_status(mode: Optional[str] = None, storage_root: Option
         "persistence_disabled_by_default": True,
         "bulk_delete_available": False,
         "hard_delete_approval_shape": _approval_token("{task_id}"),
+        "safe_permission_metadata_supported": True,
+        "permission_restore_expands_scope": False,
         **SAFE_INVARIANTS,
     }
     if resolved_mode == "local_sqlite" and resolved_root:

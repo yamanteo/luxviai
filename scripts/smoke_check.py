@@ -11039,6 +11039,137 @@ class SmokeRunner:
 
         return "luxcode task persistence local sqlite flow verified"
 
+    def check_luxcode_autonomy_permission_local(self) -> str:
+        """Verify autonomy permission controller endpoints with temporary fixture scope."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_autonomy_permission_controller.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        runtime_dir = ROOT / ".luxcode_runtime"
+        runtime_existed = runtime_dir.exists()
+        live_db = ROOT / "luxcode_tasks.db"
+        live_db_existed = live_db.exists()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "src").mkdir(parents=True)
+            (repo / "tests").mkdir()
+            (repo / "src" / "app.py").write_text("print('ok')\n", encoding="utf-8")
+            (repo / ".env").write_text("SECRET=value\n", encoding="utf-8")
+
+            schema = client.get("/luxcode-autonomy/schema")
+            assert schema.status_code == 200, f"/luxcode-autonomy/schema returned {schema.status_code}"
+            schema_data = schema.json()
+            assert schema_data.get("default_mode") == "approval_required", schema_data
+            assert set(schema_data.get("permission_modes", {})) == {"approval_required", "controlled_access", "full_access"}, schema_data
+            assert schema_data.get("external_api_used") is False, schema_data
+            assert schema_data.get("network_access_used") is False, schema_data
+
+            profiles = {}
+            for mode in ["approval_required", "controlled_access", "full_access"]:
+                response = client.post(
+                    "/luxcode-autonomy/profile",
+                    json={
+                        "task_id": f"smoke-{mode}",
+                        "permission_mode": mode,
+                        "repository_root": str(repo),
+                        "command_text": "duzelt ve test et commit et push yap deploy et .env",
+                        "scope_items": [
+                            {"path": "src/app.py", "type": "file", "rights": ["read", "write", "delete"]},
+                            {"path": ".env", "type": "file", "rights": ["read", "write"]},
+                            {"path": "src", "type": "folder", "recursive": True, "rights": ["read", "write"]},
+                        ],
+                        "autonomy_budgets": {"deployment_allowed": True},
+                    },
+                )
+                assert response.status_code == 200, f"profile {mode} returned {response.status_code}"
+                data = response.json()
+                assert data.get("ok") is True, data
+                profiles[mode] = data["profile"]
+
+            authority = client.post("/luxcode-autonomy/parse-authority", json={"command_text": "gerekli dosyalari ekle duzelt sil test et commit et push yap deploy et"})
+            assert authority.status_code == 200, authority.text
+            ops = set(authority.json().get("allowed_operations", []))
+            assert {"create_file", "edit_file", "delete_file", "run_tests", "commit", "push", "deploy"} <= ops, authority.json()
+
+            scoped_file = client.post("/luxcode-autonomy/evaluate", json={"profile": profiles["controlled_access"], "operation": "edit_file", "target_path": "src/app.py"})
+            assert scoped_file.status_code == 200, scoped_file.text
+            assert scoped_file.json().get("allowed") is True, scoped_file.json()
+
+            scoped_folder = client.post("/luxcode-autonomy/evaluate", json={"profile": profiles["controlled_access"], "operation": "read", "target_path": "src/app.py"})
+            assert scoped_folder.status_code == 200, scoped_folder.text
+            assert scoped_folder.json().get("allowed") is True, scoped_folder.json()
+
+            critical_block = client.post("/luxcode-autonomy/evaluate", json={"profile": profiles["controlled_access"], "operation": "edit_file", "target_path": ".env"})
+            assert critical_block.status_code == 200, critical_block.text
+            assert critical_block.json().get("allowed") is False, critical_block.json()
+
+            critical_full = client.post("/luxcode-autonomy/evaluate", json={"profile": profiles["full_access"], "operation": "edit_file", "target_path": ".env"})
+            assert critical_full.status_code == 200, critical_full.text
+            assert critical_full.json().get("allowed") is True, critical_full.json()
+
+            out_scope = client.post("/luxcode-autonomy/evaluate", json={"profile": profiles["full_access"], "operation": "read", "target_path": "tests/test_app.py"})
+            assert out_scope.status_code == 200, out_scope.text
+            assert out_scope.json().get("allowed") is False, out_scope.json()
+            assert out_scope.json().get("scope_request", {}).get("requested_path") == "tests/test_app.py", out_scope.json()
+
+            request_scope = client.post(
+                "/luxcode-autonomy/request-scope",
+                json={"task_id": "smoke", "requested_path": "tests/test_app.py", "requested_operation": "read", "why_needed": "test dosyasini okumak", "repository_root": str(repo)},
+            )
+            assert request_scope.status_code == 200, request_scope.text
+            assert request_scope.json().get("approval_digest"), request_scope.json()
+
+            approve = client.post(
+                "/luxcode-autonomy/approve-scope",
+                json={"profile": profiles["full_access"], "requested_path": "tests/test_app.py", "requested_operation": "read", "approval_option": "allow_for_task", "repository_root": str(repo)},
+            )
+            assert approve.status_code == 200, approve.text
+            approved_profile = approve.json().get("profile", {})
+            assert approve.json().get("approved") is True, approve.json()
+
+            revoke = client.post("/luxcode-autonomy/revoke-scope", json={"profile": approved_profile, "target_path": "tests/test_app.py"})
+            assert revoke.status_code == 200, revoke.text
+            assert revoke.json().get("revoked_count", 0) >= 1, revoke.json()
+
+            warning = client.post("/luxcode-autonomy/warning-preview", json={"operation": "edit_file", "target_path": "DATABASE_URL", "risk_level": "critical", "why_needed": "baglanti duzeltme"})
+            assert warning.status_code == 200, warning.text
+            assert "veritabani" in warning.json().get("simple_explanation", ""), warning.json()
+
+            project_perm = client.post(
+                "/luxcode-autonomy/approve-scope",
+                json={"profile": profiles["controlled_access"], "requested_path": "src/project_scope.py", "requested_operation": "read", "approval_option": "allow_for_project", "repository_root": str(repo)},
+            )
+            assert project_perm.status_code == 200, project_perm.text
+            assert project_perm.json().get("profile", {}).get("scope_items", [])[-1].get("duration") == "current_project", project_perm.json()
+
+        status = client.get("/debug/luxcode-autonomy-status")
+        assert status.status_code == 200, f"/debug/luxcode-autonomy-status returned {status.status_code}"
+        status_data = status.json()
+        assert status_data.get("external_api_used") is False, status_data
+        assert status_data.get("network_access_used") is False, status_data
+        assert status_data.get("live_commit_push_deploy_used") is False, status_data
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during autonomy smoke: {path}"
+        assert runtime_dir.exists() is runtime_existed, "live .luxcode_runtime state changed during autonomy smoke"
+        assert live_db.exists() is live_db_existed, "live persistence database state changed during autonomy smoke"
+
+        return "luxcode autonomy permission local preview flow verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -11074,6 +11205,7 @@ class SmokeRunner:
             ("lux_verification_recovery_local", self.check_lux_verification_recovery_local, None, "core"),
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local, None, "core"),
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local, None, "core"),
+            ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local, None, "core"),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints, None, "core"),
             ("debug_agent_panel", self.check_debug_agent_panel, None, "core"),
             ("mode_registry_preview", self.check_mode_registry_preview, None, "core"),
@@ -11275,6 +11407,7 @@ class SmokeRunner:
             ("lux_verification_recovery_local", self.check_lux_verification_recovery_local),
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local),
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local),
+            ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),

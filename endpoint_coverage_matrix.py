@@ -906,6 +906,17 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode-task-persistence/restore-active", "POST", "task_persistence", "restore active persisted tasks without execution"),
         _endpoint("/debug/luxcode-task-persistence-status", "GET", "task_persistence", "task persistence adapter status"),
     ],
+    "luxcode_autonomy_permission": [
+        _endpoint("/luxcode-autonomy/schema", "GET", "autonomy_permission", "autonomy permission controller schema"),
+        _endpoint("/luxcode-autonomy/profile", "POST", "autonomy_permission", "create selected-scope permission profile"),
+        _endpoint("/luxcode-autonomy/parse-authority", "POST", "autonomy_permission", "parse task authority from user command"),
+        _endpoint("/luxcode-autonomy/evaluate", "POST", "autonomy_permission", "evaluate requested action against mode scope and authority"),
+        _endpoint("/luxcode-autonomy/request-scope", "POST", "autonomy_permission", "build plain scope expansion request"),
+        _endpoint("/luxcode-autonomy/approve-scope", "POST", "autonomy_permission", "approve scoped access expansion"),
+        _endpoint("/luxcode-autonomy/revoke-scope", "POST", "autonomy_permission", "revoke selected scope access"),
+        _endpoint("/luxcode-autonomy/warning-preview", "POST", "autonomy_permission", "plain-language warning preview"),
+        _endpoint("/debug/luxcode-autonomy-status", "GET", "autonomy_permission", "autonomy permission controller status"),
+    ],
 }
 
 

@@ -940,6 +940,7 @@ from lux_verification_recovery_engine import (
 )
 from luxcode_task_orchestrator import (
     advance_luxcode_task,
+    approve_luxcode_task_scope_expansion,
     archive_luxcode_persisted_task,
     approve_luxcode_task_step,
     cancel_luxcode_task,
@@ -952,11 +953,23 @@ from luxcode_task_orchestrator import (
     list_luxcode_persisted_tasks,
     load_luxcode_task_from_persistence,
     pause_luxcode_task,
+    revoke_luxcode_task_scope,
     resume_luxcode_task,
     restore_luxcode_active_tasks,
     save_luxcode_task_to_persistence,
 )
 from luxcode_task_persistence import get_task_persistence_schema, get_task_persistence_status
+from luxcode_autonomy_permission_controller import (
+    approve_scope_expansion,
+    build_plain_language_warning,
+    create_permission_profile,
+    evaluate_requested_action,
+    get_autonomy_permission_schema,
+    get_autonomy_permission_status,
+    parse_task_authority,
+    request_scope_expansion,
+    revoke_scope_access,
+)
 
 try:
     from dotenv import load_dotenv
@@ -2052,6 +2065,10 @@ class LuxCodeTaskCreateRequest(BaseModel):
     selected_files: List[str] = Field(default_factory=list)
     requested_files: List[str] = Field(default_factory=list)
     forbidden_files: List[str] = Field(default_factory=list)
+    permission_mode: str = Field(default="approval_required", max_length=80)
+    scope_items: List[Dict[str, Any]] = Field(default_factory=list)
+    selected_folders: List[str] = Field(default_factory=list)
+    autonomy_budgets: Dict[str, Any] = Field(default_factory=dict)
 
 
 class LuxCodeTaskAdvanceRequest(BaseModel):
@@ -2118,6 +2135,70 @@ class LuxCodeTaskPersistenceDeleteRequest(BaseModel):
 
 class LuxCodeTaskPersistenceRestoreRequest(BaseModel):
     limit: int = Field(default=50, ge=1, le=100)
+
+
+class LuxCodeAutonomyProfileRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    permission_mode: str = Field(default="approval_required", max_length=80)
+    repository_root: Optional[str] = Field(default=None, max_length=800)
+    command_text: str = Field(default="", max_length=8000)
+    scope_items: List[Dict[str, Any]] = Field(default_factory=list)
+    selected_files: List[str] = Field(default_factory=list)
+    selected_folders: List[str] = Field(default_factory=list)
+    autonomy_budgets: Dict[str, Any] = Field(default_factory=dict)
+    duration: str = Field(default="current_task", max_length=80)
+    explicit_mode_upgrade: bool = False
+    project_identifier: str = Field(default="", max_length=400)
+
+
+class LuxCodeAutonomyAuthorityRequest(BaseModel):
+    command_text: str = Field(default="", max_length=8000)
+
+
+class LuxCodeAutonomyEvaluateRequest(BaseModel):
+    profile: Dict[str, Any] = Field(default_factory=dict)
+    profile_id: str = Field(default="", max_length=160)
+    task_id: str = Field(default="", max_length=120)
+    operation: str = Field(default="read", max_length=80)
+    target_path: str = Field(default="", max_length=800)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    approval_digest: str = Field(default="", max_length=260)
+    recovery_plan_available: bool = True
+
+
+class LuxCodeAutonomyScopeRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    requested_path: str = Field(default="", max_length=800)
+    requested_operation: str = Field(default="read", max_length=80)
+    why_needed: str = Field(default="", max_length=2000)
+    repository_root: Optional[str] = Field(default=None, max_length=800)
+    read_only_sufficient: bool = True
+
+
+class LuxCodeAutonomyApproveScopeRequest(BaseModel):
+    profile: Dict[str, Any] = Field(default_factory=dict)
+    profile_id: str = Field(default="", max_length=160)
+    requested_path: str = Field(default="", max_length=800)
+    requested_operation: str = Field(default="read", max_length=80)
+    approval_option: str = Field(default="allow_read_once", max_length=80)
+    repository_root: Optional[str] = Field(default=None, max_length=800)
+
+
+class LuxCodeAutonomyRevokeScopeRequest(BaseModel):
+    profile: Dict[str, Any] = Field(default_factory=dict)
+    profile_id: str = Field(default="", max_length=160)
+    target_path: str = Field(default="", max_length=800)
+    operation: str = Field(default="", max_length=80)
+
+
+class LuxCodeAutonomyWarningRequest(BaseModel):
+    operation: str = Field(default="edit_file", max_length=80)
+    target_path: str = Field(default="", max_length=800)
+    risk_level: str = Field(default="", max_length=80)
+    why_needed: str = Field(default="", max_length=2000)
+    backup_available: bool = True
+    rollback_available: bool = True
+    requires_approval: bool = True
 
 
 # =========================================================
@@ -12249,6 +12330,60 @@ async def luxcode_task_persistence_restore_active_endpoint(payload: LuxCodeTaskP
 @app.get("/debug/luxcode-task-persistence-status")
 async def debug_luxcode_task_persistence_status_endpoint():
     return get_task_persistence_status()
+
+
+@app.get("/luxcode-autonomy/schema")
+async def luxcode_autonomy_schema_endpoint():
+    return get_autonomy_permission_schema()
+
+
+@app.post("/luxcode-autonomy/profile")
+async def luxcode_autonomy_profile_endpoint(payload: LuxCodeAutonomyProfileRequest):
+    return create_permission_profile(**payload.dict())
+
+
+@app.post("/luxcode-autonomy/parse-authority")
+async def luxcode_autonomy_parse_authority_endpoint(payload: LuxCodeAutonomyAuthorityRequest):
+    return parse_task_authority(payload.command_text)
+
+
+@app.post("/luxcode-autonomy/evaluate")
+async def luxcode_autonomy_evaluate_endpoint(payload: LuxCodeAutonomyEvaluateRequest):
+    data = payload.dict()
+    if not data.get("profile"):
+        data["profile"] = None
+    return evaluate_requested_action(**data)
+
+
+@app.post("/luxcode-autonomy/request-scope")
+async def luxcode_autonomy_request_scope_endpoint(payload: LuxCodeAutonomyScopeRequest):
+    return request_scope_expansion(**payload.dict())
+
+
+@app.post("/luxcode-autonomy/approve-scope")
+async def luxcode_autonomy_approve_scope_endpoint(payload: LuxCodeAutonomyApproveScopeRequest):
+    data = payload.dict()
+    if not data.get("profile"):
+        data["profile"] = None
+    return approve_scope_expansion(**data)
+
+
+@app.post("/luxcode-autonomy/revoke-scope")
+async def luxcode_autonomy_revoke_scope_endpoint(payload: LuxCodeAutonomyRevokeScopeRequest):
+    data = payload.dict()
+    if not data.get("profile"):
+        data["profile"] = None
+    return revoke_scope_access(**data)
+
+
+@app.post("/luxcode-autonomy/warning-preview")
+async def luxcode_autonomy_warning_preview_endpoint(payload: LuxCodeAutonomyWarningRequest):
+    return build_plain_language_warning(**payload.dict())
+
+
+@app.get("/debug/luxcode-autonomy-status")
+async def debug_luxcode_autonomy_status_endpoint():
+    return get_autonomy_permission_status()
 
 
 @app.get("/debug/runtime-drift-status")
