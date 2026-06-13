@@ -10815,6 +10815,114 @@ class SmokeRunner:
 
         return "lux verification recovery local planning and recovery preview verified"
 
+    def check_luxcode_task_orchestrator_local(self) -> str:
+        """Verify Task Orchestrator coordinates safe preview transitions without live writes."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_task_orchestrator.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        runtime_dir = ROOT / ".luxcode_runtime"
+        runtime_existed = runtime_dir.exists()
+
+        schema = client.get("/luxcode-task/schema")
+        assert schema.status_code == 200, f"/luxcode-task/schema returned {schema.status_code}"
+        schema_data = schema.json()
+        assert schema_data.get("state_storage") == "in_memory_only", schema_data
+        assert schema_data.get("automatic_apply_enabled") is False, schema_data
+        assert schema_data.get("automatic_rollback_enabled") is False, schema_data
+        assert schema_data.get("external_api_used") is False, schema_data
+        assert schema_data.get("local_first") is True, schema_data
+
+        create = client.post(
+            "/luxcode-task/create",
+            json={
+                "original_request": "Bu hatayi bul ve guvenli sekilde duzelt",
+                "repository_root": str(ROOT),
+                "suspected_files": ["app.py"],
+                "requested_files": ["app.py"],
+                "changed_files": [],
+                "mode": "plan",
+            },
+        )
+        assert create.status_code == 200, f"/luxcode-task/create returned {create.status_code}"
+        task = create.json()
+        task_id = task.get("task_id")
+        assert task_id, task
+        assert task.get("current_state") == "created", task
+        assert task.get("scope_expansion_blocked") is True, task
+        assert task.get("destructive_action_blocked") is True, task
+        assert task.get("external_api_used") is False, task
+
+        for expected in ["routed", "diagnosis_ready", "awaiting_approval"]:
+            advance = client.post("/luxcode-task/advance", json={"task_id": task_id, "action": "next"})
+            assert advance.status_code == 200, f"/luxcode-task/advance returned {advance.status_code}"
+            task = advance.json()
+            assert task.get("current_state") == expected, task
+
+        no_approval = client.post("/luxcode-task/advance", json={"task_id": task_id, "action": "prepare_apply"})
+        assert no_approval.status_code == 200, no_approval.text
+        no_approval_data = no_approval.json()
+        assert no_approval_data.get("current_state") in {"awaiting_approval", "blocked"}, no_approval_data
+        assert no_approval_data.get("requires_user_approval") is True, no_approval_data
+
+        pause_create = client.post(
+            "/luxcode-task/create",
+            json={"original_request": "pause smoke", "repository_root": str(ROOT), "suspected_files": ["app.py"]},
+        )
+        pause_id = pause_create.json().get("task_id")
+        pause = client.post("/luxcode-task/pause", json={"task_id": pause_id, "reason": "smoke pause"})
+        assert pause.status_code == 200, pause.text
+        assert pause.json().get("current_state") == "paused", pause.json()
+        blocked_advance = client.post("/luxcode-task/advance", json={"task_id": pause_id, "action": "next"})
+        assert blocked_advance.status_code == 200, blocked_advance.text
+        assert blocked_advance.json().get("current_state") == "paused", blocked_advance.json()
+        resume = client.post("/luxcode-task/resume", json={"task_id": pause_id})
+        assert resume.status_code == 200, resume.text
+        assert resume.json().get("current_state") == "created", resume.json()
+
+        cancel_create = client.post(
+            "/luxcode-task/create",
+            json={"original_request": "cancel smoke", "repository_root": str(ROOT), "suspected_files": ["app.py"]},
+        )
+        cancel_id = cancel_create.json().get("task_id")
+        cancel = client.post("/luxcode-task/cancel", json={"task_id": cancel_id, "reason": "smoke cancel"})
+        assert cancel.status_code == 200, cancel.text
+        assert cancel.json().get("current_state") == "cancelled", cancel.json()
+        cancel_advance = client.post("/luxcode-task/advance", json={"task_id": cancel_id, "action": "next"})
+        assert cancel_advance.status_code == 200, cancel_advance.text
+        assert cancel_advance.json().get("current_state") == "cancelled", cancel_advance.json()
+
+        retrieved = client.get(f"/luxcode-task/{task_id}")
+        assert retrieved.status_code == 200, f"/luxcode-task/{{task_id}} returned {retrieved.status_code}"
+        retrieved_data = retrieved.json()
+        assert retrieved_data.get("task_id") == task_id, retrieved_data
+        assert retrieved_data.get("external_api_used") is False, retrieved_data
+
+        status = client.get("/debug/luxcode-task-orchestrator-status")
+        assert status.status_code == 200, f"/debug/luxcode-task-orchestrator-status returned {status.status_code}"
+        status_data = status.json()
+        assert status_data.get("task_count", 0) >= 3, status_data
+        assert status_data.get("state_storage") == "in_memory_only", status_data
+        assert status_data.get("external_api_used") is False, status_data
+        assert status_data.get("local_first") is True, status_data
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during task orchestrator smoke: {path}"
+        assert runtime_dir.exists() is runtime_existed, "live .luxcode_runtime directory state changed during task orchestrator smoke"
+
+        return "luxcode task orchestrator local preview flow verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -10848,6 +10956,7 @@ class SmokeRunner:
             ("lux_safe_patch_draft_read_only", self.check_lux_safe_patch_draft_read_only, None, "core"),
             ("lux_controlled_apply_approval_gated", self.check_lux_controlled_apply_approval_gated, None, "core"),
             ("lux_verification_recovery_local", self.check_lux_verification_recovery_local, None, "core"),
+            ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local, None, "core"),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints, None, "core"),
             ("debug_agent_panel", self.check_debug_agent_panel, None, "core"),
             ("mode_registry_preview", self.check_mode_registry_preview, None, "core"),
@@ -11047,6 +11156,7 @@ class SmokeRunner:
             ("lux_safe_patch_draft_read_only", self.check_lux_safe_patch_draft_read_only),
             ("lux_controlled_apply_approval_gated", self.check_lux_controlled_apply_approval_gated),
             ("lux_verification_recovery_local", self.check_lux_verification_recovery_local),
+            ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),

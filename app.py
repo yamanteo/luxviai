@@ -938,6 +938,17 @@ from lux_verification_recovery_engine import (
     prepare_recovery_action,
     prepare_verification_run,
 )
+from luxcode_task_orchestrator import (
+    advance_luxcode_task,
+    approve_luxcode_task_step,
+    cancel_luxcode_task,
+    create_luxcode_task,
+    get_luxcode_task_status,
+    get_task_orchestrator_schema,
+    get_task_orchestrator_status,
+    pause_luxcode_task,
+    resume_luxcode_task,
+)
 
 try:
     from dotenv import load_dotenv
@@ -2021,6 +2032,44 @@ class LuxVerificationRecoveryRequest(BaseModel):
     allow_automatic_rollback: bool = False
     controlled_apply_result: Dict[str, Any] = Field(default_factory=dict)
     check_results: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class LuxCodeTaskCreateRequest(BaseModel):
+    original_request: str = Field(default="", max_length=8000)
+    repository_root: Optional[str] = Field(default=None, max_length=600)
+    suspected_files: List[str] = Field(default_factory=list)
+    changed_files: List[str] = Field(default_factory=list)
+    mode: Optional[str] = Field(default=None, max_length=80)
+    traceback_text: str = Field(default="", max_length=12000)
+    selected_files: List[str] = Field(default_factory=list)
+    requested_files: List[str] = Field(default_factory=list)
+    forbidden_files: List[str] = Field(default_factory=list)
+
+
+class LuxCodeTaskAdvanceRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    action: str = Field(default="next", max_length=80)
+    patch_steps: Optional[List[Dict[str, Any]]] = None
+    verification_checks: Optional[List[Dict[str, Any]]] = None
+
+
+class LuxCodeTaskApprovalRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    patch_id: Optional[str] = Field(default=None, max_length=200)
+    patch_digest: Optional[str] = Field(default=None, max_length=260)
+    approved_files: List[str] = Field(default_factory=list)
+    expected_file_hashes: Dict[str, str] = Field(default_factory=dict)
+    patch_steps: List[Dict[str, Any]] = Field(default_factory=list)
+    repository_root: Optional[str] = Field(default=None, max_length=600)
+    approve_apply_execution: bool = False
+    controlled_apply_approval_token: Optional[str] = Field(default=None, max_length=260)
+    approve_verification_execution: bool = False
+    verification_approval_token: Optional[str] = Field(default=None, max_length=260)
+
+
+class LuxCodeTaskStateRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    reason: str = Field(default="", max_length=1000)
 
 
 # =========================================================
@@ -12059,6 +12108,54 @@ async def lux_verification_recovery_preview_endpoint(payload: LuxVerificationRec
 @app.get("/debug/lux-verification-status")
 async def debug_lux_verification_status_endpoint():
     return get_verification_recovery_status()
+
+
+@app.get("/luxcode-task/schema")
+async def luxcode_task_schema_endpoint():
+    return get_task_orchestrator_schema()
+
+
+@app.post("/luxcode-task/create")
+async def luxcode_task_create_endpoint(payload: LuxCodeTaskCreateRequest):
+    return create_luxcode_task(**payload.dict())
+
+
+@app.post("/luxcode-task/advance")
+async def luxcode_task_advance_endpoint(payload: LuxCodeTaskAdvanceRequest):
+    return advance_luxcode_task(**payload.dict())
+
+
+@app.post("/luxcode-task/approve")
+async def luxcode_task_approve_endpoint(payload: LuxCodeTaskApprovalRequest):
+    data = payload.dict()
+    if not data.get("patch_steps"):
+        data["patch_steps"] = None
+    return approve_luxcode_task_step(**data)
+
+
+@app.post("/luxcode-task/pause")
+async def luxcode_task_pause_endpoint(payload: LuxCodeTaskStateRequest):
+    return pause_luxcode_task(task_id=payload.task_id, reason=payload.reason)
+
+
+@app.post("/luxcode-task/resume")
+async def luxcode_task_resume_endpoint(payload: LuxCodeTaskStateRequest):
+    return resume_luxcode_task(task_id=payload.task_id)
+
+
+@app.post("/luxcode-task/cancel")
+async def luxcode_task_cancel_endpoint(payload: LuxCodeTaskStateRequest):
+    return cancel_luxcode_task(task_id=payload.task_id, reason=payload.reason)
+
+
+@app.get("/luxcode-task/{task_id}")
+async def luxcode_task_status_endpoint(task_id: str):
+    return get_luxcode_task_status(task_id)
+
+
+@app.get("/debug/luxcode-task-orchestrator-status")
+async def debug_luxcode_task_orchestrator_status_endpoint():
+    return get_task_orchestrator_status()
 
 
 @app.get("/debug/runtime-drift-status")

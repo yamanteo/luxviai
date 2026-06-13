@@ -884,6 +884,17 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/lux-verification/recovery-preview", "POST", "verification_recovery", "recovery decision preview"),
         _endpoint("/debug/lux-verification-status", "GET", "verification_recovery", "verification recovery status"),
     ],
+    "luxcode_task_orchestrator": [
+        _endpoint("/luxcode-task/schema", "GET", "task_orchestrator", "luxcode task orchestrator schema"),
+        _endpoint("/luxcode-task/create", "POST", "task_orchestrator", "create in-memory luxcode task"),
+        _endpoint("/luxcode-task/advance", "POST", "task_orchestrator", "advance task through explicit safe transitions"),
+        _endpoint("/luxcode-task/approve", "POST", "task_orchestrator", "bind explicit task approval to patch digest"),
+        _endpoint("/luxcode-task/pause", "POST", "task_orchestrator", "pause task continuity checkpoint"),
+        _endpoint("/luxcode-task/resume", "POST", "task_orchestrator", "resume paused task from checkpoint"),
+        _endpoint("/luxcode-task/cancel", "POST", "task_orchestrator", "cancel task without rollback"),
+        _endpoint("/luxcode-task/{task_id}", "GET", "task_orchestrator", "retrieve deterministic task state"),
+        _endpoint("/debug/luxcode-task-orchestrator-status", "GET", "task_orchestrator", "task orchestrator status"),
+    ],
 }
 
 
