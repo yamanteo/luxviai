@@ -54,6 +54,11 @@ from luxcode_local_network_access_intelligence import (
     execute_network_access_plan,
     get_safe_network_access_metadata,
 )
+from luxcode_test_matrix_intelligence import (
+    build_test_matrix_plan,
+    execute_test_matrix,
+    get_safe_test_matrix_metadata,
+)
 
 
 TASK_STATES = {
@@ -78,6 +83,11 @@ TASK_STATES = {
     "failed",
     "cancelled",
     "paused",
+    "test_matrix_planned",
+    "test_matrix_running",
+    "test_matrix_review",
+    "test_matrix_completed",
+    "test_matrix_blocked",
     "awaiting_scope_permission",
     "awaiting_irreversible_confirmation",
     "autonomy_paused",
@@ -307,6 +317,13 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "live_test_result": _redact(task.get("live_test_result", {})),
         "network_access_plan": _redact(task.get("network_access_plan", {})),
         "network_access_result": _redact(task.get("network_access_result", {})),
+        "test_matrix_plan": _redact(task.get("test_matrix_plan", {})),
+        "selected_targets": _redact(task.get("selected_targets", [])),
+        "matrix_execution_state": task.get("matrix_execution_state", ""),
+        "matrix_summary": _redact(task.get("matrix_summary", {})),
+        "matrix_failures": _redact(task.get("matrix_failures", [])),
+        "matrix_required_for_completion": bool(task.get("matrix_required_for_completion", False)),
+        "skipped_target_reasons": _redact(task.get("skipped_target_reasons", {})),
         "can_advance": can_advance,
         "requires_user_approval": state in {"awaiting_approval", "apply_prepared", "verification_prepared"},
         **SAFE_INVARIANTS,
@@ -476,6 +493,8 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
             "plan_luxcode_task_network_access",
             "execute_luxcode_task_network_access",
             "cancel_luxcode_task_network_access",
+            "plan_luxcode_task_test_matrix",
+            "execute_luxcode_task_test_matrix",
         ],
         "integrated_engines": [
             "LuxCode Master Router Preview",
@@ -491,6 +510,7 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
         "terminal_runtime": "available_for_structured_actions",
         "live_testing": "available_for_localhost_structured_scenarios",
         "network_access": "available_for_localhost_and_selected_lan_verification",
+        "test_matrix": "available_for_browser_device_screen_network_verification",
         "automatic_apply_enabled": False,
         "automatic_rollback_enabled": False,
         **SAFE_INVARIANTS,
@@ -891,6 +911,7 @@ def get_task_orchestrator_status() -> Dict[str, Any]:
         "autonomy_permission": get_autonomy_permission_status(),
         "terminal_runtime": "available_for_structured_actions",
         "live_testing": "available_for_localhost_structured_scenarios",
+        "test_matrix": "available_for_browser_device_screen_network_verification",
         "task_count": len(_TASKS),
         "active_task_count": sum(1 for state in states if state not in TERMINAL_STATES and state != "paused"),
         "paused_task_count": states.count("paused"),
@@ -1177,3 +1198,74 @@ def cancel_luxcode_task_network_access(task_id: str, runtime_id: str = "") -> Di
     result = cancel_network_access_runtime(target_runtime, reason=f"task {task_id} cancelled")
     task["network_access_result"] = result.get("runtime", result)
     return _persist_and_summarize(task, event_type="network_access_cancel")
+
+
+def plan_luxcode_task_test_matrix(
+    task_id: str,
+    base_url: str,
+    requested_targets: Optional[List[str]] = None,
+    scenario_ids: Optional[List[str]] = None,
+    device_families: Optional[List[str]] = None,
+    network_profiles: Optional[List[str]] = None,
+    required_targets: Optional[List[str]] = None,
+    service: Optional[Dict[str, Any]] = None,
+    matrix_required_for_completion: bool = False,
+    approval_digest: str = "",
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    if task.get("matrix_execution_state") == "running":
+        return {"ok": False, "task_id": task_id, "reason": "matrix execution already running", "safe_response": True, **SAFE_INVARIANTS}
+    result = build_test_matrix_plan(
+        task_id=task_id,
+        repository_root=task.get("repository_root") or str(Path.cwd()),
+        working_directory=".",
+        base_url=base_url,
+        requested_targets=requested_targets,
+        scenario_ids=scenario_ids,
+        device_families=device_families,
+        network_profiles=network_profiles,
+        required_targets=required_targets,
+        service=service,
+        permission_profile=task.get("permission_profile", {}),
+        approval_digest=approval_digest,
+    )
+    task["test_matrix_plan"] = result.get("plan", result)
+    task["selected_targets"] = requested_targets or []
+    task["matrix_execution_state"] = "planned" if result.get("ok") else "blocked"
+    task["matrix_required_for_completion"] = bool(matrix_required_for_completion)
+    task["skipped_target_reasons"] = {item.get("target_id", ""): item.get("skip_reason", "") for item in result.get("plan", {}).get("skipped_targets", [])}
+    _touch(task, "test_matrix_planned" if result.get("ok") else "test_matrix_blocked")
+    return _persist_and_summarize(task, event_type="test_matrix_plan")
+
+
+def execute_luxcode_task_test_matrix(task_id: str, retry_cell_ids: Optional[List[str]] = None, resume: bool = True) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    if task.get("matrix_execution_state") == "running":
+        return {"ok": False, "task_id": task_id, "reason": "matrix execution already running", "safe_response": True, **SAFE_INVARIANTS}
+    task["matrix_execution_state"] = "running"
+    _touch(task, "test_matrix_running")
+    result = execute_test_matrix(task.get("test_matrix_plan", {}), retry_cell_ids=retry_cell_ids, resume=resume)
+    runtime = result.get("runtime", result)
+    if result.get("runtime"):
+        metadata = get_safe_test_matrix_metadata(runtime)
+        task["matrix_summary"] = runtime.get("summary", metadata)
+        task["matrix_failures"] = runtime.get("summary", {}).get("failures", [])
+        task["matrix_execution_state"] = runtime.get("state", "test_matrix_review")
+        task["test_matrix_result"] = metadata
+    else:
+        task["matrix_summary"] = result
+        task["matrix_failures"] = [result]
+        task["matrix_execution_state"] = "blocked"
+    summary_state = task.get("matrix_summary", {}).get("overall_status") if isinstance(task.get("matrix_summary"), dict) else ""
+    if summary_state == "passed" and not task.get("matrix_required_for_completion"):
+        _touch(task, "test_matrix_completed")
+    elif summary_state in {"passed", "partially_verified"}:
+        _touch(task, "test_matrix_review")
+    else:
+        _touch(task, "test_matrix_blocked")
+    task["next_safe_action"] = "Review matrix summary before claiming full verification."
+    return _persist_and_summarize(task, event_type="test_matrix_execute")

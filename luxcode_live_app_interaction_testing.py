@@ -48,6 +48,7 @@ SUPPORTED_ACTIONS = {
     "capture_screenshot",
     "collect_console_errors",
     "collect_page_errors",
+    "collect_layout_observations",
     "stop_scenario",
 }
 EXECUTED_ACTIONS = {
@@ -68,6 +69,7 @@ EXECUTED_ACTIONS = {
     "capture_screenshot",
     "collect_console_errors",
     "collect_page_errors",
+    "collect_layout_observations",
     "stop_scenario",
 }
 DEFERRED_ACTIONS = {"select_option"}
@@ -109,6 +111,7 @@ AUDIT_EVENTS = [
     "step_passed",
     "step_failed",
     "evidence_captured",
+    "layout_observed",
     "console_error_observed",
     "page_error_observed",
     "scenario_passed",
@@ -627,7 +630,7 @@ def _execute_step(client: _CDPClient, runtime: Dict[str, Any], step: Dict[str, A
         return _safe_success(ready=bool(_wait_until(client, "document.readyState === 'complete'", timeout)))
     if action == "set_viewport":
         viewport = step.get("viewport") or runtime["scenario"].get("viewport", "desktop")
-        profile = VIEWPORTS.get(viewport, viewport if isinstance(viewport, dict) else VIEWPORTS["desktop"])
+        profile = viewport if isinstance(viewport, dict) else VIEWPORTS.get(viewport, VIEWPORTS["desktop"])
         width, height = int(profile["width"]), int(profile["height"])
         client.command("Emulation.setDeviceMetricsOverride", {"width": width, "height": height, "deviceScaleFactor": 1, "mobile": bool(profile.get("mobile_emulation"))})
         return _safe_success(viewport={"width": width, "height": height, "mobile_viewport": bool(profile.get("mobile_emulation"))})
@@ -694,6 +697,62 @@ def _execute_step(client: _CDPClient, runtime: Dict[str, Any], step: Dict[str, A
         return _safe_success(console_errors=[_redact_text(item) for item in client.console_errors[:20]])
     if action == "collect_page_errors":
         return _safe_success(page_errors=[_redact_text(item) for item in client.page_errors[:20]])
+    if action == "collect_layout_observations":
+        script = """
+(() => {
+  const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+  const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+  const doc = document.documentElement;
+  const body = document.body || doc;
+  const visible = Array.from(document.querySelectorAll('body *')).filter((el) => {
+    const style = getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+  }).slice(0, 400);
+  const controls = visible.filter((el) => /^(A|BUTTON|INPUT|SELECT|TEXTAREA)$/.test(el.tagName) || el.getAttribute('role') === 'button');
+  const rectOf = (el) => {
+    const r = el.getBoundingClientRect();
+    return {tag: el.tagName.toLowerCase(), id: el.id || '', testid: el.getAttribute('data-testid') || '', text: (el.textContent || '').trim().slice(0, 80), x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height)};
+  };
+  const offscreen = controls.map(rectOf).filter((r) => r.x < -1 || r.y < -1 || r.x + r.width > vw + 1 || r.y + r.height > vh + 1).slice(0, 20);
+  const smallTouchTargets = controls.map(rectOf).filter((r) => r.width < 44 || r.height < 44).slice(0, 20);
+  const clippedText = visible.filter((el) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1).map(rectOf).slice(0, 20);
+  const overlaps = [];
+  for (let i = 0; i < Math.min(visible.length, 80); i++) {
+    const a = visible[i].getBoundingClientRect();
+    for (let j = i + 1; j < Math.min(visible.length, 80); j++) {
+      const b = visible[j].getBoundingClientRect();
+      const area = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+      if (area > 1600 && !visible[i].contains(visible[j]) && !visible[j].contains(visible[i])) {
+        overlaps.push({a: rectOf(visible[i]), b: rectOf(visible[j]), overlap_area: Math.round(area)});
+        break;
+      }
+    }
+    if (overlaps.length >= 10) break;
+  }
+  const sticky = visible.filter((el) => ['fixed', 'sticky'].includes(getComputedStyle(el).position)).map(rectOf).slice(0, 20);
+  const excessiveWhitespace = (doc.scrollHeight || body.scrollHeight || 0) > vh * 3 && visible.length < 6;
+  return {
+    viewport: {width: vw, height: vh, devicePixelRatio: window.devicePixelRatio || 1, direction: getComputedStyle(doc).direction},
+    horizontal_overflow: (doc.scrollWidth || body.scrollWidth || 0) > vw + 1,
+    clipped_text: clippedText,
+    offscreen_controls: offscreen,
+    overlapping_elements: overlaps,
+    missing_controls: controls.length === 0,
+    hidden_navigation: !!document.querySelector('nav') && !visible.includes(document.querySelector('nav')),
+    broken_modal_position: Array.from(document.querySelectorAll('[role="dialog"], dialog, .modal')).map(rectOf).filter((r) => r.x < 0 || r.y < 0 || r.x + r.width > vw || r.y + r.height > vh),
+    sticky_collisions: sticky,
+    excessive_whitespace: excessiveWhitespace,
+    touch_targets_too_small: smallTouchTargets,
+    long_text_overflow: clippedText.filter((r) => r.text.length > 40),
+    rtl_alignment_warning: getComputedStyle(doc).direction === 'rtl' && visible.some((el) => getComputedStyle(el).textAlign === 'left')
+  };
+})()
+"""
+        observations = client.evaluate(script, timeout=timeout) or {}
+        runtime.setdefault("layout_observations", []).append(observations)
+        _audit(runtime, "layout_observed", {"horizontal_overflow": observations.get("horizontal_overflow"), "overlap_count": len(observations.get("overlapping_elements", []))})
+        return _safe_success(layout_observations=observations)
     if action == "stop_scenario":
         return _safe_success(stopped=True)
     return _safe_failure("unsupported action")

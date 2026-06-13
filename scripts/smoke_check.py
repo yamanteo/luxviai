@@ -11578,6 +11578,140 @@ class SmokeRunner:
 
         return "luxcode local network access intelligence verified"
 
+    def check_luxcode_test_matrix_local(self) -> str:
+        """Verify Browser/Device/Screen/Network Matrix against a temp local fixture."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_test_matrix_intelligence.py",
+            ROOT / "luxcode_live_app_interaction_testing.py",
+            ROOT / "luxcode_local_network_access_intelligence.py",
+            ROOT / "luxcode_terminal_process_runtime.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        live_paths = [ROOT / ".luxcode_runtime", ROOT / ".luxcode_live_test", ROOT / ".luxcode_network_access", ROOT / ".luxcode_test_matrix", ROOT / "luxcode_tasks.db", ROOT / ".luxcode_snapshots", ROOT / "luxcode_backups"]
+        live_state = {str(path): path.exists() for path in live_paths}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            (repo / "matrix_fixture.py").write_text(
+                "from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer\n"
+                "import sys\n"
+                "HTML=b'''<!doctype html><html><body><main style=\"max-width:700px;margin:auto\"><h1 data-testid=\"matrix-title\">Matrix fixture ready</h1><input data-testid=\"matrix-input\"><button data-testid=\"matrix-button\" onclick=\"document.querySelector('[data-testid=matrix-result]').textContent='clicked'\">Click</button><p data-testid=\"matrix-result\"></p></main></body></html>'''\n"
+                "class H(BaseHTTPRequestHandler):\n"
+                "    def log_message(self,*a): pass\n"
+                "    def do_GET(self):\n"
+                "        body=b'ok' if self.path=='/health' else HTML\n"
+                "        self.send_response(200); self.end_headers(); self.wfile.write(body)\n"
+                "ThreadingHTTPServer((sys.argv[1], int(sys.argv[2])), H).serve_forever()\n",
+                encoding="utf-8",
+            )
+            import socket
+
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind(("127.0.0.1", 0))
+                port = int(sock.getsockname()[1])
+            base_url = f"http://127.0.0.1:{port}"
+
+            schema = client.get("/luxcode-test-matrix/schema")
+            assert schema.status_code == 200, f"/luxcode-test-matrix/schema returned {schema.status_code}"
+            schema_data = schema.json()
+            assert schema_data.get("public_internet_allowed") is False, schema_data
+            assert "responsive_layout" in schema_data.get("scenario_ids", []), schema_data
+
+            detect = client.post("/luxcode-test-matrix/detect", json={"requested_targets": ["chrome", "responsive_mobile_preview", "yandex", "android_emulator"]})
+            assert detect.status_code == 200, f"/luxcode-test-matrix/detect returned {detect.status_code}"
+            detect_data = detect.json()
+            assert any(not item.get("available") for item in detect_data.get("targets", [])), detect_data
+
+            profile = client.post(
+                "/luxcode-autonomy/profile",
+                json={
+                    "task_id": "matrix-smoke",
+                    "permission_mode": "controlled_access",
+                    "repository_root": str(repo),
+                    "command_text": "run tests for local browser matrix",
+                    "scope_items": [{"path": ".", "type": "folder", "recursive": True, "rights": ["read", "write"]}],
+                    "autonomy_budgets": {"test_runs": 20},
+                },
+            ).json()["profile"]
+            service = {
+                "working_directory": ".",
+                "executable": "python",
+                "arguments": ["matrix_fixture.py", "127.0.0.1", str(port)],
+                "timeout_seconds": 30,
+                "permission_profile": profile,
+                "health_check": {"check_type": "http_get", "host": "127.0.0.1", "port": port, "path": "/health", "retries": 20, "retry_interval": 0.1},
+            }
+            plan = client.post(
+                "/luxcode-test-matrix/plan",
+                json={
+                    "task_id": "matrix-smoke",
+                    "repository_root": str(repo),
+                    "working_directory": ".",
+                    "base_url": base_url,
+                    "requested_targets": ["chrome", "responsive_mobile_preview", "yandex", "android_emulator"],
+                    "scenario_ids": ["page_load", "responsive_layout", "button_click"],
+                    "device_families": ["desktop", "phone"],
+                    "network_profiles": ["normal", "high_latency"],
+                    "orientations": ["portrait"],
+                    "color_schemes": ["light"],
+                    "required_targets": ["android_emulator"],
+                    "service": service,
+                    "permission_profile": profile,
+                    "max_cells": 7,
+                },
+            )
+            assert plan.status_code == 200, f"/luxcode-test-matrix/plan returned {plan.status_code}"
+            plan_data = plan.json()
+            assert plan_data.get("ok") is True, plan_data
+            cells = plan_data["plan"].get("cells", [])
+            assert any(c.get("device_profile", "").startswith("desktop") for c in cells), cells
+            assert any(c.get("device_profile", "").startswith("phone") for c in cells), cells
+            assert any(c.get("network_profile") == "high_latency" for c in cells), cells
+            assert any(c.get("availability") == "unavailable" for c in cells), cells
+
+            execute = client.post("/luxcode-test-matrix/execute", json={"plan": plan_data["plan"]})
+            assert execute.status_code == 200, f"/luxcode-test-matrix/execute returned {execute.status_code}"
+            runtime = execute.json().get("runtime", {})
+            results = runtime.get("results", [])
+            assert any(r.get("status") == "passed" for r in results), runtime
+            assert any(r.get("status") == "unavailable" for r in results), runtime
+            assert all(r.get("temporary_profile_removed") for r in results if r.get("temporary_profile_created")), runtime
+
+            summary = client.post("/luxcode-test-matrix/summary", json={"results": results, "plan": plan_data["plan"]})
+            assert summary.status_code == 200, f"/luxcode-test-matrix/summary returned {summary.status_code}"
+            assert summary.json().get("summary", {}).get("overall_status") in {"passed", "partially_verified", "failed"}, summary.json()
+            compare = client.post("/luxcode-test-matrix/compare", json={"results": results, "plan": plan_data["plan"]})
+            assert compare.status_code == 200, f"/luxcode-test-matrix/compare returned {compare.status_code}"
+            status = client.get("/debug/luxcode-test-matrix-status")
+            assert status.status_code == 200, f"/debug/luxcode-test-matrix-status returned {status.status_code}"
+            status_data = status.json()
+            assert status_data.get("public_internet_used") is False, status_data
+            assert status_data.get("subnet_scan_used") is False, status_data
+            assert status_data.get("firewall_modified") is False, status_data
+            assert status_data.get("router_modified") is False, status_data
+            assert status_data.get("tunnel_started") is False, status_data
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during test matrix smoke: {path}"
+        for path in live_paths:
+            assert path.exists() is live_state[str(path)], f"live artifact state changed during test matrix smoke: {path}"
+
+        return "luxcode browser/device/screen/network test matrix verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -11617,6 +11751,7 @@ class SmokeRunner:
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local, None, "core"),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local, None, "core"),
             ("luxcode_network_access_local", self.check_luxcode_network_access_local, None, "core"),
+            ("luxcode_test_matrix_local", self.check_luxcode_test_matrix_local, None, "core"),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints, None, "core"),
             ("debug_agent_panel", self.check_debug_agent_panel, None, "core"),
             ("mode_registry_preview", self.check_mode_registry_preview, None, "core"),
@@ -11822,6 +11957,7 @@ class SmokeRunner:
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local),
             ("luxcode_network_access_local", self.check_luxcode_network_access_local),
+            ("luxcode_test_matrix_local", self.check_luxcode_test_matrix_local),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),

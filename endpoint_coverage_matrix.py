@@ -953,6 +953,15 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode/network-access/runtime/{runtime_id}/cancel", "POST", "network_access", "cancel owned network access runtime"),
         _endpoint("/debug/luxcode-network-access-status", "GET", "network_access", "network access intelligence status"),
     ],
+    "luxcode_test_matrix": [
+        _endpoint("/luxcode-test-matrix/schema", "GET", "test_matrix", "browser device screen and network matrix schema"),
+        _endpoint("/luxcode-test-matrix/detect", "POST", "test_matrix", "detect available local browser and preview targets"),
+        _endpoint("/luxcode-test-matrix/plan", "POST", "test_matrix", "build bounded local-first test matrix plan"),
+        _endpoint("/luxcode-test-matrix/execute", "POST", "test_matrix", "execute approved task-owned matrix cells"),
+        _endpoint("/luxcode-test-matrix/compare", "POST", "test_matrix", "compare structured matrix results"),
+        _endpoint("/luxcode-test-matrix/summary", "POST", "test_matrix", "summarize compatibility results"),
+        _endpoint("/debug/luxcode-test-matrix-status", "GET", "test_matrix", "test matrix intelligence status"),
+    ],
 }
 
 

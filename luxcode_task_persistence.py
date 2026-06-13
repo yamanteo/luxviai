@@ -385,6 +385,21 @@ def get_task_persistence_schema() -> Dict[str, Any]:
             "audit_event_count",
         ],
         "network_access_restore_policy": "restored network access records never auto-start services, browsers, or LAN checks",
+        "safe_test_matrix_metadata": [
+            "matrix_plan_digest",
+            "requested_targets",
+            "available_targets",
+            "skipped_targets",
+            "summary_counts",
+            "failure_categories",
+            "scenario_ids",
+            "viewport_device_metadata",
+            "network_profile_names",
+            "timestamps",
+            "task_id",
+            "result_revision",
+        ],
+        "test_matrix_restore_policy": "restored test matrix records never auto-start browsers, services, emulators, or network checks",
         "persistence_disabled_by_default": True,
         **SAFE_INVARIANTS,
     }
@@ -794,6 +809,8 @@ def get_task_persistence_status(mode: Optional[str] = None, storage_root: Option
         "live_test_restore_auto_starts": False,
         "safe_network_access_metadata_supported": True,
         "network_access_restore_auto_starts": False,
+        "safe_test_matrix_metadata_supported": True,
+        "test_matrix_restore_auto_starts": False,
         **SAFE_INVARIANTS,
     }
     if resolved_mode == "local_sqlite" and resolved_root:

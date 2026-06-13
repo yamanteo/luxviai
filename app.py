@@ -1006,6 +1006,15 @@ from luxcode_local_network_access_intelligence import (
     inspect_network_interfaces,
     tcp_connect as network_tcp_connect,
 )
+from luxcode_test_matrix_intelligence import (
+    build_test_matrix_plan,
+    compare_test_matrix_results,
+    detect_available_test_targets,
+    execute_test_matrix,
+    get_test_matrix_schema,
+    get_test_matrix_status,
+    summarize_test_matrix,
+)
 
 try:
     from dotenv import load_dotenv
@@ -2345,6 +2354,52 @@ class LuxCodeNetworkAccessUrlsRequest(BaseModel):
 
 class LuxCodeNetworkAccessCancelRequest(BaseModel):
     reason: str = Field(default="user_requested", max_length=200)
+
+
+class LuxCodeTestMatrixDetectRequest(BaseModel):
+    requested_targets: List[str] = Field(default_factory=list)
+    include_mobile_previews: bool = True
+    include_android: bool = True
+
+
+class LuxCodeTestMatrixPlanRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    repository_root: str = Field(default="", max_length=800)
+    working_directory: str = Field(default=".", max_length=800)
+    base_url: str = Field(default="", max_length=800)
+    requested_targets: List[str] = Field(default_factory=list)
+    scenario_ids: List[str] = Field(default_factory=list)
+    device_families: List[str] = Field(default_factory=list)
+    network_profiles: List[str] = Field(default_factory=list)
+    orientations: List[str] = Field(default_factory=list)
+    color_schemes: List[str] = Field(default_factory=list)
+    locale: str = Field(default="tr-TR", max_length=40)
+    direction: str = Field(default="ltr", max_length=8)
+    required_targets: List[str] = Field(default_factory=list)
+    service: Dict[str, Any] = Field(default_factory=dict)
+    permission_profile: Dict[str, Any] = Field(default_factory=dict)
+    approval_digest: str = Field(default="", max_length=260)
+    max_cells: int = Field(default=8, ge=1, le=48)
+    screenshot_required: bool = True
+    console_capture_required: bool = True
+    network_capture_required: bool = True
+
+
+class LuxCodeTestMatrixExecuteRequest(BaseModel):
+    plan: Dict[str, Any] = Field(default_factory=dict)
+    approval_digest: str = Field(default="", max_length=260)
+    retry_cell_ids: List[str] = Field(default_factory=list)
+    resume: bool = True
+
+
+class LuxCodeTestMatrixCompareRequest(BaseModel):
+    results: List[Dict[str, Any]] = Field(default_factory=list)
+    plan: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LuxCodeTestMatrixSummaryRequest(BaseModel):
+    results: List[Dict[str, Any]] = Field(default_factory=list)
+    plan: Dict[str, Any] = Field(default_factory=dict)
 
 
 # =========================================================
@@ -12701,6 +12756,59 @@ async def luxcode_network_access_cancel_endpoint(runtime_id: str, payload: LuxCo
 @app.get("/debug/luxcode-network-access-status")
 async def debug_luxcode_network_access_status_endpoint():
     return get_network_access_status()
+
+
+@app.get("/luxcode-test-matrix/schema")
+async def luxcode_test_matrix_schema_endpoint():
+    return get_test_matrix_schema()
+
+
+@app.post("/luxcode-test-matrix/detect")
+async def luxcode_test_matrix_detect_endpoint(payload: LuxCodeTestMatrixDetectRequest):
+    targets = payload.requested_targets or None
+    return detect_available_test_targets(
+        requested_targets=targets,
+        include_mobile_previews=payload.include_mobile_previews,
+        include_android=payload.include_android,
+    )
+
+
+@app.post("/luxcode-test-matrix/plan")
+async def luxcode_test_matrix_plan_endpoint(payload: LuxCodeTestMatrixPlanRequest):
+    data = payload.dict()
+    for key in ("requested_targets", "scenario_ids", "device_families", "network_profiles", "orientations", "color_schemes", "required_targets"):
+        if not data.get(key):
+            data[key] = None
+    if not data.get("permission_profile"):
+        data["permission_profile"] = None
+    if not data.get("service"):
+        data["service"] = None
+    return build_test_matrix_plan(**data)
+
+
+@app.post("/luxcode-test-matrix/execute")
+async def luxcode_test_matrix_execute_endpoint(payload: LuxCodeTestMatrixExecuteRequest):
+    return execute_test_matrix(
+        plan=payload.plan,
+        approval_digest=payload.approval_digest,
+        retry_cell_ids=payload.retry_cell_ids or None,
+        resume=payload.resume,
+    )
+
+
+@app.post("/luxcode-test-matrix/compare")
+async def luxcode_test_matrix_compare_endpoint(payload: LuxCodeTestMatrixCompareRequest):
+    return compare_test_matrix_results(results=payload.results, plan=payload.plan or None)
+
+
+@app.post("/luxcode-test-matrix/summary")
+async def luxcode_test_matrix_summary_endpoint(payload: LuxCodeTestMatrixSummaryRequest):
+    return summarize_test_matrix(results=payload.results, plan=payload.plan or None)
+
+
+@app.get("/debug/luxcode-test-matrix-status")
+async def debug_luxcode_test_matrix_status_endpoint():
+    return get_test_matrix_status()
 
 
 @app.get("/debug/runtime-drift-status")
