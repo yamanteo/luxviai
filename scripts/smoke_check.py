@@ -10696,6 +10696,125 @@ class SmokeRunner:
 
         return "lux controlled apply approval gate verified without live writes"
 
+    def check_lux_verification_recovery_local(self) -> str:
+        """Verify Verification Recovery Engine plans safely and blocks arbitrary execution."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        app_path = ROOT / "app.py"
+        smoke_path = ROOT / "scripts" / "smoke_check.py"
+        before = {str(app_path): app_path.read_bytes(), str(smoke_path): smoke_path.read_bytes()}
+
+        schema = client.get("/lux-verification/schema")
+        assert schema.status_code == 200, f"/lux-verification/schema returned {schema.status_code}"
+        schema_data = schema.json()
+        assert schema_data.get("default_mode") == "plan", schema_data
+        assert schema_data.get("arbitrary_command_blocked") is True, schema_data
+        assert schema_data.get("network_access_used") is False, schema_data
+        assert schema_data.get("external_api_used") is False, schema_data
+        assert schema_data.get("shell_execution_used") is False, schema_data
+        assert "arbitrary_command" in schema_data.get("blocked_verification_types", []), schema_data
+
+        status = client.get("/debug/lux-verification-status")
+        assert status.status_code == 200, f"/debug/lux-verification-status returned {status.status_code}"
+        status_data = status.json()
+        assert status_data.get("shell_false_enforced") is True, status_data
+        assert status_data.get("raw_command_execution_enabled") is False, status_data
+        assert status_data.get("rollback_execution_enabled") is False, status_data
+        assert status_data.get("external_api_used") is False, status_data
+
+        payload = {
+            "repository_root": str(ROOT),
+            "verification_id": "live-smoke-verify",
+            "changed_files": ["scripts/smoke_check.py"],
+            "requested_checks": [
+                {"check_type": "py_compile", "check_id": "compile_smoke", "files": ["scripts/smoke_check.py"]},
+                {"check_type": "arbitrary_command", "check_id": "bad", "command": "whoami"},
+            ],
+            "mode": "prepare",
+            "max_checks": 4,
+            "timeout_seconds": 10,
+        }
+        prepare = client.post("/lux-verification/prepare", json=payload)
+        assert prepare.status_code == 200, f"/lux-verification/prepare returned {prepare.status_code}"
+        prepare_data = prepare.json()
+        assert prepare_data.get("verification_digest", "").startswith("lux-verify-"), prepare_data
+        assert prepare_data.get("execution_allowed") is False, prepare_data
+        assert prepare_data.get("summary", {}).get("blocked", 0) >= 1, prepare_data
+        assert prepare_data.get("shell_execution_used") is False, prepare_data
+
+        dry_payload = dict(payload)
+        dry_payload["mode"] = "dry_run"
+        execute = client.post("/lux-verification/execute", json=dry_payload)
+        assert execute.status_code == 200, f"/lux-verification/execute returned {execute.status_code}"
+        execute_data = execute.json()
+        assert execute_data.get("execution_allowed") is False, execute_data
+        assert execute_data.get("shell_execution_used") is False, execute_data
+        assert execute_data.get("network_access_used") is False, execute_data
+
+        analyze = client.post(
+            "/lux-verification/analyze",
+            json={
+                "repository_root": str(ROOT),
+                "verification_id": "live-smoke-verify",
+                "changed_files": ["scripts/smoke_check.py"],
+                "check_results": [
+                    {
+                        "check_id": "compile_smoke",
+                        "check_type": "py_compile",
+                        "status": "failed",
+                        "failure_category": "syntax_error",
+                        "retry_safe": False,
+                        "rollback_recommended": False,
+                        "affected_files": ["scripts/smoke_check.py"],
+                    }
+                ],
+                "mode": "analyze",
+            },
+        )
+        assert analyze.status_code == 200, f"/lux-verification/analyze returned {analyze.status_code}"
+        analyze_data = analyze.json()
+        assert analyze_data.get("recovery_decision") in {"generate_patch_revision", "human_review_required", "rollback_recommended"}, analyze_data
+        assert analyze_data.get("external_api_used") is False, analyze_data
+
+        recovery = client.post(
+            "/lux-verification/recovery-preview",
+            json={
+                "repository_root": str(ROOT),
+                "verification_id": "live-smoke-verify",
+                "changed_files": ["scripts/smoke_check.py"],
+                "allow_automatic_rollback": False,
+                "controlled_apply_result": {"rollback_available": True, "rollback_id": "not-used", "files_changed": ["scripts/smoke_check.py"]},
+                "rollback_id": "not-used",
+                "check_results": [
+                    {
+                        "check_id": "smoke",
+                        "check_type": "targeted_smoke",
+                        "status": "failed",
+                        "failure_category": "smoke_failure",
+                        "retry_safe": False,
+                        "rollback_recommended": True,
+                        "affected_files": ["scripts/smoke_check.py"],
+                    }
+                ],
+                "mode": "recovery_preview",
+            },
+        )
+        assert recovery.status_code == 200, f"/lux-verification/recovery-preview returned {recovery.status_code}"
+        recovery_data = recovery.json()
+        assert recovery_data.get("recovery_decision") == "rollback_recommended", recovery_data
+        assert recovery_data.get("rollback_request", {}).get("mode") == "rollback_preview", recovery_data
+        assert recovery_data.get("shell_execution_used") is False, recovery_data
+
+        assert app_path.read_bytes() == before[str(app_path)], "live app.py changed during verification smoke"
+        assert smoke_path.read_bytes() == before[str(smoke_path)], "live smoke_check.py changed during verification smoke"
+
+        return "lux verification recovery local planning and recovery preview verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -10728,6 +10847,7 @@ class SmokeRunner:
             ("lux_debug_intelligence_read_only", self.check_lux_debug_intelligence_read_only, None, "core"),
             ("lux_safe_patch_draft_read_only", self.check_lux_safe_patch_draft_read_only, None, "core"),
             ("lux_controlled_apply_approval_gated", self.check_lux_controlled_apply_approval_gated, None, "core"),
+            ("lux_verification_recovery_local", self.check_lux_verification_recovery_local, None, "core"),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints, None, "core"),
             ("debug_agent_panel", self.check_debug_agent_panel, None, "core"),
             ("mode_registry_preview", self.check_mode_registry_preview, None, "core"),
@@ -10926,6 +11046,7 @@ class SmokeRunner:
             ("lux_debug_intelligence_read_only", self.check_lux_debug_intelligence_read_only),
             ("lux_safe_patch_draft_read_only", self.check_lux_safe_patch_draft_read_only),
             ("lux_controlled_apply_approval_gated", self.check_lux_controlled_apply_approval_gated),
+            ("lux_verification_recovery_local", self.check_lux_verification_recovery_local),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),

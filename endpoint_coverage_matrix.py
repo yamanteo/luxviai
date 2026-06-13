@@ -876,6 +876,14 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/lux-controlled-apply/rollback", "POST", "controlled_apply", "approval-gated rollback or rollback preview"),
         _endpoint("/debug/lux-controlled-apply-status", "GET", "controlled_apply", "controlled apply status"),
     ],
+    "lux_verification_recovery": [
+        _endpoint("/lux-verification/schema", "GET", "verification_recovery", "verification recovery schema"),
+        _endpoint("/lux-verification/prepare", "POST", "verification_recovery", "approval digest verification preparation"),
+        _endpoint("/lux-verification/execute", "POST", "verification_recovery", "allowlisted local verification execution"),
+        _endpoint("/lux-verification/analyze", "POST", "verification_recovery", "verification result analysis"),
+        _endpoint("/lux-verification/recovery-preview", "POST", "verification_recovery", "recovery decision preview"),
+        _endpoint("/debug/lux-verification-status", "GET", "verification_recovery", "verification recovery status"),
+    ],
 }
 
 

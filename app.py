@@ -930,6 +930,14 @@ from lux_controlled_apply_engine import (
     prepare_controlled_apply,
     rollback_controlled_apply,
 )
+from lux_verification_recovery_engine import (
+    analyze_verification_results,
+    execute_verification_run,
+    get_verification_recovery_schema,
+    get_verification_recovery_status,
+    prepare_recovery_action,
+    prepare_verification_run,
+)
 
 try:
     from dotenv import load_dotenv
@@ -1997,6 +2005,22 @@ class LuxControlledApplyRequest(BaseModel):
     validation_plan: List[Any] = Field(default_factory=list)
     rollback_id: Optional[str] = Field(default=None, max_length=220)
     repository_state_clean: Optional[bool] = None
+
+
+class LuxVerificationRecoveryRequest(BaseModel):
+    repository_root: Optional[str] = Field(default=None, max_length=600)
+    verification_id: str = Field(default="", max_length=200)
+    changed_files: List[str] = Field(default_factory=list)
+    requested_checks: List[Dict[str, Any]] = Field(default_factory=list)
+    approval_token: Optional[str] = Field(default=None, max_length=260)
+    expected_repository_state: Dict[str, Any] = Field(default_factory=dict)
+    max_checks: int = Field(default=8, ge=1, le=20)
+    timeout_seconds: int = Field(default=30, ge=1, le=120)
+    mode: str = Field(default="plan", max_length=80)
+    rollback_id: Optional[str] = Field(default=None, max_length=220)
+    allow_automatic_rollback: bool = False
+    controlled_apply_result: Dict[str, Any] = Field(default_factory=dict)
+    check_results: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 # =========================================================
@@ -12005,6 +12029,36 @@ async def lux_controlled_apply_rollback_endpoint(payload: LuxControlledApplyRequ
 @app.get("/debug/lux-controlled-apply-status")
 async def debug_lux_controlled_apply_status_endpoint():
     return get_controlled_apply_status()
+
+
+@app.get("/lux-verification/schema")
+async def lux_verification_schema_endpoint():
+    return get_verification_recovery_schema()
+
+
+@app.post("/lux-verification/prepare")
+async def lux_verification_prepare_endpoint(payload: LuxVerificationRecoveryRequest):
+    return prepare_verification_run(**payload.dict(exclude={"check_results"}))
+
+
+@app.post("/lux-verification/execute")
+async def lux_verification_execute_endpoint(payload: LuxVerificationRecoveryRequest):
+    return execute_verification_run(**payload.dict(exclude={"check_results"}))
+
+
+@app.post("/lux-verification/analyze")
+async def lux_verification_analyze_endpoint(payload: LuxVerificationRecoveryRequest):
+    return analyze_verification_results(**payload.dict())
+
+
+@app.post("/lux-verification/recovery-preview")
+async def lux_verification_recovery_preview_endpoint(payload: LuxVerificationRecoveryRequest):
+    return prepare_recovery_action(**payload.dict())
+
+
+@app.get("/debug/lux-verification-status")
+async def debug_lux_verification_status_endpoint():
+    return get_verification_recovery_status()
 
 
 @app.get("/debug/runtime-drift-status")
