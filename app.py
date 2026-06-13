@@ -992,6 +992,20 @@ from luxcode_live_app_interaction_testing import (
     plan_live_test,
     validate_live_scenario,
 )
+from luxcode_local_network_access_intelligence import (
+    build_access_urls,
+    cancel_network_access_runtime,
+    create_network_access_plan,
+    execute_network_access_plan,
+    get_network_access_registry,
+    get_network_access_runtime,
+    get_network_access_schema,
+    get_network_access_status,
+    http_check as network_http_check,
+    inspect_bind_address as network_inspect_bind_address,
+    inspect_network_interfaces,
+    tcp_connect as network_tcp_connect,
+)
 
 try:
     from dotenv import load_dotenv
@@ -2287,6 +2301,49 @@ class LuxCodeLiveTestingValidateRequest(BaseModel):
 
 
 class LuxCodeLiveTestingCancelRequest(BaseModel):
+    reason: str = Field(default="user_requested", max_length=200)
+
+
+class LuxCodeNetworkAccessPlanRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    repository_root: str = Field(default="", max_length=800)
+    working_directory: str = Field(default=".", max_length=800)
+    bind_host: str = Field(default="127.0.0.1", max_length=80)
+    port: int = Field(default=0, ge=0, le=65535)
+    protocol: str = Field(default="http", max_length=20)
+    permission_profile: Dict[str, Any] = Field(default_factory=dict)
+    service: Dict[str, Any] = Field(default_factory=dict)
+    selected_lan_ip: str = Field(default="", max_length=80)
+    approval_digest: str = Field(default="", max_length=260)
+
+
+class LuxCodeNetworkAccessExecuteRequest(BaseModel):
+    plan: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LuxCodeNetworkAccessInspectBindRequest(BaseModel):
+    expected_bind_host: str = Field(default="127.0.0.1", max_length=80)
+    port: int = Field(default=0, ge=0, le=65535)
+    selected_lan_ip: str = Field(default="", max_length=80)
+
+
+class LuxCodeNetworkAccessVerifyRequest(BaseModel):
+    host: str = Field(default="127.0.0.1", max_length=120)
+    port: int = Field(default=0, ge=0, le=65535)
+    path: str = Field(default="/health", max_length=300)
+    timeout_seconds: float = Field(default=1.0, ge=0.05, le=10.0)
+    selected_lan_ip: str = Field(default="", max_length=80)
+    allow_loopback: bool = True
+
+
+class LuxCodeNetworkAccessUrlsRequest(BaseModel):
+    port: int = Field(default=0, ge=0, le=65535)
+    selected_lan_ip: str = Field(default="", max_length=80)
+    protocol: str = Field(default="http", max_length=20)
+    localhost_host: str = Field(default="127.0.0.1", max_length=80)
+
+
+class LuxCodeNetworkAccessCancelRequest(BaseModel):
     reason: str = Field(default="user_requested", max_length=200)
 
 
@@ -12571,6 +12628,79 @@ async def luxcode_live_testing_evidence_endpoint(runtime_id: str):
 @app.get("/debug/luxcode-live-testing-status")
 async def debug_luxcode_live_testing_status_endpoint():
     return get_live_testing_status()
+
+
+@app.get("/luxcode/network-access/schema")
+async def luxcode_network_access_schema_endpoint():
+    return get_network_access_schema()
+
+
+@app.get("/luxcode/network-access/registry")
+async def luxcode_network_access_registry_endpoint():
+    return get_network_access_registry()
+
+
+@app.post("/luxcode/network-access/plan")
+async def luxcode_network_access_plan_endpoint(payload: LuxCodeNetworkAccessPlanRequest):
+    data = payload.dict()
+    if not data.get("permission_profile"):
+        data["permission_profile"] = None
+    if not data.get("service"):
+        data["service"] = None
+    return create_network_access_plan(**data)
+
+
+@app.post("/luxcode/network-access/execute")
+async def luxcode_network_access_execute_endpoint(payload: LuxCodeNetworkAccessExecuteRequest):
+    return execute_network_access_plan(payload.plan)
+
+
+@app.post("/luxcode/network-access/inspect-interfaces")
+async def luxcode_network_access_inspect_interfaces_endpoint():
+    return inspect_network_interfaces()
+
+
+@app.post("/luxcode/network-access/inspect-bind")
+async def luxcode_network_access_inspect_bind_endpoint(payload: LuxCodeNetworkAccessInspectBindRequest):
+    return network_inspect_bind_address(**payload.dict())
+
+
+@app.post("/luxcode/network-access/verify-localhost")
+async def luxcode_network_access_verify_localhost_endpoint(payload: LuxCodeNetworkAccessVerifyRequest):
+    return {
+        "ok": True,
+        "tcp": network_tcp_connect("127.0.0.1", payload.port, payload.timeout_seconds),
+        "http": network_http_check("127.0.0.1", payload.port, payload.path, payload.timeout_seconds),
+    }
+
+
+@app.post("/luxcode/network-access/verify-lan")
+async def luxcode_network_access_verify_lan_endpoint(payload: LuxCodeNetworkAccessVerifyRequest):
+    return {
+        "ok": True,
+        "tcp": network_tcp_connect(payload.host, payload.port, payload.timeout_seconds, payload.selected_lan_ip, allow_loopback=False),
+        "http": network_http_check(payload.host, payload.port, payload.path, payload.timeout_seconds, payload.selected_lan_ip, allow_loopback=False),
+    }
+
+
+@app.post("/luxcode/network-access/build-urls")
+async def luxcode_network_access_build_urls_endpoint(payload: LuxCodeNetworkAccessUrlsRequest):
+    return build_access_urls(**payload.dict())
+
+
+@app.get("/luxcode/network-access/runtime/{runtime_id}")
+async def luxcode_network_access_runtime_endpoint(runtime_id: str):
+    return get_network_access_runtime(runtime_id)
+
+
+@app.post("/luxcode/network-access/runtime/{runtime_id}/cancel")
+async def luxcode_network_access_cancel_endpoint(runtime_id: str, payload: LuxCodeNetworkAccessCancelRequest):
+    return cancel_network_access_runtime(runtime_id=runtime_id, reason=payload.reason)
+
+
+@app.get("/debug/luxcode-network-access-status")
+async def debug_luxcode_network_access_status_endpoint():
+    return get_network_access_status()
 
 
 @app.get("/debug/runtime-drift-status")

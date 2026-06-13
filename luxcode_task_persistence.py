@@ -371,6 +371,20 @@ def get_task_persistence_schema() -> Dict[str, Any]:
             "audit_events",
         ],
         "live_test_restore_policy": "restored live test records never auto-start browser service or scenario execution",
+        "safe_network_access_metadata": [
+            "network_access_runtime_id",
+            "task_id",
+            "state",
+            "selected_interface",
+            "selected_lan_ip",
+            "bind_host",
+            "bind_port",
+            "generated_urls",
+            "physical_device_status",
+            "cleanup_state",
+            "audit_event_count",
+        ],
+        "network_access_restore_policy": "restored network access records never auto-start services, browsers, or LAN checks",
         "persistence_disabled_by_default": True,
         **SAFE_INVARIANTS,
     }
@@ -778,6 +792,8 @@ def get_task_persistence_status(mode: Optional[str] = None, storage_root: Option
         "process_restore_auto_starts": False,
         "safe_live_test_metadata_supported": True,
         "live_test_restore_auto_starts": False,
+        "safe_network_access_metadata_supported": True,
+        "network_access_restore_auto_starts": False,
         **SAFE_INVARIANTS,
     }
     if resolved_mode == "local_sqlite" and resolved_root:

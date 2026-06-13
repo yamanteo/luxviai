@@ -939,6 +939,20 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode/live-testing/evidence/{runtime_id}", "GET", "live_testing", "read redacted live test evidence metadata"),
         _endpoint("/debug/luxcode-live-testing-status", "GET", "live_testing", "live testing status"),
     ],
+    "luxcode_network_access": [
+        _endpoint("/luxcode/network-access/schema", "GET", "network_access", "local network access intelligence schema"),
+        _endpoint("/luxcode/network-access/registry", "GET", "network_access", "local interface and blocked action registry"),
+        _endpoint("/luxcode/network-access/plan", "POST", "network_access", "plan selected localhost and LAN verification"),
+        _endpoint("/luxcode/network-access/execute", "POST", "network_access", "execute approved task-owned local network verification"),
+        _endpoint("/luxcode/network-access/inspect-interfaces", "POST", "network_access", "inspect local loopback and private interface candidates"),
+        _endpoint("/luxcode/network-access/inspect-bind", "POST", "network_access", "inspect bind host reachability from localhost and selected LAN"),
+        _endpoint("/luxcode/network-access/verify-localhost", "POST", "network_access", "verify same-device localhost tcp and http"),
+        _endpoint("/luxcode/network-access/verify-lan", "POST", "network_access", "verify selected private LAN tcp and http from same host"),
+        _endpoint("/luxcode/network-access/build-urls", "POST", "network_access", "build localhost and selected LAN candidate URLs"),
+        _endpoint("/luxcode/network-access/runtime/{runtime_id}", "GET", "network_access", "inspect redacted network access runtime"),
+        _endpoint("/luxcode/network-access/runtime/{runtime_id}/cancel", "POST", "network_access", "cancel owned network access runtime"),
+        _endpoint("/debug/luxcode-network-access-status", "GET", "network_access", "network access intelligence status"),
+    ],
 }
 
 

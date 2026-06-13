@@ -15,6 +15,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import ipaddress
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -193,11 +194,26 @@ def _origin(url: str) -> str:
     return f"{parsed.scheme}://{host}:{parsed.port}"
 
 
-def _validate_base_url(base_url: str) -> Tuple[bool, str]:
+def _is_selected_private_origin(url: str, policy: Optional[Dict[str, Any]] = None) -> bool:
+    policy = policy or {}
+    if not policy.get("allow_selected_private_origin"):
+        return False
+    selected = str(policy.get("selected_private_origin", ""))
+    if not selected or _origin(url) != selected:
+        return False
+    parsed = urllib.parse.urlparse(url)
+    try:
+        ip = ipaddress.ip_address(parsed.hostname or "")
+    except ValueError:
+        return False
+    return parsed.scheme == "http" and ip.is_private and not ip.is_loopback and not ip.is_link_local and bool(parsed.port)
+
+
+def _validate_base_url(base_url: str, network_access_policy: Optional[Dict[str, Any]] = None) -> Tuple[bool, str]:
     if not base_url:
         return False, "base_url is required"
-    if not _is_localhost_url(base_url):
-        return False, "only localhost http origins are allowed"
+    if not _is_localhost_url(base_url) and not _is_selected_private_origin(base_url, network_access_policy):
+        return False, "only localhost or selected private network origins are allowed"
     return True, ""
 
 
@@ -392,7 +408,7 @@ def get_live_testing_schema() -> Dict[str, Any]:
         arbitrary_url_endpoint=False,
         arbitrary_coordinate_click=False,
         desktop_automation=False,
-        allowed_origins=["http://127.0.0.1:<port>", "http://localhost:<port>"],
+        allowed_origins=["http://127.0.0.1:<port>", "http://localhost:<port>", "network-plan-selected-private-origin"],
         blocked_origins=["public_internet", "lan_ip", "file_url", "custom_protocol", "production_url"],
         lifecycle_states=LIFECYCLE_STATES,
         audit_events=AUDIT_EVENTS,
@@ -421,7 +437,8 @@ def get_live_testing_registry() -> Dict[str, Any]:
 def validate_live_scenario(scenario: Dict[str, Any]) -> Dict[str, Any]:
     issues: List[str] = []
     base_url = str(scenario.get("base_url", ""))
-    ok, reason = _validate_base_url(base_url)
+    network_access_policy = scenario.get("network_access_policy") if isinstance(scenario.get("network_access_policy"), dict) else {}
+    ok, reason = _validate_base_url(base_url, network_access_policy)
     if not ok:
         issues.append(reason)
     allowed_origin = scenario.get("allowed_origin") or _origin(base_url)

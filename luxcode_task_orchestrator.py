@@ -48,6 +48,12 @@ from luxcode_live_app_interaction_testing import (
     get_safe_live_test_metadata,
     plan_live_test,
 )
+from luxcode_local_network_access_intelligence import (
+    cancel_network_access_runtime,
+    create_network_access_plan,
+    execute_network_access_plan,
+    get_safe_network_access_metadata,
+)
 
 
 TASK_STATES = {
@@ -299,6 +305,8 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "terminal_runtime_result": _redact(task.get("terminal_runtime_result", {})),
         "live_test_plan": _redact(task.get("live_test_plan", {})),
         "live_test_result": _redact(task.get("live_test_result", {})),
+        "network_access_plan": _redact(task.get("network_access_plan", {})),
+        "network_access_result": _redact(task.get("network_access_result", {})),
         "can_advance": can_advance,
         "requires_user_approval": state in {"awaiting_approval", "apply_prepared", "verification_prepared"},
         **SAFE_INVARIANTS,
@@ -465,6 +473,9 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
             "plan_luxcode_task_live_test",
             "execute_luxcode_task_live_test",
             "cancel_luxcode_task_live_test",
+            "plan_luxcode_task_network_access",
+            "execute_luxcode_task_network_access",
+            "cancel_luxcode_task_network_access",
         ],
         "integrated_engines": [
             "LuxCode Master Router Preview",
@@ -479,6 +490,7 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
         "autonomy_permission": get_autonomy_permission_status(),
         "terminal_runtime": "available_for_structured_actions",
         "live_testing": "available_for_localhost_structured_scenarios",
+        "network_access": "available_for_localhost_and_selected_lan_verification",
         "automatic_apply_enabled": False,
         "automatic_rollback_enabled": False,
         **SAFE_INVARIANTS,
@@ -1116,3 +1128,52 @@ def cancel_luxcode_task_live_test(task_id: str, runtime_id: str = "") -> Dict[st
     result = cancel_live_test_runtime(target_runtime, reason=f"task {task_id} cancelled")
     task["live_test_result"] = result.get("runtime", result)
     return _persist_and_summarize(task, event_type="live_test_cancel")
+
+
+def plan_luxcode_task_network_access(
+    task_id: str,
+    bind_host: str = "127.0.0.1",
+    port: int = 0,
+    working_directory: str = ".",
+    service: Optional[Dict[str, Any]] = None,
+    selected_lan_ip: str = "",
+    approval_digest: str = "",
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    result = create_network_access_plan(
+        task_id=task_id,
+        repository_root=task.get("repository_root") or str(Path.cwd()),
+        working_directory=working_directory,
+        bind_host=bind_host,
+        port=port,
+        permission_profile=task.get("permission_profile", {}),
+        service=service,
+        selected_lan_ip=selected_lan_ip,
+        approval_digest=approval_digest,
+    )
+    task["network_access_plan"] = result.get("plan", result)
+    return _persist_and_summarize(task, event_type="network_access_plan")
+
+
+def execute_luxcode_task_network_access(task_id: str) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    result = execute_network_access_plan(task.get("network_access_plan", {}))
+    if result.get("runtime"):
+        task["network_access_result"] = get_safe_network_access_metadata(result["runtime"])
+    else:
+        task["network_access_result"] = result
+    return _persist_and_summarize(task, event_type="network_access_execute")
+
+
+def cancel_luxcode_task_network_access(task_id: str, runtime_id: str = "") -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    target_runtime = runtime_id or task.get("network_access_result", {}).get("network_access_runtime_id") or task.get("network_access_plan", {}).get("network_access_runtime_id", "")
+    result = cancel_network_access_runtime(target_runtime, reason=f"task {task_id} cancelled")
+    task["network_access_result"] = result.get("runtime", result)
+    return _persist_and_summarize(task, event_type="network_access_cancel")

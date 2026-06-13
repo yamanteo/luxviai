@@ -11439,6 +11439,145 @@ class SmokeRunner:
 
         return "luxcode live app interaction testing local browser flow verified"
 
+    def check_luxcode_network_access_local(self) -> str:
+        """Verify Network Access Intelligence plans and verifies only localhost/selected LAN candidates."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_local_network_access_intelligence.py",
+            ROOT / "luxcode_live_app_interaction_testing.py",
+            ROOT / "luxcode_terminal_process_runtime.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        live_paths = [ROOT / ".luxcode_runtime", ROOT / ".luxcode_live_test", ROOT / ".luxcode_network_access", ROOT / "luxcode_tasks.db", ROOT / ".luxcode_snapshots", ROOT / "luxcode_backups"]
+        live_state = {str(path): path.exists() for path in live_paths}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "scripts").mkdir(parents=True)
+            (repo / "scripts" / "network_fixture.py").write_text(
+                "from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer\n"
+                "import sys\n"
+                "HTML=b'''<!doctype html><html><body><h1 data-testid=\"network-fixture-title\">Network fixture ready</h1></body></html>'''\n"
+                "class H(BaseHTTPRequestHandler):\n"
+                "    def log_message(self,*a): pass\n"
+                "    def do_GET(self):\n"
+                "        self.send_response(200); self.end_headers(); self.wfile.write(b'ok' if self.path=='/health' else HTML)\n"
+                "ThreadingHTTPServer((sys.argv[1], int(sys.argv[2])), H).serve_forever()\n",
+                encoding="utf-8",
+            )
+            import socket
+
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind(("127.0.0.1", 0))
+                port = int(sock.getsockname()[1])
+
+            schema = client.get("/luxcode/network-access/schema")
+            assert schema.status_code == 200, f"/luxcode/network-access/schema returned {schema.status_code}"
+            schema_data = schema.json()
+            assert schema_data.get("public_ip_lookup_allowed") is False, schema_data
+            assert schema_data.get("subnet_scan_allowed") is False, schema_data
+            assert schema_data.get("firewall_modify_allowed") is False, schema_data
+            assert schema_data.get("router_modify_allowed") is False, schema_data
+            assert schema_data.get("tunnel_allowed") is False, schema_data
+
+            registry = client.get("/luxcode/network-access/registry")
+            assert registry.status_code == 200, f"/luxcode/network-access/registry returned {registry.status_code}"
+            registry_data = registry.json()
+            assert "subnet_scan" in registry_data.get("blocked_action_registry", {}), registry_data
+
+            interfaces = client.post("/luxcode/network-access/inspect-interfaces")
+            assert interfaces.status_code == 200, f"/luxcode/network-access/inspect-interfaces returned {interfaces.status_code}"
+            interface_data = interfaces.json()
+            assert interface_data.get("ok") is True, interface_data
+            lan_ip = (interface_data.get("selected") or {}).get("address", "")
+
+            urls = client.post("/luxcode/network-access/build-urls", json={"port": port, "selected_lan_ip": lan_ip})
+            assert urls.status_code == 200, urls.text
+            assert "0.0.0.0" not in str(urls.json().get("urls", [])), urls.json()
+
+            profile = client.post(
+                "/luxcode-autonomy/profile",
+                json={
+                    "task_id": "network-smoke",
+                    "permission_mode": "controlled_access",
+                    "repository_root": str(repo),
+                    "command_text": "run tests for local network access",
+                    "scope_items": [{"path": ".", "type": "folder", "recursive": True, "rights": ["read", "write"]}],
+                },
+            ).json()["profile"]
+            service = {
+                "working_directory": ".",
+                "executable": "python",
+                "arguments": ["scripts/network_fixture.py", "0.0.0.0", str(port)],
+                "timeout_seconds": 30,
+                "permission_profile": profile,
+                "health_check": {"check_type": "http_get", "host": "127.0.0.1", "port": port, "path": "/health", "retries": 20, "retry_interval": 0.1},
+            }
+            plan = client.post(
+                "/luxcode/network-access/plan",
+                json={
+                    "task_id": "network-smoke",
+                    "repository_root": str(repo),
+                    "working_directory": ".",
+                    "bind_host": "0.0.0.0",
+                    "port": port,
+                    "permission_profile": profile,
+                    "service": service,
+                    "selected_lan_ip": lan_ip,
+                },
+            )
+            assert plan.status_code == 200, f"/luxcode/network-access/plan returned {plan.status_code}"
+            plan_data = plan.json()
+            assert plan_data.get("ok") is True, plan_data
+            assert plan_data["plan"].get("permission_decision", {}).get("allowed") is True, plan_data
+
+            execute = client.post("/luxcode/network-access/execute", json={"plan": plan_data["plan"]})
+            assert execute.status_code == 200, f"/luxcode/network-access/execute returned {execute.status_code}"
+            runtime = execute.json().get("runtime", {})
+            assert runtime.get("cleanup_state") == "cleaned", runtime
+            assert runtime.get("cleanup_result", {}).get("firewall_changed") is False, runtime
+            assert runtime.get("cleanup_result", {}).get("router_changed") is False, runtime
+            assert runtime.get("physical_device_status") == "physical_device_confirmation_required", runtime
+            assert runtime.get("localhost_verification", {}).get("tcp", {}).get("reachable") is True, runtime
+            assert runtime.get("localhost_verification", {}).get("http", {}).get("healthy") is True, runtime
+            if lan_ip:
+                assert runtime.get("lan_http_verification", {}).get("healthy") is True, runtime
+            else:
+                assert runtime.get("lan_verification", {}).get("state") == "physical_lan_unavailable_in_environment", runtime
+
+            public_target = client.post("/luxcode/network-access/verify-lan", json={"host": "8.8.8.8", "port": 80, "selected_lan_ip": lan_ip})
+            assert public_target.status_code == 200, public_target.text
+            assert public_target.json().get("tcp", {}).get("ok") is False, public_target.json()
+
+            status = client.get("/debug/luxcode-network-access-status")
+            assert status.status_code == 200, f"/debug/luxcode-network-access-status returned {status.status_code}"
+            status_data = status.json()
+            assert status_data.get("public_ip_lookup_used") is False, status_data
+            assert status_data.get("subnet_scan_used") is False, status_data
+            assert status_data.get("firewall_modified") is False, status_data
+            assert status_data.get("router_modified") is False, status_data
+            assert status_data.get("tunnel_started") is False, status_data
+            assert status_data.get("external_api_used") is False, status_data
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during network access smoke: {path}"
+        for path in live_paths:
+            assert path.exists() is live_state[str(path)], f"live artifact state changed during network access smoke: {path}"
+
+        return "luxcode local network access intelligence verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -11477,6 +11616,7 @@ class SmokeRunner:
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local, None, "core"),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local, None, "core"),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local, None, "core"),
+            ("luxcode_network_access_local", self.check_luxcode_network_access_local, None, "core"),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints, None, "core"),
             ("debug_agent_panel", self.check_debug_agent_panel, None, "core"),
             ("mode_registry_preview", self.check_mode_registry_preview, None, "core"),
@@ -11681,6 +11821,7 @@ class SmokeRunner:
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local),
+            ("luxcode_network_access_local", self.check_luxcode_network_access_local),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),
