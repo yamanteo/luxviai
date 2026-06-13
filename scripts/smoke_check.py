@@ -10593,6 +10593,109 @@ class SmokeRunner:
 
         return "lux safe patch draft read-only schema/preview/status verified"
 
+    def check_lux_controlled_apply_approval_gated(self) -> str:
+        """Verify Controlled Apply Engine stays approval-gated and does not write in live smoke."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        runtime_dir = ROOT / ".luxcode_runtime"
+        existed_before = runtime_dir.exists()
+
+        schema = client.get("/lux-controlled-apply/schema")
+        assert schema.status_code == 200, f"/lux-controlled-apply/schema returned {schema.status_code}"
+        schema_data = schema.json()
+        assert schema_data.get("default_mode") == "dry_run", schema_data
+        assert schema_data.get("approval_required") is True, schema_data
+        assert schema_data.get("validation_execution_blocked") is True, schema_data
+        assert schema_data.get("destructive_action_blocked") is True, schema_data
+        assert schema_data.get("external_api_used") is False, schema_data
+        assert schema_data.get("local_first") is True, schema_data
+
+        status = client.get("/debug/lux-controlled-apply-status")
+        assert status.status_code == 200, f"/debug/lux-controlled-apply-status returned {status.status_code}"
+        status_data = status.json()
+        assert status_data.get("real_apply_requires_approval_digest") is True, status_data
+        assert status_data.get("shell_execution_enabled") is False, status_data
+        assert status_data.get("validation_execution_blocked") is True, status_data
+        assert status_data.get("external_api_used") is False, status_data
+        assert status_data.get("local_first") is True, status_data
+
+        app_path = ROOT / "app.py"
+        app_hash_before = app_path.read_bytes()
+        payload = {
+            "repository_root": str(ROOT),
+            "patch_id": "live-smoke-no-apply",
+            "patch_steps": [
+                {
+                    "target_file": "app.py",
+                    "change_type": "replace_exact",
+                    "expected_original_text": "definitely-not-present-in-live-smoke",
+                    "replacement_text": "should-not-write",
+                    "target_region": "none",
+                    "purpose": "approval gate smoke",
+                    "validation_after_change": ["git diff --check"],
+                }
+            ],
+            "approved_files": ["app.py"],
+            "forbidden_files": [".env", "static/index.html"],
+            "expected_file_hashes": {},
+            "mode": "prepare",
+            "max_files": 2,
+            "max_total_changed_lines": 10,
+            "require_clean_tree": False,
+            "validation_plan": ["git diff --check"],
+        }
+
+        prepare = client.post("/lux-controlled-apply/prepare", json=payload)
+        assert prepare.status_code == 200, f"/lux-controlled-apply/prepare returned {prepare.status_code}"
+        prepare_data = prepare.json()
+        assert prepare_data.get("transaction_state") == "blocked", prepare_data
+        assert prepare_data.get("approval_digest", "").startswith("lux-approve-"), prepare_data
+        assert prepare_data.get("validation_execution_blocked") is True, prepare_data
+        assert prepare_data.get("external_api_used") is False, prepare_data
+
+        dry_payload = dict(payload)
+        dry_payload["mode"] = "dry_run"
+        dry_run = client.post("/lux-controlled-apply/execute", json=dry_payload)
+        assert dry_run.status_code == 200, f"/lux-controlled-apply/execute dry_run returned {dry_run.status_code}"
+        dry_data = dry_run.json()
+        assert dry_data.get("transaction_state") in {"dry_run", "blocked"}, dry_data
+        assert dry_data.get("validation_execution_blocked") is True, dry_data
+
+        wrong_payload = dict(payload)
+        wrong_payload["mode"] = "apply"
+        wrong_payload["approval_token"] = "wrong"
+        wrong = client.post("/lux-controlled-apply/execute", json=wrong_payload)
+        assert wrong.status_code == 200, f"/lux-controlled-apply/execute wrong token returned {wrong.status_code}"
+        wrong_data = wrong.json()
+        assert wrong_data.get("transaction_state") == "blocked", wrong_data
+        assert wrong_data.get("approval_valid") is False, wrong_data
+        assert wrong_data.get("destructive_action_blocked") is True, wrong_data
+
+        rollback = client.post(
+            "/lux-controlled-apply/rollback",
+            json={
+                "repository_root": str(ROOT),
+                "patch_id": "live-smoke-no-apply",
+                "rollback_id": "missing-live-smoke-rollback",
+                "mode": "rollback_preview",
+            },
+        )
+        assert rollback.status_code == 200, f"/lux-controlled-apply/rollback returned {rollback.status_code}"
+        rollback_data = rollback.json()
+        assert rollback_data.get("transaction_state") in {"blocked", "dry_run"}, rollback_data
+        assert rollback_data.get("blocked_items"), rollback_data
+        assert rollback_data.get("rollback_available") is False, rollback_data
+
+        assert app_path.read_bytes() == app_hash_before, "live app.py changed during controlled apply smoke"
+        assert runtime_dir.exists() is existed_before, "live .luxcode_runtime directory state changed during smoke"
+
+        return "lux controlled apply approval gate verified without live writes"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -10624,6 +10727,7 @@ class SmokeRunner:
             ("luxcode_master_router_read_only", self.check_luxcode_master_router_read_only, None, "core"),
             ("lux_debug_intelligence_read_only", self.check_lux_debug_intelligence_read_only, None, "core"),
             ("lux_safe_patch_draft_read_only", self.check_lux_safe_patch_draft_read_only, None, "core"),
+            ("lux_controlled_apply_approval_gated", self.check_lux_controlled_apply_approval_gated, None, "core"),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints, None, "core"),
             ("debug_agent_panel", self.check_debug_agent_panel, None, "core"),
             ("mode_registry_preview", self.check_mode_registry_preview, None, "core"),
@@ -10821,6 +10925,7 @@ class SmokeRunner:
             ("luxcode_master_router_read_only", self.check_luxcode_master_router_read_only),
             ("lux_debug_intelligence_read_only", self.check_lux_debug_intelligence_read_only),
             ("lux_safe_patch_draft_read_only", self.check_lux_safe_patch_draft_read_only),
+            ("lux_controlled_apply_approval_gated", self.check_lux_controlled_apply_approval_gated),
             ("debug_sample_preview_endpoints", self.check_debug_sample_preview_endpoints),
             ("debug_agent_panel", self.check_debug_agent_panel),
             ("mode_registry_preview", self.check_mode_registry_preview),

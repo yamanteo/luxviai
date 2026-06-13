@@ -923,6 +923,13 @@ from lux_safe_patch_draft_engine import (
     get_safe_patch_draft_schema,
     get_safe_patch_draft_status,
 )
+from lux_controlled_apply_engine import (
+    execute_controlled_apply,
+    get_controlled_apply_schema,
+    get_controlled_apply_status,
+    prepare_controlled_apply,
+    rollback_controlled_apply,
+)
 
 try:
     from dotenv import load_dotenv
@@ -1973,6 +1980,23 @@ class LuxSafePatchDraftRequest(BaseModel):
     mode: str = Field(default="full_patch_preview", max_length=80)
     max_patch_files: int = Field(default=4, ge=1, le=12)
     max_hunks_per_file: int = Field(default=3, ge=1, le=8)
+
+
+class LuxControlledApplyRequest(BaseModel):
+    repository_root: Optional[str] = Field(default=None, max_length=600)
+    patch_id: str = Field(default="", max_length=200)
+    patch_steps: List[Dict[str, Any]] = Field(default_factory=list)
+    approved_files: List[str] = Field(default_factory=list)
+    forbidden_files: List[str] = Field(default_factory=list)
+    approval_token: Optional[str] = Field(default=None, max_length=260)
+    expected_file_hashes: Dict[str, str] = Field(default_factory=dict)
+    mode: str = Field(default="dry_run", max_length=80)
+    max_files: int = Field(default=5, ge=1, le=20)
+    max_total_changed_lines: int = Field(default=400, ge=1, le=4000)
+    require_clean_tree: bool = False
+    validation_plan: List[Any] = Field(default_factory=list)
+    rollback_id: Optional[str] = Field(default=None, max_length=220)
+    repository_state_clean: Optional[bool] = None
 
 
 # =========================================================
@@ -11956,6 +11980,31 @@ async def lux_safe_patch_preview_endpoint(payload: LuxSafePatchDraftRequest):
 @app.get("/debug/lux-safe-patch-status")
 async def debug_lux_safe_patch_status_endpoint():
     return get_safe_patch_draft_status()
+
+
+@app.get("/lux-controlled-apply/schema")
+async def lux_controlled_apply_schema_endpoint():
+    return get_controlled_apply_schema()
+
+
+@app.post("/lux-controlled-apply/prepare")
+async def lux_controlled_apply_prepare_endpoint(payload: LuxControlledApplyRequest):
+    return prepare_controlled_apply(**payload.dict())
+
+
+@app.post("/lux-controlled-apply/execute")
+async def lux_controlled_apply_execute_endpoint(payload: LuxControlledApplyRequest):
+    return execute_controlled_apply(**payload.dict())
+
+
+@app.post("/lux-controlled-apply/rollback")
+async def lux_controlled_apply_rollback_endpoint(payload: LuxControlledApplyRequest):
+    return rollback_controlled_apply(**payload.dict())
+
+
+@app.get("/debug/lux-controlled-apply-status")
+async def debug_lux_controlled_apply_status_endpoint():
+    return get_controlled_apply_status()
 
 
 @app.get("/debug/runtime-drift-status")

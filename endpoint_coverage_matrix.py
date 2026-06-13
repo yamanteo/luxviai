@@ -869,6 +869,13 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/lux-safe-patch/preview", "POST", "safe_patch_draft", "local-first read-only safe patch draft"),
         _endpoint("/debug/lux-safe-patch-status", "GET", "safe_patch_draft", "safe patch draft status"),
     ],
+    "lux_controlled_apply": [
+        _endpoint("/lux-controlled-apply/schema", "GET", "controlled_apply", "approval-gated controlled apply schema"),
+        _endpoint("/lux-controlled-apply/prepare", "POST", "controlled_apply", "approval digest preparation"),
+        _endpoint("/lux-controlled-apply/execute", "POST", "controlled_apply", "approval-gated dry-run or controlled apply"),
+        _endpoint("/lux-controlled-apply/rollback", "POST", "controlled_apply", "approval-gated rollback or rollback preview"),
+        _endpoint("/debug/lux-controlled-apply-status", "GET", "controlled_apply", "controlled apply status"),
+    ],
 }
 
 
