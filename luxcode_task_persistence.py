@@ -80,6 +80,27 @@ MULTI_AGENT_METADATA_KEYS = {
     "reopen_state",
     "multi_agent_updated_at",
 }
+CODER_RUNTIME_METADATA_KEYS = {
+    "coder_intake_id",
+    "coder_intake_state",
+    "coder_search_digest",
+    "minimum_context_package_id",
+    "minimum_context_digest",
+    "coder_plan_id",
+    "coder_plan_state",
+    "patch_id",
+    "patch_preview_state",
+    "patch_execution_id",
+    "patch_execution_state",
+    "snapshot_id",
+    "validation_plan_id",
+    "validation_state",
+    "rollback_state",
+    "coder_result_id",
+    "coder_remaining_gap",
+    "coder_handoff_ready",
+    "coder_updated_at",
+}
 ACTIVE_RESTORE_STATES = {
     "created",
     "routed",
@@ -206,6 +227,12 @@ def _sanitize_forbidden_keys(payload: Dict[str, Any]) -> Dict[str, Any]:
             "provider_payload",
             "environment_value",
             "env_value",
+            "old_text",
+            "new_text",
+            "patch_content",
+            "snapshot_content",
+            "file_content",
+            "raw_source",
         )):
             continue
         if isinstance(item_value, dict):
@@ -226,6 +253,8 @@ def sanitize_task_payload(value: Any, key: str = "root", depth: int = 0) -> Any:
     if _unsupported(value):
         raise ValueError(f"unsupported value type for {key}")
     lowered = key.lower()
+    if lowered in {"old_text", "new_text", "patch_content", "snapshot_content", "file_content", "raw_source"}:
+        return "[redacted-patch-content]"
     if any(marker in lowered for marker in SECRET_KEY_MARKERS):
         return "[redacted]"
     if isinstance(value, dict):
@@ -379,6 +408,25 @@ def _safe_payload(task_state: Dict[str, Any], privacy_mode: bool = True) -> Dict
             }
         )
         payload["multi_agent_metadata"] = _sanitize_forbidden_keys(safe_multi_agent)
+    coder_runtime_metadata = payload.get("coder_runtime_metadata")
+    if isinstance(coder_runtime_metadata, dict):
+        safe_coder = {
+            key: coder_runtime_metadata[key]
+            for key in CODER_RUNTIME_METADATA_KEYS
+            if key in coder_runtime_metadata
+        }
+        safe_coder.update(
+            {
+                "coder_requires_revalidation": True,
+                "restored_patch_apply_allowed": False,
+                "restored_approval_valid": False,
+                "restored_snapshot_trusted": False,
+                "restored_validation_passed": False,
+                "restored_worker_started": False,
+                "restored_execution_resumed": False,
+            }
+        )
+        payload["coder_runtime_metadata"] = _sanitize_forbidden_keys(safe_coder)
     payload["task_id"] = original_task_id
     payload["current_state"] = original_state
     task_id = str(payload.get("task_id") or "")
@@ -658,6 +706,8 @@ def get_task_persistence_schema() -> Dict[str, Any]:
         "render_restore_policy": "restored Render records never call provider APIs, auto-deploy, poll, probe URLs, or rollback",
         "safe_multi_agent_metadata": sorted(MULTI_AGENT_METADATA_KEYS),
         "multi_agent_restore_policy": "restored assignments, handoffs, ownership, paid approvals, and workers require revalidation and never auto-start",
+        "safe_coder_runtime_metadata": sorted(CODER_RUNTIME_METADATA_KEYS),
+        "coder_runtime_restore_policy": "restored coder patch approvals, snapshots, validation, workers, and execution require revalidation and never auto-start",
         "persistence_disabled_by_default": True,
         **SAFE_INVARIANTS,
     }
@@ -1071,6 +1121,7 @@ def get_task_persistence_status(mode: Optional[str] = None, storage_root: Option
         "safe_browser_launch_metadata_supported": True,
         "safe_deployment_metadata_supported": True,
         "safe_render_metadata_supported": True,
+        "safe_coder_runtime_metadata_supported": True,
         "test_matrix_restore_auto_starts": False,
         "deployment_restore_auto_starts": False,
         "deployment_restore_auto_probes": False,
@@ -1079,6 +1130,9 @@ def get_task_persistence_status(mode: Optional[str] = None, storage_root: Option
         "render_restore_auto_polls": False,
         "render_restore_auto_probes": False,
         "render_restore_auto_rollbacks": False,
+        "coder_restore_auto_applies": False,
+        "coder_restore_auto_validates": False,
+        "coder_restore_auto_rollbacks": False,
         **SAFE_INVARIANTS,
     }
     if resolved_mode == "local_sqlite" and resolved_root:

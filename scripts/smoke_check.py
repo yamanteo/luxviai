@@ -11352,6 +11352,111 @@ class SmokeRunner:
         assert runtime_dir.exists() is runtime_existed, "live .luxcode_runtime directory state changed during multi-agent smoke"
         return "luxcode multi-agent handoff local fixture flow verified"
 
+    def check_luxcode_practical_coder_runtime_local(self) -> str:
+        """Verify practical coder runtime stays local-first and uses only temp fixture writes."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "luxcode_practical_coder_runtime.py",
+            ROOT / "luxcode_minimum_context_builder.py",
+            ROOT / "luxcode_safe_patch_runtime.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        live_paths = [ROOT / ".luxcode_runtime", ROOT / "luxcode_tasks.db", ROOT / ".luxcode_snapshots", ROOT / "luxcode_backups"]
+        live_state = {str(path): path.exists() for path in live_paths}
+
+        with tempfile.TemporaryDirectory(prefix="luxcoder_smoke_") as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "src").mkdir(parents=True)
+            (repo / "tests").mkdir()
+            (repo / "src" / "app.py").write_text("def greet():\n    return 'old value'\n", encoding="utf-8")
+            (repo / "tests" / "test_app.py").write_text("from src.app import greet\nassert greet() == 'new value'\n", encoding="utf-8")
+            (repo / ".env").write_text("TOKEN=secret-value-that-must-not-appear\n", encoding="utf-8")
+            (repo / "large_app.py").write_text("print('x')\n" * 3000, encoding="utf-8")
+            subprocess.run(["git", "init"], cwd=str(repo), capture_output=True, text=True, timeout=10, shell=False)
+
+            schema = client.get("/luxcode-coder/schema")
+            assert schema.status_code == 200 and schema.json().get("endpoint_count") == 10, schema.json()
+            registry = client.get("/luxcode-coder/registry")
+            assert registry.status_code == 200 and registry.json().get("external_api_used") is False, registry.json()
+
+            intake_response = client.post(
+                "/luxcode-coder/repository-intake",
+                json={"repository_root": str(repo), "task_summary": "replace old value", "requested_files": ["src/app.py", ".env"], "suspected_files": ["tests/test_app.py"]},
+            )
+            assert intake_response.status_code == 200 and intake_response.json().get("ok") is True, intake_response.text
+            intake = intake_response.json()
+            assert ".env" not in intake.get("requested_files", []), intake
+            assert intake.get("external_api_used") is False and intake.get("network_access_used") is False, intake
+
+            search = client.post("/luxcode-coder/search", json={"repository_root": str(repo), "query": "old value", "selected_files": ["src/app.py", ".env"], "max_results": 5})
+            assert search.status_code == 200 and search.json().get("result_count") == 1, search.json()
+            assert "secret-value" not in json.dumps(search.json()), search.json()
+
+            none = client.post("/luxcode-coder/search", json={"repository_root": str(repo), "query": "absent", "max_results": 5})
+            assert none.status_code == 200 and none.json().get("result_count") == 0, none.json()
+
+            context = client.post("/luxcode-coder/minimum-context", json={"repository_intake": intake, "search_results": search.json().get("results", []), "max_files": 4, "max_chars": 6000})
+            assert context.status_code == 200 and context.json().get("ok") is True, context.text
+            assert ".env" not in json.dumps(context.json()), context.json()
+
+            plan = client.post("/luxcode-coder/task-plan", json={"repository_intake": intake, "task_summary": "make greet return new value", "selected_files": ["src/app.py"], "acceptance_criteria": ["compile"]})
+            assert plan.status_code == 200 and plan.json().get("ok") is True, plan.text
+            assert plan.json().get("external_api_used") is False and plan.json().get("network_access_used") is False, plan.json()
+
+            source_hash = __import__("hashlib").sha256((repo / "src" / "app.py").read_bytes()).hexdigest()
+            operations = [{"operation_type": "replace_text", "file_path": "src/app.py", "old_text": "old value", "new_text": "new value", "expected_file_sha256": source_hash, "expected_occurrences": 1}]
+            draft = client.post("/luxcode-coder/patch-draft", json={"repository_root": str(repo), "task_plan": plan.json(), "operations": operations, "approved_files": ["src/app.py"], "protected_files": [".env"]})
+            assert draft.status_code == 200 and draft.json().get("ok") is True, draft.text
+            contract = draft.json().get("patch_contract", {})
+            assert draft.json().get("requires_approval") is True, draft.json()
+
+            dry = client.post("/luxcode-coder/patch-control", json={"patch_contract": contract, "action": "preview", "dry_run": True})
+            assert dry.status_code == 200 and dry.json().get("ok") is True and dry.json().get("apply_allowed") is False, dry.json()
+            assert "old value" in (repo / "src" / "app.py").read_text(encoding="utf-8"), "dry run modified fixture"
+
+            blocked = client.post("/luxcode-coder/patch-control", json={"patch_contract": contract, "action": "apply", "approval_confirmed": False, "dry_run": False})
+            assert blocked.status_code == 200 and blocked.json().get("execution_state") == "approval_required", blocked.json()
+
+            apply_result = client.post(
+                "/luxcode-coder/patch-control",
+                json={"patch_contract": contract, "action": "apply", "approval_confirmed": True, "approval_token": contract.get("approval_token_hint"), "dry_run": False, "validation_plan": [{"type": "py_compile", "paths": ["src/app.py"]}]},
+            )
+            assert apply_result.status_code == 200 and apply_result.json().get("execution_state") == "applied", apply_result.text
+            assert "new value" in (repo / "src" / "app.py").read_text(encoding="utf-8"), "apply did not modify temp fixture"
+
+            duplicate = client.post("/luxcode-coder/patch-control", json={"patch_contract": contract, "action": "apply", "approval_confirmed": True, "approval_token": contract.get("approval_token_hint"), "dry_run": False})
+            assert duplicate.status_code == 200 and duplicate.json().get("ok") is False, duplicate.json()
+
+            validation = client.post("/luxcode-coder/validate", json={"repository_root": str(repo), "validation_plan": [{"type": "py_compile", "paths": ["src/app.py"]}]})
+            assert validation.status_code == 200 and validation.json().get("ok") is True, validation.json()
+            shell_block = client.post("/luxcode-coder/validate", json={"repository_root": str(repo), "validation_plan": [{"type": "shell", "command": "git status"}]})
+            assert shell_block.status_code == 200 and shell_block.json().get("ok") is False, shell_block.json()
+
+            status = client.get("/debug/luxcode-coder-status")
+            assert status.status_code == 200 and status.json().get("arbitrary_shell_used") is False, status.json()
+
+            from endpoint_coverage_matrix import ENDPOINT_GROUPS
+
+            assert len(ENDPOINT_GROUPS.get("luxcode_practical_coder_runtime", [])) == 10, ENDPOINT_GROUPS.get("luxcode_practical_coder_runtime")
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during practical coder smoke: {path}"
+        for path in live_paths:
+            assert path.exists() is live_state[str(path)], f"live artifact state changed during practical coder smoke: {path}"
+        return "luxcode practical coder runtime local fixture flow verified"
+
     def check_luxcode_autonomy_permission_local(self) -> str:
         """Verify autonomy permission controller endpoints with temporary fixture scope."""
         try:
@@ -12698,6 +12803,7 @@ class SmokeRunner:
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local, None, "core"),
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local, None, "core"),
             ("luxcode_multi_agent_handoff_local", self.check_luxcode_multi_agent_handoff_local, None, "core"),
+            ("luxcode_practical_coder_runtime_local", self.check_luxcode_practical_coder_runtime_local, None, "core"),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local, None, "core"),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local, None, "core"),
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local, None, "core"),
@@ -12911,6 +13017,7 @@ class SmokeRunner:
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local),
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local),
             ("luxcode_multi_agent_handoff_local", self.check_luxcode_multi_agent_handoff_local),
+            ("luxcode_practical_coder_runtime_local", self.check_luxcode_practical_coder_runtime_local),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local),
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local),

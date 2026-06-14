@@ -930,6 +930,18 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode-multi-agent/finality", "POST", "multi_agent_handoff", "evaluate finality decision"),
         _endpoint("/debug/luxcode-multi-agent-status", "GET", "multi_agent_handoff", "multi-agent handoff status"),
     ],
+    "luxcode_practical_coder_runtime": [
+        _endpoint("/luxcode-coder/schema", "GET", "practical_coder_runtime", "practical coder runtime schema"),
+        _endpoint("/luxcode-coder/registry", "GET", "practical_coder_runtime", "practical coder registry"),
+        _endpoint("/luxcode-coder/repository-intake", "POST", "practical_coder_runtime", "safe repository intake"),
+        _endpoint("/luxcode-coder/search", "POST", "practical_coder_runtime", "targeted redacted code search"),
+        _endpoint("/luxcode-coder/minimum-context", "POST", "practical_coder_runtime", "minimum context package builder"),
+        _endpoint("/luxcode-coder/task-plan", "POST", "practical_coder_runtime", "local coder task plan"),
+        _endpoint("/luxcode-coder/patch-draft", "POST", "practical_coder_runtime", "approval-gated patch contract draft"),
+        _endpoint("/luxcode-coder/patch-control", "POST", "practical_coder_runtime", "dry-run and approval-gated patch control"),
+        _endpoint("/luxcode-coder/validate", "POST", "practical_coder_runtime", "allowlisted local validation"),
+        _endpoint("/debug/luxcode-coder-status", "GET", "practical_coder_runtime", "practical coder status"),
+    ],
     "luxcode_autonomy_permission": [
         _endpoint("/luxcode-autonomy/schema", "GET", "autonomy_permission", "autonomy permission controller schema"),
         _endpoint("/luxcode-autonomy/profile", "POST", "autonomy_permission", "create selected-scope permission profile"),

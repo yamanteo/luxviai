@@ -987,6 +987,19 @@ from luxcode_multi_agent_handoff import (
     set_finality_decision,
     set_technical_verification_result,
 )
+from luxcode_practical_coder_runtime import (
+    build_coder_final_result,
+    build_minimum_context_for_coder,
+    build_practical_coder_task_plan,
+    control_practical_patch,
+    create_repository_intake,
+    draft_practical_patch,
+    get_practical_coder_registry,
+    get_practical_coder_schema,
+    get_practical_coder_status,
+    targeted_code_search,
+    validate_practical_coder,
+)
 from luxcode_autonomy_permission_controller import (
     approve_scope_expansion,
     build_plain_language_warning,
@@ -2456,6 +2469,65 @@ class LuxCodeMultiAgentFinalityRequest(BaseModel):
     decision_reason: str = Field(default="", max_length=1000)
     technical_verification: Dict[str, Any] = Field(default_factory=dict)
     behavioral_verification: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LuxCodeCoderRepositoryIntakeRequest(BaseModel):
+    repository_root: Optional[str] = Field(default=None, max_length=800)
+    task_summary: str = Field(default="", max_length=4000)
+    requested_files: List[str] = Field(default_factory=list)
+    suspected_files: List[str] = Field(default_factory=list)
+    max_files: int = Field(default=80, ge=1, le=500)
+
+
+class LuxCodeCoderSearchRequest(BaseModel):
+    repository_root: Optional[str] = Field(default=None, max_length=800)
+    query: str = Field(default="", max_length=500)
+    selected_files: List[str] = Field(default_factory=list)
+    max_results: int = Field(default=30, ge=1, le=200)
+    case_sensitive: bool = False
+
+
+class LuxCodeCoderMinimumContextRequest(BaseModel):
+    repository_intake: Dict[str, Any] = Field(default_factory=dict)
+    search_results: List[Dict[str, Any]] = Field(default_factory=list)
+    max_files: int = Field(default=8, ge=1, le=30)
+    max_chars: int = Field(default=16000, ge=1000, le=120000)
+
+
+class LuxCodeCoderTaskPlanRequest(BaseModel):
+    repository_intake: Dict[str, Any] = Field(default_factory=dict)
+    task_summary: str = Field(default="", max_length=4000)
+    selected_files: List[str] = Field(default_factory=list)
+    acceptance_criteria: List[str] = Field(default_factory=list)
+
+
+class LuxCodeCoderPatchDraftRequest(BaseModel):
+    repository_root: Optional[str] = Field(default=None, max_length=800)
+    task_plan: Dict[str, Any] = Field(default_factory=dict)
+    operations: List[Dict[str, Any]] = Field(default_factory=list)
+    approved_files: List[str] = Field(default_factory=list)
+    protected_files: List[str] = Field(default_factory=list)
+
+
+class LuxCodeCoderPatchControlRequest(BaseModel):
+    patch_contract: Dict[str, Any] = Field(default_factory=dict)
+    action: str = Field(default="preview", max_length=80)
+    approval_confirmed: bool = False
+    approval_token: str = Field(default="", max_length=260)
+    dry_run: bool = True
+    validation_plan: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class LuxCodeCoderValidateRequest(BaseModel):
+    repository_root: Optional[str] = Field(default=None, max_length=800)
+    validation_plan: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class LuxCodeCoderFinalResultRequest(BaseModel):
+    repository_intake: Dict[str, Any] = Field(default_factory=dict)
+    task_plan: Dict[str, Any] = Field(default_factory=dict)
+    patch_result: Dict[str, Any] = Field(default_factory=dict)
+    validation_result: Dict[str, Any] = Field(default_factory=dict)
 
 
 class LuxCodeAutonomyProfileRequest(BaseModel):
@@ -13231,6 +13303,56 @@ async def luxcode_multi_agent_finality_endpoint(payload: LuxCodeMultiAgentFinali
 @app.get("/debug/luxcode-multi-agent-status")
 async def debug_luxcode_multi_agent_status_endpoint(task_id: Optional[str] = None):
     return get_multi_agent_status(task_id=task_id)
+
+
+@app.get("/luxcode-coder/schema")
+async def luxcode_coder_schema_endpoint():
+    return get_practical_coder_schema()
+
+
+@app.get("/luxcode-coder/registry")
+async def luxcode_coder_registry_endpoint():
+    return get_practical_coder_registry()
+
+
+@app.post("/luxcode-coder/repository-intake")
+async def luxcode_coder_repository_intake_endpoint(payload: LuxCodeCoderRepositoryIntakeRequest):
+    return create_repository_intake(**payload.dict())
+
+
+@app.post("/luxcode-coder/search")
+async def luxcode_coder_search_endpoint(payload: LuxCodeCoderSearchRequest):
+    return targeted_code_search(**payload.dict())
+
+
+@app.post("/luxcode-coder/minimum-context")
+async def luxcode_coder_minimum_context_endpoint(payload: LuxCodeCoderMinimumContextRequest):
+    return build_minimum_context_for_coder(**payload.dict())
+
+
+@app.post("/luxcode-coder/task-plan")
+async def luxcode_coder_task_plan_endpoint(payload: LuxCodeCoderTaskPlanRequest):
+    return build_practical_coder_task_plan(**payload.dict())
+
+
+@app.post("/luxcode-coder/patch-draft")
+async def luxcode_coder_patch_draft_endpoint(payload: LuxCodeCoderPatchDraftRequest):
+    return draft_practical_patch(**payload.dict())
+
+
+@app.post("/luxcode-coder/patch-control")
+async def luxcode_coder_patch_control_endpoint(payload: LuxCodeCoderPatchControlRequest):
+    return control_practical_patch(**payload.dict())
+
+
+@app.post("/luxcode-coder/validate")
+async def luxcode_coder_validate_endpoint(payload: LuxCodeCoderValidateRequest):
+    return validate_practical_coder(**payload.dict())
+
+
+@app.get("/debug/luxcode-coder-status")
+async def debug_luxcode_coder_status_endpoint(task_id: Optional[str] = None):
+    return get_practical_coder_status(task_id=task_id or "")
 
 
 @app.get("/luxcode-autonomy/schema")

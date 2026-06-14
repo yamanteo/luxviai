@@ -199,6 +199,34 @@ MULTI_AGENT_METADATA_KEYS = {
     "reopen_state",
     "multi_agent_updated_at",
 }
+CODER_RUNTIME_METADATA_KEYS = {
+    "coder_intake_id",
+    "coder_intake_state",
+    "coder_search_digest",
+    "minimum_context_package_id",
+    "minimum_context_digest",
+    "coder_plan_id",
+    "coder_plan_state",
+    "patch_id",
+    "patch_preview_state",
+    "patch_execution_id",
+    "patch_execution_state",
+    "snapshot_id",
+    "validation_plan_id",
+    "validation_state",
+    "rollback_state",
+    "coder_result_id",
+    "coder_remaining_gap",
+    "coder_handoff_ready",
+    "coder_updated_at",
+    "coder_requires_revalidation",
+    "restored_patch_apply_allowed",
+    "restored_approval_valid",
+    "restored_snapshot_trusted",
+    "restored_validation_passed",
+    "restored_worker_started",
+    "restored_execution_resumed",
+}
 
 _TASKS: Dict[str, Dict[str, Any]] = {}
 _PERSISTENCE_CONFIG: Dict[str, Any] = {"mode": "disabled", "storage_root": "", "enabled": False}
@@ -309,6 +337,47 @@ def _safe_multi_agent_metadata(task: Dict[str, Any]) -> Dict[str, Any]:
     raw = task.get("multi_agent_metadata", {})
     if isinstance(raw, dict):
         for key in MULTI_AGENT_METADATA_KEYS:
+            if key in raw:
+                metadata[key] = _redact(raw[key])
+    return metadata
+
+
+def _default_coder_runtime_metadata() -> Dict[str, Any]:
+    return {
+        "coder_intake_id": "",
+        "coder_intake_state": "not_started",
+        "coder_search_digest": "",
+        "minimum_context_package_id": "",
+        "minimum_context_digest": "",
+        "coder_plan_id": "",
+        "coder_plan_state": "not_started",
+        "patch_id": "",
+        "patch_preview_state": "not_started",
+        "patch_execution_id": "",
+        "patch_execution_state": "not_started",
+        "snapshot_id": "",
+        "validation_plan_id": "",
+        "validation_state": "not_started",
+        "rollback_state": "not_started",
+        "coder_result_id": "",
+        "coder_remaining_gap": [],
+        "coder_handoff_ready": False,
+        "coder_updated_at": _now(),
+        "coder_requires_revalidation": False,
+        "restored_patch_apply_allowed": False,
+        "restored_approval_valid": False,
+        "restored_snapshot_trusted": False,
+        "restored_validation_passed": False,
+        "restored_worker_started": False,
+        "restored_execution_resumed": False,
+    }
+
+
+def _safe_coder_runtime_metadata(task: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = _default_coder_runtime_metadata()
+    raw = task.get("coder_runtime_metadata", {})
+    if isinstance(raw, dict):
+        for key in CODER_RUNTIME_METADATA_KEYS:
             if key in raw:
                 metadata[key] = _redact(raw[key])
     return metadata
@@ -574,6 +643,7 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "routing_update_count": int(task.get("routing_update_count", 0)),
         "zero_cost_routing_state": str(task.get("routing_state", "")),
         "multi_agent_metadata": _safe_multi_agent_metadata(task),
+        "coder_runtime_metadata": _safe_coder_runtime_metadata(task),
         "permission_profile": _redact(task.get("permission_profile", {})),
         "safe_permission_metadata": _redact(task.get("safe_permission_metadata", {})),
         "permission_audit": _redact(task.get("permission_audit", [])),
@@ -774,6 +844,21 @@ def _restore_payload_to_task(payload: Dict[str, Any]) -> Tuple[bool, str]:
         }
     )
     task["multi_agent_metadata"] = restored_multi_agent
+    restored_coder = _safe_coder_runtime_metadata(task)
+    restored_coder.update(
+        {
+            "coder_requires_revalidation": True,
+            "restored_patch_apply_allowed": False,
+            "restored_approval_valid": False,
+            "restored_snapshot_trusted": False,
+            "restored_validation_passed": False,
+            "restored_worker_started": False,
+            "restored_execution_resumed": False,
+            "patch_execution_state": "restore_requires_revalidation",
+            "validation_state": "restore_requires_revalidation",
+        }
+    )
+    task["coder_runtime_metadata"] = restored_coder
     route_state = _build_zero_cost_route_metadata(task) if isinstance(task.get("zero_cost_routing"), dict) else _build_zero_cost_route_metadata(
         {
             "task_id": task_id,
@@ -846,6 +931,8 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
         "network_access": "available_for_localhost_and_selected_lan_verification",
         "test_matrix": "available_for_browser_device_screen_network_verification",
         "multi_agent_metadata_fields": sorted(MULTI_AGENT_METADATA_KEYS),
+        "coder_runtime_metadata_fields": sorted(CODER_RUNTIME_METADATA_KEYS),
+        "coder_runtime_restore_policy": "restored coder patch approvals, snapshots, validation, workers, and execution require revalidation and never auto-start",
         "multi_agent_execution_enabled": False,
         "multi_agent_paid_escalation_auto_enabled": False,
         "multi_agent_whale_auto_start": False,
@@ -945,6 +1032,7 @@ def create_luxcode_task(
             }
         ),
         "multi_agent_metadata": _default_multi_agent_metadata(),
+        "coder_runtime_metadata": _default_coder_runtime_metadata(),
         "selected_capabilities": _normalize_list(requested_files or files),
         "safety_flags": dict(SAFE_INVARIANTS),
     }
