@@ -11209,6 +11209,149 @@ class SmokeRunner:
 
         return "luxcode task persistence local sqlite flow verified"
 
+    def check_luxcode_multi_agent_handoff_local(self) -> str:
+        """Verify multi-agent handoff and evidence endpoints are local fixture previews."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "luxcode_multi_agent_handoff.py",
+            ROOT / "luxcode_evidence_board.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        runtime_dir = ROOT / ".luxcode_runtime"
+        runtime_existed = runtime_dir.exists()
+
+        schema = client.get("/luxcode-multi-agent/schema")
+        assert schema.status_code == 200, schema.text
+        assert schema.json().get("status") in {"ready", "local_first_read_only"}, schema.json()
+        registry = client.get("/luxcode-multi-agent/registry")
+        assert registry.status_code == 200, registry.text
+        assert registry.json().get("endpoint_count", 10) == 10, registry.json()
+
+        contract = client.post(
+            "/luxcode-multi-agent/task-contract",
+            json={
+                "task_title": "multi-agent smoke",
+                "task_summary": "fixture-only handoff smoke",
+                "task_class": "code_change",
+                "risk_level": "low",
+                "priority": "medium",
+                "required_capabilities": ["inspection", "validation"],
+                "allowed_files": ["app.py", "scripts/smoke_check.py"],
+                "protected_files": [".env"],
+                "acceptance_criteria": ["compile", "smoke"],
+                "technical_acceptance_criteria": ["compile"],
+                "behavioral_acceptance_criteria": ["no execution"],
+                "router_decision_digest": "router-smoke-digest",
+            },
+        )
+        assert contract.status_code == 200, contract.text
+        contract_data = contract.json()
+        assert contract_data.get("ok") is True, contract_data
+        task_id = contract_data["task_id"]
+
+        conflict = client.post(
+            "/luxcode-multi-agent/task-contract",
+            json={
+                "task_title": "conflict",
+                "task_summary": "conflict",
+                "task_class": "code_change",
+                "risk_level": "low",
+                "priority": "medium",
+                "required_capabilities": ["inspection"],
+                "allowed_files": ["app.py"],
+                "protected_files": ["app.py"],
+                "acceptance_criteria": ["done"],
+                "technical_acceptance_criteria": ["compile"],
+                "behavioral_acceptance_criteria": ["intent"],
+            },
+        )
+        assert conflict.status_code == 200 and conflict.json().get("ok") is False, conflict.json()
+
+        assignment = client.post(
+            "/luxcode-multi-agent/work-assignment",
+            json={
+                "task_id": task_id,
+                "worker_engine_id": "local_fixture_worker",
+                "worker_tier": "free_local",
+                "assignment_scope": "inspect app.py",
+                "allowed_files": ["app.py"],
+                "owned_files": ["app.py"],
+                "required_capabilities": ["inspection"],
+                "expected_outputs": ["evidence"],
+                "accepted": True,
+                "accepted_scope": ["app.py"],
+                "rejected_scope": ["scripts/smoke_check.py"],
+                "missing_capabilities": ["browser"],
+            },
+        )
+        assert assignment.status_code == 200, assignment.text
+        assignment_data = assignment.json()
+        assert assignment_data.get("ok") is True, assignment_data
+        assignment_id = assignment_data.get("assignment", {}).get("assignment_id") or assignment_data.get("assignment_id")
+
+        evidence_payload = {
+            "task_id": task_id,
+            "assignment_id": assignment_id,
+            "worker_engine_id": "local_fixture_worker",
+            "evidence_type": "inspection",
+            "evidence_source": "smoke",
+            "evidence_summary": "app endpoint inspected",
+            "result_status": "pass",
+            "related_files": ["app.py"],
+        }
+        evidence = client.post("/luxcode-multi-agent/evidence", json=evidence_payload)
+        assert evidence.status_code == 200 and evidence.json().get("ok") is True, evidence.json()
+        duplicate = client.post("/luxcode-multi-agent/evidence", json=evidence_payload)
+        assert duplicate.status_code == 200 and duplicate.json().get("duplicate") is True, duplicate.json()
+        evidence_id = evidence.json().get("evidence", {}).get("evidence_id", "")
+
+        progress = client.post(
+            "/luxcode-multi-agent/progress",
+            json={"task_id": task_id, "assignment_id": assignment_id, "progress_type": "inspection_complete", "progress_percent": 40, "completed_items": ["inspect"], "remaining_items": ["handoff"], "evidence_ids": [evidence_id]},
+        )
+        assert progress.status_code == 200 and progress.json().get("ok") is True, progress.json()
+
+        attempt = client.post(
+            "/luxcode-multi-agent/attempt-check",
+            json={"task_id": task_id, "assignment_id": assignment_id, "worker_engine_id": "local_fixture_worker", "hypothesis": "same fix", "target_files": ["app.py"], "command_family": "py_compile", "patch_intent": "none"},
+        )
+        assert attempt.status_code == 200 and attempt.json().get("ok") is True, attempt.json()
+
+        handoff = client.post(
+            "/luxcode-multi-agent/handoff",
+            json={"task_id": task_id, "from_assignment_id": assignment_id, "from_worker_engine_id": "local_fixture_worker", "to_worker_engine_id": "local_next_worker", "handoff_reason": "partial capability", "remaining_files": ["scripts/smoke_check.py"], "requested_files": ["scripts/smoke_check.py"], "required_capabilities": ["validation"], "evidence_ids": [evidence_id]},
+        )
+        assert handoff.status_code == 200 and handoff.json().get("handoff_acceptance_required") is True, handoff.json()
+
+        finality = client.post(
+            "/luxcode-multi-agent/finality",
+            json={"task_id": task_id, "decision": "partial", "completion_score": 0.5, "evidence_ids": [evidence_id], "decision_reason": "remaining smoke gap", "technical_verification": {"compile_status": True, "validator_status": True, "targeted_smoke_status": True, "diff_check_status": True, "artifact_check_status": True, "evidence_ids": [evidence_id]}, "behavioral_verification": {"expected_behavior": "no execution", "observed_behavior": "no execution", "user_intent_match": True, "evidence_ids": [evidence_id]}},
+        )
+        assert finality.status_code == 200 and finality.json().get("ok") is True, finality.json()
+
+        status = client.get(f"/debug/luxcode-multi-agent-status?task_id={task_id}")
+        assert status.status_code == 200 and status.json().get("ok") is True, status.json()
+
+        from endpoint_coverage_matrix import ENDPOINT_GROUPS
+
+        assert len(ENDPOINT_GROUPS.get("luxcode_multi_agent_handoff", [])) == 10, ENDPOINT_GROUPS.get("luxcode_multi_agent_handoff")
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during multi-agent smoke: {path}"
+        assert runtime_dir.exists() is runtime_existed, "live .luxcode_runtime directory state changed during multi-agent smoke"
+        return "luxcode multi-agent handoff local fixture flow verified"
+
     def check_luxcode_autonomy_permission_local(self) -> str:
         """Verify autonomy permission controller endpoints with temporary fixture scope."""
         try:
@@ -12554,6 +12697,7 @@ class SmokeRunner:
             ("luxcode_zero_cost_execution_router_local", self.check_luxcode_zero_cost_execution_router_local, None, "core"),
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local, None, "core"),
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local, None, "core"),
+            ("luxcode_multi_agent_handoff_local", self.check_luxcode_multi_agent_handoff_local, None, "core"),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local, None, "core"),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local, None, "core"),
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local, None, "core"),
@@ -12766,6 +12910,7 @@ class SmokeRunner:
             ("luxcode_zero_cost_execution_router_local", self.check_luxcode_zero_cost_execution_router_local),
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local),
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local),
+            ("luxcode_multi_agent_handoff_local", self.check_luxcode_multi_agent_handoff_local),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local),
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local),

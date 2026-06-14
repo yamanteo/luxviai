@@ -58,6 +58,28 @@ ZERO_COST_ROUTING_METADATA_KEYS = {
     "routing_state",
     "routing_updated_at",
 }
+MULTI_AGENT_METADATA_KEYS = {
+    "task_contract_digest",
+    "assignment_id",
+    "worker_engine_id",
+    "worker_tier",
+    "assignment_state",
+    "evidence_ids",
+    "evidence_digests",
+    "progress_event_ids",
+    "attempt_fingerprints",
+    "failure_signature_ids",
+    "partial_completion_digest",
+    "remaining_gap_digest",
+    "handoff_id",
+    "handoff_state",
+    "file_ownership_metadata",
+    "technical_verification_state",
+    "behavioral_verification_state",
+    "finality_state",
+    "reopen_state",
+    "multi_agent_updated_at",
+}
 ACTIVE_RESTORE_STATES = {
     "created",
     "routed",
@@ -339,6 +361,24 @@ def _safe_payload(task_state: Dict[str, Any], privacy_mode: bool = True) -> Dict
             payload["zero_cost_routing"].setdefault(route_key, default_value)
         if "engine_health_snapshot" in zero_cost_routing and isinstance(zero_cost_routing["engine_health_snapshot"], dict):
             payload["zero_cost_routing"]["engine_health_snapshot"] = _sanitize_forbidden_keys(dict(zero_cost_routing["engine_health_snapshot"]))
+    multi_agent_metadata = payload.get("multi_agent_metadata")
+    if isinstance(multi_agent_metadata, dict):
+        safe_multi_agent = {
+            key: multi_agent_metadata[key]
+            for key in MULTI_AGENT_METADATA_KEYS
+            if key in multi_agent_metadata
+        }
+        safe_multi_agent.update(
+            {
+                "multi_agent_requires_revalidation": True,
+                "restored_assignment_active": False,
+                "restored_handoff_executed": False,
+                "restored_file_ownership_active": False,
+                "restored_paid_approval": False,
+                "restored_worker_execution_started": False,
+            }
+        )
+        payload["multi_agent_metadata"] = _sanitize_forbidden_keys(safe_multi_agent)
     payload["task_id"] = original_task_id
     payload["current_state"] = original_state
     task_id = str(payload.get("task_id") or "")
@@ -616,6 +656,8 @@ def get_task_persistence_schema() -> Dict[str, Any]:
         "test_matrix_restore_policy": "restored test matrix records never auto-start browsers, services, emulators, or network checks",
         "deployment_restore_policy": "restored deployment records never auto-build, auto-deploy, auto-probe URLs, or auto-rollback",
         "render_restore_policy": "restored Render records never call provider APIs, auto-deploy, poll, probe URLs, or rollback",
+        "safe_multi_agent_metadata": sorted(MULTI_AGENT_METADATA_KEYS),
+        "multi_agent_restore_policy": "restored assignments, handoffs, ownership, paid approvals, and workers require revalidation and never auto-start",
         "persistence_disabled_by_default": True,
         **SAFE_INVARIANTS,
     }

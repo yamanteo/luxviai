@@ -918,6 +918,18 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode-task-persistence/restore-active", "POST", "task_persistence", "restore active persisted tasks without execution"),
         _endpoint("/debug/luxcode-task-persistence-status", "GET", "task_persistence", "task persistence adapter status"),
     ],
+    "luxcode_multi_agent_handoff": [
+        _endpoint("/luxcode-multi-agent/schema", "GET", "multi_agent_handoff", "multi-agent handoff schema"),
+        _endpoint("/luxcode-multi-agent/registry", "GET", "multi_agent_handoff", "multi-agent handoff registry"),
+        _endpoint("/luxcode-multi-agent/task-contract", "POST", "multi_agent_handoff", "create deterministic task contract"),
+        _endpoint("/luxcode-multi-agent/work-assignment", "POST", "multi_agent_handoff", "create or acknowledge safe work assignment"),
+        _endpoint("/luxcode-multi-agent/evidence", "POST", "multi_agent_handoff", "append safe evidence record"),
+        _endpoint("/luxcode-multi-agent/progress", "POST", "multi_agent_handoff", "append progress event"),
+        _endpoint("/luxcode-multi-agent/attempt-check", "POST", "multi_agent_handoff", "check attempt fingerprint and duplicates"),
+        _endpoint("/luxcode-multi-agent/handoff", "POST", "multi_agent_handoff", "prepare or accept controlled handoff"),
+        _endpoint("/luxcode-multi-agent/finality", "POST", "multi_agent_handoff", "evaluate finality decision"),
+        _endpoint("/debug/luxcode-multi-agent-status", "GET", "multi_agent_handoff", "multi-agent handoff status"),
+    ],
     "luxcode_autonomy_permission": [
         _endpoint("/luxcode-autonomy/schema", "GET", "autonomy_permission", "autonomy permission controller schema"),
         _endpoint("/luxcode-autonomy/profile", "POST", "autonomy_permission", "create selected-scope permission profile"),

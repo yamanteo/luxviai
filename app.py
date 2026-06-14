@@ -971,6 +971,22 @@ from luxcode_task_orchestrator import (
     save_luxcode_task_to_persistence,
 )
 from luxcode_task_persistence import get_task_persistence_schema, get_task_persistence_status
+from luxcode_multi_agent_handoff import (
+    accept_handoff,
+    add_evidence_from_payload,
+    check_attempt_fingerprint,
+    create_multi_agent_task_contract,
+    create_work_assignment,
+    get_multi_agent_handoff_registry,
+    get_multi_agent_handoff_schema,
+    get_multi_agent_status,
+    prepare_handoff,
+    record_progress_event,
+    record_worker_acknowledgement,
+    set_behavioral_verification_result,
+    set_finality_decision,
+    set_technical_verification_result,
+)
 from luxcode_autonomy_permission_controller import (
     approve_scope_expansion,
     build_plain_language_warning,
@@ -2325,6 +2341,121 @@ class LuxCodeTaskPersistenceDeleteRequest(BaseModel):
 
 class LuxCodeTaskPersistenceRestoreRequest(BaseModel):
     limit: int = Field(default=50, ge=1, le=100)
+
+
+class LuxCodeMultiAgentTaskContractRequest(BaseModel):
+    task_id: str = Field(default="", max_length=180)
+    task_version: str = Field(default="v1", max_length=80)
+    parent_task_id: str = Field(default="", max_length=180)
+    root_task_id: str = Field(default="", max_length=180)
+    task_title: str = Field(default="", max_length=1200)
+    task_summary: str = Field(default="", max_length=2400)
+    task_class: str = Field(default="code_change", max_length=120)
+    risk_level: str = Field(default="low", max_length=80)
+    priority: str = Field(default="medium", max_length=80)
+    required_capabilities: List[str] = Field(default_factory=list)
+    allowed_files: List[str] = Field(default_factory=list)
+    protected_files: List[str] = Field(default_factory=list)
+    acceptance_criteria: List[str] = Field(default_factory=list)
+    technical_acceptance_criteria: List[str] = Field(default_factory=list)
+    behavioral_acceptance_criteria: List[str] = Field(default_factory=list)
+    router_decision_digest: str = Field(default="", max_length=400)
+    router_metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LuxCodeMultiAgentAssignmentRequest(BaseModel):
+    task_id: str = Field(default="", max_length=180)
+    assignment_id: str = Field(default="", max_length=180)
+    worker_engine_id: str = Field(default="", max_length=180)
+    worker_tier: str = Field(default="free_local", max_length=80)
+    worker_role: str = Field(default="worker", max_length=80)
+    assignment_scope: str = Field(default="", max_length=2400)
+    allowed_files: List[str] = Field(default_factory=list)
+    owned_files: List[str] = Field(default_factory=list)
+    required_capabilities: List[str] = Field(default_factory=list)
+    expected_outputs: List[str] = Field(default_factory=list)
+    started_at: str = Field(default="", max_length=120)
+    expires_at: str = Field(default="", max_length=120)
+    acknowledgement_required: bool = True
+    accepted: Optional[bool] = None
+    accepted_scope: List[str] = Field(default_factory=list)
+    rejected_scope: List[str] = Field(default_factory=list)
+    missing_capabilities: List[str] = Field(default_factory=list)
+    resource_constraints: str = Field(default="", max_length=1200)
+    estimated_risk: str = Field(default="", max_length=80)
+
+
+class LuxCodeMultiAgentEvidenceRequest(BaseModel):
+    task_id: str = Field(default="", max_length=180)
+    assignment_id: str = Field(default="", max_length=180)
+    worker_engine_id: str = Field(default="", max_length=180)
+    evidence_type: str = Field(default="inspection", max_length=80)
+    evidence_source: str = Field(default="fixture", max_length=260)
+    evidence_summary: str = Field(default="", max_length=2400)
+    command_summary: str = Field(default="", max_length=1000)
+    result_status: str = Field(default="unknown", max_length=40)
+    related_files: List[str] = Field(default_factory=list)
+    related_symbols: List[str] = Field(default_factory=list)
+    supersedes_evidence_id: str = Field(default="", max_length=180)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LuxCodeMultiAgentProgressRequest(BaseModel):
+    task_id: str = Field(default="", max_length=180)
+    assignment_id: str = Field(default="", max_length=180)
+    progress_type: str = Field(default="implementation_progress", max_length=80)
+    progress_percent: int = Field(default=0, ge=0, le=100)
+    completed_items: List[str] = Field(default_factory=list)
+    remaining_items: List[str] = Field(default_factory=list)
+    blocked_items: List[str] = Field(default_factory=list)
+    current_hypothesis: str = Field(default="", max_length=1200)
+    current_action: str = Field(default="", max_length=1200)
+    evidence_ids: List[str] = Field(default_factory=list)
+    rejected_reason: str = Field(default="", max_length=600)
+
+
+class LuxCodeMultiAgentAttemptRequest(BaseModel):
+    task_id: str = Field(default="", max_length=180)
+    assignment_id: str = Field(default="", max_length=180)
+    worker_engine_id: str = Field(default="", max_length=180)
+    hypothesis: str = Field(default="", max_length=1200)
+    target_files: List[str] = Field(default_factory=list)
+    target_symbols: List[str] = Field(default_factory=list)
+    command_family: str = Field(default="", max_length=120)
+    patch_intent: str = Field(default="", max_length=600)
+    failure_signature: str = Field(default="", max_length=600)
+    override_attempt: bool = False
+
+
+class LuxCodeMultiAgentHandoffRequest(BaseModel):
+    task_id: str = Field(default="", max_length=180)
+    handoff_id: str = Field(default="", max_length=180)
+    from_assignment_id: str = Field(default="", max_length=180)
+    from_worker_engine_id: str = Field(default="", max_length=180)
+    to_worker_engine_id: str = Field(default="", max_length=180)
+    to_worker_tier: str = Field(default="free_local", max_length=80)
+    handoff_reason: str = Field(default="", max_length=1000)
+    remaining_scope: List[str] = Field(default_factory=list)
+    remaining_files: List[str] = Field(default_factory=list)
+    requested_files: List[str] = Field(default_factory=list)
+    required_capabilities: List[str] = Field(default_factory=list)
+    evidence_ids: List[str] = Field(default_factory=list)
+    attempt_fingerprints: List[str] = Field(default_factory=list)
+    failure_signatures: List[str] = Field(default_factory=list)
+    owned_files_release: List[str] = Field(default_factory=list)
+    accepted: Optional[bool] = None
+    to_assignment_id: str = Field(default="", max_length=180)
+
+
+class LuxCodeMultiAgentFinalityRequest(BaseModel):
+    task_id: str = Field(default="", max_length=180)
+    decision: str = Field(default="", max_length=80)
+    completion_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    evidence_ids: List[str] = Field(default_factory=list)
+    blocking_failures: List[str] = Field(default_factory=list)
+    decision_reason: str = Field(default="", max_length=1000)
+    technical_verification: Dict[str, Any] = Field(default_factory=dict)
+    behavioral_verification: Dict[str, Any] = Field(default_factory=dict)
 
 
 class LuxCodeAutonomyProfileRequest(BaseModel):
@@ -13022,6 +13153,84 @@ async def luxcode_task_persistence_restore_active_endpoint(payload: LuxCodeTaskP
 @app.get("/debug/luxcode-task-persistence-status")
 async def debug_luxcode_task_persistence_status_endpoint():
     return get_task_persistence_status()
+
+
+@app.get("/luxcode-multi-agent/schema")
+async def luxcode_multi_agent_schema_endpoint():
+    return get_multi_agent_handoff_schema()
+
+
+@app.get("/luxcode-multi-agent/registry")
+async def luxcode_multi_agent_registry_endpoint():
+    return get_multi_agent_handoff_registry()
+
+
+@app.post("/luxcode-multi-agent/task-contract")
+async def luxcode_multi_agent_task_contract_endpoint(payload: LuxCodeMultiAgentTaskContractRequest):
+    return create_multi_agent_task_contract(**payload.dict())
+
+
+@app.post("/luxcode-multi-agent/work-assignment")
+async def luxcode_multi_agent_work_assignment_endpoint(payload: LuxCodeMultiAgentAssignmentRequest):
+    data = payload.dict()
+    accepted = data.pop("accepted")
+    acknowledgement_payload = {
+        "accepted_scope": data.pop("accepted_scope"),
+        "rejected_scope": data.pop("rejected_scope"),
+        "missing_capabilities": data.pop("missing_capabilities"),
+        "resource_constraints": data.pop("resource_constraints"),
+        "estimated_risk": data.pop("estimated_risk"),
+    }
+    assignment = create_work_assignment(**data)
+    if accepted is None or not assignment.get("ok"):
+        return assignment
+    return record_worker_acknowledgement(
+        task_id=data["task_id"],
+        assignment_id=assignment.get("assignment_id", data.get("assignment_id", "")),
+        accepted=accepted,
+        **acknowledgement_payload,
+    )
+
+
+@app.post("/luxcode-multi-agent/evidence")
+async def luxcode_multi_agent_evidence_endpoint(payload: LuxCodeMultiAgentEvidenceRequest):
+    return add_evidence_from_payload(**payload.dict())
+
+
+@app.post("/luxcode-multi-agent/progress")
+async def luxcode_multi_agent_progress_endpoint(payload: LuxCodeMultiAgentProgressRequest):
+    return record_progress_event(**payload.dict())
+
+
+@app.post("/luxcode-multi-agent/attempt-check")
+async def luxcode_multi_agent_attempt_check_endpoint(payload: LuxCodeMultiAgentAttemptRequest):
+    return check_attempt_fingerprint(**payload.dict())
+
+
+@app.post("/luxcode-multi-agent/handoff")
+async def luxcode_multi_agent_handoff_endpoint(payload: LuxCodeMultiAgentHandoffRequest):
+    data = payload.dict()
+    accepted = data.pop("accepted")
+    if accepted is None:
+        return prepare_handoff(**data)
+    return accept_handoff(task_id=data["task_id"], handoff_id=data.get("handoff_id", ""), accepted=accepted, to_assignment_id=data.get("to_assignment_id", ""))
+
+
+@app.post("/luxcode-multi-agent/finality")
+async def luxcode_multi_agent_finality_endpoint(payload: LuxCodeMultiAgentFinalityRequest):
+    data = payload.dict()
+    technical = data.pop("technical_verification") or {}
+    behavioral = data.pop("behavioral_verification") or {}
+    if technical:
+        set_technical_verification_result(task_id=data["task_id"], **technical)
+    if behavioral:
+        set_behavioral_verification_result(task_id=data["task_id"], **behavioral)
+    return set_finality_decision(**data)
+
+
+@app.get("/debug/luxcode-multi-agent-status")
+async def debug_luxcode_multi_agent_status_endpoint(task_id: Optional[str] = None):
+    return get_multi_agent_status(task_id=task_id)
 
 
 @app.get("/luxcode-autonomy/schema")

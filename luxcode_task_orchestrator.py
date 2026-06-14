@@ -179,6 +179,26 @@ ZERO_COST_ROUTING_REQUIRED_KEYS = {
     "recommended_paid_engine",
     "engine_health_snapshot",
 }
+MULTI_AGENT_METADATA_KEYS = {
+    "task_contract_digest",
+    "active_assignment_id",
+    "active_worker_engine_id",
+    "active_worker_tier",
+    "assignment_state",
+    "evidence_board_digest",
+    "latest_progress_event_id",
+    "attempt_fingerprints",
+    "failure_signatures",
+    "partial_completion_digest",
+    "remaining_gap_digest",
+    "active_handoff_id",
+    "file_ownership_state",
+    "technical_verification_state",
+    "behavioral_verification_state",
+    "finality_state",
+    "reopen_state",
+    "multi_agent_updated_at",
+}
 
 _TASKS: Dict[str, Dict[str, Any]] = {}
 _PERSISTENCE_CONFIG: Dict[str, Any] = {"mode": "disabled", "storage_root": "", "enabled": False}
@@ -253,6 +273,45 @@ def _normalize_list(values: Any) -> List[str]:
     if isinstance(values, (list, tuple, set)):
         return [str(item).strip() for item in values if str(item).strip()]
     return [str(values).strip()] if str(values).strip() else []
+
+
+def _default_multi_agent_metadata() -> Dict[str, Any]:
+    return {
+        "task_contract_digest": "",
+        "active_assignment_id": "",
+        "active_worker_engine_id": "",
+        "active_worker_tier": "",
+        "assignment_state": "",
+        "evidence_board_digest": "",
+        "latest_progress_event_id": "",
+        "attempt_fingerprints": [],
+        "failure_signatures": [],
+        "partial_completion_digest": "",
+        "remaining_gap_digest": "",
+        "active_handoff_id": "",
+        "file_ownership_state": "inactive",
+        "technical_verification_state": "unknown",
+        "behavioral_verification_state": "unknown",
+        "finality_state": "not_finalized",
+        "reopen_state": "closed",
+        "multi_agent_updated_at": _now(),
+        "multi_agent_requires_revalidation": False,
+        "restored_assignment_active": False,
+        "restored_handoff_executed": False,
+        "restored_file_ownership_active": False,
+        "restored_paid_approval": False,
+        "restored_worker_execution_started": False,
+    }
+
+
+def _safe_multi_agent_metadata(task: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = _default_multi_agent_metadata()
+    raw = task.get("multi_agent_metadata", {})
+    if isinstance(raw, dict):
+        for key in MULTI_AGENT_METADATA_KEYS:
+            if key in raw:
+                metadata[key] = _redact(raw[key])
+    return metadata
 
 
 def _build_zero_cost_route_metadata(task: Dict[str, Any]) -> Dict[str, Any]:
@@ -514,6 +573,7 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "routing_requires_revalidation": bool(task.get("routing_requires_revalidation", False)),
         "routing_update_count": int(task.get("routing_update_count", 0)),
         "zero_cost_routing_state": str(task.get("routing_state", "")),
+        "multi_agent_metadata": _safe_multi_agent_metadata(task),
         "permission_profile": _redact(task.get("permission_profile", {})),
         "safe_permission_metadata": _redact(task.get("safe_permission_metadata", {})),
         "permission_audit": _redact(task.get("permission_audit", [])),
@@ -700,6 +760,20 @@ def _restore_payload_to_task(payload: Dict[str, Any]) -> Tuple[bool, str]:
     task["restored_route_executed"] = False
     task["restored_paid_escalation_allowed"] = False
     task["restored_engine_health_trusted"] = False
+    restored_multi_agent = _safe_multi_agent_metadata(task)
+    restored_multi_agent.update(
+        {
+            "multi_agent_requires_revalidation": True,
+            "restored_assignment_active": False,
+            "restored_handoff_executed": False,
+            "restored_file_ownership_active": False,
+            "restored_paid_approval": False,
+            "restored_worker_execution_started": False,
+            "assignment_state": "restore_requires_revalidation",
+            "file_ownership_state": "inactive",
+        }
+    )
+    task["multi_agent_metadata"] = restored_multi_agent
     route_state = _build_zero_cost_route_metadata(task) if isinstance(task.get("zero_cost_routing"), dict) else _build_zero_cost_route_metadata(
         {
             "task_id": task_id,
@@ -771,6 +845,11 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
         "live_testing": "available_for_localhost_structured_scenarios",
         "network_access": "available_for_localhost_and_selected_lan_verification",
         "test_matrix": "available_for_browser_device_screen_network_verification",
+        "multi_agent_metadata_fields": sorted(MULTI_AGENT_METADATA_KEYS),
+        "multi_agent_execution_enabled": False,
+        "multi_agent_paid_escalation_auto_enabled": False,
+        "multi_agent_whale_auto_start": False,
+        "multi_agent_codex_auto_start": False,
         "automatic_apply_enabled": False,
         "automatic_rollback_enabled": False,
         **SAFE_INVARIANTS,
@@ -865,6 +944,7 @@ def create_luxcode_task(
                 "selected_capabilities": _normalize_list(requested_files or files),
             }
         ),
+        "multi_agent_metadata": _default_multi_agent_metadata(),
         "selected_capabilities": _normalize_list(requested_files or files),
         "safety_flags": dict(SAFE_INVARIANTS),
     }
@@ -1226,6 +1306,13 @@ def get_task_orchestrator_status() -> Dict[str, Any]:
         "terminal_runtime": "available_for_structured_actions",
         "live_testing": "available_for_localhost_structured_scenarios",
         "test_matrix": "available_for_browser_device_screen_network_verification",
+        "multi_agent": {
+            "metadata_fields": sorted(MULTI_AGENT_METADATA_KEYS),
+            "execution_enabled": False,
+            "paid_escalation_auto_enabled": False,
+            "whale_auto_start": False,
+            "codex_auto_start": False,
+        },
         "task_count": len(_TASKS),
         "active_task_count": sum(1 for state in states if state not in TERMINAL_STATES and state != "paused"),
         "paused_task_count": states.count("paused"),
