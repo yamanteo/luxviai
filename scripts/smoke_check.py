@@ -11842,6 +11842,112 @@ class SmokeRunner:
 
         return "luxcode browser family launch selection verified"
 
+    def check_luxcode_deployment_execution_local(self) -> str:
+        """Verify local fixture deployment, health, URL, browser scenario, and cleanup."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_deployment_execution_url_verification.py",
+            ROOT / "luxcode_terminal_process_runtime.py",
+            ROOT / "luxcode_live_app_interaction_testing.py",
+            ROOT / "luxcode_browser_launch_selection.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        live_paths = [
+            ROOT / ".luxcode_deployment",
+            ROOT / ".luxcode_runtime",
+            ROOT / ".luxcode_live_test",
+            ROOT / ".luxcode_browser_launch",
+            ROOT / ".luxcode_snapshots",
+            ROOT / "luxcode_tasks.db",
+            ROOT / "luxcode_backups",
+        ]
+        live_state = {str(path): path.exists() for path in live_paths}
+
+        schema = client.get("/luxcode-deployment/schema")
+        assert schema.status_code == 200, f"/luxcode-deployment/schema returned {schema.status_code}"
+        schema_data = schema.json()
+        assert "local_fixture" in schema_data.get("providers", []), schema_data
+        assert schema_data.get("external_api_used") is False, schema_data
+
+        registry = client.get("/luxcode-deployment/registry")
+        assert registry.status_code == 200, f"/luxcode-deployment/registry returned {registry.status_code}"
+        assert registry.json().get("providers", {}).get("local_fixture", {}).get("mvp_execution_support") is True, registry.json()
+
+        detect = client.post("/luxcode-deployment/detect", json={"repository_root": str(ROOT), "selected_scope": ".", "explicit_provider": "local_fixture"})
+        assert detect.status_code == 200, f"/luxcode-deployment/detect returned {detect.status_code}"
+        assert detect.json().get("detection", {}).get("provider") == "local_fixture", detect.json()
+
+        readiness = client.post("/luxcode-deployment/readiness", json={"repository_root": str(ROOT), "selected_scope": ".", "provider": "local_fixture", "deploy_intent": True})
+        assert readiness.status_code == 200, f"/luxcode-deployment/readiness returned {readiness.status_code}"
+        assert readiness.json().get("readiness", {}).get("readiness_state") == "ready_for_local_fixture", readiness.json()
+
+        blocked_plan = client.post("/luxcode-deployment/plan", json={"repository_root": str(ROOT), "provider": "local_fixture", "deploy_intent": False})
+        assert blocked_plan.status_code == 200, f"/luxcode-deployment/plan returned {blocked_plan.status_code}"
+        assert blocked_plan.json().get("plan", {}).get("permission_decision", {}).get("allowed") is False, blocked_plan.json()
+
+        external_plan = client.post("/luxcode-deployment/plan", json={"repository_root": str(ROOT), "provider": "render", "deploy_intent": True, "verify_url_intent": True})
+        assert external_plan.status_code == 200, f"/luxcode-deployment/plan external returned {external_plan.status_code}"
+        assert external_plan.json().get("plan", {}).get("permission_decision", {}).get("allowed") is False, external_plan.json()
+
+        plan = client.post(
+            "/luxcode-deployment/plan",
+            json={
+                "task_id": "deployment-smoke",
+                "repository_root": str(ROOT),
+                "selected_scope": ".",
+                "provider": "local_fixture",
+                "command_text": "Deploy et, URL'yi dogrula",
+                "deploy_intent": True,
+                "verify_url_intent": True,
+            },
+        )
+        assert plan.status_code == 200, f"/luxcode-deployment/plan returned {plan.status_code}"
+        plan_data = plan.json().get("plan", {})
+        assert plan_data.get("provider") == "local_fixture", plan_data
+        assert plan_data.get("permission_decision", {}).get("allowed") is True, plan_data
+
+        execute_blocked = client.post("/luxcode-deployment/execute", json={"plan": plan_data, "explicit_deployment_intent": False})
+        assert execute_blocked.status_code == 200, f"/luxcode-deployment/execute blocked returned {execute_blocked.status_code}"
+        assert execute_blocked.json().get("ok") is False, execute_blocked.json()
+
+        execute = client.post("/luxcode-deployment/execute", json={"plan": plan_data, "explicit_deployment_intent": True, "authority_digest": "deployment-smoke"})
+        assert execute.status_code == 200, f"/luxcode-deployment/execute returned {execute.status_code}"
+        runtime = execute.json().get("runtime", {})
+        assert runtime.get("build_state") == "build_passed", runtime
+        assert runtime.get("deployment_state") == "deployment_verified", runtime
+        assert runtime.get("url_result", {}).get("access_scope") == "localhost_only", runtime
+        assert runtime.get("url_result", {}).get("final_verification_status") == "fully_verified", runtime
+        assert runtime.get("cleanup_state") == "cleaned", runtime
+
+        verify = client.post("/luxcode-deployment/verify", json={"runtime_id": runtime.get("deployment_runtime_id"), "url": runtime.get("url_result", {}).get("url")})
+        assert verify.status_code == 200, f"/luxcode-deployment/verify returned {verify.status_code}"
+        assert verify.json().get("fully_verified") is True, verify.json()
+
+        status = client.get("/debug/luxcode-deployment-status")
+        assert status.status_code == 200, f"/debug/luxcode-deployment-status returned {status.status_code}"
+        status_data = status.json()
+        assert status_data.get("external_provider_execution_enabled") is False, status_data
+        assert status_data.get("cloud_deployment_used") is False, status_data
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during deployment smoke: {path}"
+        for path in live_paths:
+            assert path.exists() is live_state[str(path)], f"live artifact state changed during deployment smoke: {path}"
+
+        return "luxcode deployment execution and URL verification local fixture verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -11880,6 +11986,7 @@ class SmokeRunner:
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local, None, "core"),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local, None, "core"),
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local, None, "core"),
+            ("luxcode_deployment_execution_local", self.check_luxcode_deployment_execution_local, None, "core"),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local, None, "core"),
             ("luxcode_network_access_local", self.check_luxcode_network_access_local, None, "core"),
             ("luxcode_test_matrix_local", self.check_luxcode_test_matrix_local, None, "core"),
@@ -12087,6 +12194,7 @@ class SmokeRunner:
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local),
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local),
+            ("luxcode_deployment_execution_local", self.check_luxcode_deployment_execution_local),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local),
             ("luxcode_network_access_local", self.check_luxcode_network_access_local),
             ("luxcode_test_matrix_local", self.check_luxcode_test_matrix_local),

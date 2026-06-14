@@ -59,6 +59,12 @@ from luxcode_test_matrix_intelligence import (
     execute_test_matrix,
     get_safe_test_matrix_metadata,
 )
+from luxcode_deployment_execution_url_verification import (
+    build_deployment_plan,
+    cancel_deployment,
+    execute_deployment,
+    get_safe_deployment_metadata,
+)
 
 
 TASK_STATES = {
@@ -95,6 +101,11 @@ TASK_STATES = {
     "browser_launch_completed",
     "browser_launch_blocked",
     "browser_identity_mismatch",
+    "deployment_planned",
+    "deployment_running",
+    "deployment_verified",
+    "deployment_blocked",
+    "deployment_review",
     "awaiting_scope_permission",
     "awaiting_irreversible_confirmation",
     "autonomy_paused",
@@ -334,6 +345,18 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "browser_identity_state": task.get("browser_identity_state", ""),
         "browser_launch_failures": _redact(task.get("browser_launch_failures", [])),
         "browser_identity_mismatches": _redact(task.get("browser_identity_mismatches", [])),
+        "deployment_intent": bool(task.get("deployment_intent", False)),
+        "deployment_provider": task.get("deployment_provider", ""),
+        "deployment_plan_id": task.get("deployment_plan", {}).get("deployment_plan_id", ""),
+        "deployment_runtime_id": task.get("deployment_result", {}).get("deployment_runtime_id", ""),
+        "deployment_state": task.get("deployment_state", ""),
+        "deployment_build_state": task.get("deployment_build_state", ""),
+        "deployment_url_verification_state": task.get("deployment_url_verification_state", ""),
+        "deployment_scenario_state": task.get("deployment_scenario_state", ""),
+        "deployment_rollback_state": task.get("deployment_rollback_state", ""),
+        "deployment_retry_count": int(task.get("deployment_retry_count", 0)),
+        "deployment_next_safe_action": task.get("deployment_next_safe_action", ""),
+        "deployment_result": _redact(task.get("deployment_result", {})),
         "skipped_target_reasons": _redact(task.get("skipped_target_reasons", {})),
         "can_advance": can_advance,
         "requires_user_approval": state in {"awaiting_approval", "apply_prepared", "verification_prepared"},
@@ -572,6 +595,17 @@ def create_luxcode_task(
         "completed_steps": [],
         "pending_steps": _pending_for_state("created"),
         "next_safe_action": "Advance to route the request.",
+        "deployment_intent": any(word in original_request.lower() for word in ["deploy", "deployment", "yayina al", "yayına al"]),
+        "deployment_provider": "",
+        "deployment_state": "not_started",
+        "deployment_build_state": "not_started",
+        "deployment_url_verification_state": "not_started",
+        "deployment_scenario_state": "not_started",
+        "deployment_rollback_state": "not_started",
+        "deployment_retry_count": 0,
+        "deployment_next_safe_action": "Deployment requires explicit plan and execution request.",
+        "deployment_plan": {},
+        "deployment_result": {},
         "pause_reason": "",
         "cancellation_reason": "",
         "safety_flags": dict(SAFE_INVARIANTS),
@@ -1160,6 +1194,82 @@ def cancel_luxcode_task_live_test(task_id: str, runtime_id: str = "") -> Dict[st
     result = cancel_live_test_runtime(target_runtime, reason=f"task {task_id} cancelled")
     task["live_test_result"] = result.get("runtime", result)
     return _persist_and_summarize(task, event_type="live_test_cancel")
+
+
+def plan_luxcode_task_deployment(
+    task_id: str,
+    provider: str = "local_fixture",
+    selected_scope: str = ".",
+    command_text: str = "",
+    deploy_intent: bool = False,
+    verify_url_intent: bool = False,
+    external_network_allowed: bool = False,
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    intent = bool(deploy_intent or task.get("deployment_intent"))
+    result = build_deployment_plan(
+        task_id=task_id,
+        repository_root=task.get("repository_root") or str(Path.cwd()),
+        selected_scope=selected_scope,
+        provider=provider,
+        command_text=command_text or task.get("original_request", ""),
+        deploy_intent=intent,
+        verify_url_intent=verify_url_intent,
+        permission_profile=task.get("permission_profile", {}),
+        external_network_allowed=external_network_allowed,
+    )
+    task["deployment_plan"] = result.get("plan", result)
+    task["deployment_provider"] = provider
+    task["deployment_state"] = "deployment_planned" if result.get("ok") else "deployment_blocked"
+    task["deployment_next_safe_action"] = "Execute deployment only with explicit intent; restored tasks never auto-deploy."
+    _touch(task, "deployment_planned" if result.get("ok") else "deployment_blocked")
+    return _persist_and_summarize(task, event_type="deployment_plan")
+
+
+def execute_luxcode_task_deployment(task_id: str, explicit_deployment_intent: bool = False) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    if task.get("restored_from_persistence"):
+        task["deployment_state"] = "deployment_blocked"
+        task["deployment_next_safe_action"] = "Restored deployment requires explicit user review before execution."
+        return _persist_and_summarize(task, event_type="deployment_restore_blocked")
+    plan = task.get("deployment_plan", {})
+    if not explicit_deployment_intent or not plan.get("permission_decision", {}).get("deployment_intent"):
+        task["deployment_state"] = "deployment_blocked"
+        task["deployment_next_safe_action"] = "Explicit deployment intent is required."
+        return _persist_and_summarize(task, event_type="deployment_intent_blocked")
+    task["deployment_state"] = "deployment_running"
+    _touch(task, "deployment_running")
+    result = execute_deployment(plan)
+    runtime = result.get("runtime", result)
+    task["deployment_result"] = get_safe_deployment_metadata(runtime) if result.get("runtime") else runtime
+    task["deployment_build_state"] = runtime.get("build_state", "")
+    task["deployment_state"] = runtime.get("deployment_state", "deployment_review")
+    task["deployment_url_verification_state"] = runtime.get("url_result", {}).get("final_verification_status", "")
+    task["deployment_scenario_state"] = runtime.get("scenario_state", "")
+    task["deployment_rollback_state"] = runtime.get("rollback_state", "")
+    if task["deployment_url_verification_state"] == "fully_verified":
+        _touch(task, "deployment_verified")
+    elif result.get("ok"):
+        _touch(task, "deployment_review")
+    else:
+        _touch(task, "deployment_blocked")
+    task["deployment_next_safe_action"] = "Deliver URL only when final verification status is fully_verified."
+    return _persist_and_summarize(task, event_type="deployment_execute")
+
+
+def cancel_luxcode_task_deployment(task_id: str, runtime_id: str = "") -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    target_runtime = runtime_id or task.get("deployment_result", {}).get("deployment_runtime_id", "")
+    result = cancel_deployment(runtime_id=target_runtime, reason=f"task {task_id} cancelled")
+    task["deployment_result"] = result.get("runtime", result)
+    task["deployment_state"] = "cancelled" if result.get("ok") else "deployment_blocked"
+    return _persist_and_summarize(task, event_type="deployment_cancel")
 
 
 def plan_luxcode_task_network_access(

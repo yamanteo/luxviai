@@ -1003,6 +1003,18 @@ from luxcode_live_app_interaction_testing import (
     plan_live_test,
     validate_live_scenario,
 )
+from luxcode_deployment_execution_url_verification import (
+    analyze_deployment_readiness,
+    build_deployment_plan,
+    cancel_deployment,
+    collect_deployment_url,
+    detect_deployment_provider,
+    execute_deployment,
+    get_deployment_registry,
+    get_deployment_schema,
+    get_deployment_status,
+    verify_deployment_url,
+)
 from luxcode_local_network_access_intelligence import (
     build_access_urls,
     cancel_network_access_runtime,
@@ -2372,6 +2384,51 @@ class LuxCodeLiveTestingValidateRequest(BaseModel):
 
 
 class LuxCodeLiveTestingCancelRequest(BaseModel):
+    reason: str = Field(default="user_requested", max_length=200)
+
+
+class LuxCodeDeploymentDetectRequest(BaseModel):
+    repository_root: str = Field(default="", max_length=800)
+    selected_scope: str = Field(default=".", max_length=800)
+    explicit_provider: str = Field(default="", max_length=80)
+
+
+class LuxCodeDeploymentReadinessRequest(BaseModel):
+    repository_root: str = Field(default="", max_length=800)
+    selected_scope: str = Field(default=".", max_length=800)
+    provider: str = Field(default="", max_length=80)
+    deploy_intent: bool = False
+    external_network_allowed: bool = False
+    permission_profile: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LuxCodeDeploymentPlanRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    repository_root: str = Field(default="", max_length=800)
+    selected_scope: str = Field(default=".", max_length=800)
+    provider: str = Field(default="local_fixture", max_length=80)
+    command_text: str = Field(default="", max_length=2000)
+    deploy_intent: bool = False
+    verify_url_intent: bool = False
+    permission_profile: Dict[str, Any] = Field(default_factory=dict)
+    external_network_allowed: bool = False
+    timeout_seconds: int = Field(default=60, ge=5, le=180)
+    retry_budget: int = Field(default=1, ge=0, le=3)
+
+
+class LuxCodeDeploymentExecuteRequest(BaseModel):
+    plan: Dict[str, Any] = Field(default_factory=dict)
+    explicit_deployment_intent: bool = False
+    authority_digest: str = Field(default="", max_length=260)
+
+
+class LuxCodeDeploymentVerifyRequest(BaseModel):
+    runtime_id: str = Field(default="", max_length=160)
+    url: str = Field(default="", max_length=800)
+
+
+class LuxCodeDeploymentCancelRequest(BaseModel):
+    runtime_id: str = Field(default="", max_length=160)
     reason: str = Field(default="user_requested", max_length=200)
 
 
@@ -12812,6 +12869,67 @@ async def luxcode_live_testing_evidence_endpoint(runtime_id: str):
 @app.get("/debug/luxcode-live-testing-status")
 async def debug_luxcode_live_testing_status_endpoint():
     return get_live_testing_status()
+
+
+@app.get("/luxcode-deployment/schema")
+async def luxcode_deployment_schema_endpoint():
+    return get_deployment_schema()
+
+
+@app.get("/luxcode-deployment/registry")
+async def luxcode_deployment_registry_endpoint():
+    return get_deployment_registry()
+
+
+@app.post("/luxcode-deployment/detect")
+async def luxcode_deployment_detect_endpoint(payload: LuxCodeDeploymentDetectRequest):
+    return detect_deployment_provider(**payload.dict())
+
+
+@app.post("/luxcode-deployment/readiness")
+async def luxcode_deployment_readiness_endpoint(payload: LuxCodeDeploymentReadinessRequest):
+    data = payload.dict()
+    if not data.get("permission_profile"):
+        data["permission_profile"] = None
+    return analyze_deployment_readiness(**data)
+
+
+@app.post("/luxcode-deployment/plan")
+async def luxcode_deployment_plan_endpoint(payload: LuxCodeDeploymentPlanRequest):
+    data = payload.dict()
+    if not data.get("permission_profile"):
+        data["permission_profile"] = None
+    return build_deployment_plan(**data)
+
+
+@app.post("/luxcode-deployment/execute")
+async def luxcode_deployment_execute_endpoint(payload: LuxCodeDeploymentExecuteRequest):
+    plan = payload.plan or {}
+    permission = plan.get("permission_decision", {})
+    if not payload.explicit_deployment_intent or not permission.get("deployment_intent"):
+        return {"ok": False, "blocked": True, "reason": "explicit deployment intent required", "external_api_used": False, "public_internet_used": False, "local_first": True}
+    if plan.get("provider") != "local_fixture" and not payload.authority_digest:
+        return {"ok": False, "blocked": True, "reason": "external provider authority digest required and adapter blocked in MVP", "external_api_used": False, "public_internet_used": False, "local_first": True}
+    return execute_deployment(plan)
+
+
+@app.post("/luxcode-deployment/verify")
+async def luxcode_deployment_verify_endpoint(payload: LuxCodeDeploymentVerifyRequest):
+    if not payload.runtime_id:
+        return {"ok": False, "blocked": True, "reason": "deployment runtime ownership is required", "external_api_used": False, "public_internet_used": False, "local_first": True}
+    return verify_deployment_url(runtime_id=payload.runtime_id, url=payload.url)
+
+
+@app.post("/luxcode-deployment/cancel")
+async def luxcode_deployment_cancel_endpoint(payload: LuxCodeDeploymentCancelRequest):
+    if not payload.runtime_id:
+        return {"ok": False, "blocked": True, "reason": "deployment runtime ownership is required", "external_api_used": False, "public_internet_used": False, "local_first": True}
+    return cancel_deployment(runtime_id=payload.runtime_id, reason=payload.reason)
+
+
+@app.get("/debug/luxcode-deployment-status")
+async def debug_luxcode_deployment_status_endpoint():
+    return get_deployment_status()
 
 
 @app.get("/luxcode/network-access/schema")

@@ -948,6 +948,17 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode/live-testing/evidence/{runtime_id}", "GET", "live_testing", "read redacted live test evidence metadata"),
         _endpoint("/debug/luxcode-live-testing-status", "GET", "live_testing", "live testing status"),
     ],
+    "luxcode_deployment_execution": [
+        _endpoint("/luxcode-deployment/schema", "GET", "deployment_execution", "deployment execution schema"),
+        _endpoint("/luxcode-deployment/registry", "GET", "deployment_execution", "deployment provider and action registry"),
+        _endpoint("/luxcode-deployment/detect", "POST", "deployment_execution", "safe deployment provider detection"),
+        _endpoint("/luxcode-deployment/readiness", "POST", "deployment_execution", "deployment readiness analysis"),
+        _endpoint("/luxcode-deployment/plan", "POST", "deployment_execution", "structured deployment plan"),
+        _endpoint("/luxcode-deployment/execute", "POST", "deployment_execution", "permission-gated local fixture deployment execution"),
+        _endpoint("/luxcode-deployment/verify", "POST", "deployment_execution", "owned deployment URL verification"),
+        _endpoint("/luxcode-deployment/cancel", "POST", "deployment_execution", "cancel owned deployment runtime"),
+        _endpoint("/debug/luxcode-deployment-status", "GET", "deployment_execution", "deployment execution status"),
+    ],
     "luxcode_network_access": [
         _endpoint("/luxcode/network-access/schema", "GET", "network_access", "local network access intelligence schema"),
         _endpoint("/luxcode/network-access/registry", "GET", "network_access", "local interface and blocked action registry"),

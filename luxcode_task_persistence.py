@@ -411,7 +411,21 @@ def get_task_persistence_schema() -> Dict[str, Any]:
             "failure_category",
             "timestamps",
         ],
+        "safe_deployment_metadata": [
+            "deployment_runtime_id",
+            "deployment_plan_id",
+            "provider",
+            "build_state",
+            "deployment_state",
+            "url_verification_state",
+            "scenario_state",
+            "rollback_state",
+            "failure_category",
+            "cleanup_state",
+            "audit_event_count",
+        ],
         "test_matrix_restore_policy": "restored test matrix records never auto-start browsers, services, emulators, or network checks",
+        "deployment_restore_policy": "restored deployment records never auto-build, auto-deploy, auto-probe URLs, or auto-rollback",
         "persistence_disabled_by_default": True,
         **SAFE_INVARIANTS,
     }
@@ -823,7 +837,11 @@ def get_task_persistence_status(mode: Optional[str] = None, storage_root: Option
         "network_access_restore_auto_starts": False,
         "safe_test_matrix_metadata_supported": True,
         "safe_browser_launch_metadata_supported": True,
+        "safe_deployment_metadata_supported": True,
         "test_matrix_restore_auto_starts": False,
+        "deployment_restore_auto_starts": False,
+        "deployment_restore_auto_probes": False,
+        "deployment_restore_auto_rollbacks": False,
         **SAFE_INVARIANTS,
     }
     if resolved_mode == "local_sqlite" and resolved_root:
