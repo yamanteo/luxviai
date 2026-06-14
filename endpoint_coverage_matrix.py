@@ -983,6 +983,18 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode-render-gateway/cancel", "POST", "render_gateway", "cancel owned Render gateway runtime"),
         _endpoint("/debug/luxcode-render-gateway-status", "GET", "render_gateway", "Render gateway status"),
     ],
+    "luxcode_render_credential_readiness": [
+        _endpoint("/luxcode-render-readiness/schema", "GET", "render_readiness", "Render credential readiness schema"),
+        _endpoint("/luxcode-render-readiness/registry", "GET", "render_readiness", "Render credential provider and scope registry"),
+        _endpoint("/luxcode-render-readiness/policy", "GET", "render_readiness", "Render readiness policy and disabled real execution flags"),
+        _endpoint("/luxcode-render-readiness/credential", "POST", "render_readiness", "credential reference metadata validation"),
+        _endpoint("/luxcode-render-readiness/network", "POST", "render_readiness", "external network authority metadata evaluation"),
+        _endpoint("/luxcode-render-readiness/package", "POST", "render_readiness", "immutable production readiness package"),
+        _endpoint("/luxcode-render-readiness/seal", "POST", "render_readiness", "issue immutable readiness seal"),
+        _endpoint("/luxcode-render-readiness/validate", "POST", "render_readiness", "validate package seal and final confirmation binding"),
+        _endpoint("/luxcode-render-readiness/invalidate", "POST", "render_readiness", "invalidate owned readiness seal"),
+        _endpoint("/debug/luxcode-render-readiness-status", "GET", "render_readiness", "Render credential readiness broker status"),
+    ],
     "luxcode_network_access": [
         _endpoint("/luxcode/network-access/schema", "GET", "network_access", "local network access intelligence schema"),
         _endpoint("/luxcode/network-access/registry", "GET", "network_access", "local interface and blocked action registry"),

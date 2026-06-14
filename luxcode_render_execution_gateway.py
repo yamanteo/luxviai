@@ -421,6 +421,10 @@ def build_render_execution_request(
     branch_metadata: Optional[Dict[str, Any]] = None,
     access_mode: str = "controlled_access",
     fake_fixture: str = "success_web_service",
+    readiness_package: Optional[Dict[str, Any]] = None,
+    readiness_seal: Optional[Dict[str, Any]] = None,
+    production_readiness_required: bool = False,
+    readiness_validation_time: str = "",
 ) -> Dict[str, Any]:
     authority = permission_decision or evaluate_render_execution_authority(
         plan=plan,
@@ -462,6 +466,10 @@ def build_render_execution_request(
         "cleanup_policy": {"owned_runtime_only": True, "temporary_artifacts_removed": True},
         "evidence_policy": {"structured_metadata_only": True, "raw_provider_payload_persisted": False},
         "fake_fixture": fake_fixture,
+        "readiness_package": _redact(deepcopy(readiness_package or {})),
+        "readiness_seal": _redact(deepcopy(readiness_seal or {})),
+        "production_readiness_required": bool(production_readiness_required),
+        "readiness_validation_time": str(readiness_validation_time or ""),
         "raw_http_body": None,
         "raw_cli_command": None,
         "arbitrary_url": None,
@@ -537,6 +545,25 @@ def execute_render_gateway(request: Dict[str, Any]) -> Dict[str, Any]:
         runtime.update({"state": "deployment_manual_review_required", "failure_category": "invalid_request", "cleanup_state": "deployment_cleanup_completed"})
         _RUNTIMES[str(runtime["gateway_runtime_id"])] = runtime
         return _safe_failure(validation.get("error", "invalid request"), runtime=_public_runtime(runtime))
+    if request.get("production_readiness_required"):
+        try:
+            from luxcode_render_credential_readiness_broker import authorize_gateway_execution_with_seal
+
+            seal_authority = authorize_gateway_execution_with_seal(
+                request=request,
+                package=request.get("readiness_package", {}),
+                seal=request.get("readiness_seal", {}),
+                transport_type=request.get("transport_type", "disabled_transport"),
+                now=request.get("readiness_validation_time", ""),
+            )
+        except Exception as exc:
+            seal_authority = _safe_failure("readiness seal validation unavailable", error=type(exc).__name__)
+        if not seal_authority.get("ok"):
+            runtime.update({"state": "deployment_manual_review_required", "failure_category": "readiness_seal_required", "cleanup_state": "deployment_cleanup_completed"})
+            runtime["event_sequence"] = ["gateway_created", "gateway_authority_checking", "gateway_authority_blocked", "deployment_manual_review_required", "deployment_cleanup_completed"]
+            _audit(runtime, "render_gateway_blocked", {"reason": "readiness seal required"})
+            _RUNTIMES[str(runtime["gateway_runtime_id"])] = runtime
+            return _safe_failure("gateway execution blocked by readiness seal", runtime=_public_runtime(runtime), failure_category="readiness_seal_required")
     authority = request.get("permission_decision", {})
     selected = select_render_transport(authority, request.get("transport_type", "disabled_transport"))
     if not selected.get("ok"):

@@ -77,6 +77,11 @@ from luxcode_render_execution_gateway import (
     execute_render_gateway,
     get_safe_render_gateway_metadata,
 )
+from luxcode_render_credential_readiness_broker import (
+    build_render_readiness_package,
+    get_safe_render_readiness_metadata,
+    issue_render_readiness_seal,
+)
 
 
 TASK_STATES = {
@@ -123,6 +128,9 @@ TASK_STATES = {
     "render_gateway_running",
     "render_gateway_verified",
     "render_gateway_blocked",
+    "render_readiness_packaged",
+    "render_readiness_sealed",
+    "render_readiness_blocked",
     "render_dry_run_completed",
     "render_blocked",
     "awaiting_scope_permission",
@@ -1468,6 +1476,69 @@ def execute_luxcode_task_render_gateway(task_id: str) -> Dict[str, Any]:
     task["render_gateway_next_safe_action"] = "Deliver only verified fake result; real Render deployment remains blocked."
     _touch(task, "render_gateway_verified" if result.get("ok") and runtime.get("state") == "fake_render_gateway_verified" else "render_gateway_blocked")
     return _persist_and_summarize(task, event_type="render_gateway_execute")
+
+
+def plan_luxcode_task_render_readiness(
+    task_id: str,
+    credential_reference: Optional[Dict[str, Any]] = None,
+    network_authority: Optional[Dict[str, Any]] = None,
+    environment: str = "preview",
+    branch: str = "main",
+    final_confirmation_state: str = "confirmation_missing",
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    if task.get("restored_from_persistence"):
+        task["render_readiness_state"] = "render_readiness_blocked"
+        task["render_readiness_next_safe_action"] = "Restore requires user action; no credential validation, seal creation, network permission, or execution is automatic."
+        return _persist_and_summarize(task, event_type="render_readiness_restore_blocked")
+    package = build_render_readiness_package(
+        plan=task.get("render_plan", {}),
+        credential_reference=credential_reference or {},
+        network_authority=network_authority or {},
+        task_id=task_id,
+        environment=environment,
+        branch=branch,
+        commit_metadata=task.get("commit_metadata", {}),
+        access_mode=task.get("permission_profile", {}).get("access_mode", "controlled_access"),
+        deployment_intent=bool(task.get("render_intent") or task.get("render_plan", {}).get("deployment_intent")),
+        final_confirmation_state=final_confirmation_state,
+    )
+    readiness_package = package.get("readiness_package", package)
+    task["render_credential_reference_state"] = readiness_package.get("credential_reference_summary", {}).get("status")
+    task["render_credential_scope_decision"] = readiness_package.get("credential_scope_decision", {})
+    task["render_credential_expiration_state"] = readiness_package.get("credential_expiration_decision", {}).get("expiration_state")
+    task["render_network_authority_state"] = readiness_package.get("network_authority_decision", {}).get("network_state")
+    task["render_readiness_package_id"] = readiness_package.get("readiness_package_id")
+    task["render_readiness_package_digest"] = readiness_package.get("package_digest")
+    task["render_readiness_blockers"] = [item.get("category") for item in readiness_package.get("blocker_list", [])]
+    task["render_readiness_warnings"] = [item.get("category") for item in readiness_package.get("warning_list", [])]
+    task["render_final_confirmation_binding"] = final_confirmation_state
+    task["render_production_execution_enabled"] = False
+    task["render_readiness_next_safe_action"] = readiness_package.get("next_safe_action")
+    task["render_readiness_package"] = readiness_package
+    _touch(task, "render_readiness_packaged" if package.get("ok") else "render_readiness_blocked")
+    return _persist_and_summarize(task, event_type="render_readiness_package")
+
+
+def seal_luxcode_task_render_readiness(task_id: str, requested_level: str = "dry_run") -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    if task.get("restored_from_persistence"):
+        task["render_seal_status"] = "seal_reissue_required"
+        task["render_readiness_next_safe_action"] = "Restore never auto-seals; user action is required."
+        return _persist_and_summarize(task, event_type="render_readiness_restore_seal_blocked")
+    result = issue_render_readiness_seal(task.get("render_readiness_package", {}), requested_level=requested_level)
+    seal = result.get("seal", {})
+    task["render_seal_id"] = seal.get("seal_id")
+    task["render_seal_status"] = seal.get("seal_status")
+    task["render_seal_digest"] = seal.get("seal_digest")
+    task["render_readiness_metadata"] = get_safe_render_readiness_metadata(task.get("render_readiness_package", {}), seal)
+    task["render_readiness_next_safe_action"] = "Use dry-run seal for fake gateway only; real execution remains disabled."
+    _touch(task, "render_readiness_sealed" if seal.get("seal_status", "").startswith("seal_issued") else "render_readiness_blocked")
+    return _persist_and_summarize(task, event_type="render_readiness_seal")
 
 
 def plan_luxcode_task_network_access(

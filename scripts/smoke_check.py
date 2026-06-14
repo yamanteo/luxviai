@@ -12187,6 +12187,167 @@ class SmokeRunner:
             assert path.exists() is live_state[str(path)], f"live artifact state changed during Render gateway smoke: {path}"
         return "luxcode Render execution gateway fake transport verified"
 
+    def check_luxcode_render_credential_readiness_local(self) -> str:
+        """Verify Render credential readiness broker package, seal, confirmation, and gateway integration."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        import tempfile
+        import shutil
+        from pathlib import Path
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_render_credential_readiness_broker.py",
+            ROOT / "luxcode_render_execution_gateway.py",
+            ROOT / "luxcode_render_provider_adapter.py",
+            ROOT / "luxcode_deployment_execution_url_verification.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        live_paths = [
+            ROOT / ".luxcode_render_credentials",
+            ROOT / ".luxcode_render_readiness",
+            ROOT / ".luxcode_render_gateway",
+            ROOT / ".luxcode_render",
+            ROOT / ".luxcode_deployment",
+            ROOT / ".luxcode_runtime",
+            ROOT / ".luxcode_live_test",
+            ROOT / ".luxcode_network_access",
+            ROOT / ".luxcode_browser_launch",
+            ROOT / ".luxcode_snapshots",
+            ROOT / "luxcode_tasks.db",
+            ROOT / "luxcode_backups",
+        ]
+        live_state = {str(path): path.exists() for path in live_paths}
+        temp_root = Path(tempfile.mkdtemp(prefix="luxrender_readiness_smoke_"))
+        try:
+            (temp_root / "render.yaml").write_text(
+                "\n".join(
+                    [
+                        "services:",
+                        "  - type: web",
+                        "    name: lux-readiness-smoke",
+                        "    runtime: python",
+                        "    buildCommand: python -m py_compile app.py",
+                        "    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT",
+                        "    healthCheckPath: /health",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (temp_root / "app.py").write_text("from fastapi import FastAPI\napp=FastAPI()\n@app.get('/health')\ndef h(): return {'ok': True}\n", encoding="utf-8")
+            schema = client.get("/luxcode-render-readiness/schema")
+            assert schema.status_code == 200, schema.text
+            assert schema.json().get("schema", {}).get("credential_values_allowed") is False, schema.json()
+            registry = client.get("/luxcode-render-readiness/registry")
+            assert registry.status_code == 200, registry.text
+            assert "create_deployment" in registry.json().get("registry", {}).get("minimum_production_scopes", []), registry.json()
+            policy = client.get("/luxcode-render-readiness/policy")
+            assert policy.status_code == 200, policy.text
+            assert policy.json().get("policy", {}).get("external_network_enabled") is False, policy.json()
+            plan_response = client.post(
+                "/luxcode-render/plan",
+                json={
+                    "task_id": "readiness-smoke",
+                    "repository_root": str(temp_root),
+                    "deployment_intent": True,
+                    "final_confirmation": True,
+                    "credential_reference": {"reference_id": "adapter-ref", "availability": "reference_available", "scope": "deploy"},
+                },
+            )
+            assert plan_response.status_code == 200, plan_response.text
+            plan = plan_response.json().get("plan", {})
+            scope_digest = "scope-digest-" + __import__("hashlib").sha256(__import__("json").dumps([plan.get("project_root"), plan.get("root_directory"), plan.get("service_candidate_id")], sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")).hexdigest()[:24]
+            credential = {
+                "reference_id": "fixture-render-reference",
+                "provider": "fixture_reference",
+                "target_service": plan.get("service_candidate_id"),
+                "environment": "preview",
+                "scope": ["read_service_metadata", "read_deployment_status", "create_deployment"],
+                "allowed_operations": ["read_service_metadata", "read_deployment_status", "create_deployment"],
+                "created_time": "2026-01-01T00:00:00+00:00",
+                "valid_from": "2026-01-01T00:00:00+00:00",
+                "expires_at": "2026-01-03T00:00:00+00:00",
+                "last_verified_time": "2026-01-01T00:00:00+00:00",
+                "allowed_branch": "main",
+            }
+            secret_block = client.post("/luxcode-render-readiness/credential", json={"credential_reference": {**credential, "token": "blocked"}})
+            assert secret_block.json().get("ok") is False, secret_block.json()
+            cred = client.post("/luxcode-render-readiness/credential", json={"credential_reference": credential, "selected_service_id": plan.get("service_candidate_id"), "environment": "preview", "project_scope_digest": scope_digest, "branch": "main", "now": "2026-01-01T00:00:00+00:00"})
+            assert cred.status_code == 200 and cred.json().get("ok") is True, cred.json()
+            net_block = client.post("/luxcode-render-readiness/network", json={"network_authority": {}, "project_scope_digest": scope_digest, "now": "2026-01-01T00:00:00+00:00"})
+            assert net_block.json().get("network_decision", {}).get("network_state") == "network_not_requested", net_block.json()
+            network = {"requested": True, "origin": "https://api.render.com", "methods": ["GET", "POST"], "project_scope_digest": scope_digest, "request_budget": 3, "expires_at": "2026-01-01T03:00:00+00:00"}
+            package_response = client.post(
+                "/luxcode-render-readiness/package",
+                json={
+                    "plan": plan,
+                    "credential_reference": credential,
+                    "network_authority": network,
+                    "task_id": "readiness-smoke",
+                    "environment": "preview",
+                    "branch": "main",
+                    "commit_metadata": {"commit": "fixture"},
+                    "deployment_intent": True,
+                    "final_confirmation_state": "confirmation_granted",
+                    "now": "2026-01-01T00:00:00+00:00",
+                },
+            )
+            assert package_response.status_code == 200 and package_response.json().get("ok") is True, package_response.json()
+            package = package_response.json().get("readiness_package", {})
+            assert package.get("package_digest", "").startswith("render-readiness-package-"), package
+            seal_response = client.post("/luxcode-render-readiness/seal", json={"readiness_package": package, "requested_level": "dry_run", "now": "2026-01-01T00:00:00+00:00"})
+            seal = seal_response.json().get("seal", {})
+            assert seal.get("seal_status") == "seal_issued_for_dry_run", seal
+            validate = client.post("/luxcode-render-readiness/validate", json={"readiness_package": package, "readiness_seal": seal, "confirmation": {"granted": True, "package_digest": package.get("package_digest"), "environment": "preview", "expires_at": "2026-01-01T01:00:00+00:00"}, "now": "2026-01-01T00:00:00+00:00"})
+            assert validate.status_code == 200 and validate.json().get("seal", {}).get("valid") is True, validate.json()
+            invalidated = client.post("/luxcode-render-readiness/invalidate", json={"readiness_package": package, "readiness_seal": seal, "changed_fields": ["branch_changed"], "now": "2026-01-01T00:00:00+00:00"})
+            assert "branch_changed" in invalidated.json().get("seal", {}).get("invalidation_reasons", []), invalidated.json()
+            authority = client.post(
+                "/luxcode-render-gateway/authority",
+                json={"plan": plan, "expected_plan_digest": plan.get("plan_digest"), "task_id": "readiness-smoke", "selected_service_id": plan.get("service_candidate_id"), "transport_type": "fake_render_transport", "deployment_intent": True, "final_confirmation": True, "credential_reference": {"provider": "render", "reference_id": "fixture-render-reference", "availability": "reference_available", "environment": "fixture"}},
+            )
+            request_response = client.post(
+                "/luxcode-render-gateway/request",
+                json={
+                    "plan": plan,
+                    "expected_plan_digest": plan.get("plan_digest"),
+                    "task_id": "readiness-smoke",
+                    "selected_service_id": plan.get("service_candidate_id"),
+                    "transport_type": "fake_render_transport",
+                    "deployment_intent": True,
+                    "final_confirmation": True,
+                    "credential_reference": {"provider": "render", "reference_id": "fixture-render-reference", "availability": "reference_available", "environment": "fixture"},
+                    "permission_decision": authority.json().get("authority", {}),
+                    "readiness_package": package,
+                    "readiness_seal": seal,
+                    "production_readiness_required": True,
+                    "readiness_validation_time": "2026-01-01T00:00:00+00:00",
+                },
+            )
+            request = request_response.json().get("request", {})
+            executed = client.post("/luxcode-render-gateway/execute", json={"request": request})
+            assert executed.json().get("runtime", {}).get("state") == "fake_render_gateway_verified", executed.json()
+            real_block = client.post("/luxcode-render-gateway/request", json={"plan": plan, "transport_type": "render_http_transport"})
+            assert real_block.json().get("ok") is False, real_block.json()
+            status = client.get("/debug/luxcode-render-readiness-status")
+            assert status.status_code == 200 and status.json().get("real_render_execution_enabled") is False, status.json()
+        finally:
+            shutil.rmtree(temp_root, ignore_errors=True)
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during readiness smoke: {path}"
+        for path in live_paths:
+            assert path.exists() is live_state[str(path)], f"live artifact changed during readiness smoke: {path}"
+        return "luxcode Render credential readiness broker verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -12228,6 +12389,7 @@ class SmokeRunner:
             ("luxcode_deployment_execution_local", self.check_luxcode_deployment_execution_local, None, "core"),
             ("luxcode_render_provider_adapter_local", self.check_luxcode_render_provider_adapter_local, None, "core"),
             ("luxcode_render_execution_gateway_local", self.check_luxcode_render_execution_gateway_local, None, "core"),
+            ("luxcode_render_credential_readiness_local", self.check_luxcode_render_credential_readiness_local, None, "core"),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local, None, "core"),
             ("luxcode_network_access_local", self.check_luxcode_network_access_local, None, "core"),
             ("luxcode_test_matrix_local", self.check_luxcode_test_matrix_local, None, "core"),
@@ -12438,6 +12600,7 @@ class SmokeRunner:
             ("luxcode_deployment_execution_local", self.check_luxcode_deployment_execution_local),
             ("luxcode_render_provider_adapter_local", self.check_luxcode_render_provider_adapter_local),
             ("luxcode_render_execution_gateway_local", self.check_luxcode_render_execution_gateway_local),
+            ("luxcode_render_credential_readiness_local", self.check_luxcode_render_credential_readiness_local),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local),
             ("luxcode_network_access_local", self.check_luxcode_network_access_local),
             ("luxcode_test_matrix_local", self.check_luxcode_test_matrix_local),

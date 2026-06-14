@@ -194,6 +194,62 @@ def sanitize_render_gateway_metadata(runtime: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def sanitize_render_readiness_metadata(package: Dict[str, Any], seal: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    safe_package = sanitize_task_payload(deepcopy(package or {}))
+    safe_seal = sanitize_task_payload(deepcopy(seal or {}))
+    if not isinstance(safe_package, dict):
+        safe_package = {}
+    if not isinstance(safe_seal, dict):
+        safe_seal = {}
+    for payload in (safe_package, safe_seal):
+        for key in [
+            "credential_value",
+            "token",
+            "api_key",
+            "password",
+            "authorization",
+            "raw_credential",
+            "raw_provider_request",
+            "raw_provider_response",
+            "secret_resolver_output",
+            "cookie",
+            "storage",
+            "dotenv",
+        ]:
+            payload.pop(key, None)
+    return {
+        "credential_reference_id": safe_package.get("credential_reference_summary", {}).get("reference_id"),
+        "credential_provider": safe_package.get("credential_reference_summary", {}).get("provider"),
+        "scope_names": safe_package.get("credential_scope_decision", {}).get("provided_scopes", []),
+        "expiration_metadata": safe_package.get("credential_expiration_decision", {}),
+        "verification_timestamp": safe_package.get("credential_reference_summary", {}).get("last_verified_time", ""),
+        "service_environment_binding": {
+            "service": safe_package.get("selected_service_id"),
+            "environment": safe_package.get("environment"),
+            "branch": safe_package.get("branch"),
+        },
+        "readiness_package_id": safe_package.get("readiness_package_id"),
+        "readiness_package_digest": safe_package.get("package_digest"),
+        "blocker_categories": [item.get("category") for item in safe_package.get("blocker_list", []) if isinstance(item, dict)],
+        "warning_categories": [item.get("category") for item in safe_package.get("warning_list", []) if isinstance(item, dict)],
+        "seal_id": safe_seal.get("seal_id", ""),
+        "seal_status": safe_seal.get("seal_status", "seal_not_issued"),
+        "seal_digest": safe_seal.get("seal_digest", ""),
+        "network_authority_summary": safe_package.get("network_authority_decision", {}),
+        "final_confirmation_state": safe_package.get("final_confirmation_state"),
+        "risk": safe_package.get("risk"),
+        "timestamps": {"package_created": safe_package.get("created_time"), "package_expires": safe_package.get("expires_at"), "seal_issued": safe_seal.get("issued_time")},
+        "resume_policy": "credential_revalidation_required; readiness_revalidation_required; seal_reissue_required; resume_requires_user_action",
+        "credential_resolved_on_restore": False,
+        "seal_created_on_restore": False,
+        "network_permission_opened_on_restore": False,
+        "execution_started_on_restore": False,
+        "safe_metadata_only": True,
+        "secrets_persisted": False,
+        "raw_provider_payload_persisted": False,
+    }
+
+
 def _safe_payload(task_state: Dict[str, Any], privacy_mode: bool = True) -> Dict[str, Any]:
     raw_encoded = json.dumps(task_state, sort_keys=True, separators=(",", ":"), ensure_ascii=True, default=lambda _item: "__unsupported__")
     if len(raw_encoded.encode("utf-8")) > PAYLOAD_SIZE_LIMIT:

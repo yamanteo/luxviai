@@ -1057,6 +1057,7 @@ def _public_runtime(runtime: Dict[str, Any]) -> Dict[str, Any]:
 def get_deployment_status() -> Dict[str, Any]:
     render_adapter_available = False
     render_gateway_available = False
+    render_readiness_broker_available = False
     try:
         from luxcode_render_provider_adapter import get_render_adapter_status
 
@@ -1069,6 +1070,12 @@ def get_deployment_status() -> Dict[str, Any]:
         render_gateway_available = bool(get_render_gateway_status().get("ok"))
     except Exception:
         render_gateway_available = False
+    try:
+        from luxcode_render_credential_readiness_broker import get_render_credential_broker_status
+
+        render_readiness_broker_available = bool(get_render_credential_broker_status().get("ok"))
+    except Exception:
+        render_readiness_broker_available = False
     return _safe_success(
         name="LuxCode Deployment Execution and URL Verification Core",
         status="ready",
@@ -1078,6 +1085,16 @@ def get_deployment_status() -> Dict[str, Any]:
         local_fixture_supported=True,
         render_adapter_available=render_adapter_available,
         render_gateway_available=render_gateway_available,
+        render_readiness_broker_available=render_readiness_broker_available,
+        credential_readiness="metadata_only_reference_broker",
+        network_readiness="external_network_disabled_until_authorized",
+        production_readiness_package_required=True,
+        readiness_seal_required=True,
+        production_ready_without_seal=False,
+        executable_without_seal=False,
+        readiness_blocker_count="computed_by_render_readiness_broker",
+        readiness_warning_count="computed_by_render_readiness_broker",
+        render_readiness_next_safe_action="Build and validate readiness package before real execution.",
         external_provider_execution_enabled=False,
         verified_url_delivery_required=True,
     )

@@ -1040,6 +1040,22 @@ from luxcode_render_execution_gateway import (
     poll_render_gateway,
     verify_render_gateway_url,
 )
+from luxcode_render_credential_readiness_broker import (
+    bind_render_final_confirmation,
+    build_render_readiness_package,
+    evaluate_network_authority,
+    get_render_credential_broker_registry,
+    get_render_credential_broker_schema,
+    get_render_credential_broker_status,
+    get_render_readiness_policy,
+    invalidate_render_readiness_seal,
+    issue_render_readiness_seal,
+    normalize_credential_reference,
+    summarize_render_readiness,
+    validate_credential_reference,
+    validate_render_readiness_package,
+    validate_render_readiness_seal,
+)
 from luxcode_local_network_access_intelligence import (
     build_access_urls,
     cancel_network_access_runtime,
@@ -2531,6 +2547,10 @@ class LuxCodeRenderGatewayRequestBuildRequest(BaseModel):
     branch_metadata: Dict[str, Any] = Field(default_factory=dict)
     access_mode: str = Field(default="controlled_access", max_length=80)
     fake_fixture: str = Field(default="success_web_service", max_length=80)
+    readiness_package: Dict[str, Any] = Field(default_factory=dict)
+    readiness_seal: Dict[str, Any] = Field(default_factory=dict)
+    production_readiness_required: bool = False
+    readiness_validation_time: str = Field(default="", max_length=80)
 
 
 class LuxCodeRenderGatewayExecuteRequest(BaseModel):
@@ -2542,6 +2562,58 @@ class LuxCodeRenderGatewayRuntimeRequest(BaseModel):
     task_id: str = Field(default="", max_length=120)
     reason: str = Field(default="user_requested", max_length=200)
     url: str = Field(default="", max_length=800)
+
+
+class LuxCodeRenderReadinessCredentialRequest(BaseModel):
+    credential_reference: Dict[str, Any] = Field(default_factory=dict)
+    selected_service_id: str = Field(default="", max_length=180)
+    environment: str = Field(default="preview", max_length=80)
+    provider: str = Field(default="render", max_length=80)
+    project_scope_digest: str = Field(default="", max_length=180)
+    branch: str = Field(default="", max_length=160)
+    deployment_type: str = Field(default="render_deployment", max_length=80)
+    now: str = Field(default="", max_length=80)
+
+
+class LuxCodeRenderReadinessNetworkRequest(BaseModel):
+    network_authority: Dict[str, Any] = Field(default_factory=dict)
+    task_id: str = Field(default="", max_length=120)
+    project_scope_digest: str = Field(default="", max_length=180)
+    now: str = Field(default="", max_length=80)
+
+
+class LuxCodeRenderReadinessPackageRequest(BaseModel):
+    plan: Dict[str, Any] = Field(default_factory=dict)
+    credential_reference: Dict[str, Any] = Field(default_factory=dict)
+    network_authority: Dict[str, Any] = Field(default_factory=dict)
+    task_id: str = Field(default="", max_length=120)
+    environment: str = Field(default="preview", max_length=80)
+    branch: str = Field(default="main", max_length=160)
+    commit_metadata: Dict[str, Any] = Field(default_factory=dict)
+    access_mode: str = Field(default="controlled_access", max_length=80)
+    deployment_intent: bool = False
+    final_confirmation_state: str = Field(default="confirmation_missing", max_length=80)
+    now: str = Field(default="", max_length=80)
+
+
+class LuxCodeRenderReadinessSealRequest(BaseModel):
+    readiness_package: Dict[str, Any] = Field(default_factory=dict)
+    requested_level: str = Field(default="dry_run", max_length=80)
+    now: str = Field(default="", max_length=80)
+
+
+class LuxCodeRenderReadinessValidateRequest(BaseModel):
+    readiness_package: Dict[str, Any] = Field(default_factory=dict)
+    readiness_seal: Dict[str, Any] = Field(default_factory=dict)
+    confirmation: Dict[str, Any] = Field(default_factory=dict)
+    now: str = Field(default="", max_length=80)
+
+
+class LuxCodeRenderReadinessInvalidateRequest(BaseModel):
+    readiness_seal: Dict[str, Any] = Field(default_factory=dict)
+    readiness_package: Dict[str, Any] = Field(default_factory=dict)
+    changed_fields: List[str] = Field(default_factory=list)
+    now: str = Field(default="", max_length=80)
 
 
 class LuxCodeNetworkAccessPlanRequest(BaseModel):
@@ -13165,6 +13237,89 @@ async def luxcode_render_gateway_cancel_endpoint(payload: LuxCodeRenderGatewayRu
 @app.get("/debug/luxcode-render-gateway-status")
 async def debug_luxcode_render_gateway_status_endpoint():
     return get_render_gateway_status()
+
+
+@app.get("/luxcode-render-readiness/schema")
+async def luxcode_render_readiness_schema_endpoint():
+    return get_render_credential_broker_schema()
+
+
+@app.get("/luxcode-render-readiness/registry")
+async def luxcode_render_readiness_registry_endpoint():
+    return get_render_credential_broker_registry()
+
+
+@app.get("/luxcode-render-readiness/policy")
+async def luxcode_render_readiness_policy_endpoint():
+    return get_render_readiness_policy()
+
+
+@app.post("/luxcode-render-readiness/credential")
+async def luxcode_render_readiness_credential_endpoint(payload: LuxCodeRenderReadinessCredentialRequest):
+    normalized = normalize_credential_reference(payload.credential_reference, now=payload.now)
+    if not normalized.get("ok"):
+        return normalized
+    return validate_credential_reference(
+        reference=payload.credential_reference,
+        selected_service_id=payload.selected_service_id,
+        environment=payload.environment,
+        provider=payload.provider,
+        project_scope_digest=payload.project_scope_digest,
+        branch=payload.branch,
+        deployment_type=payload.deployment_type,
+        now=payload.now,
+    )
+
+
+@app.post("/luxcode-render-readiness/network")
+async def luxcode_render_readiness_network_endpoint(payload: LuxCodeRenderReadinessNetworkRequest):
+    return evaluate_network_authority(
+        authority=payload.network_authority,
+        task_id=payload.task_id,
+        project_scope_digest=payload.project_scope_digest,
+        now=payload.now,
+    )
+
+
+@app.post("/luxcode-render-readiness/package")
+async def luxcode_render_readiness_package_endpoint(payload: LuxCodeRenderReadinessPackageRequest):
+    if (payload.plan or {}).get("provider") != "render":
+        return {"ok": False, "blocked": True, "reason": "immutable Render plan required", "render_api_used": False, "credential_value_read": False, "local_first": True}
+    return build_render_readiness_package(**payload.dict())
+
+
+@app.post("/luxcode-render-readiness/seal")
+async def luxcode_render_readiness_seal_endpoint(payload: LuxCodeRenderReadinessSealRequest):
+    return issue_render_readiness_seal(package=payload.readiness_package, requested_level=payload.requested_level, now=payload.now)
+
+
+@app.post("/luxcode-render-readiness/validate")
+async def luxcode_render_readiness_validate_endpoint(payload: LuxCodeRenderReadinessValidateRequest):
+    package_result = validate_render_readiness_package(payload.readiness_package, now=payload.now)
+    seal_result = validate_render_readiness_seal(payload.readiness_seal, payload.readiness_package, now=payload.now) if payload.readiness_seal else {"ok": True, "valid": False, "seal_status": "seal_not_issued"}
+    confirmation_result = bind_render_final_confirmation(payload.readiness_package, payload.confirmation, now=payload.now) if payload.confirmation else {"ok": True, "confirmation": {"confirmation_state": "confirmation_missing"}}
+    return {
+        "ok": bool(package_result.get("ok") and seal_result.get("ok") and confirmation_result.get("ok")),
+        "package": package_result,
+        "seal": seal_result,
+        "confirmation": confirmation_result,
+        "summary": summarize_render_readiness(payload.readiness_package, payload.readiness_seal).get("summary", {}),
+        "render_api_used": False,
+        "credential_value_read": False,
+        "local_first": True,
+    }
+
+
+@app.post("/luxcode-render-readiness/invalidate")
+async def luxcode_render_readiness_invalidate_endpoint(payload: LuxCodeRenderReadinessInvalidateRequest):
+    if not payload.readiness_seal.get("seal_id"):
+        return {"ok": False, "blocked": True, "reason": "owned readiness seal required", "render_api_used": False, "credential_value_read": False, "local_first": True}
+    return invalidate_render_readiness_seal(seal=payload.readiness_seal, package=payload.readiness_package, changed_fields=payload.changed_fields, now=payload.now)
+
+
+@app.get("/debug/luxcode-render-readiness-status")
+async def debug_luxcode_render_readiness_status_endpoint():
+    return get_render_credential_broker_status()
 
 
 @app.get("/luxcode/network-access/schema")

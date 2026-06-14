@@ -977,12 +977,19 @@ def get_safe_render_metadata(runtime: Dict[str, Any]) -> Dict[str, Any]:
 
 def get_render_adapter_status() -> Dict[str, Any]:
     render_gateway_available = False
+    render_readiness_broker_available = False
     try:
         from luxcode_render_execution_gateway import get_render_gateway_status
 
         render_gateway_available = bool(get_render_gateway_status().get("ok"))
     except Exception:
         render_gateway_available = False
+    try:
+        from luxcode_render_credential_readiness_broker import get_render_credential_broker_status
+
+        render_readiness_broker_available = bool(get_render_credential_broker_status().get("ok"))
+    except Exception:
+        render_readiness_broker_available = False
     return _safe_success(
         name="LuxCode Render Provider Adapter",
         status="ready",
@@ -991,6 +998,7 @@ def get_render_adapter_status() -> Dict[str, Any]:
         real_render_execution_enabled=False,
         fake_render_provider_supported=True,
         render_execution_gateway_available=render_gateway_available,
+        render_credential_readiness_broker_available=render_readiness_broker_available,
         service_types=sorted(SERVICE_TYPES),
     )
 
