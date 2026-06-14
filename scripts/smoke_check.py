@@ -12046,6 +12046,147 @@ class SmokeRunner:
             assert path.exists() is live_state[str(path)], f"live artifact state changed during Render smoke: {path}"
         return "luxcode Render provider adapter fake deployment verified"
 
+    def check_luxcode_render_execution_gateway_local(self) -> str:
+        """Verify Render gateway authority, structured request, fake execution, and real transport blocks."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        import tempfile
+        import shutil
+        from pathlib import Path
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_render_execution_gateway.py",
+            ROOT / "luxcode_render_provider_adapter.py",
+            ROOT / "luxcode_deployment_execution_url_verification.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        live_paths = [
+            ROOT / ".luxcode_render_gateway",
+            ROOT / ".luxcode_render",
+            ROOT / ".luxcode_deployment",
+            ROOT / ".luxcode_runtime",
+            ROOT / ".luxcode_live_test",
+            ROOT / ".luxcode_network_access",
+            ROOT / ".luxcode_browser_launch",
+            ROOT / ".luxcode_snapshots",
+            ROOT / "luxcode_tasks.db",
+            ROOT / "luxcode_backups",
+        ]
+        live_state = {str(path): path.exists() for path in live_paths}
+        temp_root = Path(tempfile.mkdtemp(prefix="luxrender_gateway_smoke_"))
+        try:
+            (temp_root / "render.yaml").write_text(
+                "\n".join(
+                    [
+                        "services:",
+                        "  - type: web",
+                        "    name: lux-gateway-smoke",
+                        "    runtime: python",
+                        "    buildCommand: python -m py_compile app.py",
+                        "    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT",
+                        "    healthCheckPath: /health",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (temp_root / "app.py").write_text("from fastapi import FastAPI\napp=FastAPI()\n@app.get('/health')\ndef h(): return {'ok': True}\n", encoding="utf-8")
+            schema = client.get("/luxcode-render-gateway/schema")
+            assert schema.status_code == 200, f"schema returned {schema.status_code}"
+            assert schema.json().get("schema", {}).get("default_transport") == "disabled_transport", schema.json()
+            registry = client.get("/luxcode-render-gateway/registry")
+            assert registry.status_code == 200, f"registry returned {registry.status_code}"
+            assert registry.json().get("transports", {}).get("render_http_transport", {}).get("runtime_enabled") is False, registry.json()
+            policy = client.get("/luxcode-render-gateway/policy")
+            assert policy.status_code == 200, f"policy returned {policy.status_code}"
+            assert policy.json().get("policy", {}).get("feature_flags", {}).get("real_render_execution_enabled") is False, policy.json()
+            plan_response = client.post(
+                "/luxcode-render/plan",
+                json={
+                    "task_id": "gateway-smoke",
+                    "repository_root": str(temp_root),
+                    "deployment_intent": True,
+                    "final_confirmation": True,
+                    "credential_reference": {"provider": "render", "reference_id": "fixture-render-reference", "availability": "reference_available", "environment": "fixture"},
+                },
+            )
+            assert plan_response.status_code == 200, f"plan returned {plan_response.status_code}"
+            plan = plan_response.json().get("plan", {})
+            blocked_authority = client.post(
+                "/luxcode-render-gateway/authority",
+                json={"plan": plan, "expected_plan_digest": plan.get("plan_digest"), "transport_type": "disabled_transport", "deployment_intent": True, "final_confirmation": True},
+            )
+            assert blocked_authority.status_code == 200, f"authority returned {blocked_authority.status_code}"
+            assert blocked_authority.json().get("authority", {}).get("allowed") is False, blocked_authority.json()
+            authority = client.post(
+                "/luxcode-render-gateway/authority",
+                json={
+                    "plan": plan,
+                    "expected_plan_digest": plan.get("plan_digest"),
+                    "task_id": "gateway-smoke",
+                    "selected_service_id": plan.get("service_candidate_id"),
+                    "transport_type": "fake_render_transport",
+                    "deployment_intent": True,
+                    "final_confirmation": True,
+                    "credential_reference": {"provider": "render", "reference_id": "fixture-render-reference", "availability": "reference_available", "environment": "fixture"},
+                },
+            )
+            assert authority.json().get("authority", {}).get("allowed") is True, authority.json()
+            request_response = client.post(
+                "/luxcode-render-gateway/request",
+                json={
+                    "plan": plan,
+                    "expected_plan_digest": plan.get("plan_digest"),
+                    "task_id": "gateway-smoke",
+                    "selected_service_id": plan.get("service_candidate_id"),
+                    "transport_type": "fake_render_transport",
+                    "deployment_intent": True,
+                    "final_confirmation": True,
+                    "credential_reference": {"provider": "render", "reference_id": "fixture-render-reference", "availability": "reference_available", "environment": "fixture"},
+                    "permission_decision": authority.json().get("authority", {}),
+                },
+            )
+            assert request_response.status_code == 200, f"request returned {request_response.status_code}"
+            request = request_response.json().get("request", {})
+            assert request.get("raw_http_body") is None and request.get("raw_cli_command") is None, request
+            execute = client.post("/luxcode-render-gateway/execute", json={"request": request})
+            assert execute.status_code == 200, f"execute returned {execute.status_code}"
+            runtime = execute.json().get("runtime", {})
+            assert runtime.get("state") == "fake_render_gateway_verified", runtime
+            assert runtime.get("url_metadata", {}).get("trusted") is True, runtime
+            assert runtime.get("health_state") == "deployment_health_verified", runtime
+            assert runtime.get("browser_state") == "deployment_scenario_verified", runtime
+            assert runtime.get("real_cloud_deployment") is False, runtime
+            poll = client.post("/luxcode-render-gateway/poll", json={"runtime_id": runtime.get("gateway_runtime_id")})
+            assert poll.status_code == 200 and poll.json().get("ok") is True, poll.json()
+            verify = client.post("/luxcode-render-gateway/verify", json={"runtime_id": runtime.get("gateway_runtime_id")})
+            assert verify.status_code == 200 and verify.json().get("fully_verified") is True, verify.json()
+            bad_verify = client.post("/luxcode-render-gateway/verify", json={"runtime_id": runtime.get("gateway_runtime_id"), "url": "https://example.com"})
+            assert bad_verify.json().get("ok") is False, bad_verify.json()
+            real_block = client.post("/luxcode-render-gateway/request", json={"plan": plan, "transport_type": "render_http_transport"})
+            assert real_block.json().get("ok") is False, real_block.json()
+            cancel = client.post("/luxcode-render-gateway/cancel", json={"runtime_id": runtime.get("gateway_runtime_id"), "task_id": "gateway-smoke", "reason": "terminal smoke"})
+            assert cancel.status_code == 200 and cancel.json().get("ok") is False, cancel.json()
+            status = client.get("/debug/luxcode-render-gateway-status")
+            assert status.status_code == 200, f"status returned {status.status_code}"
+            assert status.json().get("real_render_execution_enabled") is False, status.json()
+        finally:
+            shutil.rmtree(temp_root, ignore_errors=True)
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during Render gateway smoke: {path}"
+        for path in live_paths:
+            assert path.exists() is live_state[str(path)], f"live artifact state changed during Render gateway smoke: {path}"
+        return "luxcode Render execution gateway fake transport verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -12086,6 +12227,7 @@ class SmokeRunner:
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local, None, "core"),
             ("luxcode_deployment_execution_local", self.check_luxcode_deployment_execution_local, None, "core"),
             ("luxcode_render_provider_adapter_local", self.check_luxcode_render_provider_adapter_local, None, "core"),
+            ("luxcode_render_execution_gateway_local", self.check_luxcode_render_execution_gateway_local, None, "core"),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local, None, "core"),
             ("luxcode_network_access_local", self.check_luxcode_network_access_local, None, "core"),
             ("luxcode_test_matrix_local", self.check_luxcode_test_matrix_local, None, "core"),
@@ -12295,6 +12437,7 @@ class SmokeRunner:
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local),
             ("luxcode_deployment_execution_local", self.check_luxcode_deployment_execution_local),
             ("luxcode_render_provider_adapter_local", self.check_luxcode_render_provider_adapter_local),
+            ("luxcode_render_execution_gateway_local", self.check_luxcode_render_execution_gateway_local),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local),
             ("luxcode_network_access_local", self.check_luxcode_network_access_local),
             ("luxcode_test_matrix_local", self.check_luxcode_test_matrix_local),

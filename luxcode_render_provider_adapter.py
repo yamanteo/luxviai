@@ -976,6 +976,13 @@ def get_safe_render_metadata(runtime: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def get_render_adapter_status() -> Dict[str, Any]:
+    render_gateway_available = False
+    try:
+        from luxcode_render_execution_gateway import get_render_gateway_status
+
+        render_gateway_available = bool(get_render_gateway_status().get("ok"))
+    except Exception:
+        render_gateway_available = False
     return _safe_success(
         name="LuxCode Render Provider Adapter",
         status="ready",
@@ -983,6 +990,7 @@ def get_render_adapter_status() -> Dict[str, Any]:
         active_runtime_count=sum(1 for item in _RUNTIMES.values() if item.get("cleanup_state") != "render_cleanup_completed"),
         real_render_execution_enabled=False,
         fake_render_provider_supported=True,
+        render_execution_gateway_available=render_gateway_available,
         service_types=sorted(SERVICE_TYPES),
     )
 

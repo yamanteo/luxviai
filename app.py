@@ -1027,6 +1027,19 @@ from luxcode_render_provider_adapter import (
     get_render_adapter_status,
     parse_render_configuration,
 )
+from luxcode_render_execution_gateway import (
+    build_render_execution_request,
+    cancel_render_gateway,
+    collect_render_gateway_result,
+    evaluate_render_execution_authority,
+    execute_render_gateway,
+    get_render_gateway_policy,
+    get_render_gateway_registry,
+    get_render_gateway_schema,
+    get_render_gateway_status,
+    poll_render_gateway,
+    verify_render_gateway_url,
+)
 from luxcode_local_network_access_intelligence import (
     build_access_urls,
     cancel_network_access_runtime,
@@ -2488,6 +2501,47 @@ class LuxCodeRenderExecuteRequest(BaseModel):
 class LuxCodeRenderCancelRequest(BaseModel):
     runtime_id: str = Field(default="", max_length=160)
     reason: str = Field(default="user_requested", max_length=200)
+
+
+class LuxCodeRenderGatewayAuthorityRequest(BaseModel):
+    plan: Dict[str, Any] = Field(default_factory=dict)
+    expected_plan_digest: str = Field(default="", max_length=180)
+    task_id: str = Field(default="", max_length=120)
+    selected_service_id: str = Field(default="", max_length=180)
+    access_mode: str = Field(default="controlled_access", max_length=80)
+    deployment_intent: bool = False
+    credential_reference: Dict[str, Any] = Field(default_factory=dict)
+    transport_type: str = Field(default="disabled_transport", max_length=80)
+    final_confirmation: bool = False
+    rollback_strategy: Dict[str, Any] = Field(default_factory=dict)
+    production_deployment: bool = False
+
+
+class LuxCodeRenderGatewayRequestBuildRequest(BaseModel):
+    plan: Dict[str, Any] = Field(default_factory=dict)
+    expected_plan_digest: str = Field(default="", max_length=180)
+    task_id: str = Field(default="", max_length=120)
+    selected_service_id: str = Field(default="", max_length=180)
+    transport_type: str = Field(default="disabled_transport", max_length=80)
+    credential_reference: Dict[str, Any] = Field(default_factory=dict)
+    deployment_intent: bool = False
+    permission_decision: Dict[str, Any] = Field(default_factory=dict)
+    final_confirmation: bool = False
+    commit_metadata: Dict[str, Any] = Field(default_factory=dict)
+    branch_metadata: Dict[str, Any] = Field(default_factory=dict)
+    access_mode: str = Field(default="controlled_access", max_length=80)
+    fake_fixture: str = Field(default="success_web_service", max_length=80)
+
+
+class LuxCodeRenderGatewayExecuteRequest(BaseModel):
+    request: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LuxCodeRenderGatewayRuntimeRequest(BaseModel):
+    runtime_id: str = Field(default="", max_length=180)
+    task_id: str = Field(default="", max_length=120)
+    reason: str = Field(default="user_requested", max_length=200)
+    url: str = Field(default="", max_length=800)
 
 
 class LuxCodeNetworkAccessPlanRequest(BaseModel):
@@ -13047,6 +13101,70 @@ async def luxcode_render_cancel_endpoint(payload: LuxCodeRenderCancelRequest):
 @app.get("/debug/luxcode-render-status")
 async def debug_luxcode_render_status_endpoint():
     return get_render_adapter_status()
+
+
+@app.get("/luxcode-render-gateway/schema")
+async def luxcode_render_gateway_schema_endpoint():
+    return get_render_gateway_schema()
+
+
+@app.get("/luxcode-render-gateway/registry")
+async def luxcode_render_gateway_registry_endpoint():
+    return get_render_gateway_registry()
+
+
+@app.get("/luxcode-render-gateway/policy")
+async def luxcode_render_gateway_policy_endpoint():
+    return get_render_gateway_policy()
+
+
+@app.post("/luxcode-render-gateway/authority")
+async def luxcode_render_gateway_authority_endpoint(payload: LuxCodeRenderGatewayAuthorityRequest):
+    return evaluate_render_execution_authority(**payload.dict())
+
+
+@app.post("/luxcode-render-gateway/request")
+async def luxcode_render_gateway_request_endpoint(payload: LuxCodeRenderGatewayRequestBuildRequest):
+    plan = payload.plan or {}
+    if plan.get("provider") != "render":
+        return {"ok": False, "blocked": True, "reason": "immutable Render plan required", "render_api_used": False, "render_cli_used": False, "local_first": True}
+    if payload.transport_type in {"render_http_transport", "render_cli_transport"}:
+        return {"ok": False, "blocked": True, "reason": "real Render transport cannot be enabled from request body", "render_api_used": False, "render_cli_used": False, "local_first": True}
+    return build_render_execution_request(**payload.dict())
+
+
+@app.post("/luxcode-render-gateway/execute")
+async def luxcode_render_gateway_execute_endpoint(payload: LuxCodeRenderGatewayExecuteRequest):
+    request = payload.request or {}
+    if request.get("transport_type") in {"render_http_transport", "render_cli_transport"}:
+        return {"ok": False, "blocked": True, "reason": "real Render execution is blocked in MVP", "render_api_used": False, "render_cli_used": False, "local_first": True}
+    return execute_render_gateway(request)
+
+
+@app.post("/luxcode-render-gateway/poll")
+async def luxcode_render_gateway_poll_endpoint(payload: LuxCodeRenderGatewayRuntimeRequest):
+    if not payload.runtime_id:
+        return {"ok": False, "blocked": True, "reason": "task-owned gateway runtime required", "render_api_used": False, "render_cli_used": False, "local_first": True}
+    return poll_render_gateway(runtime_id=payload.runtime_id)
+
+
+@app.post("/luxcode-render-gateway/verify")
+async def luxcode_render_gateway_verify_endpoint(payload: LuxCodeRenderGatewayRuntimeRequest):
+    if not payload.runtime_id:
+        return {"ok": False, "blocked": True, "reason": "runtime-derived URL required", "render_api_used": False, "render_cli_used": False, "local_first": True}
+    return verify_render_gateway_url(runtime_id=payload.runtime_id, url=payload.url)
+
+
+@app.post("/luxcode-render-gateway/cancel")
+async def luxcode_render_gateway_cancel_endpoint(payload: LuxCodeRenderGatewayRuntimeRequest):
+    if not payload.runtime_id:
+        return {"ok": False, "blocked": True, "reason": "task-owned gateway runtime required", "render_api_used": False, "render_cli_used": False, "local_first": True}
+    return cancel_render_gateway(runtime_id=payload.runtime_id, task_id=payload.task_id, reason=payload.reason)
+
+
+@app.get("/debug/luxcode-render-gateway-status")
+async def debug_luxcode_render_gateway_status_endpoint():
+    return get_render_gateway_status()
 
 
 @app.get("/luxcode/network-access/schema")

@@ -1056,12 +1056,19 @@ def _public_runtime(runtime: Dict[str, Any]) -> Dict[str, Any]:
 
 def get_deployment_status() -> Dict[str, Any]:
     render_adapter_available = False
+    render_gateway_available = False
     try:
         from luxcode_render_provider_adapter import get_render_adapter_status
 
         render_adapter_available = bool(get_render_adapter_status().get("ok"))
     except Exception:
         render_adapter_available = False
+    try:
+        from luxcode_render_execution_gateway import get_render_gateway_status
+
+        render_gateway_available = bool(get_render_gateway_status().get("ok"))
+    except Exception:
+        render_gateway_available = False
     return _safe_success(
         name="LuxCode Deployment Execution and URL Verification Core",
         status="ready",
@@ -1070,6 +1077,7 @@ def get_deployment_status() -> Dict[str, Any]:
         providers=sorted(PROVIDERS),
         local_fixture_supported=True,
         render_adapter_available=render_adapter_available,
+        render_gateway_available=render_gateway_available,
         external_provider_execution_enabled=False,
         verified_url_delivery_required=True,
     )

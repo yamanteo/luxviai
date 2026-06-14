@@ -971,6 +971,18 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode-render/cancel", "POST", "render_provider", "cancel owned fake Render runtime"),
         _endpoint("/debug/luxcode-render-status", "GET", "render_provider", "Render adapter status"),
     ],
+    "luxcode_render_execution_gateway": [
+        _endpoint("/luxcode-render-gateway/schema", "GET", "render_gateway", "Render gateway schema"),
+        _endpoint("/luxcode-render-gateway/registry", "GET", "render_gateway", "Render gateway transport registry"),
+        _endpoint("/luxcode-render-gateway/policy", "GET", "render_gateway", "Render gateway feature flag policy"),
+        _endpoint("/luxcode-render-gateway/authority", "POST", "render_gateway", "read-only Render execution authority evaluation"),
+        _endpoint("/luxcode-render-gateway/request", "POST", "render_gateway", "structured immutable Render execution request"),
+        _endpoint("/luxcode-render-gateway/execute", "POST", "render_gateway", "fake Render gateway execution with real transports blocked"),
+        _endpoint("/luxcode-render-gateway/poll", "POST", "render_gateway", "poll owned Render gateway runtime"),
+        _endpoint("/luxcode-render-gateway/verify", "POST", "render_gateway", "verify runtime-derived Render gateway URL"),
+        _endpoint("/luxcode-render-gateway/cancel", "POST", "render_gateway", "cancel owned Render gateway runtime"),
+        _endpoint("/debug/luxcode-render-gateway-status", "GET", "render_gateway", "Render gateway status"),
+    ],
     "luxcode_network_access": [
         _endpoint("/luxcode/network-access/schema", "GET", "network_access", "local network access intelligence schema"),
         _endpoint("/luxcode/network-access/registry", "GET", "network_access", "local interface and blocked action registry"),

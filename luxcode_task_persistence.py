@@ -157,6 +157,43 @@ def sanitize_task_payload(value: Any, key: str = "root", depth: int = 0) -> Any:
     return value
 
 
+def sanitize_render_gateway_metadata(runtime: Dict[str, Any]) -> Dict[str, Any]:
+    payload = sanitize_task_payload(deepcopy(runtime or {}))
+    if not isinstance(payload, dict):
+        payload = {}
+    blocked_keys = [
+        "raw_provider_request",
+        "raw_provider_response",
+        "raw_http_body",
+        "raw_cli_command",
+        "authorization_header",
+        "credential_value",
+        "token",
+        "cookie",
+        "storage",
+        "dotenv",
+    ]
+    for key in blocked_keys:
+        payload.pop(key, None)
+    url = str(payload.get("url") or payload.get("url_metadata", {}).get("url") or "")
+    if "?" in url:
+        if "url_metadata" in payload and isinstance(payload["url_metadata"], dict):
+            payload["url_metadata"]["url"] = url.split("?", 1)[0]
+        elif "url" in payload:
+            payload["url"] = url.split("?", 1)[0]
+    return {
+        "gateway_metadata": payload,
+        "safe_metadata_only": True,
+        "secrets_persisted": False,
+        "raw_provider_payload_persisted": False,
+        "restore_state": "gateway_resume_requires_user_action",
+        "restore_auto_execute": False,
+        "restore_auto_poll": False,
+        "restore_auto_verify": False,
+        "restore_auto_rollback": False,
+    }
+
+
 def _safe_payload(task_state: Dict[str, Any], privacy_mode: bool = True) -> Dict[str, Any]:
     raw_encoded = json.dumps(task_state, sort_keys=True, separators=(",", ":"), ensure_ascii=True, default=lambda _item: "__unsupported__")
     if len(raw_encoded.encode("utf-8")) > PAYLOAD_SIZE_LIMIT:

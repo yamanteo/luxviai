@@ -71,6 +71,12 @@ from luxcode_render_provider_adapter import (
     execute_render_dry_run,
     get_safe_render_metadata,
 )
+from luxcode_render_execution_gateway import (
+    build_render_execution_request,
+    evaluate_render_execution_authority,
+    execute_render_gateway,
+    get_safe_render_gateway_metadata,
+)
 
 
 TASK_STATES = {
@@ -113,6 +119,10 @@ TASK_STATES = {
     "deployment_blocked",
     "deployment_review",
     "render_planned",
+    "render_gateway_planned",
+    "render_gateway_running",
+    "render_gateway_verified",
+    "render_gateway_blocked",
     "render_dry_run_completed",
     "render_blocked",
     "awaiting_scope_permission",
@@ -1369,6 +1379,95 @@ def execute_luxcode_task_render_dry_run(task_id: str, fixture: str = "success") 
     task["render_rollback_state"] = runtime.get("rollback_state", "")
     _touch(task, "render_dry_run_completed" if result.get("ok") else "render_blocked")
     return _persist_and_summarize(task, event_type="render_dry_run")
+
+
+def plan_luxcode_task_render_gateway(
+    task_id: str,
+    expected_plan_digest: str = "",
+    selected_service_id: str = "",
+    transport_type: str = "disabled_transport",
+    credential_reference: Optional[Dict[str, Any]] = None,
+    final_confirmation: bool = False,
+    fake_fixture: str = "success_web_service",
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    plan = task.get("render_plan", {})
+    if task.get("restored_from_persistence"):
+        task["render_gateway_state"] = "render_gateway_blocked"
+        task["render_gateway_next_safe_action"] = "Restored tasks require user action before gateway execution."
+        return _persist_and_summarize(task, event_type="render_gateway_restore_blocked")
+    authority = evaluate_render_execution_authority(
+        plan=plan,
+        expected_plan_digest=expected_plan_digest or plan.get("plan_digest", ""),
+        task_id=task_id,
+        selected_service_id=selected_service_id or plan.get("service_candidate_id", ""),
+        access_mode=task.get("permission_profile", {}).get("access_mode", "controlled_access"),
+        deployment_intent=bool(task.get("render_intent") or plan.get("deployment_intent")),
+        credential_reference=credential_reference or plan.get("credential_reference", {}),
+        transport_type=transport_type,
+        final_confirmation=final_confirmation,
+    )
+    request = build_render_execution_request(
+        plan=plan,
+        expected_plan_digest=expected_plan_digest or plan.get("plan_digest", ""),
+        task_id=task_id,
+        selected_service_id=selected_service_id or plan.get("service_candidate_id", ""),
+        transport_type=transport_type,
+        credential_reference=credential_reference or plan.get("credential_reference", {}),
+        deployment_intent=bool(task.get("render_intent") or plan.get("deployment_intent")),
+        permission_decision=authority.get("authority", {}),
+        final_confirmation=final_confirmation,
+        access_mode=task.get("permission_profile", {}).get("access_mode", "controlled_access"),
+        fake_fixture=fake_fixture,
+    )
+    task["render_gateway_authority_state"] = authority.get("authority", {}).get("authority_state")
+    task["render_gateway_transport_selection"] = transport_type
+    task["render_gateway_credential_reference_state"] = authority.get("authority", {}).get("credential_reference_state", {}).get("availability")
+    task["render_gateway_network_permission_state"] = authority.get("authority", {}).get("external_network_policy")
+    task["render_gateway_production_enablement_state"] = "disabled_by_policy"
+    task["render_gateway_final_confirmation_state"] = "confirmed" if final_confirmation else "required"
+    task["render_gateway_request"] = request.get("request", request)
+    task["render_gateway_deployment_request_state"] = "created" if request.get("ok") else "blocked"
+    task["render_gateway_state"] = "render_gateway_planned" if request.get("ok") else "render_gateway_blocked"
+    task["render_gateway_next_safe_action"] = authority.get("authority", {}).get("next_safe_action")
+    _touch(task, "render_gateway_planned" if request.get("ok") else "render_gateway_blocked")
+    return _persist_and_summarize(task, event_type="render_gateway_plan")
+
+
+def execute_luxcode_task_render_gateway(task_id: str) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    if task.get("restored_from_persistence"):
+        task["render_gateway_state"] = "render_gateway_blocked"
+        task["render_gateway_next_safe_action"] = "Restore never auto-executes, polls, verifies, or rolls back."
+        return _persist_and_summarize(task, event_type="render_gateway_restore_execute_blocked")
+    if task.get("render_gateway_state") in {"render_gateway_verified", "render_gateway_running"}:
+        task["render_gateway_next_safe_action"] = "Duplicate gateway execution blocked for completed or active runtime."
+        return _persist_and_summarize(task, event_type="render_gateway_duplicate_blocked")
+    request = task.get("render_gateway_request", {})
+    plan = task.get("render_plan", {})
+    if request.get("render_plan_digest") != plan.get("plan_digest"):
+        task["render_gateway_state"] = "render_gateway_blocked"
+        task["render_gateway_next_safe_action"] = "Plan digest mismatch blocks execution."
+        return _persist_and_summarize(task, event_type="render_gateway_digest_blocked")
+    task["render_gateway_state"] = "render_gateway_running"
+    task["render_gateway_polling_state"] = "bounded_polling_ready"
+    result = execute_render_gateway(request)
+    runtime = result.get("runtime", result)
+    task["render_gateway_result"] = get_safe_render_gateway_metadata(runtime) if result.get("runtime") else runtime
+    task["render_gateway_runtime_id"] = runtime.get("gateway_runtime_id", "")
+    task["render_gateway_provider_lifecycle_state"] = runtime.get("state", "")
+    task["render_gateway_url_trust_state"] = runtime.get("url_metadata", {}).get("trusted")
+    task["render_gateway_health_state"] = runtime.get("health_state", "")
+    task["render_gateway_browser_scenario_state"] = runtime.get("browser_state", "")
+    task["render_gateway_rollback_state"] = "recommendation_only_real_rollback_disabled"
+    task["render_gateway_cleanup_state"] = runtime.get("cleanup_state", "")
+    task["render_gateway_next_safe_action"] = "Deliver only verified fake result; real Render deployment remains blocked."
+    _touch(task, "render_gateway_verified" if result.get("ok") and runtime.get("state") == "fake_render_gateway_verified" else "render_gateway_blocked")
+    return _persist_and_summarize(task, event_type="render_gateway_execute")
 
 
 def plan_luxcode_task_network_access(
