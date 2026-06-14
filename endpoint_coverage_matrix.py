@@ -884,6 +884,18 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/lux-verification/recovery-preview", "POST", "verification_recovery", "recovery decision preview"),
         _endpoint("/debug/lux-verification-status", "GET", "verification_recovery", "verification recovery status"),
     ],
+    "luxcode_zero_cost_execution_router": [
+        _endpoint("/luxcode-zero-cost-router/schema", "GET", "zero_cost_router", "zero-cost execution router schema"),
+        _endpoint("/luxcode-zero-cost-router/registry", "GET", "zero_cost_router", "zero-cost execution tier registry"),
+        _endpoint("/luxcode-zero-cost-router/policy", "GET", "zero_cost_router", "zero-cost router policy"),
+        _endpoint("/luxcode-zero-cost-router/classify", "POST", "zero_cost_router", "zero-cost task classification preview"),
+        _endpoint("/luxcode-zero-cost-router/score", "POST", "zero_cost_router", "zero-cost task scoring preview"),
+        _endpoint("/luxcode-zero-cost-router/capability-match", "POST", "zero_cost_router", "zero-cost capability-to-engine matching"),
+        _endpoint("/luxcode-zero-cost-router/availability", "POST", "zero_cost_router", "zero-cost engine availability preview"),
+        _endpoint("/luxcode-zero-cost-router/route", "POST", "zero_cost_router", "zero-cost task routing decision"),
+        _endpoint("/luxcode-zero-cost-router/validate-decision", "POST", "zero_cost_router", "zero-cost route validation"),
+        _endpoint("/debug/luxcode-zero-cost-router-status", "GET", "zero_cost_router", "zero-cost router status"),
+    ],
     "luxcode_task_orchestrator": [
         _endpoint("/luxcode-task/schema", "GET", "task_orchestrator", "luxcode task orchestrator schema"),
         _endpoint("/luxcode-task/create", "POST", "task_orchestrator", "create in-memory luxcode task"),

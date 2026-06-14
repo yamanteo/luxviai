@@ -42,6 +42,15 @@ from luxcode_terminal_process_runtime import (
     get_safe_runtime_metadata,
     plan_terminal_action,
 )
+from luxcode_zero_cost_execution_router import (
+    classify_zero_cost_task,
+    capability_match_zero_cost_engine,
+    evaluate_zero_cost_availability,
+    get_zero_cost_router_policy,
+    route_zero_cost_task,
+    score_zero_cost_task,
+    validate_zero_cost_route_decision,
+)
 from luxcode_live_app_interaction_testing import (
     cancel_live_test_runtime,
     execute_live_test,
@@ -148,6 +157,28 @@ SAFE_INVARIANTS = {
     "local_first": True,
 }
 DEFAULT_FORBIDDEN_FILES = [".env", "static/index.html"]
+ZERO_COST_ROUTING_REQUIRED_KEYS = {
+    "router_policy_version",
+    "policy_version",
+    "task_class",
+    "secondary_task_classes",
+    "difficulty_score",
+    "risk_level",
+    "required_capabilities",
+    "required_engine_plan",
+    "fallback_chain",
+    "skipped_engines",
+    "selected_tier",
+    "selected_engine",
+    "route_decision_digest",
+    "routing_state",
+    "routing_state_reason",
+    "routing_updated_at",
+    "paid_escalation_required",
+    "paid_escalation_allowed",
+    "recommended_paid_engine",
+    "engine_health_snapshot",
+}
 
 _TASKS: Dict[str, Dict[str, Any]] = {}
 _PERSISTENCE_CONFIG: Dict[str, Any] = {"mode": "disabled", "storage_root": "", "enabled": False}
@@ -214,6 +245,134 @@ def _redact(value: Any) -> Any:
         if ".env" in value or len(value) > 2000:
             return value[:2000].replace(".env", "[redacted-env]")
     return value
+
+
+def _normalize_list(values: Any) -> List[str]:
+    if not values:
+        return []
+    if isinstance(values, (list, tuple, set)):
+        return [str(item).strip() for item in values if str(item).strip()]
+    return [str(values).strip()] if str(values).strip() else []
+
+
+def _build_zero_cost_route_metadata(task: Dict[str, Any]) -> Dict[str, Any]:
+    task_id = str(task.get("task_id") or "")
+    title = str(task.get("original_request") or "")
+    files = _normalize_list(task.get("selected_files", []))
+    user_requires_free_only = bool(task.get("user_requires_free_only", True))
+    selected_capabilities = _normalize_list(task.get("selected_capabilities", []))
+    classification = classify_zero_cost_task(
+        task_id=task_id,
+        title=title,
+        description=title,
+        requested_capabilities=selected_capabilities,
+        selected_files=files,
+        risk_hint="low",
+        user_requires_free_only=user_requires_free_only,
+        prior_failures=0,
+        retry_count=0,
+    )
+    task_class = str(classification.get("task_class") or "unknown")
+    scored = score_zero_cost_task(
+        task_id=task_id,
+        task_class=task_class,
+        title=title,
+        description=title,
+        required_capabilities=selected_capabilities or classification.get("required_capabilities", []),
+        selected_files=files,
+        risk_level=classification.get("risk_level", "low"),
+        failed_attempts=0,
+        unknown_root_causes=0,
+        user_rejections=0,
+    )
+    matched = capability_match_zero_cost_engine(
+        task_id=task_id,
+        task_class=task_class,
+        required_capabilities=selected_capabilities or scored.get("required_capabilities", []),
+        forbidden_capabilities=classification.get("forbidden_capabilities", []),
+        risk_level=classification.get("risk_level") or scored.get("risk_level") or "low",
+        requested_tiers=_normalize_list(classification.get("selected_tier_ids", [])),
+        user_requires_free_only=user_requires_free_only,
+    )
+    policy = get_zero_cost_router_policy()
+    availability = evaluate_zero_cost_availability(
+        task_id=task_id,
+        engine_health_overrides=_sanitize_route_engine_states(matched.get("matched_tiers", [])),
+        user_requires_network=bool(task.get("network_access_needed", False)),
+        policy=policy,
+    )
+    route_decision = route_zero_cost_task(
+        task_id=task_id,
+        title=title,
+        description=title,
+        task_class=task_class,
+        required_capabilities=_normalize_list(scored.get("required_capabilities", [])),
+        forbidden_capabilities=classification.get("forbidden_capabilities", []),
+        risk_level=classification.get("risk_level") or scored.get("risk_level") or "low",
+        selected_files=files,
+        difficulty_score=scored.get("difficulty_score", 5),
+        failure_history={},
+        availability=availability,
+        policy=policy,
+        resource_pressure=False,
+        user_requires_free_only=user_requires_free_only,
+        previous_attempts=0,
+        user_rejection_count=0,
+        direct_user_constraints={},
+    )
+    validation = validate_zero_cost_route_decision(task_id, route_decision, policy=policy)
+    route_result = _redact(route_decision)
+    safe_policy = route_result.get("policy_flags", {}) if isinstance(route_result.get("policy_flags"), dict) else {}
+    required_capabilities = _normalize_list(route_result.get("required_capabilities", []))
+    if not required_capabilities:
+        required_capabilities = _normalize_list(scored.get("required_capabilities", []))
+    return {
+        "router_policy_version": str(classification.get("policy_version") or route_result.get("policy_version", "")),
+        "task_class": task_class,
+        "secondary_task_classes": _normalize_list(classification.get("secondary_classes", [])),
+        "difficulty_score": int(scored.get("difficulty_score", 0)),
+        "risk_level": str(scored.get("risk_level") or classification.get("risk_level") or "low"),
+        "required_capabilities": required_capabilities,
+        "required_engine_plan": _normalize_list(route_result.get("required_engine_plan", [])),
+        "fallback_chain": _normalize_list(route_result.get("fallback_chain", [])),
+        "skipped_engines": _normalize_list(route_result.get("skipped_engines", [])),
+        "selected_tier": str(route_result.get("selected_primary_tier", "")),
+        "selected_engine": str(route_result.get("selected_primary_engine", "")),
+        "route_decision_digest": str(route_result.get("decision_digest", "")),
+        "routing_state": str(route_result.get("routing_state", "")),
+        "routing_state_reason": str(route_result.get("routing_state_reason", "")),
+        "routing_updated_at": _now(),
+        "routing_requires_revalidation": bool(task.get("routing_requires_revalidation", False)),
+        "restored_route_executed": bool(task.get("restored_route_executed", False)),
+        "paid_escalation_required": bool(route_result.get("paid_escalation_required", False)),
+        "paid_escalation_allowed": bool(
+            (not user_requires_free_only)
+            and bool(route_result.get("paid_escalation_allowed", False))
+            and bool(classification.get("user_requires_free_only") is False),
+        ),
+        "recommended_paid_engine": route_result.get("recommended_paid_engine", ""),
+        "engine_health_snapshot": _redact(_normalize_dict(route_result.get("engine_health_snapshot", {}))),
+        "routing_reasons": _normalize_list(route_result.get("decision_reasons", [])),
+        "routing_replayable": bool(route_result.get("decision_source") == "deterministic_local_planner"),
+        "routing_valid": bool(validation.get("ok", False)),
+        "routing_validation_errors": _normalize_list(validation.get("errors", [])),
+        "route_result": route_result,
+        "user_network_allowed": bool(safe_policy.get("network_allowed")),
+    }
+
+
+def _sanitize_route_engine_states(matched_tiers: List[Dict[str, Any]]) -> Dict[str, Any]:
+    state_map: Dict[str, str] = {}
+    for tier in matched_tiers[:20]:
+        if isinstance(tier, dict):
+            tier_id = str(tier.get("tier_id", ""))
+            if tier_id:
+                state_map[tier_id] = "available"
+    return {"availability": state_map}
+
+
+def _normalize_dict(payload: Any) -> Dict[str, Any]:
+    return payload if isinstance(payload, dict) else {}
 
 
 def _classify_adjacent(raw: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -332,6 +491,7 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "original_request": task["original_request"],
         "repository_root": task["repository_root"],
         "route_result": _redact(task.get("route_result", {})),
+        "zero_cost_routing": _redact(task.get("zero_cost_routing", {})),
         "diagnosis_summary": _redact(task.get("diagnosis_result", {})),
         "patch_summary": _redact(task.get("patch_draft_result", {})),
         "approval_state": _redact(task.get("approval_state", {})),
@@ -351,6 +511,9 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "restored_from_persistence": bool(task.get("restored_from_persistence", False)),
         "requires_explicit_resume": bool(task.get("requires_explicit_resume", False)),
         "execution_triggered_on_restore": bool(task.get("execution_triggered_on_restore", False)),
+        "routing_requires_revalidation": bool(task.get("routing_requires_revalidation", False)),
+        "routing_update_count": int(task.get("routing_update_count", 0)),
+        "zero_cost_routing_state": str(task.get("routing_state", "")),
         "permission_profile": _redact(task.get("permission_profile", {})),
         "safe_permission_metadata": _redact(task.get("safe_permission_metadata", {})),
         "permission_audit": _redact(task.get("permission_audit", [])),
@@ -533,6 +696,27 @@ def _restore_payload_to_task(payload: Dict[str, Any]) -> Tuple[bool, str]:
     task["restored_from_persistence"] = True
     task["requires_explicit_resume"] = True
     task["execution_triggered_on_restore"] = False
+    task["routing_requires_revalidation"] = True
+    task["restored_route_executed"] = False
+    task["restored_paid_escalation_allowed"] = False
+    task["restored_engine_health_trusted"] = False
+    route_state = _build_zero_cost_route_metadata(task) if isinstance(task.get("zero_cost_routing"), dict) else _build_zero_cost_route_metadata(
+        {
+            "task_id": task_id,
+            "original_request": task.get("original_request", ""),
+            "selected_files": task.get("selected_files", []),
+            "selected_capabilities": [],
+        }
+    )
+    route_state["routing_requires_revalidation"] = True
+    route_state["restored_route_executed"] = False
+    route_state["restored_paid_escalation_allowed"] = False
+    route_state["restored_engine_health_trusted"] = False
+    task["zero_cost_routing"] = _normalize_dict(route_state)
+    engine_snapshot = task["zero_cost_routing"].get("engine_health_snapshot", {})
+    if isinstance(engine_snapshot, dict):
+        task["zero_cost_routing"]["engine_health_snapshot"] = {key: "restored_from_store" for key in engine_snapshot.keys()}
+    task["zero_cost_routing"]["paid_escalation_allowed"] = False
     _TASKS[task_id] = task
     return True, ""
 
@@ -622,6 +806,7 @@ def create_luxcode_task(
         "mode": mode or "plan",
         "traceback_text": traceback_text,
         "route_result": {},
+        "routing_result": {},
         "diagnosis_result": {},
         "patch_draft_result": {},
         "approval_state": {"approved": False, "approval_events": []},
@@ -665,6 +850,22 @@ def create_luxcode_task(
         "render_result": {},
         "pause_reason": "",
         "cancellation_reason": "",
+        "routing_requires_revalidation": False,
+        "restored_route_executed": False,
+        "routing_update_count": 0,
+        "routing_state": "",
+        "user_requires_free_only": True,
+        "restored_paid_escalation_allowed": False,
+        "restored_engine_health_trusted": False,
+        "zero_cost_routing": _build_zero_cost_route_metadata(
+            {
+                "task_id": task_id,
+                "original_request": original_request,
+                "selected_files": files,
+                "selected_capabilities": _normalize_list(requested_files or files),
+            }
+        ),
+        "selected_capabilities": _normalize_list(requested_files or files),
         "safety_flags": dict(SAFE_INVARIANTS),
     }
     permission = create_permission_profile(
@@ -690,7 +891,18 @@ def create_luxcode_task(
 def _advance_route(task: Dict[str, Any]) -> None:
     if "route" in task["completed_steps"]:
         return
-    task["route_result"] = build_luxcode_master_router_preview(task["original_request"], context=task.get("mode") or "")
+    task["route_result"] = {
+        "luxcode_master_router_preview": build_luxcode_master_router_preview(
+            task["original_request"],
+            context=task.get("mode") or "",
+        ),
+        "zero_cost_routing": _build_zero_cost_route_metadata(task),
+    }
+    zero_cost_routing = _normalize_dict(task["route_result"].get("zero_cost_routing", {}))
+    task["zero_cost_routing"] = zero_cost_routing
+    task["routing_state"] = str(zero_cost_routing.get("routing_state", "routed"))
+    task["routing_update_count"] = int(task.get("routing_update_count", 0)) + 1
+    task["routing_requires_revalidation"] = False
     task["next_safe_action"] = "Advance to read-only diagnosis."
     _touch(task, "routed", "route")
 

@@ -28,7 +28,36 @@ SECRET_KEY_MARKERS = (
     "cookie",
     "private_key",
     "access_key",
+    "raw_prompt",
+    "full_prompt",
+    "source_code",
+    "full_source",
+    "raw_provider_response",
+    "provider_response",
+    "provider_payload",
+    "environment_value",
+    "env_value",
 )
+
+ZERO_COST_ROUTING_METADATA_KEYS = {
+    "router_policy_version",
+    "task_class",
+    "secondary_task_classes",
+    "difficulty_score",
+    "risk_level",
+    "required_capabilities",
+    "selected_engine",
+    "selected_tier",
+    "fallback_chain",
+    "skipped_engines",
+    "route_decision_digest",
+    "paid_escalation_required",
+    "paid_escalation_allowed",
+    "recommended_paid_engine",
+    "engine_health_snapshot",
+    "routing_state",
+    "routing_updated_at",
+}
 ACTIVE_RESTORE_STATES = {
     "created",
     "routed",
@@ -133,6 +162,38 @@ def _sanitize_text(key: str, value: str) -> str:
     if len(text) > limit:
         return text[:limit] + "...[truncated]"
     return text
+
+
+def _sanitize_forbidden_keys(payload: Dict[str, Any]) -> Dict[str, Any]:
+    sanitized: Dict[str, Any] = {}
+    for item_key, item_value in payload.items():
+        lowered = str(item_key).lower()
+        if any(marker in lowered for marker in (
+            "api_key",
+            "token",
+            "password",
+            "authorization",
+            "credential",
+            "secret",
+            "raw_prompt",
+            "full_prompt",
+            "source_code",
+            "full_source",
+            "raw_provider_response",
+            "provider_response",
+            "provider_payload",
+            "environment_value",
+            "env_value",
+        )):
+            continue
+        if isinstance(item_value, dict):
+            sanitized[item_key] = _sanitize_forbidden_keys(item_value)
+            continue
+        if isinstance(item_value, list):
+            sanitized[item_key] = [_sanitize_forbidden_keys(v) if isinstance(v, dict) else v for v in item_value[:200]]
+            continue
+        sanitized[item_key] = item_value
+    return sanitized
 
 
 def sanitize_task_payload(value: Any, key: str = "root", depth: int = 0) -> Any:
@@ -257,8 +318,27 @@ def _safe_payload(task_state: Dict[str, Any], privacy_mode: bool = True) -> Dict
     original_task_id = str(task_state.get("task_id") or "")
     original_state = str(task_state.get("current_state") or "created")
     payload = sanitize_task_payload(deepcopy(task_state))
+    payload = _sanitize_forbidden_keys(payload if isinstance(payload, dict) else {})
     if not isinstance(payload, dict):
         raise ValueError("task payload must be an object")
+    zero_cost_routing = payload.get("zero_cost_routing")
+    if isinstance(zero_cost_routing, dict):
+        payload["zero_cost_routing"] = {
+            key: zero_cost_routing[key]
+            for key in ZERO_COST_ROUTING_METADATA_KEYS
+            if key in zero_cost_routing
+        }
+        for route_key, default_value in {
+            "policy_version": str(zero_cost_routing.get("router_policy_version", "zero_cost_router_policy_v1")),
+            "routing_updated_at": _now(),
+            "fallback_chain": list(zero_cost_routing.get("fallback_chain", [])),
+            "skipped_engines": list(zero_cost_routing.get("skipped_engines", [])),
+            "secondary_task_classes": list(zero_cost_routing.get("secondary_task_classes", [])),
+            "required_capabilities": list(zero_cost_routing.get("required_capabilities", [])),
+        }.items():
+            payload["zero_cost_routing"].setdefault(route_key, default_value)
+        if "engine_health_snapshot" in zero_cost_routing and isinstance(zero_cost_routing["engine_health_snapshot"], dict):
+            payload["zero_cost_routing"]["engine_health_snapshot"] = _sanitize_forbidden_keys(dict(zero_cost_routing["engine_health_snapshot"]))
     payload["task_id"] = original_task_id
     payload["current_state"] = original_state
     task_id = str(payload.get("task_id") or "")

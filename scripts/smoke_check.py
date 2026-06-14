@@ -10923,6 +10923,176 @@ class SmokeRunner:
 
         return "luxcode task orchestrator local preview flow verified"
 
+    def check_luxcode_zero_cost_execution_router_local(self) -> str:
+        """Verify zero-cost execution router is read-only, local-first, and endpoint-backed."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_zero_cost_execution_router.py",
+            ROOT / "scripts" / "validate_luxcode_zero_cost_execution_router.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        runtime_dir = ROOT / ".luxcode_runtime"
+        runtime_existed = runtime_dir.exists()
+
+        schema = client.get("/luxcode-zero-cost-router/schema")
+        assert schema.status_code == 200, f"/luxcode-zero-cost-router/schema returned {schema.status_code}"
+        schema_data = schema.json()
+        assert schema_data.get("status") == "local_first_read_only_planner", schema_data
+        assert schema_data.get("name") == "LuxCode Zero-Cost Execution Router", schema_data
+        assert schema_data.get("supported_layers", 0) >= 7, schema_data
+
+        registry = client.get("/luxcode-zero-cost-router/registry")
+        assert registry.status_code == 200, f"/luxcode-zero-cost-router/registry returned {registry.status_code}"
+        registry_data = registry.json()
+        assert registry_data.get("tier_count") >= 5, registry_data
+        assert registry_data.get("external_api_used") is False, registry_data
+        assert registry_data.get("network_access_used") is False, registry_data
+        assert registry_data.get("shell_execution_used") is False, registry_data
+
+        policy = client.get("/luxcode-zero-cost-router/policy")
+        assert policy.status_code == 200, f"/luxcode-zero-cost-router/policy returned {policy.status_code}"
+        policy_data = policy.json()
+        assert policy_data.get("policy_version") == "zero_cost_router_policy_v1", policy_data
+        assert policy_data.get("billing_allowed") is False, policy_data
+        assert policy_data.get("automatic_upgrade") is False, policy_data
+        assert policy_data.get("paid_escalation_allowed") is False, policy_data
+
+        classify = client.post(
+            "/luxcode-zero-cost-router/classify",
+            json={
+                "task_id": "router-smoke",
+                "title": "Add lightweight router smoke",
+                "description": "Local-only classification smoke preview for zero-cost routing",
+                "requested_capabilities": ["repo_health_scan", "safe_route_planning"],
+                "selected_files": ["app.py"],
+                "risk_hint": "low",
+                "user_requires_free_only": True,
+                "selected_tier_ids": [],
+                "prior_failures": 0,
+                "retry_count": 0,
+            },
+        )
+        assert classify.status_code == 200, f"/luxcode-zero-cost-router/classify returned {classify.status_code}"
+        classify_data = classify.json()
+        assert classify_data.get("task_class") in {
+            "small_code_fix",
+            "large_multifile_change",
+            "repo_health_scan",
+            "deployment_analysis",
+            "test_generation",
+            "unknown",
+        }, classify_data
+        assert classify_data.get("policy_version") == "zero_cost_router_policy_v1", classify_data
+
+        score = client.post(
+            "/luxcode-zero-cost-router/score",
+            json={
+                "task_id": "router-smoke",
+                "task_class": "small_code_fix",
+                "title": "score smoke",
+                "description": "calculate difficulty",
+                "required_capabilities": ["file_search"],
+                "selected_files": ["app.py"],
+                "risk_level": "low",
+                "failed_attempts": 0,
+                "unknown_root_causes": 0,
+                "user_rejections": 0,
+            },
+        )
+        assert score.status_code == 200, f"/luxcode-zero-cost-router/score returned {score.status_code}"
+        score_data = score.json()
+        assert 1 <= score_data.get("difficulty_score", 0) <= 10, score_data
+        assert score_data.get("policy_version") == "zero_cost_router_policy_v1", score_data
+
+        match = client.post(
+            "/luxcode-zero-cost-router/capability-match",
+            json={
+                "task_id": "router-smoke",
+                "task_class": "small_code_fix",
+                "required_capabilities": ["safe_route_planning", "code_generation"],
+                "forbidden_capabilities": [],
+                "risk_level": "low",
+                "requested_tiers": [],
+                "user_requires_free_only": True,
+            },
+        )
+        assert match.status_code == 200, f"/luxcode-zero-cost-router/capability-match returned {match.status_code}"
+        match_data = match.json()
+        assert match_data.get("matched_tiers"), match_data
+        assert match_data.get("risk_level") == "low", match_data
+
+        availability = client.post(
+            "/luxcode-zero-cost-router/availability",
+            json={"task_id": "router-smoke", "engine_health_overrides": {}, "user_requires_network": False, "policy": {}},
+        )
+        assert availability.status_code == 200, f"/luxcode-zero-cost-router/availability returned {availability.status_code}"
+        availability_data = availability.json()
+        assert availability_data.get("total_tiers") >= 7, availability_data
+        assert all(item.get("engine_id") for item in availability_data.get("availability", [])), availability_data
+
+        route = client.post(
+            "/luxcode-zero-cost-router/route",
+            json={
+                "task_id": "router-smoke",
+                "title": "Route a deterministic local planning task",
+                "description": "plan a local-only router review change",
+                "task_class": "small_code_fix",
+                "required_capabilities": ["code_generation", "safe_edit_recommendation"],
+                "forbidden_capabilities": [],
+                "risk_level": "low",
+                "selected_files": ["app.py"],
+                "difficulty_score": 3,
+                "failure_history": {},
+                "availability": availability_data,
+                "policy": policy_data,
+                "resource_pressure": False,
+                "user_requires_free_only": True,
+                "previous_attempts": 0,
+                "user_rejection_count": 0,
+                "direct_user_constraints": {"selected_tier": "lightweight_local_coding_model"},
+            },
+        )
+        assert route.status_code == 200, f"/luxcode-zero-cost-router/route returned {route.status_code}"
+        route_data = route.json()
+        assert route_data.get("selected_primary_tier") == "lightweight_local_coding_model", route_data
+        assert route_data.get("selected_primary_engine") == "local_light_model", route_data
+        assert route_data.get("routing_state") in {"routing_complete", "route_planned"}, route_data
+        assert route_data.get("decision_digest"), route_data
+        assert route_data.get("policy_flags", {}).get("user_requires_free_only") is True, route_data
+
+        validate = client.post(
+            "/luxcode-zero-cost-router/validate-decision",
+            json={"task_id": "router-smoke", "policy": {}, "decision": route_data},
+        )
+        assert validate.status_code == 200, f"/luxcode-zero-cost-router/validate-decision returned {validate.status_code}"
+        validate_data = validate.json()
+        assert validate_data.get("ok") is True, validate_data
+        assert validate_data.get("task_id") == "router-smoke", validate_data
+        assert validate_data.get("decision_digest") == route_data.get("decision_digest"), validate_data
+
+        status = client.get("/debug/luxcode-zero-cost-router-status")
+        assert status.status_code == 200, f"/debug/luxcode-zero-cost-router-status returned {status.status_code}"
+        status_data = status.json()
+        assert status_data.get("status") == "ready", status_data
+        assert status_data.get("safe_defaults", {}).get("local_first") is True, status_data
+        assert status_data.get("safe_defaults", {}).get("external_api_used") is False, status_data
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during zero-cost router smoke: {path}"
+        assert runtime_dir.exists() is runtime_existed, "live .luxcode_runtime directory state changed during zero-cost router smoke"
+
+        return "zero-cost execution router local planner flow verified"
+
     def check_luxcode_task_persistence_local(self) -> str:
         """Verify local task persistence uses only temporary SQLite storage."""
         try:
@@ -12381,6 +12551,7 @@ class SmokeRunner:
             ("lux_safe_patch_draft_read_only", self.check_lux_safe_patch_draft_read_only, None, "core"),
             ("lux_controlled_apply_approval_gated", self.check_lux_controlled_apply_approval_gated, None, "core"),
             ("lux_verification_recovery_local", self.check_lux_verification_recovery_local, None, "core"),
+            ("luxcode_zero_cost_execution_router_local", self.check_luxcode_zero_cost_execution_router_local, None, "core"),
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local, None, "core"),
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local, None, "core"),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local, None, "core"),
@@ -12592,6 +12763,7 @@ class SmokeRunner:
             ("lux_safe_patch_draft_read_only", self.check_lux_safe_patch_draft_read_only),
             ("lux_controlled_apply_approval_gated", self.check_lux_controlled_apply_approval_gated),
             ("lux_verification_recovery_local", self.check_lux_verification_recovery_local),
+            ("luxcode_zero_cost_execution_router_local", self.check_luxcode_zero_cost_execution_router_local),
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local),
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local),

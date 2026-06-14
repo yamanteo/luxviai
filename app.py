@@ -938,6 +938,18 @@ from lux_verification_recovery_engine import (
     prepare_recovery_action,
     prepare_verification_run,
 )
+from luxcode_zero_cost_execution_router import (
+    capability_match_zero_cost_engine,
+    classify_zero_cost_task,
+    evaluate_zero_cost_availability,
+    get_zero_cost_router_policy,
+    get_zero_cost_router_registry,
+    get_zero_cost_router_schema,
+    get_zero_cost_router_status,
+    route_zero_cost_task,
+    score_zero_cost_task,
+    validate_zero_cost_route_decision,
+)
 from luxcode_task_orchestrator import (
     advance_luxcode_task,
     approve_luxcode_task_scope_expansion,
@@ -2162,6 +2174,75 @@ class LuxVerificationRecoveryRequest(BaseModel):
     allow_automatic_rollback: bool = False
     controlled_apply_result: Dict[str, Any] = Field(default_factory=dict)
     check_results: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class LuxZeroCostClassifyRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    title: str = Field(default="", max_length=8000)
+    description: str = Field(default="", max_length=12000)
+    requested_capabilities: List[str] = Field(default_factory=list)
+    selected_files: List[str] = Field(default_factory=list)
+    risk_hint: Optional[str] = Field(default=None, max_length=80)
+    user_requires_free_only: bool = True
+    selected_tier_ids: List[str] = Field(default_factory=list)
+    prior_failures: int = Field(default=0, ge=0, le=30)
+    retry_count: int = Field(default=0, ge=0, le=30)
+
+
+class LuxZeroCostScoreRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    task_class: str = Field(default="unknown", max_length=120)
+    title: str = Field(default="", max_length=8000)
+    description: str = Field(default="", max_length=12000)
+    required_capabilities: List[str] = Field(default_factory=list)
+    selected_files: List[str] = Field(default_factory=list)
+    risk_level: Optional[str] = Field(default=None, max_length=80)
+    failed_attempts: int = Field(default=0, ge=0, le=20)
+    unknown_root_causes: int = Field(default=0, ge=0, le=20)
+    user_rejections: int = Field(default=0, ge=0, le=20)
+
+
+class LuxZeroCostCapabilityMatchRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    task_class: str = Field(default="unknown", max_length=120)
+    required_capabilities: List[str] = Field(default_factory=list)
+    forbidden_capabilities: List[str] = Field(default_factory=list)
+    risk_level: str = Field(default="low", max_length=80)
+    requested_tiers: List[str] = Field(default_factory=list)
+    user_requires_free_only: bool = True
+
+
+class LuxZeroCostAvailabilityRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    engine_health_overrides: Dict[str, Any] = Field(default_factory=dict)
+    user_requires_network: bool = False
+    policy: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LuxZeroCostRouteRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    title: str = Field(default="", max_length=8000)
+    description: str = Field(default="", max_length=12000)
+    task_class: Optional[str] = Field(default=None, max_length=120)
+    required_capabilities: List[str] = Field(default_factory=list)
+    forbidden_capabilities: List[str] = Field(default_factory=list)
+    risk_level: str = Field(default="low", max_length=80)
+    selected_files: List[str] = Field(default_factory=list)
+    difficulty_score: int = Field(default=5, ge=1, le=10)
+    failure_history: Dict[str, int] = Field(default_factory=dict)
+    availability: Dict[str, Any] = Field(default_factory=dict)
+    policy: Dict[str, Any] = Field(default_factory=dict)
+    resource_pressure: bool = False
+    user_requires_free_only: bool = True
+    previous_attempts: int = Field(default=0, ge=0, le=20)
+    user_rejection_count: int = Field(default=0, ge=0, le=20)
+    direct_user_constraints: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LuxZeroCostValidateDecisionRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    policy: Dict[str, Any] = Field(default_factory=dict)
+    decision: Dict[str, Any] = Field(default_factory=dict)
 
 
 class LuxCodeTaskCreateRequest(BaseModel):
@@ -12741,6 +12822,113 @@ async def lux_verification_recovery_preview_endpoint(payload: LuxVerificationRec
 @app.get("/debug/lux-verification-status")
 async def debug_lux_verification_status_endpoint():
     return get_verification_recovery_status()
+
+
+@app.get("/luxcode-zero-cost-router/schema")
+async def lux_zero_cost_router_schema_endpoint():
+    return get_zero_cost_router_schema()
+
+
+@app.get("/luxcode-zero-cost-router/registry")
+async def lux_zero_cost_router_registry_endpoint():
+    return get_zero_cost_router_registry()
+
+
+@app.get("/luxcode-zero-cost-router/policy")
+async def lux_zero_cost_router_policy_endpoint():
+    return get_zero_cost_router_policy()
+
+
+@app.post("/luxcode-zero-cost-router/classify")
+async def lux_zero_cost_router_classify_endpoint(payload: LuxZeroCostClassifyRequest):
+    return classify_zero_cost_task(
+        task_id=payload.task_id,
+        title=payload.title,
+        description=payload.description,
+        requested_capabilities=payload.requested_capabilities,
+        selected_files=payload.selected_files,
+        risk_hint=payload.risk_hint,
+        user_requires_free_only=payload.user_requires_free_only,
+        selected_tier_ids=payload.selected_tier_ids,
+        prior_failures=payload.prior_failures,
+        retry_count=payload.retry_count,
+    )
+
+
+@app.post("/luxcode-zero-cost-router/score")
+async def lux_zero_cost_router_score_endpoint(payload: LuxZeroCostScoreRequest):
+    return score_zero_cost_task(
+        task_id=payload.task_id,
+        task_class=payload.task_class,
+        title=payload.title,
+        description=payload.description,
+        required_capabilities=payload.required_capabilities,
+        selected_files=payload.selected_files,
+        risk_level=payload.risk_level,
+        failed_attempts=payload.failed_attempts,
+        unknown_root_causes=payload.unknown_root_causes,
+        user_rejections=payload.user_rejections,
+    )
+
+
+@app.post("/luxcode-zero-cost-router/capability-match")
+async def lux_zero_cost_router_capability_match_endpoint(payload: LuxZeroCostCapabilityMatchRequest):
+    return capability_match_zero_cost_engine(
+        task_id=payload.task_id,
+        task_class=payload.task_class,
+        required_capabilities=payload.required_capabilities,
+        forbidden_capabilities=payload.forbidden_capabilities,
+        risk_level=payload.risk_level,
+        requested_tiers=payload.requested_tiers,
+        user_requires_free_only=payload.user_requires_free_only,
+    )
+
+
+@app.post("/luxcode-zero-cost-router/availability")
+async def lux_zero_cost_router_availability_endpoint(payload: LuxZeroCostAvailabilityRequest):
+    return evaluate_zero_cost_availability(
+        task_id=payload.task_id,
+        engine_health_overrides=payload.engine_health_overrides,
+        user_requires_network=payload.user_requires_network,
+        policy=payload.policy,
+    )
+
+
+@app.post("/luxcode-zero-cost-router/route")
+async def lux_zero_cost_router_route_endpoint(payload: LuxZeroCostRouteRequest):
+    return route_zero_cost_task(
+        task_id=payload.task_id,
+        title=payload.title,
+        description=payload.description,
+        task_class=payload.task_class,
+        required_capabilities=payload.required_capabilities,
+        forbidden_capabilities=payload.forbidden_capabilities,
+        risk_level=payload.risk_level,
+        selected_files=payload.selected_files,
+        difficulty_score=payload.difficulty_score,
+        failure_history=payload.failure_history,
+        availability=payload.availability,
+        policy=payload.policy,
+        resource_pressure=payload.resource_pressure,
+        user_requires_free_only=payload.user_requires_free_only,
+        previous_attempts=payload.previous_attempts,
+        user_rejection_count=payload.user_rejection_count,
+        direct_user_constraints=payload.direct_user_constraints,
+    )
+
+
+@app.post("/luxcode-zero-cost-router/validate-decision")
+async def lux_zero_cost_router_validate_decision_endpoint(payload: LuxZeroCostValidateDecisionRequest):
+    return validate_zero_cost_route_decision(
+        task_id=payload.task_id,
+        decision=payload.decision,
+        policy=payload.policy,
+    )
+
+
+@app.get("/debug/luxcode-zero-cost-router-status")
+async def debug_lux_zero_cost_router_status_endpoint():
+    return get_zero_cost_router_status()
 
 
 @app.get("/luxcode-task/schema")
