@@ -959,6 +959,18 @@ ENDPOINT_GROUPS: Dict[str, List[Dict[str, Any]]] = {
         _endpoint("/luxcode-deployment/cancel", "POST", "deployment_execution", "cancel owned deployment runtime"),
         _endpoint("/debug/luxcode-deployment-status", "GET", "deployment_execution", "deployment execution status"),
     ],
+    "luxcode_render_provider_adapter": [
+        _endpoint("/luxcode-render/schema", "GET", "render_provider", "Render adapter schema"),
+        _endpoint("/luxcode-render/registry", "GET", "render_provider", "Render service and action registry"),
+        _endpoint("/luxcode-render/detect", "POST", "render_provider", "safe Render signal detection"),
+        _endpoint("/luxcode-render/parse-config", "POST", "render_provider", "safe render.yaml parsing"),
+        _endpoint("/luxcode-render/readiness", "POST", "render_provider", "Render readiness analysis"),
+        _endpoint("/luxcode-render/plan", "POST", "render_provider", "Render deployment plan and digest"),
+        _endpoint("/luxcode-render/dry-run", "POST", "render_provider", "fake Render provider dry-run"),
+        _endpoint("/luxcode-render/execute", "POST", "render_provider", "blocked controlled Render execution path"),
+        _endpoint("/luxcode-render/cancel", "POST", "render_provider", "cancel owned fake Render runtime"),
+        _endpoint("/debug/luxcode-render-status", "GET", "render_provider", "Render adapter status"),
+    ],
     "luxcode_network_access": [
         _endpoint("/luxcode/network-access/schema", "GET", "network_access", "local network access intelligence schema"),
         _endpoint("/luxcode/network-access/registry", "GET", "network_access", "local interface and blocked action registry"),

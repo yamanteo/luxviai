@@ -11948,6 +11948,104 @@ class SmokeRunner:
 
         return "luxcode deployment execution and URL verification local fixture verified"
 
+    def check_luxcode_render_provider_adapter_local(self) -> str:
+        """Verify Render adapter detection, fake provider dry-run, guards, and cleanup."""
+        try:
+            from fastapi.testclient import TestClient
+        except Exception as exc:
+            raise SkipCheck(f"TestClient unavailable: {type(exc).__name__}")
+        import tempfile
+        import shutil
+        from pathlib import Path
+
+        luxapp = self.import_app()
+        client = TestClient(luxapp.app)
+        watched = [
+            ROOT / "app.py",
+            ROOT / "endpoint_coverage_matrix.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_render_provider_adapter.py",
+            ROOT / "luxcode_deployment_execution_url_verification.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        live_paths = [ROOT / ".luxcode_render", ROOT / ".luxcode_deployment", ROOT / ".luxcode_runtime", ROOT / ".luxcode_live_test", ROOT / ".luxcode_browser_launch", ROOT / "luxcode_tasks.db"]
+        live_state = {str(path): path.exists() for path in live_paths}
+        temp_root = Path(tempfile.mkdtemp(prefix="luxrender_smoke_"))
+        try:
+            (temp_root / "render.yaml").write_text(
+                "\n".join(
+                    [
+                        "services:",
+                        "  - type: web",
+                        "    name: lux-smoke",
+                        "    runtime: python",
+                        "    buildCommand: python -m py_compile app.py",
+                        "    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT",
+                        "    healthCheckPath: /health",
+                        "    envVars:",
+                        "      - key: DATABASE_URL",
+                        "        sync: false",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (temp_root / "app.py").write_text("from fastapi import FastAPI\napp=FastAPI()\n@app.get('/health')\ndef h(): return {'ok': True}\n", encoding="utf-8")
+            schema = client.get("/luxcode-render/schema")
+            assert schema.status_code == 200, f"/luxcode-render/schema returned {schema.status_code}"
+            assert schema.json().get("render_api_used") is False, schema.json()
+            registry = client.get("/luxcode-render/registry")
+            assert registry.status_code == 200, f"/luxcode-render/registry returned {registry.status_code}"
+            assert "web_service" in registry.json().get("service_types", {}), registry.json()
+            detect = client.post("/luxcode-render/detect", json={"repository_root": str(temp_root)})
+            assert detect.status_code == 200, f"/luxcode-render/detect returned {detect.status_code}"
+            assert detect.json().get("detection", {}).get("render_detected") is True, detect.json()
+            parsed = client.post("/luxcode-render/parse-config", json={"repository_root": str(temp_root)})
+            assert parsed.status_code == 200, f"/luxcode-render/parse-config returned {parsed.status_code}"
+            service = parsed.json().get("parsed", {}).get("services", [])[0]
+            assert service.get("service_type") == "web_service", service
+            assert "DATABASE_URL" in service.get("environment_key_names", []), service
+            readiness = client.post("/luxcode-render/readiness", json={"repository_root": str(temp_root), "deployment_intent": True})
+            assert readiness.status_code == 200, f"/luxcode-render/readiness returned {readiness.status_code}"
+            assert readiness.json().get("readiness", {}).get("controlled_deployment_ready") is False, readiness.json()
+            plan = client.post(
+                "/luxcode-render/plan",
+                json={
+                    "task_id": "render-smoke",
+                    "repository_root": str(temp_root),
+                    "deployment_intent": True,
+                    "credential_reference": {"reference_id": "render-ref", "availability": "reference_available", "scope": "deploy"},
+                },
+            )
+            assert plan.status_code == 200, f"/luxcode-render/plan returned {plan.status_code}"
+            plan_data = plan.json().get("plan", {})
+            assert plan_data.get("plan_digest", "").startswith("render-plan-digest-"), plan_data
+            blocked = client.post("/luxcode-render/execute", json={"plan": plan_data, "expected_plan_digest": plan_data.get("plan_digest", "")})
+            assert blocked.status_code == 200, f"/luxcode-render/execute returned {blocked.status_code}"
+            assert blocked.json().get("ok") is False, blocked.json()
+            dry = client.post("/luxcode-render/dry-run", json={"plan": plan_data, "fixture": "success"})
+            assert dry.status_code == 200, f"/luxcode-render/dry-run returned {dry.status_code}"
+            runtime = dry.json().get("runtime", {})
+            assert runtime.get("lifecycle_state") == "render_fully_verified", runtime
+            assert runtime.get("url_result", {}).get("url", "").startswith("http://127.0.0.1:"), runtime
+            assert runtime.get("url_result", {}).get("fake_result_classification") == "fake_render_deployment_verified", runtime
+            assert runtime.get("cloud_deployment_used") is False, runtime
+            cancel = client.post("/luxcode-render/cancel", json={"runtime_id": runtime.get("render_runtime_id"), "reason": "smoke cleanup"})
+            assert cancel.status_code == 200, f"/luxcode-render/cancel returned {cancel.status_code}"
+            assert cancel.json().get("ok") is True, cancel.json()
+            status = client.get("/debug/luxcode-render-status")
+            assert status.status_code == 200, f"/debug/luxcode-render-status returned {status.status_code}"
+            assert status.json().get("real_render_execution_enabled") is False, status.json()
+        finally:
+            shutil.rmtree(temp_root, ignore_errors=True)
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during Render smoke: {path}"
+        for path in live_paths:
+            assert path.exists() is live_state[str(path)], f"live artifact state changed during Render smoke: {path}"
+        return "luxcode Render provider adapter fake deployment verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -11987,6 +12085,7 @@ class SmokeRunner:
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local, None, "core"),
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local, None, "core"),
             ("luxcode_deployment_execution_local", self.check_luxcode_deployment_execution_local, None, "core"),
+            ("luxcode_render_provider_adapter_local", self.check_luxcode_render_provider_adapter_local, None, "core"),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local, None, "core"),
             ("luxcode_network_access_local", self.check_luxcode_network_access_local, None, "core"),
             ("luxcode_test_matrix_local", self.check_luxcode_test_matrix_local, None, "core"),
@@ -12195,6 +12294,7 @@ class SmokeRunner:
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local),
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local),
             ("luxcode_deployment_execution_local", self.check_luxcode_deployment_execution_local),
+            ("luxcode_render_provider_adapter_local", self.check_luxcode_render_provider_adapter_local),
             ("luxcode_live_app_interaction_testing_local", self.check_luxcode_live_app_interaction_testing_local),
             ("luxcode_network_access_local", self.check_luxcode_network_access_local),
             ("luxcode_test_matrix_local", self.check_luxcode_test_matrix_local),

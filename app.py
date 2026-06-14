@@ -1015,6 +1015,18 @@ from luxcode_deployment_execution_url_verification import (
     get_deployment_status,
     verify_deployment_url,
 )
+from luxcode_render_provider_adapter import (
+    analyze_render_readiness,
+    build_render_deployment_plan,
+    cancel_render_deployment,
+    detect_render_configuration,
+    execute_render_deployment,
+    execute_render_dry_run,
+    get_render_adapter_registry,
+    get_render_adapter_schema,
+    get_render_adapter_status,
+    parse_render_configuration,
+)
 from luxcode_local_network_access_intelligence import (
     build_access_urls,
     cancel_network_access_runtime,
@@ -2428,6 +2440,52 @@ class LuxCodeDeploymentVerifyRequest(BaseModel):
 
 
 class LuxCodeDeploymentCancelRequest(BaseModel):
+    runtime_id: str = Field(default="", max_length=160)
+    reason: str = Field(default="user_requested", max_length=200)
+
+
+class LuxCodeRenderDetectRequest(BaseModel):
+    repository_root: str = Field(default="", max_length=800)
+    selected_scope: str = Field(default=".", max_length=800)
+
+
+class LuxCodeRenderReadinessRequest(BaseModel):
+    repository_root: str = Field(default="", max_length=800)
+    selected_scope: str = Field(default=".", max_length=800)
+    service_candidate_id: str = Field(default="", max_length=160)
+    credential_reference: Dict[str, Any] = Field(default_factory=dict)
+    external_network_allowed: bool = False
+    deployment_intent: bool = False
+    final_confirmation: bool = False
+
+
+class LuxCodeRenderPlanRequest(BaseModel):
+    task_id: str = Field(default="", max_length=120)
+    repository_root: str = Field(default="", max_length=800)
+    selected_scope: str = Field(default=".", max_length=800)
+    service_candidate_id: str = Field(default="", max_length=160)
+    credential_reference: Dict[str, Any] = Field(default_factory=dict)
+    external_network_allowed: bool = False
+    deployment_intent: bool = False
+    final_confirmation: bool = False
+    timeout_seconds: int = Field(default=60, ge=5, le=180)
+    retry_budget: int = Field(default=1, ge=0, le=3)
+
+
+class LuxCodeRenderDryRunRequest(BaseModel):
+    plan: Dict[str, Any] = Field(default_factory=dict)
+    fixture: str = Field(default="success", max_length=80)
+
+
+class LuxCodeRenderExecuteRequest(BaseModel):
+    plan: Dict[str, Any] = Field(default_factory=dict)
+    expected_plan_digest: str = Field(default="", max_length=160)
+    credential_reference: Dict[str, Any] = Field(default_factory=dict)
+    external_network_allowed: bool = False
+    final_confirmation: bool = False
+
+
+class LuxCodeRenderCancelRequest(BaseModel):
     runtime_id: str = Field(default="", max_length=160)
     reason: str = Field(default="user_requested", max_length=200)
 
@@ -12930,6 +12988,65 @@ async def luxcode_deployment_cancel_endpoint(payload: LuxCodeDeploymentCancelReq
 @app.get("/debug/luxcode-deployment-status")
 async def debug_luxcode_deployment_status_endpoint():
     return get_deployment_status()
+
+
+@app.get("/luxcode-render/schema")
+async def luxcode_render_schema_endpoint():
+    return get_render_adapter_schema()
+
+
+@app.get("/luxcode-render/registry")
+async def luxcode_render_registry_endpoint():
+    return get_render_adapter_registry()
+
+
+@app.post("/luxcode-render/detect")
+async def luxcode_render_detect_endpoint(payload: LuxCodeRenderDetectRequest):
+    return detect_render_configuration(**payload.dict())
+
+
+@app.post("/luxcode-render/parse-config")
+async def luxcode_render_parse_config_endpoint(payload: LuxCodeRenderDetectRequest):
+    return parse_render_configuration(**payload.dict())
+
+
+@app.post("/luxcode-render/readiness")
+async def luxcode_render_readiness_endpoint(payload: LuxCodeRenderReadinessRequest):
+    return analyze_render_readiness(**payload.dict())
+
+
+@app.post("/luxcode-render/plan")
+async def luxcode_render_plan_endpoint(payload: LuxCodeRenderPlanRequest):
+    return build_render_deployment_plan(**payload.dict())
+
+
+@app.post("/luxcode-render/dry-run")
+async def luxcode_render_dry_run_endpoint(payload: LuxCodeRenderDryRunRequest):
+    if (payload.plan or {}).get("provider") != "render":
+        return {"ok": False, "blocked": True, "reason": "Render plan required", "external_api_used": False, "local_first": True}
+    return execute_render_dry_run(plan=payload.plan, fixture=payload.fixture)
+
+
+@app.post("/luxcode-render/execute")
+async def luxcode_render_execute_endpoint(payload: LuxCodeRenderExecuteRequest):
+    plan = payload.plan or {}
+    if not plan.get("deployment_intent"):
+        return {"ok": False, "blocked": True, "reason": "Render deployment intent required", "render_api_used": False, "render_cli_used": False, "local_first": True}
+    if not payload.expected_plan_digest:
+        return {"ok": False, "blocked": True, "reason": "validated plan digest required", "render_api_used": False, "render_cli_used": False, "local_first": True}
+    return execute_render_deployment(**payload.dict())
+
+
+@app.post("/luxcode-render/cancel")
+async def luxcode_render_cancel_endpoint(payload: LuxCodeRenderCancelRequest):
+    if not payload.runtime_id:
+        return {"ok": False, "blocked": True, "reason": "task-owned Render runtime required", "render_api_used": False, "render_cli_used": False, "local_first": True}
+    return cancel_render_deployment(runtime_id=payload.runtime_id, reason=payload.reason)
+
+
+@app.get("/debug/luxcode-render-status")
+async def debug_luxcode_render_status_endpoint():
+    return get_render_adapter_status()
 
 
 @app.get("/luxcode/network-access/schema")

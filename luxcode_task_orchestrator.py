@@ -65,6 +65,12 @@ from luxcode_deployment_execution_url_verification import (
     execute_deployment,
     get_safe_deployment_metadata,
 )
+from luxcode_render_provider_adapter import (
+    analyze_render_readiness,
+    build_render_deployment_plan,
+    execute_render_dry_run,
+    get_safe_render_metadata,
+)
 
 
 TASK_STATES = {
@@ -106,6 +112,9 @@ TASK_STATES = {
     "deployment_verified",
     "deployment_blocked",
     "deployment_review",
+    "render_planned",
+    "render_dry_run_completed",
+    "render_blocked",
     "awaiting_scope_permission",
     "awaiting_irreversible_confirmation",
     "autonomy_paused",
@@ -357,6 +366,21 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "deployment_retry_count": int(task.get("deployment_retry_count", 0)),
         "deployment_next_safe_action": task.get("deployment_next_safe_action", ""),
         "deployment_result": _redact(task.get("deployment_result", {})),
+        "render_intent": bool(task.get("render_intent", False)),
+        "render_detection_state": task.get("render_detection_state", ""),
+        "render_service_candidates": _redact(task.get("render_service_candidates", [])),
+        "selected_render_service": _redact(task.get("selected_render_service", {})),
+        "render_readiness_state": task.get("render_readiness_state", ""),
+        "render_plan_id": task.get("render_plan", {}).get("render_plan_id", ""),
+        "render_plan_digest": task.get("render_plan", {}).get("plan_digest", ""),
+        "render_credential_reference_state": task.get("render_credential_reference_state", ""),
+        "render_network_permission_state": task.get("render_network_permission_state", ""),
+        "render_final_confirmation_state": task.get("render_final_confirmation_state", ""),
+        "render_deployment_state": task.get("render_deployment_state", ""),
+        "render_url_state": task.get("render_url_state", ""),
+        "render_health_state": task.get("render_health_state", ""),
+        "render_scenario_state": task.get("render_scenario_state", ""),
+        "render_rollback_state": task.get("render_rollback_state", ""),
         "skipped_target_reasons": _redact(task.get("skipped_target_reasons", {})),
         "can_advance": can_advance,
         "requires_user_approval": state in {"awaiting_approval", "apply_prepared", "verification_prepared"},
@@ -606,6 +630,21 @@ def create_luxcode_task(
         "deployment_next_safe_action": "Deployment requires explicit plan and execution request.",
         "deployment_plan": {},
         "deployment_result": {},
+        "render_intent": "render" in original_request.lower() and any(word in original_request.lower() for word in ["deploy", "deployment", "gonder", "gönder"]),
+        "render_detection_state": "not_started",
+        "render_service_candidates": [],
+        "selected_render_service": {},
+        "render_readiness_state": "not_started",
+        "render_credential_reference_state": "not_configured",
+        "render_network_permission_state": "blocked_by_external_network_policy",
+        "render_final_confirmation_state": "required",
+        "render_deployment_state": "not_started",
+        "render_url_state": "not_started",
+        "render_health_state": "not_started",
+        "render_scenario_state": "not_started",
+        "render_rollback_state": "not_started",
+        "render_plan": {},
+        "render_result": {},
         "pause_reason": "",
         "cancellation_reason": "",
         "safety_flags": dict(SAFE_INVARIANTS),
@@ -1270,6 +1309,66 @@ def cancel_luxcode_task_deployment(task_id: str, runtime_id: str = "") -> Dict[s
     task["deployment_result"] = result.get("runtime", result)
     task["deployment_state"] = "cancelled" if result.get("ok") else "deployment_blocked"
     return _persist_and_summarize(task, event_type="deployment_cancel")
+
+
+def plan_luxcode_task_render_deployment(
+    task_id: str,
+    selected_scope: str = ".",
+    service_candidate_id: str = "",
+    credential_reference: Optional[Dict[str, Any]] = None,
+    external_network_allowed: bool = False,
+    final_confirmation: bool = False,
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    readiness = analyze_render_readiness(
+        repository_root=task.get("repository_root") or str(Path.cwd()),
+        selected_scope=selected_scope,
+        service_candidate_id=service_candidate_id,
+        credential_reference=credential_reference or {},
+        external_network_allowed=external_network_allowed,
+        deployment_intent=bool(task.get("render_intent")),
+        final_confirmation=final_confirmation,
+    )
+    task["render_readiness_state"] = readiness.get("readiness", {}).get("readiness_state", "render_manual_review_required")
+    task["render_service_candidates"] = readiness.get("readiness", {}).get("detection", {}).get("service_candidates", [])
+    plan = build_render_deployment_plan(
+        task_id=task_id,
+        repository_root=task.get("repository_root") or str(Path.cwd()),
+        selected_scope=selected_scope,
+        service_candidate_id=service_candidate_id,
+        credential_reference=credential_reference or {},
+        external_network_allowed=external_network_allowed,
+        deployment_intent=bool(task.get("render_intent")),
+        final_confirmation=final_confirmation,
+    )
+    task["render_plan"] = plan.get("plan", plan)
+    task["render_deployment_state"] = "render_planned" if plan.get("ok") else "render_blocked"
+    task["render_credential_reference_state"] = task["render_plan"].get("credential_reference", {}).get("availability", "not_configured") if isinstance(task["render_plan"], dict) else "not_configured"
+    task["render_network_permission_state"] = task["render_plan"].get("network_permission_state", "blocked_by_external_network_policy") if isinstance(task["render_plan"], dict) else "blocked"
+    task["render_final_confirmation_state"] = task["render_plan"].get("final_confirmation_state", "required") if isinstance(task["render_plan"], dict) else "required"
+    _touch(task, "render_planned" if plan.get("ok") else "render_blocked")
+    return _persist_and_summarize(task, event_type="render_plan")
+
+
+def execute_luxcode_task_render_dry_run(task_id: str, fixture: str = "success") -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {"ok": False, "task_id": task_id, "found": False, "safe_response": True, **SAFE_INVARIANTS}
+    if task.get("restored_from_persistence"):
+        task["render_deployment_state"] = "render_blocked"
+        return _persist_and_summarize(task, event_type="render_restore_blocked")
+    result = execute_render_dry_run(task.get("render_plan", {}), fixture=fixture)
+    runtime = result.get("runtime", result)
+    task["render_result"] = get_safe_render_metadata(runtime) if result.get("runtime") else runtime
+    task["render_deployment_state"] = runtime.get("lifecycle_state", "render_manual_review_required")
+    task["render_url_state"] = runtime.get("url_result", {}).get("final_verification_status", "")
+    task["render_health_state"] = "render_health_verified" if "render_health_verified" in runtime.get("events", []) else ""
+    task["render_scenario_state"] = "render_scenario_verified" if "render_scenario_verified" in runtime.get("events", []) else ""
+    task["render_rollback_state"] = runtime.get("rollback_state", "")
+    _touch(task, "render_dry_run_completed" if result.get("ok") else "render_blocked")
+    return _persist_and_summarize(task, event_type="render_dry_run")
 
 
 def plan_luxcode_task_network_access(

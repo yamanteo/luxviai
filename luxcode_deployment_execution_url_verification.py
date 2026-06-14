@@ -420,8 +420,17 @@ def get_deployment_schema() -> Dict[str, Any]:
 
 
 def get_deployment_registry() -> Dict[str, Any]:
+    render_adapter = {"available": False, "reason": "not imported"}
+    try:
+        from luxcode_render_provider_adapter import get_render_adapter_schema
+
+        schema = get_render_adapter_schema()
+        render_adapter = {"available": True, "service_types": schema.get("service_types", []), "real_execution_enabled": False}
+    except Exception as exc:
+        render_adapter = {"available": False, "reason": type(exc).__name__}
     return _safe_success(
         providers=deepcopy(PROVIDERS),
+        provider_adapters={"render": render_adapter},
         action_registry={name: {"action_type": name, "raw_shell_allowed": False, "bounded": True} for name in ACTION_TYPES},
         lifecycle_states=LIFECYCLE_STATES,
         failure_categories=FAILURE_CATEGORIES,
@@ -895,6 +904,13 @@ def execute_deployment(plan: Dict[str, Any]) -> Dict[str, Any]:
     provider = str((plan or {}).get("provider") or "unknown")
     if provider == "local_fixture":
         return execute_local_fixture_deployment(plan)
+    if provider == "render" and plan.get("render_plan_id"):
+        try:
+            from luxcode_render_provider_adapter import execute_render_deployment
+
+            return execute_render_deployment(plan, expected_plan_digest=str(plan.get("plan_digest") or ""))
+        except Exception as exc:
+            return _safe_failure("Render adapter delegation failed", error=type(exc).__name__)
     permission = evaluate_deployment_permission(True, True, provider, plan.get("permission_profile"), False, "execute_provider_deployment")
     runtime_id = _digest([plan.get("deployment_plan_id"), provider, "blocked"], "luxdeployrt-")
     runtime = {
@@ -1039,6 +1055,13 @@ def _public_runtime(runtime: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def get_deployment_status() -> Dict[str, Any]:
+    render_adapter_available = False
+    try:
+        from luxcode_render_provider_adapter import get_render_adapter_status
+
+        render_adapter_available = bool(get_render_adapter_status().get("ok"))
+    except Exception:
+        render_adapter_available = False
     return _safe_success(
         name="LuxCode Deployment Execution and URL Verification Core",
         status="ready",
@@ -1046,6 +1069,7 @@ def get_deployment_status() -> Dict[str, Any]:
         active_runtime_count=sum(1 for item in _RUNTIMES.values() if item.get("cleanup_state") != "cleaned"),
         providers=sorted(PROVIDERS),
         local_fixture_supported=True,
+        render_adapter_available=render_adapter_available,
         external_provider_execution_enabled=False,
         verified_url_delivery_required=True,
     )
