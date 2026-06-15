@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from luxcode_minimum_context_builder import build_minimum_context_package
 from luxcode_safe_patch_runtime import build_patch_contract, execute_patch_control, preview_patch
+from luxcode_tier0_deterministic_executor import create_tier0_executor_payload, run_tier0_diagnostic_plan
 from luxcode_zero_cost_execution_router import route_zero_cost_task
 
 
@@ -287,6 +288,37 @@ def build_practical_coder_task_plan(
         risk_level="medium" if len(selected) > 3 else "low",
         user_requires_free_only=True,
     )
+    tier0_payload = {
+        "ok": False,
+        "overall_status": "blocked",
+    }
+    try:
+        diagnostic_payload = run_tier0_diagnostic_plan(
+            repository_root=repository_intake.get("repository_root", "."),
+            task_summary=task_summary,
+            selected_files=selected,
+        )
+        tier0_payload = {
+            "ok": True,
+            "selected_tier": 0,
+            "selected_engine": "deterministic_local_tools",
+            "overall_status": diagnostic_payload.get("overall_status", ""),
+            "cost": 0,
+            "external_provider_used": False,
+            "diagnostic_plan_id": diagnostic_payload.get("plan_id", ""),
+            "execution_id": diagnostic_payload.get("execution_id", ""),
+            "evidence_count": diagnostic_payload.get("evidence_count", 0),
+            "remaining_gap": diagnostic_payload.get("remaining_gap", {}).get("remaining_gap", {}),
+        }
+    except Exception:
+        tier0_payload = {
+            "ok": False,
+            "selected_tier": 0,
+            "selected_engine": "deterministic_local_tools",
+            "overall_status": "blocked",
+            "external_provider_used": False,
+            "reason": "tier0_diagnostics_blocked",
+        }
     plan = {
         "ok": True,
         "coder_plan_id": "",
@@ -298,11 +330,19 @@ def build_practical_coder_task_plan(
             {"step": "repository_intake", "state": "complete"},
             {"step": "targeted_search", "state": "planned"},
             {"step": "minimum_context", "state": "planned"},
+            {"step": "tier0_diagnostics", "state": "passed" if tier0_payload.get("ok") else "blocked"},
             {"step": "patch_draft", "state": "planned"},
             {"step": "approval_gated_apply", "state": "requires_approval"},
             {"step": "allowlisted_validation", "state": "planned"},
+            {"step": "remaining_gap", "state": "planned"},
         ],
         "router_decision": route,
+        "tier0_diagnostics": tier0_payload,
+        "tier0_execution": create_tier0_executor_payload(
+            repository_root=repository_intake.get("repository_root", "."),
+            task_summary=task_summary,
+            selected_files=selected,
+        ),
         "live_patch_allowed": False,
         "external_api_used": False,
         "network_access_used": False,

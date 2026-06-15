@@ -10925,6 +10925,126 @@ class SmokeRunner:
 
         return "luxcode task orchestrator local preview flow verified"
 
+    def check_luxcode_tier0_deterministic_executor_local(self) -> str:
+        """Verify Tier 0 deterministic executor diagnostics run as zero-cost local-first workflow."""
+        watched = [
+            ROOT / "luxcode_tier0_deterministic_executor.py",
+            ROOT / "luxcode_practical_coder_runtime.py",
+            ROOT / "scripts" / "validate_luxcode_tier0_executor.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        runtime_dir = ROOT / ".luxcode_runtime"
+        runtime_existed = runtime_dir.exists()
+        live_db = ROOT / "luxcode_tasks.db"
+        live_db_existed = live_db.exists()
+        snapshots = ROOT / ".luxcode_snapshots"
+        snapshots_existed = snapshots.exists()
+        backups = ROOT / "luxcode_backups"
+        backups_existed = backups.exists()
+
+        from luxcode_tier0_deterministic_executor import (
+            build_diagnostic_plan,
+            build_repository_map,
+            create_tier0_executor_payload,
+            discover_validations,
+            inspect_python_symbols,
+            normalize_error,
+            run_safe_command,
+            run_tier0_diagnostics,
+        )
+
+        with tempfile.TemporaryDirectory(prefix="luxcode_tier0_smoke_") as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "src").mkdir(parents=True)
+            (repo / "tests").mkdir()
+            (repo / "scripts").mkdir()
+            (repo / "src" / "app.py").write_text("def greet():\n    return 'old'\n", encoding="utf-8")
+            (repo / "src" / "util.py").write_text("def build(value: str) -> str:\n    return value.strip()\n", encoding="utf-8")
+            (repo / "tests" / "test_app.py").write_text("from src.app import greet\nassert greet() == 'old'\n", encoding="utf-8")
+            (repo / "scripts" / "validate_dummy.py").write_text("def check_dummy():\n    return True\n", encoding="utf-8")
+            subprocess.run(["git", "init"], cwd=str(repo), capture_output=True, text=True, timeout=10, shell=False)
+
+            repository_map = build_repository_map(str(repo))
+            assert repository_map.get("repository_root") == str(repo), repository_map
+            assert repository_map.get("external_path_readonly") is True, repository_map
+            assert repository_map.get("file_count", 0) > 0, repository_map
+            assert "scripts/validate_dummy.py" in "\\n".join(repository_map.get("candidate_validator_files", [])), repository_map.get("candidate_validator_files")
+
+            symbols = inspect_python_symbols(str(repo), ["src/app.py", "src/util.py", "scripts/validate_dummy.py"], limit=20)
+            assert symbols.get("ok") is True, symbols
+            assert symbols.get("file_count") == 3, symbols
+
+            discovery = discover_validations(str(repo))
+            assert discovery.get("full_smoke_required") is False, discovery
+            assert isinstance(discovery.get("candidate_validators"), list), discovery
+            assert discovery.get("discovery_count", 0) >= 1, discovery
+
+            plan = build_diagnostic_plan(str(repo), task_summary="replace function body", selected_files=["src/app.py"], selected_tier=0)
+            assert plan.get("selected_tier") == 0, plan
+            assert plan.get("selected_engine") == "deterministic_local_tools", plan
+            assert isinstance(plan.get("steps", []), list), plan
+
+            diagnostics = run_tier0_diagnostics(str(repo), "replace function body", selected_files=["src/app.py"])
+            assert diagnostics.get("selected_tier") == 0, diagnostics
+            assert diagnostics.get("selected_engine") == "deterministic_local_tools", diagnostics
+            assert diagnostics.get("cost") == 0, diagnostics
+            assert diagnostics.get("overall_status") in {"passed", "partial"}, diagnostics
+            assert diagnostics.get("external_provider_used") is False, diagnostics
+            assert diagnostics.get("paid_escalation_required") is False, diagnostics
+            assert diagnostics.get("evidence_count", 0) >= 3, diagnostics
+            step_ids = {item.get("step_id") for item in diagnostics.get("step_results", [])}
+            for required_step in {"repository_map", "python_symbol_index", "validation_discovery", "syntax_error_normalization"}:
+                assert required_step in step_ids, (required_step, step_ids)
+            assert "remaining_gap" in diagnostics, diagnostics
+            gap = diagnostics["remaining_gap"].get("remaining_gap", {})
+            assert "completed_scope" in gap and "required_capabilities" in gap, gap
+
+            payload = create_tier0_executor_payload(str(repo), "replace function body", selected_files=["src/app.py"])
+            assert payload.get("execution_mode") == "local_deterministic", payload
+            assert payload.get("selected_tier") == 0, payload
+            assert payload.get("selected_engine") == "deterministic_local_tools", payload
+
+            error = normalize_error(
+                source_file=str(repo / "src/app.py"),
+                line=1,
+                symbol="demo",
+                stdout="",
+                stderr="SyntaxError: invalid syntax",
+                return_code=1,
+                tool_id="safe_compile",
+            )
+            assert error.get("error_type") == "syntax_error", error
+            assert error.get("fingerprint"), error
+            assert normalize_error(
+                source_file=str(repo / "src/app.py"),
+                line=1,
+                symbol="demo",
+                stdout="",
+                stderr="SyntaxError: invalid syntax",
+                return_code=1,
+                tool_id="safe_compile",
+            ).get("fingerprint") == error["fingerprint"], error
+
+            safe = run_safe_command(str(repo), "safe_compile", "smoke", "python", ["-m", "py_compile", "app.py"], "src")
+            assert safe.return_code == 0, safe
+
+            blocked = False
+            try:
+                run_safe_command(str(repo), "repository_status", "blocked", "git", ["add", "."], ".")
+            except Exception:
+                blocked = True
+            assert blocked, "git add should be blocked by policy"
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during tier0 smoke: {path}"
+        assert runtime_dir.exists() is runtime_existed, "live .luxcode_runtime changed during tier0 smoke"
+        assert live_db.exists() is live_db_existed, "live luxcode_tasks.db state changed during tier0 smoke"
+        assert snapshots.exists() is snapshots_existed, "live .luxcode_snapshots state changed during tier0 smoke"
+        assert backups.exists() is backups_existed, "live luxcode_backups state changed during tier0 smoke"
+        return "luxcode tier0 deterministic executor local smoke verified"
+
     def check_luxcode_zero_cost_execution_router_local(self) -> str:
         """Verify zero-cost execution router is read-only, local-first, and endpoint-backed."""
         try:
@@ -13288,6 +13408,7 @@ class SmokeRunner:
             ("luxcode_zero_cost_execution_router_local", self.check_luxcode_zero_cost_execution_router_local, None, "core"),
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local, None, "core"),
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local, None, "core"),
+            ("luxcode_tier0_deterministic_executor_local", self.check_luxcode_tier0_deterministic_executor_local, None, "core"),
             ("luxcode_multi_agent_handoff_local", self.check_luxcode_multi_agent_handoff_local, None, "core"),
             ("luxcode_coder_operator_cli_local", self.check_luxcode_coder_operator_cli_local, None, "core"),
             ("luxcode_practical_coder_runtime_local", self.check_luxcode_practical_coder_runtime_local, None, "core"),
