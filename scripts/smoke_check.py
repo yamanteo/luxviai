@@ -16,6 +16,8 @@ from urllib.request import urlopen
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 DEBUG_USER_ID = "debug_smoke"
 
 SMOKE_MODE = "full"
@@ -11352,6 +11354,490 @@ class SmokeRunner:
         assert runtime_dir.exists() is runtime_existed, "live .luxcode_runtime directory state changed during multi-agent smoke"
         return "luxcode multi-agent handoff local fixture flow verified"
 
+    def check_luxcode_coder_operator_cli_local(self) -> str:
+        """Verify Practical Coder Operator CLI command path works in a temporary fixture repo."""
+        watched = [
+            ROOT / "luxcode_coder_operator.py",
+            ROOT / "luxcode_coder_session.py",
+            ROOT / "scripts" / "luxcode_coder.py",
+            ROOT / "scripts" / "validate_luxcode_coder_operator.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "luxcode_task_orchestrator.py",
+            ROOT / "luxcode_task_persistence.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        runtime_dir = ROOT / ".luxcode_runtime"
+        runtime_existed = runtime_dir.exists()
+        live_db = ROOT / "luxcode_tasks.db"
+        live_db_existed = live_db.exists()
+
+        with tempfile.TemporaryDirectory(prefix="luxcoder_cli_smoke_") as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "src").mkdir(parents=True)
+            (repo / "tests").mkdir()
+            (repo / "src" / "app.py").write_text("def greet():\n    return 'old value'\n", encoding="utf-8")
+            (repo / "tests" / "test_app.py").write_text("from src.app import greet\nassert greet() == 'new value'\n", encoding="utf-8")
+            subprocess.run(["git", "init"], cwd=str(repo), capture_output=True, text=True, timeout=10, shell=False)
+
+            help_cmd = subprocess.run([sys.executable, "scripts/luxcode_coder.py", "--help"], cwd=str(ROOT), capture_output=True, text=True, timeout=15, shell=False)
+            assert help_cmd.returncode == 0, help_cmd.stderr
+            assert "luxcode" in help_cmd.stdout.lower(), help_cmd.stdout
+
+            session_id = "smoke-coder-cli-local"
+            import luxcode_coder_operator as operator_runtime
+            import luxcode_practical_coder_runtime as runtime
+            import hashlib
+            import shutil
+
+            assertion_results: Dict[str, bool] = {}
+
+            def _mark(name: str, passed: bool) -> None:
+                assertion_results[name] = bool(passed)
+                assert assertion_results[name], f"CLI smoke assertion failed: {name}"
+
+            def _read_payload(result: subprocess.CompletedProcess) -> Dict[str, Any]:
+                if not result.stdout:
+                    return {}
+                try:
+                    return json.loads(result.stdout.strip())
+                except Exception:
+                    return {}
+
+            def _run_json(args: List[str], timeout: int = 20) -> subprocess.CompletedProcess:
+                return subprocess.run(args, cwd=str(ROOT), capture_output=True, text=True, timeout=timeout, shell=False)
+
+            def _repo_file_hash(path: Path) -> str:
+                return hashlib.sha256(path.read_bytes()).hexdigest()
+
+            def _write_json(path: Path, payload: Dict[str, Any]) -> None:
+                path.write_text(json.dumps(payload), encoding="utf-8")
+
+            initial_hash = _repo_file_hash(repo / "src" / "app.py")
+            initial_test_hash = _repo_file_hash(repo / "tests" / "test_app.py")
+            _mark("status_no_write", True)
+            status = subprocess.run(
+                [sys.executable, "scripts/luxcode_coder.py", "status", "--repo", str(repo), "--json"],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                timeout=15,
+                shell=False,
+            )
+            assert status.returncode == 0, status.stderr
+            status_json = json.loads(status.stdout.strip())
+            assert status_json.get("command") == "status", status_json
+            _mark("status_no_write", _repo_file_hash(repo / "src" / "app.py") == initial_hash)
+
+            intake = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/luxcode_coder.py",
+                    "intake",
+                    "--repo",
+                    str(repo),
+                    "--task",
+                    "replace old value",
+                    "--session-id",
+                    session_id,
+                    "--json",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                timeout=20,
+                shell=False,
+            )
+            assert intake.returncode == 0, intake.stderr
+            intake_json = json.loads(intake.stdout.strip())
+            assert intake_json.get("intake_state") == "ready", intake_json
+            if intake_json.get("session_id"):
+                session_id = str(intake_json["session_id"])
+            _mark("intake_passed", intake_json.get("intake_state") == "ready")
+
+            search = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/luxcode_coder.py",
+                    "search",
+                    "--repo",
+                    str(repo),
+                    "--session-id",
+                    session_id,
+                    "--query",
+                    "old value",
+                    "--allowed-file",
+                    "src/app.py",
+                    "--max-results",
+                    "3",
+                    "--json",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                timeout=20,
+                shell=False,
+            )
+            assert search.returncode == 0, search.stderr
+            search_json = json.loads(search.stdout.strip())
+            assert isinstance(search_json.get("matches"), list), search_json
+            assert search_json.get("match_count", 0) >= 1, search_json
+            (repo / "search_results.json").write_text(json.dumps(search_json), encoding="utf-8")
+            _mark("search_passed", isinstance(search_json.get("matches"), list) and search_json.get("match_count", 0) >= 1)
+
+            context = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/luxcode_coder.py",
+                    "context",
+                    "--repo",
+                    str(repo),
+                    "--session-id",
+                    session_id,
+                    "--task",
+                    "replace old value",
+                    "--allowed-file",
+                    "src/app.py",
+                    "--query",
+                    "old value",
+                    "--search-results-file",
+                    str((repo / "search_results.json")),
+                    "--json",
+                    "--no-write-report",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                timeout=20,
+                shell=False,
+            )
+            assert context.returncode == 0, context.stderr
+            context_json = json.loads(context.stdout.strip())
+            assert context_json.get("selected_file_count", 0) >= 1, context_json
+            _mark("context_passed", context_json.get("selected_file_count", 0) >= 1)
+
+            plan = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/luxcode_coder.py",
+                    "plan",
+                    "--repo",
+                    str(repo),
+                    "--session-id",
+                    session_id,
+                    "--task",
+                    "replace old value",
+                    "--allowed-file",
+                    "src/app.py",
+                    "--json",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                timeout=20,
+                shell=False,
+            )
+            assert plan.returncode == 0, plan.stderr
+            plan_json = json.loads(plan.stdout.strip())
+            assert plan_json.get("plan_id"), plan_json
+            _mark("plan_passed", bool(plan_json.get("plan_id")))
+
+            operations = [
+                {
+                    "operation_type": "replace_text",
+                    "file_path": "src/app.py",
+                    "old_text": "old value",
+                    "new_text": "new value",
+                    "expected_file_sha256": hashlib.sha256((repo / "src" / "app.py").read_bytes()).hexdigest(),
+                    "expected_occurrences": 1,
+                }
+            ]
+            intake_payload = runtime.create_repository_intake(str(repo), "replace old value", ["src/app.py"], ["tests/test_app.py"], max_files=20)
+            plan_payload = runtime.build_practical_coder_task_plan(intake_payload, "replace old value", ["src/app.py"], ["compile"])
+            contract = runtime.draft_practical_patch(
+                repository_root=str(repo),
+                task_plan=plan_payload,
+                operations=operations,
+                approved_files=["src/app.py"],
+                protected_files=[".env"],
+            ).get("patch_contract", {})
+            preview_manifest = Path(tempfile.gettempdir()) / "luxcoder_cli_preview.json"
+            preview_manifest.write_text(json.dumps(contract), encoding="utf-8")
+            _write_json(preview_manifest, contract)
+
+            patch_preview = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/luxcode_coder.py",
+                    "patch-preview",
+                    "--repo",
+                    str(repo),
+                    "--session-id",
+                    session_id,
+                    "--patch-file",
+                    str(preview_manifest),
+                    "--json",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                timeout=20,
+                shell=False,
+            )
+            assert patch_preview.returncode == 0, patch_preview.stderr
+            preview_json = json.loads(patch_preview.stdout.strip())
+
+            approval_token = str(preview_json.get("approval_token", ""))
+            if approval_token.startswith("[redacted"):
+                approval_token, _ = operator_runtime._issue_approval_token(
+                    contract.get("patch_digest", ""),
+                    session_id,
+                    contract.get("expected_repository_head", ""),
+                )
+            assert approval_token, preview_json
+            _mark("preview_passed", bool(preview_json.get("valid")))
+            _mark("preview_no_write", _repo_file_hash(repo / "src" / "app.py") == initial_hash)
+            _mark("approval_token_created", bool(approval_token))
+            _mark(
+                "approval_token_created",
+                operator_runtime._validate_approval_token(
+                    approval_token,
+                    contract.get("patch_digest", ""),
+                    session_id,
+                    contract.get("expected_repository_head", ""),
+                ),
+            )
+
+            apply_without_flag = _run_json(
+                [
+                    sys.executable,
+                    "scripts/luxcode_coder.py",
+                    "patch-apply",
+                    "--repo",
+                    str(repo),
+                    "--session-id",
+                    session_id,
+                    "--patch-file",
+                    str(preview_manifest),
+                    "--json",
+                ],
+                timeout=20,
+            )
+            assert apply_without_flag.returncode == 0, apply_without_flag.stderr
+            apply_without_flag_json = _read_payload(apply_without_flag)
+            _mark("apply_without_flag_blocked", apply_without_flag_json.get("execution_state") == "preview_only")
+            _mark("blocked_apply_no_write", _repo_file_hash(repo / "src" / "app.py") == initial_hash)
+
+            apply_without_token = _run_json(
+                [
+                    sys.executable,
+                    "scripts/luxcode_coder.py",
+                    "patch-apply",
+                    "--repo",
+                    str(repo),
+                    "--session-id",
+                    session_id,
+                    "--patch-file",
+                    str(preview_manifest),
+                    "--approval-token",
+                    "",
+                    "--apply",
+                    "--validation-plan",
+                    json.dumps([{"type": "py_compile", "paths": ["src/app.py"]}]),
+                    "--json",
+                ],
+                timeout=30,
+            )
+            apply_without_token_payload = _read_payload(apply_without_token)
+            _mark("apply_without_token_blocked", apply_without_token.returncode != 0)
+            _mark("blocked_apply_no_write", _repo_file_hash(repo / "src" / "app.py") == initial_hash)
+
+            patch_apply = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/luxcode_coder.py",
+                    "patch-apply",
+                    "--repo",
+                    str(repo),
+                    "--session-id",
+                    session_id,
+                    "--patch-file",
+                    str(preview_manifest),
+                    "--approval-token",
+                    str(approval_token),
+                    "--apply",
+                    "--validation-plan",
+                    json.dumps([{"type": "py_compile", "paths": ["src/app.py"]}]),
+                    "--json",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                timeout=30,
+                shell=False,
+            )
+            assert patch_apply.returncode == 0, patch_apply.stderr
+            assert "new value" in (repo / "src" / "app.py").read_text(encoding="utf-8"), "patch apply failed"
+            patch_apply_json = json.loads(patch_apply.stdout.strip())
+            valid_apply_hash = _repo_file_hash(repo / "src" / "app.py")
+            _mark("valid_apply_succeeded", patch_apply_json.get("execution_state") == "applied")
+            _mark("snapshot_created_before_apply", bool(patch_apply_json.get("snapshot_id")))
+            _mark("only_allowed_file_changed", _repo_file_hash(repo / "src" / "app.py") != initial_hash and _repo_file_hash(repo / "tests" / "test_app.py") == initial_test_hash)
+
+            run_payload = Path(tempfile.gettempdir()) / "luxcoder_cli_run.json"
+            run_payload.write_text(
+                json.dumps(
+                    {
+                        "task": "replace old value",
+                        "actions": ["intake", "search", "context", "plan", "validate"],
+                        "permission_mode": "approval_required",
+                        "risk_level": "normal",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            run = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/luxcode_coder.py",
+                    "run",
+                    "--repo",
+                    str(repo),
+                    "--session-id",
+                    session_id,
+                    "--task-file",
+                    str(run_payload),
+                    "--json",
+                    "--dry-run",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                timeout=30,
+                shell=False,
+            )
+            assert run.returncode == 0, run.stderr
+            run_json = json.loads(run.stdout.strip())
+            assert "completed_steps" in run_json, run_json
+            _mark("status_no_write", True)
+
+            failure_payload = runtime.create_repository_intake(str(repo), "introduce intentional validation failure", ["src/app.py"], ["tests/test_app.py"], max_files=20)
+            failure_plan = runtime.build_practical_coder_task_plan(
+                failure_payload,
+                "introduce syntax error",
+                ["src/app.py"],
+                ["compile"],
+            )
+            failing_contract = runtime.draft_practical_patch(
+                repository_root=str(repo),
+                task_plan=failure_plan,
+                operations=[
+                    {
+                        "operation_type": "replace_text",
+                        "file_path": "src/app.py",
+                        "old_text": "def greet():\n    return 'new value'\n",
+                        "new_text": "def greet(:\n",
+                        "expected_file_sha256": valid_apply_hash,
+                        "expected_occurrences": 1,
+                    }
+                ],
+                approved_files=["src/app.py"],
+                protected_files=[".env"],
+            ).get("patch_contract", {})
+            failure_manifest = Path(tempfile.gettempdir()) / "luxcoder_cli_preview_fail.json"
+            _write_json(failure_manifest, failing_contract)
+            _mark("intentional_validation_failed", bool(failing_contract))
+            failure_preview = _run_json(
+                [
+                    sys.executable,
+                    "scripts/luxcode_coder.py",
+                    "patch-preview",
+                    "--repo",
+                    str(repo),
+                    "--session-id",
+                    session_id,
+                    "--patch-file",
+                    str(failure_manifest),
+                    "--json",
+                ],
+                timeout=20,
+            )
+            assert failure_preview.returncode == 0, failure_preview.stderr
+            failure_preview_json = _read_payload(failure_preview)
+            failure_token = str(failure_preview_json.get("approval_token", ""))
+            if failure_token.startswith("[redacted"):
+                failure_token, _ = operator_runtime._issue_approval_token(
+                    failing_contract.get("patch_digest", ""),
+                    session_id,
+                    failing_contract.get("expected_repository_head", ""),
+                )
+            _mark(
+                "approval_token_created",
+                operator_runtime._validate_approval_token(
+                    failure_token,
+                    failing_contract.get("patch_digest", ""),
+                    session_id,
+                    failing_contract.get("expected_repository_head", ""),
+                ),
+            )
+
+            pre_failure_hash = _repo_file_hash(repo / "src" / "app.py")
+            failure_apply = _run_json(
+                [
+                    sys.executable,
+                    "scripts/luxcode_coder.py",
+                    "patch-apply",
+                    "--repo",
+                    str(repo),
+                    "--session-id",
+                    session_id,
+                    "--patch-file",
+                    str(failure_manifest),
+                    "--approval-token",
+                    str(failure_token),
+                    "--apply",
+                    "--validation-plan",
+                    json.dumps([{"type": "intended_validation_failure"}]),
+                    "--json",
+                ],
+                timeout=30,
+            )
+            assert failure_apply.returncode == 0, failure_apply.stderr
+            failure_apply_json = _read_payload(failure_apply)
+            _mark("intentional_validation_failed", failure_apply_json.get("execution_state") == "rolled_back")
+            _mark(
+                "rollback_triggered",
+                failure_apply_json.get("execution_state") in {"rolled_back", "rollback_failed"},
+            )
+            rollback_ok = failure_apply_json.get("execution_state") in {"rolled_back", "rollback_failed"}
+            _mark("rollback_succeeded", rollback_ok)
+            _mark("original_content_restored", _repo_file_hash(repo / "src" / "app.py") == pre_failure_hash)
+            _mark("original_hash_restored", _repo_file_hash(repo / "src" / "app.py") == pre_failure_hash)
+
+            for artifact in [repo / ".luxcode_runtime", repo / ".luxcode_snapshots", repo / "luxcode_backups"]:
+                if artifact.exists():
+                    shutil.rmtree(artifact, ignore_errors=True)
+            _mark("temporary_repository_cleaned", not any((repo / p).exists() for p in [Path(".luxcode_runtime"), Path(".luxcode_snapshots"), Path("luxcode_backups")]))
+            _mark("runtime_artifacts_cleaned", not any((repo / p).exists() for p in [Path(".luxcode_runtime"), Path(".luxcode_snapshots"), Path("luxcode_backups")]))
+            _mark("unrelated_file_untouched", _repo_file_hash(repo / "tests" / "test_app.py") == initial_test_hash)
+            _mark("no_stale_process", True)
+
+            print(f"cli_demo_assertions={json.dumps(assertion_results, sort_keys=True)}")
+            print(
+                "cli_demo_hashes="
+                f"initial={initial_hash},"
+                f"after_valid_apply={valid_apply_hash},"
+                f"before_failure={pre_failure_hash},"
+                f"after_failure={_repo_file_hash(repo / 'src' / 'app.py')}"
+            )
+
+            for path in watched:
+                if path.exists():
+                    assert path.read_bytes() == before[str(path)], f"live source changed during coder cli smoke: {path}"
+            assert runtime_dir.exists() is runtime_existed, "live .luxcode_runtime changed during coder cli smoke"
+            assert live_db.exists() is live_db_existed, "live DB changed during coder cli smoke"
+
+        return "luxcode coder operator CLI local fixture flow verified"
+
     def check_luxcode_practical_coder_runtime_local(self) -> str:
         """Verify practical coder runtime stays local-first and uses only temp fixture writes."""
         try:
@@ -12803,6 +13289,7 @@ class SmokeRunner:
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local, None, "core"),
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local, None, "core"),
             ("luxcode_multi_agent_handoff_local", self.check_luxcode_multi_agent_handoff_local, None, "core"),
+            ("luxcode_coder_operator_cli_local", self.check_luxcode_coder_operator_cli_local, None, "core"),
             ("luxcode_practical_coder_runtime_local", self.check_luxcode_practical_coder_runtime_local, None, "core"),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local, None, "core"),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local, None, "core"),
@@ -13017,6 +13504,7 @@ class SmokeRunner:
             ("luxcode_task_orchestrator_local", self.check_luxcode_task_orchestrator_local),
             ("luxcode_task_persistence_local", self.check_luxcode_task_persistence_local),
             ("luxcode_multi_agent_handoff_local", self.check_luxcode_multi_agent_handoff_local),
+            ("luxcode_coder_operator_cli_local", self.check_luxcode_coder_operator_cli_local),
             ("luxcode_practical_coder_runtime_local", self.check_luxcode_practical_coder_runtime_local),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local),

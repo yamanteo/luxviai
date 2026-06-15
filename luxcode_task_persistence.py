@@ -100,6 +100,17 @@ CODER_RUNTIME_METADATA_KEYS = {
     "coder_remaining_gap",
     "coder_handoff_ready",
     "coder_updated_at",
+    "coder_cli_session_id",
+    "coder_cli_run_id",
+    "coder_cli_last_command",
+    "coder_cli_session_state",
+    "coder_cli_last_result_digest",
+    "coder_cli_output_manifest",
+    "coder_cli_approval_required",
+    "coder_cli_revalidation_required",
+    "coder_cli_completed_scope",
+    "coder_cli_remaining_gap",
+    "coder_cli_updated_at",
 }
 ACTIVE_RESTORE_STATES = {
     "created",
@@ -424,6 +435,17 @@ def _safe_payload(task_state: Dict[str, Any], privacy_mode: bool = True) -> Dict
                 "restored_validation_passed": False,
                 "restored_worker_started": False,
                 "restored_execution_resumed": False,
+                "coder_cli_revalidation_required": True,
+                "coder_cli_session_id": "",
+                "coder_cli_run_id": "",
+                "coder_cli_last_command": "restore",
+                "coder_cli_session_state": "restore_requires_revalidation",
+                "coder_cli_last_result_digest": "",
+                "coder_cli_output_manifest": "",
+                "coder_cli_approval_required": False,
+                "coder_cli_completed_scope": [],
+                "coder_cli_remaining_gap": [],
+                "coder_cli_updated_at": _now(),
             }
         )
         payload["coder_runtime_metadata"] = _sanitize_forbidden_keys(safe_coder)

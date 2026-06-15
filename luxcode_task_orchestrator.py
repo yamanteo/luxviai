@@ -226,6 +226,17 @@ CODER_RUNTIME_METADATA_KEYS = {
     "restored_validation_passed",
     "restored_worker_started",
     "restored_execution_resumed",
+    "coder_cli_session_id",
+    "coder_cli_run_id",
+    "coder_cli_last_command",
+    "coder_cli_session_state",
+    "coder_cli_last_result_digest",
+    "coder_cli_output_manifest",
+    "coder_cli_approval_required",
+    "coder_cli_revalidation_required",
+    "coder_cli_completed_scope",
+    "coder_cli_remaining_gap",
+    "coder_cli_updated_at",
 }
 
 _TASKS: Dict[str, Dict[str, Any]] = {}
@@ -370,6 +381,17 @@ def _default_coder_runtime_metadata() -> Dict[str, Any]:
         "restored_validation_passed": False,
         "restored_worker_started": False,
         "restored_execution_resumed": False,
+        "coder_cli_session_id": "",
+        "coder_cli_run_id": "",
+        "coder_cli_last_command": "",
+        "coder_cli_session_state": "",
+        "coder_cli_last_result_digest": "",
+        "coder_cli_output_manifest": "",
+        "coder_cli_approval_required": False,
+        "coder_cli_revalidation_required": False,
+        "coder_cli_completed_scope": [],
+        "coder_cli_remaining_gap": [],
+        "coder_cli_updated_at": _now(),
     }
 
 
@@ -856,6 +878,17 @@ def _restore_payload_to_task(payload: Dict[str, Any]) -> Tuple[bool, str]:
             "restored_execution_resumed": False,
             "patch_execution_state": "restore_requires_revalidation",
             "validation_state": "restore_requires_revalidation",
+            "coder_cli_revalidation_required": True,
+            "coder_cli_session_state": "restore_requires_revalidation",
+            "coder_cli_last_result_digest": "",
+            "coder_cli_output_manifest": "",
+            "coder_cli_approval_required": False,
+            "coder_cli_session_id": "",
+            "coder_cli_run_id": "",
+            "coder_cli_last_command": "restore",
+            "coder_cli_completed_scope": [],
+            "coder_cli_remaining_gap": [],
+            "coder_cli_updated_at": _now(),
         }
     )
     task["coder_runtime_metadata"] = restored_coder
