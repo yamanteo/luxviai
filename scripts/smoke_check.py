@@ -11215,6 +11215,179 @@ class SmokeRunner:
 
         return "zero-cost execution router local planner flow verified"
 
+    def check_luxcode_low_cost_worker_local(self) -> str:
+        """Verify low-cost worker contract-to-safe-patch local-only flow."""
+        watched = [
+            ROOT / "luxcode_low_cost_worker.py",
+            ROOT / "luxcode_low_cost_worker_contracts.py",
+            ROOT / "scripts" / "smoke_check.py",
+            ROOT / "scripts" / "validate_luxcode_low_cost_worker.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        runtime_dir = ROOT / ".luxcode_runtime"
+        runtime_existed = runtime_dir.exists()
+        live_db_existed = (ROOT / "luxcode_tasks.db").exists()
+        snapshots_existed = (ROOT / ".luxcode_snapshots").exists()
+        backups_existed = (ROOT / "luxcode_backups").exists()
+
+        from luxcode_low_cost_worker import (
+            build_low_cost_request_from_tier0,
+            build_safe_patch_contract_from_response,
+            calculate_retry_state,
+            enforce_cost_policy,
+            get_cost_policy,
+            get_provider_catalog,
+            safe_patch_preview,
+        )
+        from luxcode_low_cost_worker_contracts import AvailabilityState, RetryState, parse_worker_response, validate_worker_response
+        from luxcode_tier0_deterministic_executor import run_tier0_diagnostics
+
+        with tempfile.TemporaryDirectory(prefix="luxcode_low_cost_smoke_") as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "src").mkdir(parents=True)
+            (repo / "tests").mkdir()
+            (repo / "src" / "app.py").write_text("def greet():\n    return 1\n", encoding="utf-8")
+            (repo / "tests" / "test_app.py").write_text("from src.app import greet\nassert greet() == 1\n", encoding="utf-8")
+            subprocess.run(["git", "init"], cwd=str(repo), capture_output=True, text=True, timeout=10, shell=False)
+
+            diagnostics = run_tier0_diagnostics(str(repo), "replace function body", ["src/app.py"])
+            assert diagnostics.get("overall_status") in {"passed", "partial"}, diagnostics
+            assert diagnostics.get("selected_tier") == 0, diagnostics
+            assert diagnostics.get("external_provider_used") is False, diagnostics
+            assert diagnostics.get("paid_escalation_required") is False, diagnostics
+
+            request = build_low_cost_request_from_tier0(
+                request_id="req-low-cost-worker-smoke-1",
+                task_id="task-low-cost-worker-smoke-1",
+                task_summary="Patch greet return with local worker contract",
+                tier0_diagnostics=diagnostics,
+                target_files=["src/app.py"],
+                target_symbols=["greet"],
+                minimum_context={"src/app.py": "def greet():\n    return 1\n"},
+            )
+            assert request.request_id == "req-low-cost-worker-smoke-1", request
+            assert request.required_output_format == "structured_json_v1", request
+            assert request.provider_id == "whale", request
+            assert request.permission_mode == "preview_only", request
+
+            valid_raw_response = json.dumps(
+                {
+                    "response_id": "rsp-low-cost-worker-smoke-1",
+                    "request_id": request.request_id,
+                    "provider_id": request.provider_id,
+                    "model_id": request.model_id,
+                    "response_status": "completed",
+                    "analysis_summary": "completed safe local patch draft",
+                    "completed_scope": ["practical_coder_runtime"],
+                    "remaining_gap": "validation",
+                    "target_files": ["src/app.py"],
+                    "target_symbols": ["greet"],
+                    "patch_operations": [
+                        {
+                            "operation_id": "op-1",
+                            "operation_type": "replace_text",
+                            "file_path": "src/app.py",
+                            "anchor_text": "",
+                            "old_text": "def greet():\n    return 1\n",
+                            "new_text": "def greet():\n    return 2\n",
+                            "expected_occurrences": 1,
+                            "reason": "safe local patch",
+                            "confidence": 0.98,
+                        }
+                    ],
+                    "validation_recommendations": ["preview_only", "validate"],
+                    "assumptions": [],
+                    "uncertainties": [],
+                    "risk_flags": [],
+                    "scope_violations": [],
+                    "unsupported_requests": [],
+                    "usage_metadata": {"input_tokens": 10, "output_tokens": 20, "estimated_cost": 0.0},
+                }
+            )
+            response = parse_worker_response(valid_raw_response)
+            assert response.response_status.value == "completed", response
+            validation = validate_worker_response(
+                request=request,
+                response=response,
+                known_files={"src/app.py"},
+                known_symbols={"greet"},
+                protected_files=set(),
+                file_contents={"src/app.py": "def greet():\n    return 1\n"},
+            )
+            assert validation.valid, validation
+            assert validation.status.value == "valid", validation
+
+            safe_contract = build_safe_patch_contract_from_response(
+                request=request,
+                response=response,
+                repository_root=str(repo),
+                repository_head="",
+                protected_files=[],
+                file_contents={"src/app.py": "def greet():\n    return 1\n"},
+            )
+            assert safe_contract.get("ok") is True, safe_contract
+            safe_preview = safe_patch_preview(safe_contract)
+            assert safe_preview.get("valid") is True, safe_preview
+            assert safe_preview.get("apply_allowed") is False, safe_preview
+            assert safe_preview.get("approval_required") is True, safe_preview
+            assert safe_preview.get("operation_count") == 1, safe_preview
+
+            # invalid JSON should be rejected and allow a single format-repair style retry
+            invalid_json_rejected = False
+            try:
+                parse_worker_response("{")
+            except ValueError:
+                invalid_json_rejected = True
+            assert invalid_json_rejected, "invalid JSON should fail parse"
+
+            retry_state, can_retry = calculate_retry_state(
+                current_state=RetryState.FIRST_ATTEMPT,
+                failure_kind="invalid_json",
+                similar_failure_count=1,
+                availability=AvailabilityState.AVAILABLE,
+            )
+            assert retry_state == RetryState.FORMAT_REPAIR, retry_state
+            assert can_retry is True, can_retry
+            retry_state2, can_retry2 = calculate_retry_state(
+                current_state=RetryState.FORMAT_REPAIR,
+                failure_kind="invalid_json",
+                similar_failure_count=2,
+                availability=AvailabilityState.AVAILABLE,
+            )
+            assert retry_state2 == RetryState.BLOCKED, retry_state2
+
+            # provider separation and cost guard
+            catalog = get_provider_catalog()
+            assert catalog["direct_deepseek"].external_provider is True, catalog["direct_deepseek"]
+            assert catalog["whale"].external_provider is False, catalog["whale"]
+            assert catalog["codex"].emergency_only is True, catalog["codex"]
+            for pid in ("direct_deepseek", "whale", "codex"):
+                policy = get_cost_policy(pid)
+                enforce_cost_policy(policy)
+                assert policy.billing_allowed is False, policy
+
+            duplicate = validate_worker_response(
+                request=request,
+                response=response,
+                known_files={"src/app.py"},
+                known_symbols={"greet"},
+                protected_files=set(),
+                file_contents={"src/app.py": "def greet():\n    return 1\n"},
+                failed_patch_fingerprints={response.patch_operations[0].operation_digest},
+            )
+            assert duplicate.status.value == "invalid", duplicate
+            assert any(issue.code == "duplicate_failed_patch" for issue in duplicate.issues), duplicate
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during low-cost worker smoke: {path}"
+        assert runtime_dir.exists() is runtime_existed, "live .luxcode_runtime changed during low-cost worker smoke"
+        assert (ROOT / "luxcode_tasks.db").exists() is live_db_existed, "live luxcode_tasks.db state changed during low-cost worker smoke"
+        assert (ROOT / ".luxcode_snapshots").exists() is snapshots_existed, "live snapshots state changed during low-cost worker smoke"
+        assert (ROOT / "luxcode_backups").exists() is backups_existed, "live backups state changed during low-cost worker smoke"
+
+        return "luxcode low-cost worker local flow verified"
+
     def check_luxcode_task_persistence_local(self) -> str:
         """Verify local task persistence uses only temporary SQLite storage."""
         try:
@@ -13412,6 +13585,7 @@ class SmokeRunner:
             ("luxcode_multi_agent_handoff_local", self.check_luxcode_multi_agent_handoff_local, None, "core"),
             ("luxcode_coder_operator_cli_local", self.check_luxcode_coder_operator_cli_local, None, "core"),
             ("luxcode_practical_coder_runtime_local", self.check_luxcode_practical_coder_runtime_local, None, "core"),
+            ("luxcode_low_cost_worker_local", self.check_luxcode_low_cost_worker_local, None, "core"),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local, None, "core"),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local, None, "core"),
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local, None, "core"),
@@ -13627,6 +13801,7 @@ class SmokeRunner:
             ("luxcode_multi_agent_handoff_local", self.check_luxcode_multi_agent_handoff_local),
             ("luxcode_coder_operator_cli_local", self.check_luxcode_coder_operator_cli_local),
             ("luxcode_practical_coder_runtime_local", self.check_luxcode_practical_coder_runtime_local),
+            ("luxcode_low_cost_worker_local", self.check_luxcode_low_cost_worker_local),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local),
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local),
