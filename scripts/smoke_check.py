@@ -11388,6 +11388,362 @@ class SmokeRunner:
 
         return "luxcode low-cost worker local flow verified"
 
+    def check_luxcode_direct_deepseek_fixture_local(self) -> str:
+        """Verify Direct DeepSeek fixture transport gates and Safe Patch preview."""
+        watched = [
+            ROOT / "luxcode_direct_deepseek_transport.py",
+            ROOT / "scripts" / "validate_luxcode_direct_deepseek_transport.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+
+        from luxcode_direct_deepseek_transport import (
+            DeepSeekPricingSnapshot,
+            DeepSeekTransportPolicy,
+            build_deepseek_evidence,
+            build_deepseek_remaining_gap,
+            build_deepseek_request_from_remaining_gap,
+            build_deepseek_safe_patch_contract,
+            evaluate_deepseek_gates,
+            parse_deepseek_fixture_response,
+            preview_deepseek_safe_patch,
+            redact_secret,
+            validate_deepseek_endpoint,
+            validate_deepseek_response,
+        )
+
+        with tempfile.TemporaryDirectory(prefix="lux_deepseek_smoke_") as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "src").mkdir(parents=True)
+            (repo / "src" / "app.py").write_text("def greet():\n    return 1\n", encoding="utf-8")
+            subprocess.run(["git", "init"], cwd=str(repo), capture_output=True, text=True, timeout=10, shell=False)
+
+            request = build_deepseek_request_from_remaining_gap(
+                request_id="req-deepseek-smoke-1",
+                task_id="task-deepseek-smoke-1",
+                task_summary="Patch greet return from Low-Cost remaining gap",
+                remaining_gap="low_cost_worker_remaining_gap",
+                target_files=["src/app.py"],
+                target_symbols=["greet"],
+                minimum_context={"src/app.py": "def greet():\n    return 1\n"},
+            )
+            official = validate_deepseek_endpoint("https://api.deepseek.com/chat/completions")
+            unofficial = validate_deepseek_endpoint("https://not.deepseek.test/chat?api_key=sk-live")
+            assert official.get("ok") is True, official
+            assert unofficial.get("ok") is False, unofficial
+            assert "sk-live" not in json.dumps(unofficial), unofficial
+
+            gate = evaluate_deepseek_gates(
+                endpoint_url="https://api.deepseek.com/chat/completions",
+                policy=DeepSeekTransportPolicy(),
+                pricing=DeepSeekPricingSnapshot(model_id="deepseek-chat", input_per_million=None, output_per_million=None),
+                input_tokens=100,
+                output_tokens=80,
+                hard_cost_cap=0.01,
+            )
+            assert gate.get("allowed") is False, gate
+            assert "unknown_pricing" in gate.get("blockers", []), gate
+            assert "billing_disabled" in gate.get("blockers", []), gate
+
+            raw_response = json.dumps(
+                {
+                    "response_id": "rsp-deepseek-smoke-1",
+                    "request_id": request.request_id,
+                    "response_status": "completed",
+                    "analysis_summary": "fixture DeepSeek structured patch response",
+                    "completed_scope": ["direct_deepseek_fixture"],
+                    "remaining_gap": "safe_patch_preview_ready",
+                    "target_files": ["src/app.py"],
+                    "target_symbols": ["greet"],
+                    "patch_operations": [
+                        {
+                            "operation_id": "op-deepseek-1",
+                            "operation_type": "replace_text",
+                            "file_path": "src/app.py",
+                            "anchor_text": "",
+                            "old_text": "def greet():\n    return 1\n",
+                            "new_text": "def greet():\n    return 2\n",
+                            "expected_occurrences": 1,
+                            "reason": "fixture safe patch",
+                            "confidence": 0.95,
+                        }
+                    ],
+                    "validation_recommendations": ["preview", "py_compile"],
+                    "assumptions": [],
+                    "uncertainties": [],
+                    "risk_flags": [],
+                    "scope_violations": [],
+                    "unsupported_requests": [],
+                    "usage_metadata": {"input_tokens": 100, "output_tokens": 80, "estimated_cost": 0.0},
+                }
+            )
+            response = parse_deepseek_fixture_response(raw_response, request=request)
+            validation = validate_deepseek_response(
+                request=request,
+                response=response,
+                known_files={"src/app.py"},
+                known_symbols={"greet"},
+                protected_files=set(),
+                file_contents={"src/app.py": "def greet():\n    return 1\n"},
+            )
+            assert validation.get("valid") is True, validation
+            contract = build_deepseek_safe_patch_contract(
+                request=request,
+                response=response,
+                repository_root=str(repo),
+                file_contents={"src/app.py": "def greet():\n    return 1\n"},
+            )
+            preview = preview_deepseek_safe_patch(contract)
+            assert preview.get("operation_count") == 1, preview
+            assert preview.get("files_to_modify") == ["src/app.py"], preview
+            assert preview.get("approval_required") is True, preview
+            assert preview.get("apply_allowed") is False, preview
+
+            evidence = build_deepseek_evidence(
+                request=request,
+                response=response,
+                patch_contract=contract,
+                gate_result=gate,
+                status="fixture_validated",
+                summary="authorization bearer sk-secret-value",
+            )
+            remaining = build_deepseek_remaining_gap(request=request, reason="real_transport_blocked_by_policy", evidence=evidence)
+            assert evidence.get("provider_id") == "direct_deepseek", evidence
+            assert "sk-secret-value" not in json.dumps(evidence), evidence
+            assert remaining.get("evidence_id") == evidence.get("evidence_id"), remaining
+            assert redact_secret({"Authorization": "Bearer sk-test-secret"})["Authorization"] == "sk-********************************"
+
+            invalid_json_blocked = False
+            try:
+                parse_deepseek_fixture_response("{", request=request)
+            except ValueError:
+                invalid_json_blocked = True
+            assert invalid_json_blocked, "invalid JSON should fail"
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during DeepSeek fixture smoke: {path}"
+        return "luxcode Direct DeepSeek fixture gates and preview verified"
+
+    def check_luxcode_direct_deepseek_live_smoke(self) -> str:
+        """Run a controlled Direct DeepSeek live smoke only when all explicit gates are enabled."""
+        from luxcode_direct_deepseek_transport import (
+            DEFAULT_MODEL_ID,
+            MAX_LIVE_SMOKE_COST_USD,
+            OFFICIAL_ENDPOINT,
+            execute_deepseek_chat_completion,
+            live_smoke_policy_from_env,
+        )
+
+        policy, api_key, gates = live_smoke_policy_from_env()
+        missing = [name for name, enabled in gates.items() if not enabled]
+        if missing:
+            raise SkipCheck(f"Direct DeepSeek live smoke gates disabled: {', '.join(sorted(missing))}")
+
+        result = execute_deepseek_chat_completion(
+            prompt="Return exactly OK.",
+            api_key=api_key,
+            policy=policy,
+            endpoint_url=OFFICIAL_ENDPOINT,
+            model_id=DEFAULT_MODEL_ID,
+            max_tokens=8,
+            maximum_estimated_cost_usd=MAX_LIVE_SMOKE_COST_USD,
+            timeout_seconds=10,
+        )
+        redacted = json.dumps(result, sort_keys=True, default=str)
+        assert api_key not in redacted, "DeepSeek API key leaked in live smoke result"
+        assert result.get("ok") is True, result
+        assert result.get("model_id") == DEFAULT_MODEL_ID, result
+        assert result.get("pricing_snapshot_version") == "2026-06-16", result
+        assert result.get("estimated_maximum_cost", 1) <= MAX_LIVE_SMOKE_COST_USD, result
+        actual_cost = result.get("actual_estimated_cost")
+        assert actual_cost is None or actual_cost <= MAX_LIVE_SMOKE_COST_USD, result
+        assert "OK" in str(result.get("content", "")).upper(), result
+        return "luxcode Direct DeepSeek live smoke verified"
+
+    def check_luxcode_direct_deepseek_escalation_local(self) -> str:
+        """Verify gated Direct DeepSeek handoff without real HTTP or live patch apply."""
+        watched = [
+            ROOT / "luxcode_direct_deepseek_transport.py",
+            ROOT / "scripts" / "validate_luxcode_direct_deepseek_transport.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+
+        from luxcode_direct_deepseek_transport import (
+            DeepSeekTransportPolicy,
+            build_deepseek_restore_policy,
+            execute_direct_deepseek_handoff,
+        )
+        from luxcode_task_persistence import load_task_state
+
+        live_policy = DeepSeekTransportPolicy(
+            transport_enabled=True,
+            real_requests_allowed=True,
+            billing_allowed=True,
+            explicit_user_approval=True,
+        )
+
+        with tempfile.TemporaryDirectory(prefix="lux_deepseek_escalation_smoke_") as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "src").mkdir(parents=True)
+            (repo / "src" / "app.py").write_text("def greet():\n    return 1\n", encoding="utf-8")
+            subprocess.run(["git", "init"], cwd=str(repo), capture_output=True, text=True, timeout=10, shell=False)
+
+            completed = execute_direct_deepseek_handoff(
+                task_id="task-deepseek-smoke-completed",
+                task_summary="Already completed by lower tier",
+                previous_tier="tier1_local_worker",
+                previous_result={"completed": True, "remaining_gap": {"remaining_gap": "none"}},
+                repository_root=str(repo),
+                target_files=["src/app.py"],
+                target_symbols=["greet"],
+                minimum_context={"src/app.py": "def greet():\n    return 1\n"},
+                free_tier_exhaustion_confirmed=False,
+                paid_escalation_approved=False,
+                policy=DeepSeekTransportPolicy(),
+            )
+            assert completed.get("direct_deepseek_called") is False, completed
+            assert completed.get("stop_reason") == "completed_by_lower_tier", completed
+
+            free_block = execute_direct_deepseek_handoff(
+                task_id="task-deepseek-smoke-free",
+                task_summary="Free tiers not exhausted",
+                previous_tier="tier1_local_worker",
+                previous_result={"completed": False, "remaining_gap": {"remaining_gap": "needs structured paid patch"}},
+                repository_root=str(repo),
+                target_files=["src/app.py"],
+                target_symbols=["greet"],
+                minimum_context={"src/app.py": "def greet():\n    return 1\n"},
+                free_tier_exhaustion_confirmed=False,
+                paid_escalation_approved=True,
+                policy=live_policy,
+            )
+            assert free_block.get("direct_deepseek_called") is False, free_block
+            assert "free_tiers_not_exhausted" in free_block.get("blockers", []), free_block
+
+            paid_block = execute_direct_deepseek_handoff(
+                task_id="task-deepseek-smoke-paid",
+                task_summary="Paid approval absent",
+                previous_tier="free_cloud_tiers",
+                previous_result={"completed": False, "remaining_gap": {"remaining_gap": "needs structured paid patch"}},
+                repository_root=str(repo),
+                target_files=["src/app.py"],
+                target_symbols=["greet"],
+                minimum_context={"src/app.py": "def greet():\n    return 1\n"},
+                free_tier_exhaustion_confirmed=True,
+                paid_escalation_approved=False,
+                policy=live_policy,
+            )
+            assert paid_block.get("direct_deepseek_called") is False, paid_block
+            assert "paid_escalation_not_approved" in paid_block.get("blockers", []), paid_block
+
+            def mock_structured(url, payload, api_key, *, timeout_seconds):
+                prompt_payload = json.loads(payload["messages"][0]["content"])
+                content = json.dumps(
+                    {
+                        "response_id": "rsp-deepseek-escalation-smoke",
+                        "request_id": prompt_payload["request_id"],
+                        "response_status": "completed",
+                        "analysis_summary": "mocked Direct DeepSeek escalation preview",
+                        "completed_scope": ["direct_deepseek_handoff"],
+                        "remaining_gap": "",
+                        "target_files": ["src/app.py"],
+                        "target_symbols": ["greet"],
+                        "patch_operations": [
+                            {
+                                "operation_id": "op-deepseek-escalation-smoke",
+                                "operation_type": "replace_text",
+                                "file_path": "src/app.py",
+                                "anchor_text": "",
+                                "old_text": "def greet():\n    return 1\n",
+                                "new_text": "def greet():\n    return 2\n",
+                                "expected_occurrences": 1,
+                                "reason": "mocked escalation preview",
+                                "confidence": 0.95,
+                            }
+                        ],
+                        "validation_recommendations": ["preview"],
+                        "assumptions": [],
+                        "uncertainties": [],
+                        "risk_flags": [],
+                        "scope_violations": [],
+                        "unsupported_requests": [],
+                        "usage_metadata": {"input_tokens": 20, "output_tokens": 8, "estimated_cost": 0.0},
+                    },
+                    sort_keys=True,
+                )
+                return {
+                    "ok": True,
+                    "status": "success",
+                    "http_status": 200,
+                    "provider_request_id": "req-deepseek-escalation-smoke",
+                    "latency_ms": 10,
+                    "response": {"choices": [{"message": {"content": content}}], "usage": {"prompt_tokens": 20, "completion_tokens": 8}},
+                }
+
+            handoff = execute_direct_deepseek_handoff(
+                task_id="task-deepseek-escalation-smoke",
+                task_summary="Escalate after all free tiers fail",
+                previous_tier="free_cloud_tiers",
+                previous_result={"completed": False, "remaining_gap": {"remaining_gap": "needs structured paid patch"}},
+                repository_root=str(repo),
+                target_files=["src/app.py"],
+                target_symbols=["greet"],
+                minimum_context={"src/app.py": "def greet():\n    return 1\n"},
+                free_tier_exhaustion_confirmed=True,
+                paid_escalation_approved=True,
+                policy=live_policy,
+                http_call=mock_structured,
+                persist=True,
+                persistence_mode="memory_only",
+            )
+            assert handoff.get("direct_deepseek_called") is True, handoff
+            assert handoff.get("completed") is True, handoff
+            assert handoff.get("validation", {}).get("valid") is True, handoff
+            assert handoff.get("safe_patch_preview", {}).get("operation_count") == 1, handoff
+            assert handoff.get("safe_patch_preview", {}).get("approval_required") is True, handoff
+            assert handoff.get("safe_patch_preview", {}).get("files_to_modify") == ["src/app.py"], handoff
+            assert handoff.get("evidence", {}).get("previous_tier") == "free_cloud_tiers", handoff
+            assert "sk-live-placeholder" not in json.dumps(handoff, sort_keys=True, default=str), handoff
+
+            loaded = load_task_state("task-deepseek-escalation-smoke", mode="memory_only")
+            restore_policy = build_deepseek_restore_policy(loaded.get("task", {}))
+            assert loaded.get("found") is True, loaded
+            assert restore_policy.get("restore_auto_execute") is False, restore_policy
+            assert restore_policy.get("requires_gate_revalidation") is True, restore_policy
+            assert restore_policy.get("paid_call_restarted") is False, restore_policy
+            assert "sk-live-placeholder" not in json.dumps(loaded, sort_keys=True, default=str), loaded
+
+            invalid = execute_direct_deepseek_handoff(
+                task_id="task-deepseek-escalation-invalid",
+                task_summary="Invalid response remains a gap",
+                previous_tier="free_cloud_tiers",
+                previous_result={"completed": False, "remaining_gap": {"remaining_gap": "needs structured paid patch"}},
+                repository_root=str(repo),
+                target_files=["src/app.py"],
+                target_symbols=["greet"],
+                minimum_context={"src/app.py": "def greet():\n    return 1\n"},
+                free_tier_exhaustion_confirmed=True,
+                paid_escalation_approved=True,
+                policy=live_policy,
+                http_call=lambda url, payload, api_key, *, timeout_seconds: {
+                    "ok": True,
+                    "status": "success",
+                    "http_status": 200,
+                    "provider_request_id": "req-invalid",
+                    "latency_ms": 5,
+                    "response": {"choices": [{"message": {"content": "not-json"}}], "usage": {"prompt_tokens": 8, "completion_tokens": 1}},
+                },
+            )
+            assert invalid.get("completed") is False, invalid
+            assert invalid.get("stop_reason") == "validation_failed", invalid
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during DeepSeek escalation smoke: {path}"
+        return "luxcode Direct DeepSeek gated escalation chain verified"
+
     def check_luxcode_tier1_local_worker_local(self) -> str:
         """Verify Tier 1 local worker fixture contract to Safe Patch preview flow."""
         watched = [
@@ -13854,6 +14210,9 @@ class SmokeRunner:
             ("luxcode_coder_operator_cli_local", self.check_luxcode_coder_operator_cli_local, None, "core"),
             ("luxcode_practical_coder_runtime_local", self.check_luxcode_practical_coder_runtime_local, None, "core"),
             ("luxcode_low_cost_worker_local", self.check_luxcode_low_cost_worker_local, None, "core"),
+            ("luxcode_direct_deepseek_fixture_local", self.check_luxcode_direct_deepseek_fixture_local, None, "core"),
+            ("luxcode_direct_deepseek_live_smoke", self.check_luxcode_direct_deepseek_live_smoke, None, "core"),
+            ("luxcode_direct_deepseek_escalation_local", self.check_luxcode_direct_deepseek_escalation_local, None, "core"),
             ("luxcode_tier1_local_worker_local", self.check_luxcode_tier1_local_worker_local, None, "core"),
             ("luxcode_tier1_local_worker_ollama_real", self.check_luxcode_tier1_local_worker_ollama_real, None, "core"),
             ("luxcode_tier1_router_e2e_local", self.check_luxcode_tier1_router_e2e_local, None, "core"),
@@ -14073,6 +14432,9 @@ class SmokeRunner:
             ("luxcode_coder_operator_cli_local", self.check_luxcode_coder_operator_cli_local),
             ("luxcode_practical_coder_runtime_local", self.check_luxcode_practical_coder_runtime_local),
             ("luxcode_low_cost_worker_local", self.check_luxcode_low_cost_worker_local),
+            ("luxcode_direct_deepseek_fixture_local", self.check_luxcode_direct_deepseek_fixture_local),
+            ("luxcode_direct_deepseek_live_smoke", self.check_luxcode_direct_deepseek_live_smoke),
+            ("luxcode_direct_deepseek_escalation_local", self.check_luxcode_direct_deepseek_escalation_local),
             ("luxcode_tier1_local_worker_local", self.check_luxcode_tier1_local_worker_local),
             ("luxcode_tier1_local_worker_ollama_real", self.check_luxcode_tier1_local_worker_ollama_real),
             ("luxcode_tier1_router_e2e_local", self.check_luxcode_tier1_router_e2e_local),
