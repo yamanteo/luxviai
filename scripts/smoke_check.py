@@ -11388,6 +11388,274 @@ class SmokeRunner:
 
         return "luxcode low-cost worker local flow verified"
 
+    def check_luxcode_tier1_local_worker_local(self) -> str:
+        """Verify Tier 1 local worker fixture contract to Safe Patch preview flow."""
+        watched = [
+            ROOT / "luxcode_tier1_local_worker.py",
+            ROOT / "scripts" / "validate_luxcode_tier1_local_worker.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+
+        from luxcode_tier0_deterministic_executor import run_tier0_diagnostics
+        from luxcode_tier1_local_worker import (
+            build_safe_patch_contract_from_tier1_response,
+            build_tier1_evidence,
+            build_tier1_remaining_gap,
+            build_tier1_request_from_tier0,
+            parse_tier1_response,
+            preview_tier1_safe_patch,
+            validate_tier1_response,
+        )
+
+        with tempfile.TemporaryDirectory(prefix="luxcode_tier1_smoke_") as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "src").mkdir(parents=True)
+            (repo / "tests").mkdir()
+            (repo / "src" / "app.py").write_text("def greet():\n    return 1\n", encoding="utf-8")
+            (repo / "tests" / "test_app.py").write_text("from src.app import greet\nassert greet() == 1\n", encoding="utf-8")
+            subprocess.run(["git", "init"], cwd=str(repo), capture_output=True, text=True, timeout=10, shell=False)
+
+            diagnostics = run_tier0_diagnostics(str(repo), "replace greet return", ["src/app.py"])
+            assert diagnostics.get("selected_tier") == 0, diagnostics
+            assert diagnostics.get("external_provider_used") is False, diagnostics
+            assert diagnostics.get("remaining_gap"), diagnostics
+
+            request = build_tier1_request_from_tier0(
+                request_id="req-tier1-smoke-1",
+                task_id="task-tier1-smoke-1",
+                task_summary="Patch greet return with local Tier 1 fixture",
+                tier0_diagnostics=diagnostics,
+                target_files=["src/app.py"],
+                target_symbols=["greet"],
+                minimum_context={"src/app.py": "def greet():\n    return 1\n"},
+            )
+            assert request.provider_id == "tier1_local_worker", request
+            assert request.required_output_format == "structured_json_v1", request
+            assert request.maximum_cost == 0.0, request
+
+            raw_response = json.dumps(
+                {
+                    "response_id": "rsp-tier1-smoke-1",
+                    "request_id": request.request_id,
+                    "status": "completed",
+                    "analysis_summary": "fixture local model produced one safe patch operation",
+                    "completed_scope": ["tier1_patch_draft"],
+                    "remaining_gap": "safe_patch_preview_ready",
+                    "target_files": ["src/app.py"],
+                    "target_symbols": ["greet"],
+                    "patch_operations": [
+                        {
+                            "operation_id": "op-tier1-1",
+                            "operation_type": "replace_text",
+                            "file_path": "src/app.py",
+                            "anchor_text": "",
+                            "old_text": "def greet():\n    return 1\n",
+                            "new_text": "def greet():\n    return 2\n",
+                            "expected_occurrences": 1,
+                            "reason": "fixture local coding model patch",
+                            "confidence": 0.97,
+                        }
+                    ],
+                    "validation_recommendations": ["preview", "py_compile"],
+                    "assumptions": [],
+                    "uncertainties": [],
+                    "risk_flags": [],
+                    "unsupported_requests": [],
+                    "model_metadata": {"runtime_id": "fixture_local_runtime", "local_only": True, "external_api_used": False},
+                }
+            )
+            response = parse_tier1_response(raw_response, request=request)
+            validation = validate_tier1_response(
+                request=request,
+                response=response,
+                known_files={"src/app.py"},
+                known_symbols={"greet"},
+                protected_files=set(),
+                file_contents={"src/app.py": "def greet():\n    return 1\n"},
+            )
+            assert validation.get("valid") is True, validation
+
+            contract = build_safe_patch_contract_from_tier1_response(
+                request=request,
+                response=response,
+                repository_root=str(repo),
+                protected_files=[],
+                file_contents={"src/app.py": "def greet():\n    return 1\n"},
+            )
+            preview = preview_tier1_safe_patch(contract)
+            assert len(contract.get("operations", [])) == 1, contract
+            assert preview.get("operation_count") == 1, preview
+            assert preview.get("files_to_modify") == ["src/app.py"], preview
+            assert preview.get("approval_required") is True, preview
+            assert preview.get("apply_allowed") is False, preview
+
+            evidence = build_tier1_evidence(request=request, response=response, patch_contract=contract, status="preview_ready")
+            remaining = build_tier1_remaining_gap(request=request, response=response)
+            assert evidence.get("tier") == 1 and evidence.get("patch_digest") == contract.get("patch_digest"), evidence
+            assert remaining.get("remaining_gap") == "safe_patch_preview_ready", remaining
+
+            invalid_json_blocked = False
+            try:
+                parse_tier1_response("{", request=request)
+            except ValueError:
+                invalid_json_blocked = True
+            assert invalid_json_blocked, "invalid JSON should be rejected"
+
+            invalid = json.loads(raw_response)
+            invalid["patch_operations"][0]["operation_type"] = "shell_operation"
+            invalid_response = parse_tier1_response(json.dumps(invalid), request=request)
+            invalid_validation = validate_tier1_response(
+                request=request,
+                response=invalid_response,
+                known_files={"src/app.py"},
+                known_symbols={"greet"},
+                protected_files=set(),
+                file_contents={"src/app.py": "def greet():\n    return 1\n"},
+            )
+            assert invalid_validation.get("valid") is False, invalid_validation
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during Tier 1 local worker smoke: {path}"
+        return "luxcode Tier 1 local worker fixture flow verified"
+
+    def check_luxcode_tier1_local_worker_ollama_real(self) -> str:
+        """Verify real loopback Ollama Tier 1 inference through Safe Patch preview."""
+        watched = [
+            ROOT / "luxcode_tier1_local_worker.py",
+            ROOT / "scripts" / "validate_luxcode_tier1_local_worker.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+
+        from luxcode_tier0_deterministic_executor import run_tier0_diagnostics
+        from luxcode_tier1_local_worker import (
+            TIER1_OLLAMA_MODEL_ID,
+            build_safe_patch_contract_from_tier1_response,
+            build_tier1_request_from_tier0,
+            check_ollama_model,
+            preview_tier1_safe_patch,
+            run_ollama_tier1_inference,
+            validate_tier1_response,
+        )
+
+        model_state = check_ollama_model(TIER1_OLLAMA_MODEL_ID, endpoint="http://127.0.0.1:11434", timeout_seconds=5)
+        assert model_state.get("ok") is True, model_state
+        assert model_state.get("model_available") is True, model_state
+
+        with tempfile.TemporaryDirectory(prefix="luxcode_tier1_ollama_smoke_") as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "src").mkdir(parents=True)
+            (repo / "src" / "app.py").write_text("def greet():\n    return 1\n", encoding="utf-8")
+            subprocess.run(["git", "init"], cwd=str(repo), capture_output=True, text=True, timeout=10, shell=False)
+            diagnostics = run_tier0_diagnostics(str(repo), "replace greet return", ["src/app.py"])
+            request = build_tier1_request_from_tier0(
+                request_id="req-tier1-ollama-smoke-1",
+                task_id="task-tier1-ollama-smoke-1",
+                task_summary="Replace greet return 1 with return 2",
+                tier0_diagnostics=diagnostics,
+                target_files=["src/app.py"],
+                target_symbols=["greet"],
+                minimum_context={"src/app.py": "def greet():\n    return 1\n"},
+                runtime_id="ollama_loopback",
+                model_id=TIER1_OLLAMA_MODEL_ID,
+            )
+
+            inference = run_ollama_tier1_inference(request=request, timeout_seconds=90)
+            if inference.get("state") == "invalid_json":
+                inference = run_ollama_tier1_inference(request=request, timeout_seconds=90, repair_attempt=True)
+            assert inference.get("ok") is True, inference
+            response = inference["response"]
+            validation = validate_tier1_response(
+                request=request,
+                response=response,
+                known_files={"src/app.py"},
+                known_symbols={"greet"},
+                protected_files=set(),
+                file_contents={"src/app.py": "def greet():\n    return 1\n"},
+            )
+            assert validation.get("valid") is True, {"validation": validation, "raw_text": inference.get("raw_text", "")[:2000]}
+            contract = build_safe_patch_contract_from_tier1_response(
+                request=request,
+                response=response,
+                repository_root=str(repo),
+                protected_files=[],
+                file_contents={"src/app.py": "def greet():\n    return 1\n"},
+            )
+            preview = preview_tier1_safe_patch(contract)
+            assert preview.get("operation_count", 0) >= 1, preview
+            assert preview.get("files_to_modify") == ["src/app.py"], preview
+            assert preview.get("approval_required") is True, preview
+            assert preview.get("apply_allowed") is False, preview
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during real Tier 1 Ollama smoke: {path}"
+        return "luxcode Tier 1 real Ollama local inference verified"
+
+    def check_luxcode_tier1_router_e2e_local(self) -> str:
+        """Verify Tier 0 to router to real Tier 1 Ollama Safe Patch preview flow."""
+        watched = [
+            ROOT / "luxcode_tier1_local_worker.py",
+            ROOT / "scripts" / "validate_luxcode_tier1_local_worker.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+
+        from luxcode_tier1_local_worker import execute_tier0_router_tier1_preview
+
+        with tempfile.TemporaryDirectory(prefix="luxcode_tier1_e2e_smoke_") as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "src").mkdir(parents=True)
+            (repo / "src" / "app.py").write_text("def greet():\n    return 1\n", encoding="utf-8")
+            subprocess.run(["git", "init"], cwd=str(repo), capture_output=True, text=True, timeout=10, shell=False)
+
+            result = execute_tier0_router_tier1_preview(
+                task_id="task-tier1-e2e-smoke-1",
+                repository_root=str(repo),
+                task_summary="Replace greet return 1 with return 2",
+                target_files=["src/app.py"],
+                target_symbols=["greet"],
+                minimum_context={"src/app.py": "def greet():\n    return 1\n"},
+                persist=True,
+            )
+            assert result.get("ok") is True, result
+            route = result.get("route_decision", {})
+            preview = result.get("safe_patch_preview", {})
+            assert result.get("tier0_diagnostics", {}).get("selected_tier") == 0, result.get("tier0_diagnostics")
+            assert result.get("remaining_gap"), result
+            assert route.get("selected_primary_tier") == "lightweight_local_coding_model", route
+            assert "small_code_fix_fast_path" == route.get("fast_path_reason"), route
+            assert result.get("validation", {}).get("valid") is True, result.get("validation")
+            assert preview.get("operation_count", 0) >= 1, preview
+            assert preview.get("files_to_modify") == ["src/app.py"], preview
+            assert preview.get("approval_required") is True, preview
+            assert preview.get("apply_allowed") is False, preview
+            assert result.get("evidence", {}).get("tier") == 1, result.get("evidence")
+            assert result.get("persistence", {}).get("ok") is True, result.get("persistence")
+
+            fallback = execute_tier0_router_tier1_preview(
+                task_id="task-tier1-e2e-fallback-1",
+                repository_root=str(repo),
+                task_summary="Replace greet return using missing model",
+                target_files=["src/app.py"],
+                target_symbols=["greet"],
+                minimum_context={"src/app.py": "def greet():\n    return 1\n"},
+                model_id="definitely_missing_tier1_fixture_model",
+                persist=False,
+            )
+            assert fallback.get("ok") is False, fallback
+            assert fallback.get("state") == "tier1_not_selected", fallback
+            assert fallback.get("route_decision", {}).get("selected_primary_tier") != "lightweight_local_coding_model", fallback
+            assert fallback.get("remaining_gap"), fallback
+            assert fallback.get("evidence", {}).get("failure_fingerprint"), fallback
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during Tier 1 router e2e smoke: {path}"
+        return "luxcode Tier 0 router Tier 1 real Ollama preview flow verified"
+
     def check_luxcode_task_persistence_local(self) -> str:
         """Verify local task persistence uses only temporary SQLite storage."""
         try:
@@ -13586,6 +13854,9 @@ class SmokeRunner:
             ("luxcode_coder_operator_cli_local", self.check_luxcode_coder_operator_cli_local, None, "core"),
             ("luxcode_practical_coder_runtime_local", self.check_luxcode_practical_coder_runtime_local, None, "core"),
             ("luxcode_low_cost_worker_local", self.check_luxcode_low_cost_worker_local, None, "core"),
+            ("luxcode_tier1_local_worker_local", self.check_luxcode_tier1_local_worker_local, None, "core"),
+            ("luxcode_tier1_local_worker_ollama_real", self.check_luxcode_tier1_local_worker_ollama_real, None, "core"),
+            ("luxcode_tier1_router_e2e_local", self.check_luxcode_tier1_router_e2e_local, None, "core"),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local, None, "core"),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local, None, "core"),
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local, None, "core"),
@@ -13802,6 +14073,9 @@ class SmokeRunner:
             ("luxcode_coder_operator_cli_local", self.check_luxcode_coder_operator_cli_local),
             ("luxcode_practical_coder_runtime_local", self.check_luxcode_practical_coder_runtime_local),
             ("luxcode_low_cost_worker_local", self.check_luxcode_low_cost_worker_local),
+            ("luxcode_tier1_local_worker_local", self.check_luxcode_tier1_local_worker_local),
+            ("luxcode_tier1_local_worker_ollama_real", self.check_luxcode_tier1_local_worker_ollama_real),
+            ("luxcode_tier1_router_e2e_local", self.check_luxcode_tier1_router_e2e_local),
             ("luxcode_autonomy_permission_local", self.check_luxcode_autonomy_permission_local),
             ("luxcode_terminal_process_runtime_local", self.check_luxcode_terminal_process_runtime_local),
             ("luxcode_browser_launch_selection_local", self.check_luxcode_browser_launch_selection_local),
