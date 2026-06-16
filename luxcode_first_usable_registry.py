@@ -13,12 +13,13 @@ ENGINE_ORDER = [
     "tier0_deterministic",
     "tier1_local_worker",
     "free_gemini",
-    "free_32b",
+    "free_cloud_worker",
     "direct_deepseek",
     "whale",
     "codex",
 ]
-ALL_ENGINE_IDS = ENGINE_ORDER + ["disabled", "unknown"]
+ALL_ENGINE_IDS = ENGINE_ORDER + ["free_32b", "disabled", "unknown"]
+CANONICAL_ENGINE_ALIASES = {"free_32b": "free_cloud_worker", "free_cloud_worker": "free_cloud_worker"}
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,8 @@ class UnifiedEngine:
     emergency_only: bool
     supports_structured_patch: bool
     supports_validation: bool
+    canonical_engine_id: str = ""
+    legacy_alias: str = ""
 
 
 def _stable_json(value: Any) -> str:
@@ -52,15 +55,16 @@ def _digest(value: Any, prefix: str = "first-usable") -> str:
 
 def _base_registry() -> Dict[str, UnifiedEngine]:
     return {
-        "tier0_deterministic": UnifiedEngine("tier0_deterministic", 0, "deterministic_local_tools", True, True, "available", "zero", True, False, False, False, False, False, False, False, True, True),
-        "tier1_local_worker": UnifiedEngine("tier1_local_worker", 1, "local_light_model", True, True, "available", "zero", True, False, False, False, True, False, False, False, True, True),
-        "free_gemini": UnifiedEngine("free_gemini", 2, "future_free_cloud_placeholder", False, False, "disabled", "free", False, True, False, True, False, False, False, False, True, True),
-        "free_32b": UnifiedEngine("free_32b", 3, "future_free_cloud_placeholder", False, False, "disabled", "free", False, True, False, True, False, False, False, False, True, True),
-        "direct_deepseek": UnifiedEngine("direct_deepseek", 4, "paid_direct_transport", False, True, "disabled", "paid", False, True, False, True, False, True, False, False, True, True),
-        "whale": UnifiedEngine("whale", 5, "manual_agent_execution", False, False, "manual_only", "manual", False, True, True, False, True, True, True, False, True, True),
-        "codex": UnifiedEngine("codex", 6, "emergency_agent_execution", False, False, "emergency_only", "manual", False, True, True, False, True, True, True, True, True, True),
-        "disabled": UnifiedEngine("disabled", None, "disabled", False, False, "disabled", "none", True, False, False, False, False, False, True, False, False, False),
-        "unknown": UnifiedEngine("unknown", None, "unknown", False, False, "unknown", "unknown", False, False, False, False, False, True, True, False, False, False),
+        "tier0_deterministic": UnifiedEngine("tier0_deterministic", 0, "deterministic_local_tools", True, True, "available", "zero", True, False, False, False, False, False, False, False, True, True, "tier0_deterministic", ""),
+        "tier1_local_worker": UnifiedEngine("tier1_local_worker", 1, "local_light_model", True, True, "available", "zero", True, False, False, False, True, False, False, False, True, True, "tier1_local_worker", ""),
+        "free_gemini": UnifiedEngine("free_gemini", 2, "free_cloud_gemini_transport", False, False, "disabled", "free", False, True, False, True, False, False, False, False, True, True, "free_gemini", ""),
+        "free_cloud_worker": UnifiedEngine("free_cloud_worker", 3, "free_cloud_worker", False, False, "disabled", "free", False, True, False, True, False, False, False, False, True, True, "free_cloud_worker", "free_32b"),
+        "free_32b": UnifiedEngine("free_32b", 3, "free_cloud_worker_legacy_alias", False, False, "alias_only", "free", False, True, False, True, False, False, False, False, True, True, "free_cloud_worker", "free_32b"),
+        "direct_deepseek": UnifiedEngine("direct_deepseek", 4, "paid_direct_transport", False, True, "disabled", "paid", False, True, False, True, False, True, False, False, True, True, "direct_deepseek", ""),
+        "whale": UnifiedEngine("whale", 5, "manual_agent_execution", False, False, "manual_only", "manual", False, True, True, False, True, True, True, False, True, True, "whale", ""),
+        "codex": UnifiedEngine("codex", 6, "emergency_agent_execution", False, False, "emergency_only", "manual", False, True, True, False, True, True, True, True, True, True, "codex", ""),
+        "disabled": UnifiedEngine("disabled", None, "disabled", False, False, "disabled", "none", True, False, False, False, False, False, True, False, False, False, "disabled", ""),
+        "unknown": UnifiedEngine("unknown", None, "unknown", False, False, "unknown", "unknown", False, False, False, False, False, True, True, False, False, False, "unknown", ""),
     }
 
 
@@ -199,7 +203,7 @@ def select_engine_preview(
             continue
         if not engine["enabled"]:
             _reject(rejected, engine_id, "engine_disabled")
-            if engine_id in {"free_gemini", "free_32b"}:
+            if engine_id in {"free_gemini", "free_cloud_worker"}:
                 risk_flags.append(f"{engine_id}_placeholder_disabled")
             continue
         if not engine["verified"]:
@@ -220,11 +224,11 @@ def select_engine_preview(
                 continue
             selected_engine, selected_tier, reason = engine_id, engine["tier"], "tier1_runtime_healthy"
             break
-        if engine_id in {"free_gemini", "free_32b"}:
+        if engine_id in {"free_gemini", "free_cloud_worker"}:
             if engine_id == "free_gemini":
-                selected_engine, selected_tier, reason = engine_id, engine["tier"], "verified_free_gemini_before_32b"
+                selected_engine, selected_tier, reason = engine_id, engine["tier"], "verified_free_gemini_before_free_cloud"
                 break
-            selected_engine, selected_tier, reason = engine_id, engine["tier"], "verified_free_32b_before_paid"
+            selected_engine, selected_tier, reason = engine_id, engine["tier"], "verified_free_cloud_before_paid"
             break
         if engine_id == "direct_deepseek":
             if not free_tier_exhaustion_confirmed:

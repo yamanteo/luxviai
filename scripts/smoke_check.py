@@ -11401,9 +11401,10 @@ class SmokeRunner:
 
         registry = get_unified_engine_registry()
         config = build_safe_config()
-        assert ENGINE_ORDER == ["tier0_deterministic", "tier1_local_worker", "free_gemini", "free_32b", "direct_deepseek", "whale", "codex"], ENGINE_ORDER
+        assert ENGINE_ORDER == ["tier0_deterministic", "tier1_local_worker", "free_gemini", "free_cloud_worker", "direct_deepseek", "whale", "codex"], ENGINE_ORDER
         assert registry["free_gemini"]["enabled"] is False and registry["free_gemini"]["verified"] is False, registry["free_gemini"]
-        assert registry["free_32b"]["enabled"] is False and registry["free_32b"]["verified"] is False, registry["free_32b"]
+        assert registry["free_cloud_worker"]["enabled"] is False and registry["free_cloud_worker"]["verified"] is False, registry["free_cloud_worker"]
+        assert registry["free_32b"]["canonical_engine_id"] == "free_cloud_worker", registry["free_32b"]
         assert registry["direct_deepseek"]["enabled"] is False and registry["direct_deepseek"]["requires_user_approval"] is True, registry["direct_deepseek"]
         assert registry["whale"]["manual_only"] is True, registry["whale"]
         assert registry["codex"]["emergency_only"] is True, registry["codex"]
@@ -11436,13 +11437,13 @@ class SmokeRunner:
         assert blocked_paid["selected_engine"] is None, blocked_paid
         assert any(item["engine_id"] == "direct_deepseek" and "free_tiers_not_exhausted" in item["reason"] for item in blocked_paid["rejected_candidates"]), blocked_paid
 
-        free32 = select_engine_preview(
+        free_cloud = select_engine_preview(
             completed=False,
             completed_scope=["tier0_deterministic", "tier1_local_worker"],
             remaining_gap={"remaining_gap": "free tier candidate"},
             registry_overrides={
                 "free_gemini": {"enabled": True, "verified": False, "availability": "available"},
-                "free_32b": {"enabled": True, "verified": True, "availability": "available"},
+                "free_cloud_worker": {"enabled": True, "verified": True, "availability": "available"},
                 "direct_deepseek": {"enabled": True, "availability": "available"},
             },
             config_overrides={"network_allowed": True, "billing_allowed": True, "paid_escalation_allowed": True, "maximum_cost_per_request": 0.001},
@@ -11450,7 +11451,7 @@ class SmokeRunner:
             paid_escalation_approved=True,
             cost_budget=0.001,
         )
-        assert free32["selected_engine"] == "free_32b", free32
+        assert free_cloud["selected_engine"] == "free_cloud_worker", free_cloud
 
         digest_a = select_engine_preview(completed=False, remaining_gap={"remaining_gap": "stable"})
         digest_b = select_engine_preview(completed=False, remaining_gap={"remaining_gap": "stable"})
@@ -11521,7 +11522,7 @@ class SmokeRunner:
             session=session,
             completed_scope=["tier0_deterministic", "tier1_local_worker"],
             remaining_gap={"remaining_gap": "paid preview"},
-            registry_overrides={"free_gemini": {"enabled": False}, "free_32b": {"enabled": False}, "direct_deepseek": {"enabled": True, "availability": "available"}},
+            registry_overrides={"free_gemini": {"enabled": False}, "free_cloud_worker": {"enabled": False}, "direct_deepseek": {"enabled": True, "availability": "available"}},
             config_overrides={"network_allowed": True, "billing_allowed": True, "paid_escalation_allowed": True, "maximum_cost_per_request": 0.001},
             free_tier_exhaustion_confirmed=True,
             paid_escalation_approved=True,
@@ -11758,11 +11759,11 @@ class SmokeRunner:
             remaining_gap={"remaining_gap": "quota"},
             registry_overrides={
                 "free_gemini": {"enabled": True, "verified": True, "availability": "available"},
-                "free_32b": {"enabled": True, "verified": True, "availability": "available"},
+                "free_cloud_worker": {"enabled": True, "verified": True, "availability": "available"},
             },
             provider_health={"free_gemini": "quota_exhausted"},
         )
-        assert quota["selected_engine"] == "free_32b", quota
+        assert quota["selected_engine"] == "free_cloud_worker", quota
 
         blocked_gate = evaluate_gemini_gates(GeminiGatePolicy(enabled=True, verified=True, free_tier_confirmed=False, billing_disabled_confirmed=False, auth_key_confirmed=False))
         assert blocked_gate["allowed"] is False, blocked_gate
@@ -11940,9 +11941,9 @@ class SmokeRunner:
             target_symbols=["greet"],
             minimum_context={"src/app.py": "x"},
             policy=GeminiGatePolicy(enabled=False, verified=False),
-            registry_overrides={"free_32b": {"enabled": True, "verified": True, "availability": "available"}},
+            registry_overrides={"free_cloud_worker": {"enabled": True, "verified": True, "availability": "available"}},
         )
-        assert disabled["transport_called"] is False and disabled["next_candidate"] == "free_32b", disabled
+        assert disabled["transport_called"] is False and disabled["next_candidate"] == "free_cloud_worker", disabled
 
         completed = execute_free_gemini_handoff(
             task_id="task-gemini-e2e-completed",
@@ -11970,7 +11971,7 @@ class SmokeRunner:
                 "status": "success",
                 "response_id": "gemini-e2e-partial",
                 "latency_ms": 5,
-                "response": {"modelVersion": "gemini-fixture", "candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": candidate_payload(status="partial", remaining_gap="needs free_32b")}]}}], "usageMetadata": {}},
+                "response": {"modelVersion": "gemini-fixture", "candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": candidate_payload(status="partial", remaining_gap="needs free cloud")}]}}], "usageMetadata": {}},
             }
 
         partial = execute_free_gemini_handoff(
@@ -11984,11 +11985,11 @@ class SmokeRunner:
             minimum_context={"src/app.py": "x"},
             policy=live_policy,
             api_key="sk-secret-value",
-            registry_overrides={"free_gemini": {"enabled": True, "verified": True, "availability": "available"}, "free_32b": {"enabled": True, "verified": True, "availability": "available"}},
+            registry_overrides={"free_gemini": {"enabled": True, "verified": True, "availability": "available"}, "free_cloud_worker": {"enabled": True, "verified": True, "availability": "available"}},
             http_call=mock_partial,
         )
-        assert partial["completed"] is False and partial["next_candidate"] == "free_32b", partial
-        assert partial["session_state"]["remaining_gap"] == "needs free_32b", partial
+        assert partial["completed"] is False and partial["next_candidate"] == "free_cloud_worker", partial
+        assert partial["session_state"]["remaining_gap"] == "needs free cloud", partial
 
         quota = execute_free_gemini_handoff(
             task_id="task-gemini-e2e-quota",
@@ -12001,9 +12002,9 @@ class SmokeRunner:
             minimum_context={"src/app.py": "x"},
             policy=live_policy,
             provider_health="quota_exhausted",
-            registry_overrides={"free_gemini": {"enabled": True, "verified": True, "availability": "available"}, "free_32b": {"enabled": True, "verified": True, "availability": "available"}},
+            registry_overrides={"free_gemini": {"enabled": True, "verified": True, "availability": "available"}, "free_cloud_worker": {"enabled": True, "verified": True, "availability": "available"}},
         )
-        assert quota["transport_called"] is False and quota["next_candidate"] == "free_32b", quota
+        assert quota["transport_called"] is False and quota["next_candidate"] == "free_cloud_worker", quota
 
         seen: set[str] = set()
         first = execute_free_gemini_handoff(
@@ -12049,9 +12050,9 @@ class SmokeRunner:
             minimum_context={"src/app.py": "x"},
             policy=live_policy,
             provider_health="authentication_failed",
-            registry_overrides={"free_gemini": {"enabled": True, "verified": True, "availability": "available"}, "free_32b": {"enabled": True, "verified": True, "availability": "available"}},
+            registry_overrides={"free_gemini": {"enabled": True, "verified": True, "availability": "available"}, "free_cloud_worker": {"enabled": True, "verified": True, "availability": "available"}},
         )
-        assert auth["transport_called"] is False and auth["next_candidate"] == "free_32b", auth
+        assert auth["transport_called"] is False and auth["next_candidate"] == "free_cloud_worker", auth
 
         attempts = {"count": 0}
 
@@ -12079,7 +12080,7 @@ class SmokeRunner:
 
         deepseek = select_engine_preview(
             completed=False,
-            completed_scope=["tier0_deterministic", "tier1_local_worker", "free_gemini", "free_32b"],
+            completed_scope=["tier0_deterministic", "tier1_local_worker", "free_gemini", "free_cloud_worker"],
             remaining_gap={"remaining_gap": "paid gate closed"},
             registry_overrides={"direct_deepseek": {"enabled": True, "availability": "available"}},
             free_tier_exhaustion_confirmed=False,
@@ -12092,6 +12093,104 @@ class SmokeRunner:
             if path.exists():
                 assert path.read_bytes() == before[str(path)], f"live source changed during Free Gemini E2E smoke: {path}"
         return "luxcode Free Gemini First Usable chain E2E verified"
+
+    def check_luxcode_free_cloud_worker_fixture_local(self) -> str:
+        """Verify Free Cloud Worker fixture-only core selection without HTTP or key reads."""
+        watched = [
+            ROOT / "luxcode_free_cloud_worker.py",
+            ROOT / "luxcode_first_usable_registry.py",
+            ROOT / "scripts" / "validate_luxcode_free_cloud_worker.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+
+        from luxcode_free_cloud_worker import (
+            CANONICAL_ENGINE_ID,
+            DEEP_REASONING_FALLBACK_MODEL_ID,
+            LEGACY_ALIAS,
+            PRIMARY_MODEL_ID,
+            SCHEMA_SAFE_FALLBACK_MODEL_ID,
+            FreeCloudPolicy,
+            build_deferred_retry_decision,
+            build_free_cloud_request,
+            build_free_cloud_result,
+            evaluate_free_cloud_gates,
+            get_free_cloud_worker_status,
+            inspect_deferred_retry_eligibility,
+            parse_openrouter_structured_result,
+            restore_deferred_retry_metadata,
+            resolve_free_cloud_engine_id,
+            run_free_cloud_fixture_flow,
+            select_next_free_cloud_model,
+        )
+
+        status = get_free_cloud_worker_status()
+        gates = evaluate_free_cloud_gates(FreeCloudPolicy())
+        assert status["canonical_engine_id"] == CANONICAL_ENGINE_ID and status["legacy_alias"] == LEGACY_ALIAS, status
+        assert status["deferred_retry_policy"]["base_cooldown_seconds"]["rate_limited"] == 240, status
+        assert gates["allowed"] is False and gates["real_http_call_permitted"] is False and gates["api_key_read"] is False, gates
+        assert resolve_free_cloud_engine_id("free_32b")["engine_id"] == CANONICAL_ENGINE_ID
+        assert select_next_free_cloud_model(remaining_gap={"remaining_gap": "start"})["model_id"] == PRIMARY_MODEL_ID
+
+        req = build_free_cloud_request(
+            task_id="smoke-free-cloud",
+            session_id="smoke-free-cloud",
+            model_id=PRIMARY_MODEL_ID,
+            attempt_number=1,
+            selection_reason="primary_first",
+            remaining_gap={"remaining_gap": "fix greet"},
+            completed_scope=["tier0_deterministic"],
+            minimum_context={"src/app.py": "def greet(): pass", ".env": "OPENROUTER_API_KEY=sk-secret"},
+            target_files=["src/app.py"],
+            target_symbols=["greet"],
+        )
+        assert req["ok"] is True and ".env" not in req["request"]["minimum_context"], req
+        assert "completed_scope" not in req["request"] and "completed_scope_digest" in req["request"], req
+        assert "sk-secret" not in json.dumps(req), req
+
+        partial = build_free_cloud_result(
+            request=req["request"],
+            status="partial",
+            completed_scope=["free_cloud_analysis"],
+            remaining_gap={"remaining_gap": "needs deeper reasoning"},
+            failure_category="complexity_or_context_gap",
+        )
+        flow = run_free_cloud_fixture_flow(
+            task_id="smoke-flow",
+            session_id="smoke-flow",
+            remaining_gap={"remaining_gap": "fix greet"},
+            minimum_context={"src/app.py": "old", "completed_notes": "do not resend"},
+            target_files=["src/app.py"],
+            first_result=partial,
+        )
+        assert len(flow["attempts"]) == 2, flow
+        assert flow["attempts"][1]["selection"]["model_id"] == DEEP_REASONING_FALLBACK_MODEL_ID, flow
+        assert "completed_notes" not in flow["attempts"][1]["request"]["minimum_context"], flow
+        schema = build_free_cloud_result(request=req["request"], status="schema_invalid", remaining_gap={"remaining_gap": "schema"}, failure_category="schema_invalid")
+        assert select_next_free_cloud_model(previous_result=schema, attempt_history=[{"result": schema}], remaining_gap=schema["remaining_gap"])["model_id"] == SCHEMA_SAFE_FALLBACK_MODEL_ID
+        deferred = build_deferred_retry_decision(reason="rate_limited", model_id=SCHEMA_SAFE_FALLBACK_MODEL_ID, remaining_gap=schema["remaining_gap"], now="2026-06-17T00:00:00Z")
+        assert deferred["external_service_deferred"] is True and deferred["paid_escalation_allowed"] is False, deferred
+        assert inspect_deferred_retry_eligibility(deferred, now="2026-06-17T00:02:00Z")["retry_eligible"] is False, deferred
+        assert restore_deferred_retry_metadata(deferred, now="2026-06-17T00:02:00Z")["auto_http_started"] is False, deferred
+        valid_structured = {
+            "status": "partial",
+            "summary": "smoke",
+            "completed_scope": ["analysis"],
+            "remaining_gap": "needs tests",
+            "patch_operations": [],
+            "validation_suggestions": [],
+            "test_suggestions": ["validator"],
+            "failure_reason": "complexity_or_context_gap",
+        }
+        assert parse_openrouter_structured_result("```json\n" + json.dumps(valid_structured) + "\n```", request=req["request"])["status"] == "partial"
+        invalid_structured = dict(valid_structured)
+        invalid_structured.pop("patch_operations")
+        assert parse_openrouter_structured_result(json.dumps(invalid_structured), request=req["request"])["status"] == "schema_invalid"
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during Free Cloud Worker fixture smoke: {path}"
+        return "luxcode Free Cloud Worker fixture core verified"
 
     def check_luxcode_free_gemini_live_smoke(self) -> str:
         """Run a controlled Free Gemini live smoke only when every explicit gate is enabled."""
@@ -14957,6 +15056,7 @@ class SmokeRunner:
             ("luxcode_first_usable_e2e_local", self.check_luxcode_first_usable_e2e_local, None, "core"),
             ("luxcode_free_gemini_fixture_local", self.check_luxcode_free_gemini_fixture_local, None, "core"),
             ("luxcode_free_gemini_e2e_local", self.check_luxcode_free_gemini_e2e_local, None, "core"),
+            ("luxcode_free_cloud_worker_fixture_local", self.check_luxcode_free_cloud_worker_fixture_local, None, "core"),
             ("luxcode_free_gemini_live_smoke", self.check_luxcode_free_gemini_live_smoke, None, "core"),
             ("luxcode_direct_deepseek_fixture_local", self.check_luxcode_direct_deepseek_fixture_local, None, "core"),
             ("luxcode_direct_deepseek_live_smoke", self.check_luxcode_direct_deepseek_live_smoke, None, "core"),
@@ -15185,6 +15285,7 @@ class SmokeRunner:
             ("luxcode_first_usable_e2e_local", self.check_luxcode_first_usable_e2e_local),
             ("luxcode_free_gemini_fixture_local", self.check_luxcode_free_gemini_fixture_local),
             ("luxcode_free_gemini_e2e_local", self.check_luxcode_free_gemini_e2e_local),
+            ("luxcode_free_cloud_worker_fixture_local", self.check_luxcode_free_cloud_worker_fixture_local),
             ("luxcode_free_gemini_live_smoke", self.check_luxcode_free_gemini_live_smoke),
             ("luxcode_direct_deepseek_fixture_local", self.check_luxcode_direct_deepseek_fixture_local),
             ("luxcode_direct_deepseek_live_smoke", self.check_luxcode_direct_deepseek_live_smoke),

@@ -497,7 +497,7 @@ def build_gemini_evidence(
 
 
 def engine_order_compatible() -> bool:
-    return ENGINE_ORDER.index("free_gemini") < ENGINE_ORDER.index("free_32b") < ENGINE_ORDER.index("direct_deepseek")
+    return ENGINE_ORDER.index("free_gemini") < ENGINE_ORDER.index("free_cloud_worker") < ENGINE_ORDER.index("direct_deepseek")
 
 
 def build_gemini_restore_policy(restored_task: Dict[str, Any]) -> Dict[str, Any]:
@@ -558,7 +558,7 @@ def execute_free_gemini_handoff(
     )
     if selection.get("selected_engine") != ENGINE_ID:
         blockers = [item.get("reason", "") for item in selection.get("rejected_candidates", []) if item.get("engine_id") == ENGINE_ID]
-        next_candidate = "free_32b" if selection.get("selected_engine") == "free_32b" or any(reason.startswith("health_quota_exhausted") or reason.startswith("health_rate_limited") or reason.startswith("health_authentication_failed") or reason == "engine_disabled" or reason == "engine_unverified" for reason in blockers) else selection.get("selected_engine")
+        next_candidate = "free_cloud_worker" if selection.get("selected_engine") == "free_cloud_worker" or any(reason.startswith("health_quota_exhausted") or reason.startswith("health_rate_limited") or reason.startswith("health_authentication_failed") or reason == "engine_disabled" or reason == "engine_unverified" for reason in blockers) else selection.get("selected_engine")
         request_stub = {"request_id": "", "remaining_gap": remaining_gap, "model_id": DEFAULT_MODEL_ID}
         gate = evaluate_gemini_gates(policy)
         evidence = build_gemini_evidence(request=request_stub, gate={**gate, "blockers": sorted(set(gate.get("blockers", []) + blockers))}, result=None, stop_reason="gemini_skipped")
@@ -567,7 +567,7 @@ def execute_free_gemini_handoff(
             task_id=task_id,
             current_stage="handoff_required",
             selected_engine=next_candidate,
-            selected_tier=3 if next_candidate == "free_32b" else selection.get("selected_tier"),
+            selected_tier=3 if next_candidate == "free_cloud_worker" else selection.get("selected_tier"),
             completed_scope=completed_scope,
             remaining_gap=remaining_gap,
             target_files=target_files,
@@ -602,12 +602,12 @@ def execute_free_gemini_handoff(
     if not transport.get("ok"):
         gate = transport.get("gate") or evaluate_gemini_gates(policy)
         evidence = build_gemini_evidence(request=request, gate=gate, result=None, stop_reason=str(transport.get("status") or "transport_failed"))
-        session = build_session_state(session_id=session_id, task_id=task_id, current_stage="handoff_required", selected_engine="free_32b", selected_tier=3, completed_scope=completed_scope, remaining_gap=remaining_gap, target_files=target_files, target_symbols=target_symbols, failed_attempt_fingerprints=[engine_failure_fingerprint(ENGINE_ID, transport)], request_id=request.get("request_id"), final_status="partial", stop_reason=str(transport.get("status") or "transport_failed"), evidence_ids=[evidence["event_digest"]])
-        return {"ok": False, "completed": False, "selected_engine": ENGINE_ID, "transport_called": transport_called, "stop_reason": session["stop_reason"], "transport": redact_secret(transport), "next_candidate": "free_32b", "session_state": session, "evidence": evidence}
+        session = build_session_state(session_id=session_id, task_id=task_id, current_stage="handoff_required", selected_engine="free_cloud_worker", selected_tier=3, completed_scope=completed_scope, remaining_gap=remaining_gap, target_files=target_files, target_symbols=target_symbols, failed_attempt_fingerprints=[engine_failure_fingerprint(ENGINE_ID, transport)], request_id=request.get("request_id"), final_status="partial", stop_reason=str(transport.get("status") or "transport_failed"), evidence_ids=[evidence["event_digest"]])
+        return {"ok": False, "completed": False, "selected_engine": ENGINE_ID, "transport_called": transport_called, "stop_reason": session["stop_reason"], "transport": redact_secret(transport), "next_candidate": "free_cloud_worker", "session_state": session, "evidence": evidence}
 
     result = transport["result"]
     completed = result.get("status") == "completed" and not result.get("remaining_gap")
-    next_candidate = None if completed else "free_32b"
+    next_candidate = None if completed else "free_cloud_worker"
     stop_reason = "gemini_completed" if completed else "gemini_partial_handoff"
     gate = transport.get("gate") or evaluate_gemini_gates(policy)
     evidence = build_gemini_evidence(request=request, gate=gate, result=result, stop_reason=stop_reason)
