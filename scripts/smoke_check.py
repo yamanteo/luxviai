@@ -11712,6 +11712,424 @@ class SmokeRunner:
         assert live_db.exists() is db_existed, "live luxcode_tasks.db changed during First Usable E2E smoke"
         return "luxcode First Usable v0.1 fixture-safe E2E workflow verified"
 
+    def check_luxcode_free_gemini_fixture_local(self) -> str:
+        """Verify Free Gemini fixture-safe request/response core without real API calls."""
+        watched = [
+            ROOT / "luxcode_free_gemini_worker.py",
+            ROOT / "scripts" / "validate_luxcode_free_gemini_worker.py",
+            ROOT / "luxcode_first_usable_registry.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+
+        from luxcode_first_usable_registry import ENGINE_ORDER, get_unified_engine_registry, select_engine_preview
+        from luxcode_free_gemini_worker import (
+            DEFAULT_MODEL_ID,
+            GeminiGatePolicy,
+            build_gemini_evidence,
+            build_gemini_request_contract,
+            engine_order_compatible,
+            evaluate_gemini_gates,
+            normalize_gemini_result_envelope,
+            official_gemini_endpoint,
+            parse_gemini_fixture_response,
+            validate_gemini_response,
+        )
+
+        registry = get_unified_engine_registry()
+        assert registry["free_gemini"]["enabled"] is False, registry["free_gemini"]
+        assert registry["free_gemini"]["verified"] is False, registry["free_gemini"]
+        assert ENGINE_ORDER.index("free_gemini") < ENGINE_ORDER.index("direct_deepseek"), ENGINE_ORDER
+        assert engine_order_compatible() is True
+        endpoint = official_gemini_endpoint()
+        assert endpoint["url"] == "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent", endpoint
+
+        unverified = select_engine_preview(
+            completed=False,
+            completed_scope=["tier0_deterministic", "tier1_local_worker"],
+            remaining_gap={"remaining_gap": "gemini"},
+            registry_overrides={"free_gemini": {"enabled": True, "verified": False, "availability": "available"}},
+        )
+        assert unverified["selected_engine"] is None, unverified
+
+        quota = select_engine_preview(
+            completed=False,
+            completed_scope=["tier0_deterministic", "tier1_local_worker"],
+            remaining_gap={"remaining_gap": "quota"},
+            registry_overrides={
+                "free_gemini": {"enabled": True, "verified": True, "availability": "available"},
+                "free_32b": {"enabled": True, "verified": True, "availability": "available"},
+            },
+            provider_health={"free_gemini": "quota_exhausted"},
+        )
+        assert quota["selected_engine"] == "free_32b", quota
+
+        blocked_gate = evaluate_gemini_gates(GeminiGatePolicy(enabled=True, verified=True, free_tier_confirmed=False, billing_disabled_confirmed=False, auth_key_confirmed=False))
+        assert blocked_gate["allowed"] is False, blocked_gate
+        assert "free_tier_unverified" in blocked_gate["blockers"], blocked_gate
+        assert "billing_status_unknown" in blocked_gate["blockers"], blocked_gate
+        assert "auth_key_unconfirmed" in blocked_gate["blockers"], blocked_gate
+
+        safe_gate = evaluate_gemini_gates(
+            GeminiGatePolicy(
+                enabled=True,
+                verified=True,
+                transport_enabled=True,
+                real_requests_enabled=True,
+                network_allowed=True,
+                free_tier_confirmed=True,
+                billing_disabled_confirmed=True,
+                quota_state="available",
+                quota_available=True,
+                model_access_verified=True,
+                auth_key_confirmed=True,
+                key_type="restricted_standard",
+            )
+        )
+        assert safe_gate["allowed"] is True, safe_gate
+        assert safe_gate["real_http_call_permitted"] is False, safe_gate
+
+        seen: set[str] = set()
+        request_result = build_gemini_request_contract(
+            task_id="task-gemini-smoke",
+            session_id="session-gemini-smoke",
+            task_summary="Gemini fixture sk-secret-value",
+            remaining_gap={"remaining_gap": "replace greet"},
+            completed_scope=["tier0_deterministic"],
+            target_files=["src/app.py"],
+            target_symbols=["greet"],
+            minimum_context={"src/app.py": "def greet():\n    return 1\n", ".env": "GEMINI_API_KEY=sk-secret-value"},
+            seen_request_digests=seen,
+        )
+        assert request_result["ok"] is True, request_result
+        request = request_result["request"]
+        assert request["provider_id"] == "google_gemini", request
+        assert request["model_id"] == DEFAULT_MODEL_ID, request
+        assert request["streaming_enabled"] is False, request
+        assert request["tools_enabled"] is False, request
+        assert ".env" not in request["minimum_context"], request
+        assert "sk-secret-value" not in json.dumps(request, sort_keys=True, default=str), request
+
+        duplicate = build_gemini_request_contract(
+            task_id="task-gemini-smoke",
+            session_id="session-gemini-smoke",
+            task_summary="Gemini fixture sk-secret-value",
+            remaining_gap={"remaining_gap": "replace greet"},
+            completed_scope=["tier0_deterministic"],
+            target_files=["src/app.py"],
+            target_symbols=["greet"],
+            minimum_context={"src/app.py": "def greet():\n    return 1\n", ".env": "GEMINI_API_KEY=sk-secret-value"},
+            seen_request_digests=seen,
+        )
+        assert duplicate["ok"] is False, duplicate
+
+        parsed = parse_gemini_fixture_response(
+            json.dumps(
+                {
+                    "status": "completed",
+                    "analysis_summary": "fixture",
+                    "completed_scope": ["free_gemini"],
+                    "remaining_gap": "",
+                    "target_files": ["src/app.py"],
+                    "target_symbols": ["greet"],
+                    "patch_operations": [{"operation_type": "replace_text", "file_path": "src/app.py", "old_text": "1", "new_text": "2"}],
+                    "validation_recommendations": ["preview"],
+                    "assumptions": [],
+                    "uncertainties": [],
+                    "risk_flags": [],
+                },
+                sort_keys=True,
+            )
+        )
+        validation = validate_gemini_response(parsed, request=request)
+        result = normalize_gemini_result_envelope(parsed, request=request)
+        evidence = build_gemini_evidence(request=request, gate=safe_gate, result=result, stop_reason="fixture_validated")
+        assert validation["valid"] is True, validation
+        assert result["status"] == "completed", result
+        assert result["provider_id"] == "google_gemini", result
+        assert evidence["completed"] is True, evidence
+        assert evidence["estimated_cost"] is None, evidence
+        assert "sk-secret-value" not in json.dumps(evidence, sort_keys=True, default=str), evidence
+
+        invalid = normalize_gemini_result_envelope({"status": "completed", "remaining_gap": "still open", "target_files": ["outside.py"], "chain_of_thought": "hidden"}, request=request)
+        assert invalid["status"] == "invalid", invalid
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during Free Gemini smoke: {path}"
+        return "luxcode Free Gemini fixture-safe core verified"
+
+    def check_luxcode_free_gemini_e2e_local(self) -> str:
+        """Verify Free Gemini handoff in the First Usable chain without real API calls."""
+        watched = [
+            ROOT / "luxcode_free_gemini_worker.py",
+            ROOT / "luxcode_first_usable_registry.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+
+        from luxcode_first_usable_registry import ENGINE_ORDER, select_engine_preview
+        from luxcode_free_gemini_worker import (
+            GeminiGatePolicy,
+            build_gemini_restore_policy,
+            execute_free_gemini_handoff,
+        )
+
+        live_policy = GeminiGatePolicy(
+            enabled=True,
+            verified=True,
+            transport_enabled=True,
+            real_requests_enabled=True,
+            network_allowed=True,
+            free_tier_confirmed=True,
+            billing_disabled_confirmed=True,
+            quota_state="available",
+            quota_available=True,
+            model_access_verified=True,
+            auth_key_confirmed=True,
+            key_type="restricted_standard",
+        )
+
+        def candidate_payload(status: str = "completed", remaining_gap: str = "") -> str:
+            return json.dumps(
+                {
+                    "status": status,
+                    "analysis_summary": "fixture",
+                    "completed_scope": ["free_gemini"],
+                    "remaining_gap": remaining_gap,
+                    "target_files": ["src/app.py"],
+                    "target_symbols": ["greet"],
+                    "patch_operations": [{"operation_type": "replace_text", "file_path": "src/app.py", "old_text": "1", "new_text": "2"}],
+                    "validation_recommendations": ["preview"],
+                    "assumptions": [],
+                    "uncertainties": [],
+                    "risk_flags": [],
+                },
+                sort_keys=True,
+            )
+
+        def mock_completed(url, payload, api_key, *, timeout_seconds):
+            return {
+                "ok": True,
+                "status": "success",
+                "response_id": "gemini-e2e-completed",
+                "latency_ms": 5,
+                "response": {"modelVersion": "gemini-fixture", "candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": candidate_payload()}]}}], "usageMetadata": {}},
+            }
+
+        completed_lower = execute_free_gemini_handoff(
+            task_id="task-gemini-e2e-lower",
+            session_id="session-gemini-e2e-lower",
+            task_summary="already completed",
+            previous_result={"completed": True, "remaining_gap": ""},
+            completed_scope=["tier0_deterministic"],
+            target_files=["src/app.py"],
+            target_symbols=["greet"],
+            minimum_context={"src/app.py": "x"},
+            policy=GeminiGatePolicy(),
+        )
+        assert completed_lower["transport_called"] is False and completed_lower["completed"] is True, completed_lower
+
+        disabled = execute_free_gemini_handoff(
+            task_id="task-gemini-e2e-disabled",
+            session_id="session-gemini-e2e-disabled",
+            task_summary="disabled",
+            previous_result={"completed": False, "remaining_gap": {"remaining_gap": "needs gemini"}},
+            completed_scope=["tier0_deterministic", "tier1_local_worker"],
+            target_files=["src/app.py"],
+            target_symbols=["greet"],
+            minimum_context={"src/app.py": "x"},
+            policy=GeminiGatePolicy(enabled=False, verified=False),
+            registry_overrides={"free_32b": {"enabled": True, "verified": True, "availability": "available"}},
+        )
+        assert disabled["transport_called"] is False and disabled["next_candidate"] == "free_32b", disabled
+
+        completed = execute_free_gemini_handoff(
+            task_id="task-gemini-e2e-completed",
+            session_id="session-gemini-e2e-completed",
+            task_summary="complete",
+            previous_result={"completed": False, "remaining_gap": {"remaining_gap": "complete safely"}},
+            completed_scope=["tier0_deterministic", "tier1_local_worker"],
+            target_files=["src/app.py"],
+            target_symbols=["greet"],
+            minimum_context={"src/app.py": "x"},
+            policy=live_policy,
+            api_key="sk-secret-value",
+            registry_overrides={"free_gemini": {"enabled": True, "verified": True, "availability": "available"}},
+            http_call=mock_completed,
+            persist=True,
+        )
+        assert completed["completed"] is True and completed["next_candidate"] is None, completed
+        assert "sk-secret-value" not in json.dumps(completed, sort_keys=True, default=str), completed
+        restore = build_gemini_restore_policy(completed.get("persistence", {}).get("task", {}))
+        assert restore["http_auto_restart"] is False and restore["request_auto_resend"] is False, restore
+
+        def mock_partial(url, payload, api_key, *, timeout_seconds):
+            return {
+                "ok": True,
+                "status": "success",
+                "response_id": "gemini-e2e-partial",
+                "latency_ms": 5,
+                "response": {"modelVersion": "gemini-fixture", "candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": candidate_payload(status="partial", remaining_gap="needs free_32b")}]}}], "usageMetadata": {}},
+            }
+
+        partial = execute_free_gemini_handoff(
+            task_id="task-gemini-e2e-partial",
+            session_id="session-gemini-e2e-partial",
+            task_summary="partial",
+            previous_result={"completed": False, "remaining_gap": {"remaining_gap": "partial"}},
+            completed_scope=["tier0_deterministic", "tier1_local_worker"],
+            target_files=["src/app.py"],
+            target_symbols=["greet"],
+            minimum_context={"src/app.py": "x"},
+            policy=live_policy,
+            api_key="sk-secret-value",
+            registry_overrides={"free_gemini": {"enabled": True, "verified": True, "availability": "available"}, "free_32b": {"enabled": True, "verified": True, "availability": "available"}},
+            http_call=mock_partial,
+        )
+        assert partial["completed"] is False and partial["next_candidate"] == "free_32b", partial
+        assert partial["session_state"]["remaining_gap"] == "needs free_32b", partial
+
+        quota = execute_free_gemini_handoff(
+            task_id="task-gemini-e2e-quota",
+            session_id="session-gemini-e2e-quota",
+            task_summary="quota",
+            previous_result={"completed": False, "remaining_gap": {"remaining_gap": "quota"}},
+            completed_scope=["tier0_deterministic", "tier1_local_worker"],
+            target_files=["src/app.py"],
+            target_symbols=["greet"],
+            minimum_context={"src/app.py": "x"},
+            policy=live_policy,
+            provider_health="quota_exhausted",
+            registry_overrides={"free_gemini": {"enabled": True, "verified": True, "availability": "available"}, "free_32b": {"enabled": True, "verified": True, "availability": "available"}},
+        )
+        assert quota["transport_called"] is False and quota["next_candidate"] == "free_32b", quota
+
+        seen: set[str] = set()
+        first = execute_free_gemini_handoff(
+            task_id="task-gemini-e2e-dup",
+            session_id="session-gemini-e2e-dup",
+            task_summary="duplicate",
+            previous_result={"completed": False, "remaining_gap": {"remaining_gap": "dup"}},
+            completed_scope=["tier0_deterministic", "tier1_local_worker"],
+            target_files=["src/app.py"],
+            target_symbols=["greet"],
+            minimum_context={"src/app.py": "x"},
+            policy=live_policy,
+            api_key="sk-secret-value",
+            registry_overrides={"free_gemini": {"enabled": True, "verified": True, "availability": "available"}},
+            http_call=mock_completed,
+            seen_request_digests=seen,
+        )
+        second = execute_free_gemini_handoff(
+            task_id="task-gemini-e2e-dup",
+            session_id="session-gemini-e2e-dup",
+            task_summary="duplicate",
+            previous_result={"completed": False, "remaining_gap": {"remaining_gap": "dup"}},
+            completed_scope=["tier0_deterministic", "tier1_local_worker"],
+            target_files=["src/app.py"],
+            target_symbols=["greet"],
+            minimum_context={"src/app.py": "x"},
+            policy=live_policy,
+            api_key="sk-secret-value",
+            registry_overrides={"free_gemini": {"enabled": True, "verified": True, "availability": "available"}},
+            http_call=mock_completed,
+            seen_request_digests=seen,
+        )
+        assert first["transport_called"] is True and second["transport_called"] is False, (first, second)
+
+        auth = execute_free_gemini_handoff(
+            task_id="task-gemini-e2e-auth",
+            session_id="session-gemini-e2e-auth",
+            task_summary="auth failure",
+            previous_result={"completed": False, "remaining_gap": {"remaining_gap": "auth"}},
+            completed_scope=["tier0_deterministic", "tier1_local_worker"],
+            target_files=["src/app.py"],
+            target_symbols=["greet"],
+            minimum_context={"src/app.py": "x"},
+            policy=live_policy,
+            provider_health="authentication_failed",
+            registry_overrides={"free_gemini": {"enabled": True, "verified": True, "availability": "available"}, "free_32b": {"enabled": True, "verified": True, "availability": "available"}},
+        )
+        assert auth["transport_called"] is False and auth["next_candidate"] == "free_32b", auth
+
+        attempts = {"count": 0}
+
+        def mock_retry(url, payload, api_key, *, timeout_seconds):
+            attempts["count"] += 1
+            if attempts["count"] == 1:
+                return {"ok": False, "status": "http_error", "http_status": 429, "retryable": True}
+            return mock_completed(url, payload, api_key, timeout_seconds=timeout_seconds)
+
+        retry = execute_free_gemini_handoff(
+            task_id="task-gemini-e2e-retry",
+            session_id="session-gemini-e2e-retry",
+            task_summary="retry",
+            previous_result={"completed": False, "remaining_gap": {"remaining_gap": "retry"}},
+            completed_scope=["tier0_deterministic", "tier1_local_worker"],
+            target_files=["src/app.py"],
+            target_symbols=["greet"],
+            minimum_context={"src/app.py": "x"},
+            policy=live_policy,
+            api_key="sk-secret-value",
+            registry_overrides={"free_gemini": {"enabled": True, "verified": True, "availability": "available"}},
+            http_call=mock_retry,
+        )
+        assert retry["completed"] is True and attempts["count"] == 2, retry
+
+        deepseek = select_engine_preview(
+            completed=False,
+            completed_scope=["tier0_deterministic", "tier1_local_worker", "free_gemini", "free_32b"],
+            remaining_gap={"remaining_gap": "paid gate closed"},
+            registry_overrides={"direct_deepseek": {"enabled": True, "availability": "available"}},
+            free_tier_exhaustion_confirmed=False,
+            paid_escalation_approved=False,
+        )
+        assert deepseek["selected_engine"] is None, deepseek
+        assert select_engine_preview(completed=False, completed_scope=list(ENGINE_ORDER[:-2]), remaining_gap={"remaining_gap": "manual"})["selected_engine"] is None
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during Free Gemini E2E smoke: {path}"
+        return "luxcode Free Gemini First Usable chain E2E verified"
+
+    def check_luxcode_free_gemini_live_smoke(self) -> str:
+        """Run a controlled Free Gemini live smoke only when every explicit gate is enabled."""
+        from luxcode_free_gemini_worker import (
+            build_gemini_request_contract,
+            execute_gemini_generate_content,
+            live_smoke_policy_from_env,
+        )
+
+        policy, api_key, gates = live_smoke_policy_from_env()
+        missing = [name for name, enabled in gates.items() if not enabled]
+        if missing:
+            raise SkipCheck(f"Free Gemini live smoke gates disabled: {', '.join(sorted(missing))}")
+
+        request_result = build_gemini_request_contract(
+            task_id="task-gemini-live-smoke",
+            session_id="session-gemini-live-smoke",
+            task_summary="Return a minimal structured JSON fixture",
+            remaining_gap={"remaining_gap": "return valid structured JSON only"},
+            completed_scope=["tier0_deterministic", "tier1_local_worker"],
+            target_files=["src/app.py"],
+            target_symbols=["greet"],
+            minimum_context={"src/app.py": "def greet():\n    return 1\n"},
+        )
+        assert request_result.get("ok") is True, request_result
+        result = execute_gemini_generate_content(
+            request=request_result["request"],
+            policy=policy,
+            api_key=api_key,
+            network_allowed=True,
+            timeout_seconds=10,
+        )
+        redacted = json.dumps(result, sort_keys=True, default=str)
+        assert api_key not in redacted, "Gemini API key leaked in live smoke result"
+        assert result.get("ok") is True, result
+        assert result.get("result", {}).get("provider_id") == "google_gemini", result
+        return "luxcode Free Gemini live smoke verified"
+
     def check_luxcode_direct_deepseek_fixture_local(self) -> str:
         """Verify Direct DeepSeek fixture transport gates and Safe Patch preview."""
         watched = [
@@ -14537,6 +14955,9 @@ class SmokeRunner:
             ("luxcode_first_usable_selection_local", self.check_luxcode_first_usable_selection_local, None, "core"),
             ("luxcode_first_usable_flow_local", self.check_luxcode_first_usable_flow_local, None, "core"),
             ("luxcode_first_usable_e2e_local", self.check_luxcode_first_usable_e2e_local, None, "core"),
+            ("luxcode_free_gemini_fixture_local", self.check_luxcode_free_gemini_fixture_local, None, "core"),
+            ("luxcode_free_gemini_e2e_local", self.check_luxcode_free_gemini_e2e_local, None, "core"),
+            ("luxcode_free_gemini_live_smoke", self.check_luxcode_free_gemini_live_smoke, None, "core"),
             ("luxcode_direct_deepseek_fixture_local", self.check_luxcode_direct_deepseek_fixture_local, None, "core"),
             ("luxcode_direct_deepseek_live_smoke", self.check_luxcode_direct_deepseek_live_smoke, None, "core"),
             ("luxcode_direct_deepseek_escalation_local", self.check_luxcode_direct_deepseek_escalation_local, None, "core"),
@@ -14762,6 +15183,9 @@ class SmokeRunner:
             ("luxcode_first_usable_selection_local", self.check_luxcode_first_usable_selection_local),
             ("luxcode_first_usable_flow_local", self.check_luxcode_first_usable_flow_local),
             ("luxcode_first_usable_e2e_local", self.check_luxcode_first_usable_e2e_local),
+            ("luxcode_free_gemini_fixture_local", self.check_luxcode_free_gemini_fixture_local),
+            ("luxcode_free_gemini_e2e_local", self.check_luxcode_free_gemini_e2e_local),
+            ("luxcode_free_gemini_live_smoke", self.check_luxcode_free_gemini_live_smoke),
             ("luxcode_direct_deepseek_fixture_local", self.check_luxcode_direct_deepseek_fixture_local),
             ("luxcode_direct_deepseek_live_smoke", self.check_luxcode_direct_deepseek_live_smoke),
             ("luxcode_direct_deepseek_escalation_local", self.check_luxcode_direct_deepseek_escalation_local),

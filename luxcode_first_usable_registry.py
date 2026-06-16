@@ -188,7 +188,7 @@ def select_engine_preview(
         if failure_key in failed:
             _reject(rejected, engine_id, "repeated_failure_fingerprint")
             continue
-        if state in {"cooldown", "degraded", "blocked", "unavailable", "disabled"}:
+        if state in {"cooldown", "degraded", "blocked", "unavailable", "disabled", "stalled", "not_installed", "not_running", "rate_limited", "quota_exhausted", "authentication_failed", "unknown"}:
             _reject(rejected, engine_id, f"health_{state}")
             continue
         if engine_id == "whale" and not manual_request:
@@ -222,9 +222,9 @@ def select_engine_preview(
             break
         if engine_id in {"free_gemini", "free_32b"}:
             if engine_id == "free_gemini":
-                _reject(rejected, engine_id, "future_placeholder_not_verified")
-                continue
-            selected_engine, selected_tier, reason = engine_id, engine["tier"], "verified_free_tier_before_paid"
+                selected_engine, selected_tier, reason = engine_id, engine["tier"], "verified_free_gemini_before_32b"
+                break
+            selected_engine, selected_tier, reason = engine_id, engine["tier"], "verified_free_32b_before_paid"
             break
         if engine_id == "direct_deepseek":
             if not free_tier_exhaustion_confirmed:
