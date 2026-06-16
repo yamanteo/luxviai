@@ -11388,6 +11388,330 @@ class SmokeRunner:
 
         return "luxcode low-cost worker local flow verified"
 
+    def check_luxcode_first_usable_selection_local(self) -> str:
+        """Verify First Usable v0.1 registry/config/selection preview without running engines."""
+        watched = [
+            ROOT / "luxcode_first_usable_registry.py",
+            ROOT / "scripts" / "validate_luxcode_first_usable_registry.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+
+        from luxcode_first_usable_registry import ENGINE_ORDER, build_safe_config, get_unified_engine_registry, select_engine_preview
+
+        registry = get_unified_engine_registry()
+        config = build_safe_config()
+        assert ENGINE_ORDER == ["tier0_deterministic", "tier1_local_worker", "free_gemini", "free_32b", "direct_deepseek", "whale", "codex"], ENGINE_ORDER
+        assert registry["free_gemini"]["enabled"] is False and registry["free_gemini"]["verified"] is False, registry["free_gemini"]
+        assert registry["free_32b"]["enabled"] is False and registry["free_32b"]["verified"] is False, registry["free_32b"]
+        assert registry["direct_deepseek"]["enabled"] is False and registry["direct_deepseek"]["requires_user_approval"] is True, registry["direct_deepseek"]
+        assert registry["whale"]["manual_only"] is True, registry["whale"]
+        assert registry["codex"]["emergency_only"] is True, registry["codex"]
+        assert config["network_allowed"] is False and config["billing_allowed"] is False, config
+        assert config["auto_apply_allowed"] is False and config["runtime_start_allowed"] is False, config
+
+        completed = select_engine_preview(completed=True, completed_scope=["tier0_deterministic"], remaining_gap={"remaining_gap": "none"})
+        assert completed["selected_engine"] is None and completed["reason"] == "completed_no_engine_selected", completed
+
+        tier0 = select_engine_preview(completed=False, remaining_gap={"remaining_gap": "start"})
+        assert tier0["selected_engine"] == "tier0_deterministic", tier0
+
+        tier1 = select_engine_preview(
+            completed=False,
+            completed_scope=["tier0_deterministic"],
+            remaining_gap={"remaining_gap": "tier0 partial"},
+            runtime_health={"tier1_local_worker": "healthy"},
+        )
+        assert tier1["selected_engine"] == "tier1_local_worker", tier1
+        assert "completed_scope" not in tier1["decision_context"], tier1
+
+        blocked_paid = select_engine_preview(
+            completed=False,
+            completed_scope=["tier0_deterministic"],
+            remaining_gap={"remaining_gap": "tier1 unavailable"},
+            runtime_health={"tier1_local_worker": "unavailable"},
+            registry_overrides={"direct_deepseek": {"enabled": True, "availability": "available"}},
+            free_tier_exhaustion_confirmed=False,
+        )
+        assert blocked_paid["selected_engine"] is None, blocked_paid
+        assert any(item["engine_id"] == "direct_deepseek" and "free_tiers_not_exhausted" in item["reason"] for item in blocked_paid["rejected_candidates"]), blocked_paid
+
+        free32 = select_engine_preview(
+            completed=False,
+            completed_scope=["tier0_deterministic", "tier1_local_worker"],
+            remaining_gap={"remaining_gap": "free tier candidate"},
+            registry_overrides={
+                "free_gemini": {"enabled": True, "verified": False, "availability": "available"},
+                "free_32b": {"enabled": True, "verified": True, "availability": "available"},
+                "direct_deepseek": {"enabled": True, "availability": "available"},
+            },
+            config_overrides={"network_allowed": True, "billing_allowed": True, "paid_escalation_allowed": True, "maximum_cost_per_request": 0.001},
+            free_tier_exhaustion_confirmed=True,
+            paid_escalation_approved=True,
+            cost_budget=0.001,
+        )
+        assert free32["selected_engine"] == "free_32b", free32
+
+        digest_a = select_engine_preview(completed=False, remaining_gap={"remaining_gap": "stable"})
+        digest_b = select_engine_preview(completed=False, remaining_gap={"remaining_gap": "stable"})
+        assert digest_a["decision_digest"] == digest_b["decision_digest"], (digest_a, digest_b)
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during First Usable smoke: {path}"
+        return "luxcode First Usable v0.1 selection preview verified"
+
+    def check_luxcode_first_usable_flow_local(self) -> str:
+        """Verify First Usable v0.1 session flow and safe handoff preview without execution."""
+        watched = [
+            ROOT / "luxcode_first_usable_registry.py",
+            ROOT / "luxcode_first_usable_session_flow.py",
+            ROOT / "scripts" / "validate_luxcode_first_usable_registry.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+
+        from luxcode_first_usable_registry import ENGINE_ORDER, get_unified_engine_registry
+        from luxcode_first_usable_session_flow import (
+            build_decision_event,
+            build_handoff_preview,
+            build_request_envelope,
+            build_result_envelope,
+            build_runtime_health_snapshot,
+        )
+
+        session = {"session_id": "session-first-usable-smoke", "task_id": "task-first-usable-smoke", "task_summary": "Fix greet"}
+        healthy_tier1 = build_runtime_health_snapshot("tier1_local_worker", health_status="healthy")
+
+        tier0 = build_handoff_preview(session=session, remaining_gap={"remaining_gap": "start"}, minimum_context={"src/app.py": "def greet():\n    return 1\n"}, target_files=["src/app.py"])
+        assert tier0["selected_engine"] == "tier0_deterministic", tier0
+        assert tier0["request"] is not None, tier0
+        assert tier0["execution_allowed"] is False, tier0
+
+        completed = build_handoff_preview(session=session, completed=True, completed_scope=["tier0_deterministic"], remaining_gap={"remaining_gap": "none"})
+        assert completed["request"] is None, completed
+        assert completed["stop_reason"] == "completed_by_lower_tier", completed
+
+        tier1 = build_handoff_preview(
+            session=session,
+            completed_scope=["tier0_deterministic"],
+            remaining_gap={"remaining_gap": "tier0 partial"},
+            minimum_context={"src/app.py": "def greet():\n    return 1\n", ".env": "DEEPSEEK_API_KEY=sk-secret-value"},
+            target_files=["src/app.py"],
+            runtime_health_snapshots={"tier1_local_worker": healthy_tier1},
+        )
+        assert tier1["selected_engine"] == "tier1_local_worker", tier1
+        assert tier1["request"]["remaining_gap"] == {"remaining_gap": "tier0 partial"}, tier1
+        assert "completed_scope" not in tier1["request"], tier1
+        assert ".env" not in tier1["request"]["minimum_context"], tier1
+        assert "sk-secret-value" not in json.dumps(tier1, sort_keys=True, default=str), tier1
+
+        cooldown = build_handoff_preview(
+            session=session,
+            completed_scope=["tier0_deterministic"],
+            remaining_gap={"remaining_gap": "cooldown"},
+            runtime_health_snapshots={"tier1_local_worker": build_runtime_health_snapshot("tier1_local_worker", health_status="healthy", cooldown_until="2099-01-01T00:00:00Z")},
+            registry_overrides={"direct_deepseek": {"enabled": True, "availability": "available"}},
+            free_tier_exhaustion_confirmed=False,
+        )
+        assert cooldown["selected_engine"] is None, cooldown
+        assert any(item["reason"] == "health_cooldown" for item in cooldown["decision"]["rejected_candidates"]), cooldown
+
+        deepseek = build_handoff_preview(
+            session=session,
+            completed_scope=["tier0_deterministic", "tier1_local_worker"],
+            remaining_gap={"remaining_gap": "paid preview"},
+            registry_overrides={"free_gemini": {"enabled": False}, "free_32b": {"enabled": False}, "direct_deepseek": {"enabled": True, "availability": "available"}},
+            config_overrides={"network_allowed": True, "billing_allowed": True, "paid_escalation_allowed": True, "maximum_cost_per_request": 0.001},
+            free_tier_exhaustion_confirmed=True,
+            paid_escalation_approved=True,
+            cost_budget=0.001,
+        )
+        assert deepseek["selected_engine"] == "direct_deepseek", deepseek
+        assert deepseek["required_approval"] is True, deepseek
+        assert deepseek["execution_allowed"] is False, deepseek
+
+        whale = build_handoff_preview(
+            session=session,
+            completed_scope=list(ENGINE_ORDER[:-2]),
+            remaining_gap={"remaining_gap": "manual"},
+            registry_overrides={"whale": {"enabled": True, "verified": True, "availability": "available"}},
+            manual_request=True,
+        )
+        assert whale["selected_engine"] == "whale" and whale["stop_reason"] == "handoff_required", whale
+
+        empty = build_request_envelope(
+            task_id="task-empty-smoke",
+            session_id="session-empty-smoke",
+            engine_id="tier1_local_worker",
+            tier=1,
+            task_summary="empty",
+            remaining_gap="",
+            completed_scope=[],
+            target_files=[],
+            target_symbols=[],
+            minimum_context={},
+        )
+        assert empty is None, empty
+
+        request = tier1["request"]
+        result = build_result_envelope(
+            request=request,
+            status="completed",
+            analysis_summary="summary only",
+            completed_scope=["tier1_local_worker"],
+            patch_operations=[{"operation_type": "replace_text"}],
+            validation_recommendations=["preview"],
+        )
+        event = build_decision_event(
+            session_id=session["session_id"],
+            task_id=session["task_id"],
+            engine=get_unified_engine_registry()["tier1_local_worker"],
+            event_type="selection",
+            decision_reason=tier1["decision"]["reason"],
+            selected=True,
+            rejected_reason=None,
+            health_status="healthy",
+            retry_state=None,
+            estimated_cost=None,
+            completed=False,
+            remaining_gap=tier1["remaining_gap"],
+            timestamp="2026-06-16T00:00:00Z",
+        )
+        assert result["result_digest"].startswith("result-"), result
+        assert event["event_digest"].startswith("event-"), event
+
+        seen_stage: set[str] = set()
+        first = build_handoff_preview(session=session, remaining_gap={"remaining_gap": "dup"}, minimum_context={"src/app.py": "x"}, seen_stage_input_digests=seen_stage)
+        duplicate = build_handoff_preview(session=session, remaining_gap={"remaining_gap": "dup"}, minimum_context={"src/app.py": "x"}, seen_stage_input_digests=seen_stage)
+        assert first["stop_reason"] == "worker_request_ready", first
+        assert duplicate["stop_reason"] == "blocked" and "duplicate_stage_input" in duplicate["blockers"], duplicate
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during First Usable flow smoke: {path}"
+        return "luxcode First Usable v0.1 session flow and handoff preview verified"
+
+    def check_luxcode_first_usable_e2e_local(self) -> str:
+        """Verify First Usable v0.1 fixture-safe E2E workflow without touching the live repo."""
+        watched = [
+            ROOT / "luxcode_first_usable_registry.py",
+            ROOT / "luxcode_first_usable_session_flow.py",
+            ROOT / "scripts" / "validate_luxcode_first_usable_registry.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        live_runtime = ROOT / ".luxcode_runtime"
+        live_db = ROOT / "luxcode_tasks.db"
+        runtime_existed = live_runtime.exists()
+        db_existed = live_db.exists()
+
+        from luxcode_first_usable_session_flow import (
+            build_first_usable_restore_policy,
+            build_fixture_safe_patch_preview,
+            build_request_envelope,
+            build_result_envelope,
+            execute_fixture_safe_workflow,
+        )
+        from luxcode_task_persistence import load_task_state
+
+        with tempfile.TemporaryDirectory(prefix="first_usable_e2e_smoke_") as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "src").mkdir(parents=True)
+            app_path = repo / "src" / "app.py"
+            original = "def greet():\n    return 1\n"
+            app_path.write_text(original, encoding="utf-8")
+
+            request = build_request_envelope(
+                task_id="task-first-usable-e2e-smoke",
+                session_id="session-first-usable-e2e-smoke",
+                engine_id="tier1_local_worker",
+                tier=1,
+                task_summary="Fixture E2E sk-secret-value",
+                remaining_gap={"remaining_gap": "replace greet"},
+                completed_scope=["tier0_deterministic"],
+                target_files=["src/app.py"],
+                target_symbols=["greet"],
+                minimum_context={"src/app.py": original, ".env": "API_KEY=sk-secret-value"},
+            )
+            result = build_result_envelope(
+                request=request,
+                status="completed",
+                analysis_summary="fixture result",
+                completed_scope=["tier1_local_worker"],
+                patch_operations=[{"operation_type": "replace_text", "file_path": "src/app.py", "old_text": original, "new_text": "def greet():\n    return 2\n"}],
+                validation_recommendations=[{"type": "py_compile", "path": "src/app.py"}],
+            )
+            preview = build_fixture_safe_patch_preview(str(repo), result)
+            assert preview["operation_count"] == 1, preview
+            assert preview["approval_required"] is True, preview
+            assert preview["approval_digest"].startswith("lux-approve-"), preview
+
+            no_approval = execute_fixture_safe_workflow(repository_root=str(repo), request=request, result=result, temporary_fixture_repo=True, validation_plan=[{"type": "py_compile", "path": "src/app.py"}])
+            assert no_approval["final_status"] == "awaiting_approval", no_approval
+            assert app_path.read_text(encoding="utf-8") == original, app_path.read_text(encoding="utf-8")
+
+            wrong = execute_fixture_safe_workflow(repository_root=str(repo), request=request, result=result, temporary_fixture_repo=True, approval_token="wrong", validation_plan=[{"type": "py_compile", "path": "src/app.py"}])
+            assert wrong["stop_reason"] == "apply_blocked", wrong
+
+            protected = execute_fixture_safe_workflow(repository_root=str(repo), request=request, result=result, temporary_fixture_repo=False, approval_token=preview["approval_digest"], validation_plan=[{"type": "py_compile", "path": "src/app.py"}])
+            assert protected["stop_reason"] == "protected_repository_apply_blocked", protected
+
+            seen_apply: set[str] = set()
+            applied = execute_fixture_safe_workflow(repository_root=str(repo), request=request, result=result, temporary_fixture_repo=True, approval_token=preview["approval_digest"], validation_plan=[{"type": "py_compile", "path": "src/app.py"}], seen_apply_digests=seen_apply, persist=True)
+            assert applied["final_status"] == "completed", applied
+            assert applied["validation"]["passed"] is True, applied
+            assert "return 2" in app_path.read_text(encoding="utf-8"), app_path.read_text(encoding="utf-8")
+            duplicate = execute_fixture_safe_workflow(repository_root=str(repo), request=request, result=result, temporary_fixture_repo=True, approval_token=preview["approval_digest"], validation_plan=[{"type": "py_compile", "path": "src/app.py"}], seen_apply_digests=seen_apply)
+            assert duplicate["stop_reason"] == "duplicate_apply_attempt", duplicate
+
+            loaded = load_task_state("task-first-usable-e2e-smoke", mode="memory_only")
+            restore_policy = build_first_usable_restore_policy(loaded.get("task", {}))
+            assert loaded.get("found") is True, loaded
+            assert restore_policy["engine_auto_execute"] is False, restore_policy
+            assert restore_policy["apply_auto_repeat"] is False, restore_policy
+            assert "sk-secret-value" not in json.dumps(applied, sort_keys=True, default=str), applied
+            assert "sk-secret-value" not in json.dumps(loaded, sort_keys=True, default=str), loaded
+
+        with tempfile.TemporaryDirectory(prefix="first_usable_rollback_smoke_") as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "src").mkdir(parents=True)
+            app_path = repo / "src" / "app.py"
+            original = "def greet():\n    return 1\n"
+            app_path.write_text(original, encoding="utf-8")
+            request = build_request_envelope(
+                task_id="task-first-usable-rollback-smoke",
+                session_id="session-first-usable-rollback-smoke",
+                engine_id="tier1_local_worker",
+                tier=1,
+                task_summary="Fixture rollback",
+                remaining_gap={"remaining_gap": "bad syntax"},
+                completed_scope=["tier0_deterministic"],
+                target_files=["src/app.py"],
+                target_symbols=["greet"],
+                minimum_context={"src/app.py": original},
+            )
+            bad = build_result_envelope(
+                request=request,
+                status="completed",
+                analysis_summary="bad syntax result",
+                completed_scope=["tier1_local_worker"],
+                patch_operations=[{"operation_type": "replace_text", "file_path": "src/app.py", "old_text": original, "new_text": "def greet(:\n    return 2\n"}],
+                validation_recommendations=[{"type": "py_compile", "path": "src/app.py"}],
+            )
+            bad_preview = build_fixture_safe_patch_preview(str(repo), bad)
+            rolled = execute_fixture_safe_workflow(repository_root=str(repo), request=request, result=bad, temporary_fixture_repo=True, approval_token=bad_preview["approval_digest"], validation_plan=[{"type": "py_compile", "path": "src/app.py"}])
+            assert rolled["final_status"] == "rolled_back", rolled
+            assert rolled["rollback"]["transaction_state"] == "rolled_back", rolled
+            assert app_path.read_text(encoding="utf-8") == original, app_path.read_text(encoding="utf-8")
+
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during First Usable E2E smoke: {path}"
+        assert live_runtime.exists() is runtime_existed, "live .luxcode_runtime changed during First Usable E2E smoke"
+        assert live_db.exists() is db_existed, "live luxcode_tasks.db changed during First Usable E2E smoke"
+        return "luxcode First Usable v0.1 fixture-safe E2E workflow verified"
+
     def check_luxcode_direct_deepseek_fixture_local(self) -> str:
         """Verify Direct DeepSeek fixture transport gates and Safe Patch preview."""
         watched = [
@@ -14210,6 +14534,9 @@ class SmokeRunner:
             ("luxcode_coder_operator_cli_local", self.check_luxcode_coder_operator_cli_local, None, "core"),
             ("luxcode_practical_coder_runtime_local", self.check_luxcode_practical_coder_runtime_local, None, "core"),
             ("luxcode_low_cost_worker_local", self.check_luxcode_low_cost_worker_local, None, "core"),
+            ("luxcode_first_usable_selection_local", self.check_luxcode_first_usable_selection_local, None, "core"),
+            ("luxcode_first_usable_flow_local", self.check_luxcode_first_usable_flow_local, None, "core"),
+            ("luxcode_first_usable_e2e_local", self.check_luxcode_first_usable_e2e_local, None, "core"),
             ("luxcode_direct_deepseek_fixture_local", self.check_luxcode_direct_deepseek_fixture_local, None, "core"),
             ("luxcode_direct_deepseek_live_smoke", self.check_luxcode_direct_deepseek_live_smoke, None, "core"),
             ("luxcode_direct_deepseek_escalation_local", self.check_luxcode_direct_deepseek_escalation_local, None, "core"),
@@ -14432,6 +14759,9 @@ class SmokeRunner:
             ("luxcode_coder_operator_cli_local", self.check_luxcode_coder_operator_cli_local),
             ("luxcode_practical_coder_runtime_local", self.check_luxcode_practical_coder_runtime_local),
             ("luxcode_low_cost_worker_local", self.check_luxcode_low_cost_worker_local),
+            ("luxcode_first_usable_selection_local", self.check_luxcode_first_usable_selection_local),
+            ("luxcode_first_usable_flow_local", self.check_luxcode_first_usable_flow_local),
+            ("luxcode_first_usable_e2e_local", self.check_luxcode_first_usable_e2e_local),
             ("luxcode_direct_deepseek_fixture_local", self.check_luxcode_direct_deepseek_fixture_local),
             ("luxcode_direct_deepseek_live_smoke", self.check_luxcode_direct_deepseek_live_smoke),
             ("luxcode_direct_deepseek_escalation_local", self.check_luxcode_direct_deepseek_escalation_local),
