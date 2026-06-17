@@ -37,6 +37,30 @@ from luxcode_practical_coder_runtime import (
     targeted_code_search,
     validate_practical_coder,
 )
+from luxcode_control_analytics import (
+    build_analytics_summary,
+    build_engine_performance,
+    build_savings_report,
+    get_handoff_trace,
+    get_session_analytics,
+)
+from luxcode_control_center import (
+    approval_center,
+    control_context,
+    control_search,
+    control_task_plan,
+    deferred_queue,
+    deferred_resume,
+    evidence_board,
+    get_control_center_status,
+    get_control_session,
+    list_control_sessions,
+    motor_status,
+    repository_diagnostics,
+    run_first_usable_task,
+    safe_patch_preview,
+    safe_settings,
+)
 from luxcode_safe_patch_runtime import preview_patch, rollback_snapshot
 
 
@@ -937,12 +961,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--validation-plan", default=None)
     parser.add_argument("--query", default="")
     parser.add_argument("--type", default="keyword")
+    parser.add_argument("--engine", default="")
+    parser.add_argument("--model", default="")
+    parser.add_argument("--status", default="")
     parser.add_argument("--search-results-file", default="")
     parser.add_argument("--patch-file", default="")
     parser.add_argument("--apply", action="store_true", default=False)
     parser.add_argument("--approval-token", default="")
     parser.add_argument("--snapshot-manifest", default="")
     return parser
+
+
+def _print_standalone_payload(payload: Dict[str, Any], args: argparse.Namespace) -> int:
+    if args.json or args.pretty:
+        print(json.dumps(_redact(payload), ensure_ascii=False, sort_keys=True, indent=2 if args.pretty else None))
+    else:
+        print(json.dumps(_redact(payload), ensure_ascii=False, sort_keys=True))
+    return EXIT_OK if payload.get("ok", True) is not False else EXIT_TASK_FAILED
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -960,6 +995,71 @@ def main(argv: Optional[List[str]] = None) -> int:
         except Exception:
             args.validation_plan = [{"type": str(args.validation_plan)}]
     try:
+        if args.command in {"control-status", "control-sessions", "control-session", "first-usable-run", "repo-diagnostics", "control-search", "control-context", "control-task-plan", "safe-patch-preview", "approval-center", "deferred-queue", "deferred-resume", "evidence-board", "motor-status", "control-settings"}:
+            repo = _safe_repo_root(args.repo)
+            base_payload = {
+                "repository_root": str(repo),
+                "task_summary": str(args.task or ""),
+                "query": str(args.query or ""),
+                "selected_files": _normalize_list(args.allowed_file),
+                "target_files": _normalize_list(args.allowed_file),
+                "requested_files": _normalize_list(args.allowed_file),
+                "suspected_files": _normalize_list(args.protected_file),
+                "max_results": int(args.max_results or 30),
+                "session_id": str(args.session_id or ""),
+            }
+            if args.command == "control-status":
+                payload = get_control_center_status(str(repo))
+            elif args.command == "control-sessions":
+                payload = list_control_sessions(str(repo))
+            elif args.command == "control-session":
+                if not args.session_id:
+                    raise OperatorError("session-id is required", "invalid_arguments", EXIT_INPUT)
+                payload = get_control_session(args.session_id, str(repo))
+            elif args.command == "first-usable-run":
+                payload = run_first_usable_task(base_payload, str(repo))
+            elif args.command == "repo-diagnostics":
+                payload = repository_diagnostics(base_payload, str(repo))
+            elif args.command == "control-search":
+                payload = control_search(base_payload, str(repo))
+            elif args.command == "control-context":
+                payload = control_context(base_payload, str(repo))
+            elif args.command == "control-task-plan":
+                payload = control_task_plan(base_payload, str(repo))
+            elif args.command == "safe-patch-preview":
+                payload = safe_patch_preview({**base_payload, "approved_files": _normalize_list(args.allowed_file), "operations": []}, str(repo))
+            elif args.command == "approval-center":
+                payload = approval_center(str(repo))
+            elif args.command == "deferred-queue":
+                payload = deferred_queue(str(repo))
+            elif args.command == "deferred-resume":
+                payload = deferred_resume({**base_payload, "explicit_resume": bool(args.apply)}, str(repo))
+            elif args.command == "evidence-board":
+                payload = evidence_board(str(args.session_id or ""))
+            elif args.command == "motor-status":
+                payload = motor_status(str(repo))
+            else:
+                payload = safe_settings()
+            payload["command"] = args.command
+            return _print_standalone_payload(payload, args)
+        if args.command in {"analytics-summary", "engine-performance", "session-contribution", "savings-report", "handoff-trace"}:
+            repo = _safe_repo_root(args.repo)
+            if args.command == "analytics-summary":
+                payload = build_analytics_summary(str(repo), engine=str(args.engine or ""), model=str(args.model or ""), status=str(args.status or ""))
+            elif args.command == "engine-performance":
+                payload = build_engine_performance(str(repo), engine=str(args.engine or ""), model=str(args.model or ""), status=str(args.status or ""))
+            elif args.command == "session-contribution":
+                if not args.session_id:
+                    raise OperatorError("session-id is required", "invalid_arguments", EXIT_INPUT)
+                payload = get_session_analytics(args.session_id, str(repo))
+            elif args.command == "savings-report":
+                payload = build_savings_report(str(repo), engine=str(args.engine or ""), model=str(args.model or ""), status=str(args.status or ""))
+            else:
+                if not args.session_id:
+                    raise OperatorError("session-id is required", "invalid_arguments", EXIT_INPUT)
+                payload = get_handoff_trace(args.session_id, str(repo))
+            payload["command"] = args.command
+            return _print_standalone_payload(payload, args)
         if args.command in {"status", "intake", "search", "context", "plan", "patch-preview", "patch-apply", "validate", "rollback", "run"}:
             operator = CoderOperator(args)
             if args.command == "status":

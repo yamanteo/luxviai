@@ -593,6 +593,61 @@ body.luxdream-mode .light-line { display: block; }
 }
 .menu-item.active { border-color: var(--lux); color: var(--lux); }
 .menu-item.fark { background: #B85C5A; border: none; color: #000; }
+.analytics-panel {
+  width: min(980px, 100%);
+  margin: 0 auto 18px;
+  padding: 16px;
+  border: 1px solid rgba(237,145,7,0.26);
+  background: rgba(4,5,6,0.94);
+}
+.analytics-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0 14px;
+}
+.analytics-tab {
+  border: 1px solid rgba(237,145,7,0.28);
+  color: #F0C16A;
+  background: rgba(237,145,7,0.08);
+  padding: 8px 10px;
+  font-size: .72rem;
+}
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+.analytics-card {
+  border: 1px solid rgba(167,169,172,0.18);
+  padding: 10px;
+  min-height: 74px;
+}
+.analytics-label {
+  color: var(--muted);
+  font-size: .68rem;
+  text-transform: uppercase;
+}
+.analytics-value {
+  color: var(--fg);
+  font-size: 1.05rem;
+  margin-top: 6px;
+}
+.analytics-chain {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.analytics-engine {
+  border-left: 3px solid var(--lux);
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.035);
+}
+.analytics-muted {
+  color: var(--muted);
+  font-size: .78rem;
+}
 .tiny-row { display: flex; gap: 8px; margin-top: 8px; }
 .tiny-row .menu-item { flex: 1; font-size: 0.72rem; padding: 8px 6px; }
 .luxta-panel {
@@ -1459,6 +1514,12 @@ body.topics-open .composer-wrap {
     <div class="tiny-row">
       <div class="menu-item" id="notesBtn">NOTLAR</div>
     </div>
+    <div class="tiny-row">
+      <div class="menu-item" id="modelSavingsBtn">Model Katkısı ve Tasarruf</div>
+    </div>
+    <div class="tiny-row">
+      <div class="menu-item" id="controlCenterBtn">Unified Control Center</div>
+    </div>
   </div>
 
   <div class="menu-section">
@@ -1661,6 +1722,8 @@ const farkBtn = document.getElementById("farkBtn");
 const summaryBtn = document.getElementById("summaryBtn");
 const memoryBtn = document.getElementById("memoryBtn");
 const notesBtn = document.getElementById("notesBtn");
+const modelSavingsBtn = document.getElementById("modelSavingsBtn");
+const controlCenterBtn = document.getElementById("controlCenterBtn");
 const lightLine = document.getElementById("lightLine");
 const recorderPanel = document.getElementById("recorderPanel");
 const eqCanvas = document.getElementById("eqCanvas");
@@ -5020,6 +5083,156 @@ async function openNotesPopup() {
 }
 notesBtn.onclick = () => { closeMenu(); setTimeout(() => openNotesPopup(), 30); };
 bindFastTap(notesBtn, () => { closeMenu(); setTimeout(() => openNotesPopup(), 30); });
+
+function formatAnalyticsPercent(value) {
+  if (value === null || value === undefined || value === "") return "Yüzde hesaplanamadı";
+  return `${Number(value).toFixed(2)}%`;
+}
+
+function analyticsCard(label, value) {
+  return `<div class="analytics-card"><div class="analytics-label">${escapeHtml(label)}</div><div class="analytics-value">${escapeHtml(value)}</div></div>`;
+}
+
+async function openModelSavingsPanel() {
+  closeMenu();
+  const panelId = "modelSavingsPanel";
+  const previous = document.getElementById(panelId);
+  if (previous) previous.remove();
+  const panel = document.createElement("div");
+  panel.id = panelId;
+  panel.className = "analytics-panel";
+  panel.innerHTML = `<div class="analytics-value">Model Katkısı ve Tasarruf</div><div class="analytics-muted">Yükleniyor...</div>`;
+  chatBox.prepend(panel);
+  try {
+    const [summary, engines, savings] = await Promise.all([
+      fetchJson("/luxcode-control/analytics/summary"),
+      fetchJson("/luxcode-control/analytics/engines"),
+      fetchJson("/luxcode-control/analytics/savings")
+    ]);
+    const engineRows = (engines.engines || []).map(row => `
+      <div class="analytics-engine">
+        <strong>${escapeHtml(row.engine || "")}</strong>
+        <div class="analytics-muted">
+          ${escapeHtml(row.model || "model yok")} · katkı ${escapeHtml(formatAnalyticsPercent(row.average_contribution_percent))}
+          · validation ${escapeHtml(formatAnalyticsPercent(row.validation_success_percent))}
+        </div>
+      </div>
+    `).join("") || `<div class="analytics-muted">Yüzde hesaplanamadı — yeterli ölçülebilir görev birimi yok</div>`;
+    panel.innerHTML = `
+      <div class="analytics-value">Model Katkısı ve Tasarruf</div>
+      <div class="analytics-tabs">
+        <div class="analytics-tab">Canlı Görev Akışı</div>
+        <div class="analytics-tab">Motor Katkıları</div>
+        <div class="analytics-tab">Devir Haritası</div>
+        <div class="analytics-tab">Tasarruf Özeti</div>
+        <div class="analytics-tab">Geçmiş Performans</div>
+        <div class="analytics-tab">Hesaplama Kanıtları</div>
+      </div>
+      <div class="analytics-grid">
+        ${analyticsCard("Toplam görev", String(summary.total_session_count || 0))}
+        ${analyticsCard("Ücretsiz tamamlanan", String(summary.fully_free_completed_count || 0))}
+        ${analyticsCard("Codex çağrısı önlenen", String(summary.codex_call_avoided_count || 0))}
+        ${analyticsCard("Whale çağrısı önlenen", String(summary.whale_call_avoided_count || 0))}
+        ${analyticsCard("DeepSeek çağrısı önlenen", String(summary.deepseek_call_avoided_count || 0))}
+        ${analyticsCard("Ortalama ücretsiz katkı", formatAnalyticsPercent(summary.average_free_contribution_percent))}
+        ${analyticsCard("Paid-work reduction", formatAnalyticsPercent(summary.average_paid_work_reduction_percent))}
+        ${analyticsCard("Maliyet verisi", savings.cost_value_available ? "Ölçülü" : "Para değeri üretilmedi")}
+      </div>
+      <div class="analytics-chain">${engineRows}</div>
+      <div class="analytics-muted">${escapeHtml(summary.percentage_message || "Yüzdeler ölçülebilir benzersiz iş birimlerinden hesaplanır.")}</div>
+    `;
+  } catch (_) {
+    panel.innerHTML = `<div class="analytics-value">Model Katkısı ve Tasarruf</div><div class="analytics-muted">Veri alınamadı.</div>`;
+  }
+}
+
+if (modelSavingsBtn) {
+  modelSavingsBtn.onclick = openModelSavingsPanel;
+  bindFastTap(modelSavingsBtn, openModelSavingsPanel);
+}
+
+async function callControlEndpoint(endpoint, method = "GET", body = null) {
+  const options = { method, headers: { "Content-Type": "application/json" } };
+  if (body) options.body = JSON.stringify(body);
+  const response = await fetch(endpoint, options);
+  return response.json();
+}
+
+function renderControlPayload(title, payload) {
+  const text = JSON.stringify(payload, null, 2);
+  return `
+    <div class="analytics-engine">
+      <strong>${escapeHtml(title)}</strong>
+      <pre class="analytics-muted" style="white-space:pre-wrap;overflow:auto;max-height:260px">${escapeHtml(text)}</pre>
+    </div>
+  `;
+}
+
+async function openControlCenterPanel() {
+  closeMenu();
+  const panelId = "controlCenterPanel";
+  const previous = document.getElementById(panelId);
+  if (previous) previous.remove();
+  const panel = document.createElement("div");
+  panel.id = panelId;
+  panel.className = "analytics-panel";
+  panel.innerHTML = `<div class="analytics-value">LUXCODE Unified Control Center</div><div class="analytics-muted">Yükleniyor...</div>`;
+  chatBox.prepend(panel);
+  const controlActions = [
+    ["Durum", "/luxcode-control/status", "GET"],
+    ["First Usable Tek Görev", "/luxcode-control/first-usable/run", "POST", { task_summary: "Control Center pilot preview", remaining_gap: { remaining_gap: "pilot preview" } }],
+    ["Repository Diagnostics", "/luxcode-control/repository/diagnostics", "POST", { task_summary: "control center diagnostics", selected_files: ["app.py"] }],
+    ["Search", "/luxcode-control/search", "POST", { query: "luxcode-control", selected_files: ["app.py", "static/index.html"], max_results: 5 }],
+    ["Context", "/luxcode-control/context", "POST", { task_summary: "control center context", query: "luxcode-control", max_files: 4 }],
+    ["Task Plan", "/luxcode-control/task-plan", "POST", { task_summary: "control center pilot plan", selected_files: ["app.py"] }],
+    ["Safe Patch Preview", "/luxcode-control/safe-patch/preview", "POST", { task_summary: "preview only", approved_files: ["app.py"], operations: [] }],
+    ["Approval Merkezi", "/luxcode-control/approvals", "GET"],
+    ["Deferred Queue", "/luxcode-control/deferred-queue", "GET"],
+    ["Explicit Deferred Resume", "/luxcode-control/deferred-queue/resume", "POST", { session_id: "manual-session-id-required", explicit_resume: true }],
+    ["Evidence Board", "/luxcode-control/evidence-board", "GET"],
+    ["Motor/System Status", "/luxcode-control/motor-status", "GET"],
+    ["Güvenli Ayarlar", "/luxcode-control/settings", "GET"],
+    ["Model Katkısı ve Tasarruf", "/luxcode-control/analytics/summary", "GET"]
+  ];
+  try {
+    const status = await callControlEndpoint("/luxcode-control/status");
+    panel.innerHTML = `
+      <div class="analytics-value">LUXCODE Unified Control Center</div>
+      <div class="analytics-tabs">
+        ${controlActions.map((item, idx) => `<button class="analytics-tab" data-control-action="${idx}">${escapeHtml(item[0])}</button>`).join("")}
+      </div>
+      <div class="analytics-grid">
+        ${analyticsCard("First Usable", status.first_usable_connected ? "Bağlı" : "Henüz bağlanmadı")}
+        ${analyticsCard("Repository Diagnostics", status.repository_diagnostics_connected ? "Bağlı" : "Henüz bağlanmadı")}
+        ${analyticsCard("Safe Patch", status.safe_patch_connected ? "Bağlı" : "Henüz bağlanmadı")}
+        ${analyticsCard("Controlled Apply", status.controlled_apply_connected ? "Onay kapılı" : "Henüz bağlanmadı")}
+        ${analyticsCard("Live model", status.live_model_execution || "Kapalı")}
+        ${analyticsCard("Paid fallback", status.paid_fallback || "Blocked")}
+      </div>
+      <div id="controlCenterOutput" class="analytics-chain">${renderControlPayload("Durum", status)}</div>
+    `;
+    panel.querySelectorAll("[data-control-action]").forEach(button => {
+      button.addEventListener("click", async () => {
+        const action = controlActions[Number(button.dataset.controlAction)];
+        const output = document.getElementById("controlCenterOutput");
+        output.innerHTML = `<div class="analytics-muted">Yükleniyor...</div>`;
+        try {
+          const payload = await callControlEndpoint(action[1], action[2], action[3] || null);
+          output.innerHTML = renderControlPayload(action[0], payload);
+        } catch (_) {
+          output.innerHTML = `<div class="analytics-muted">Veri alınamadı.</div>`;
+        }
+      });
+    });
+  } catch (_) {
+    panel.innerHTML = `<div class="analytics-value">LUXCODE Unified Control Center</div><div class="analytics-muted">Veri alınamadı.</div>`;
+  }
+}
+
+if (controlCenterBtn) {
+  controlCenterBtn.onclick = openControlCenterPanel;
+  bindFastTap(controlCenterBtn, openControlCenterPanel);
+}
 
 function setupNotesActions(notes) {
   document.querySelectorAll(".note-dot").forEach(dot => {

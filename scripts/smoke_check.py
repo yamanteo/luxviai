@@ -15025,6 +15025,83 @@ class SmokeRunner:
             assert path.exists() is live_state[str(path)], f"live artifact changed during readiness smoke: {path}"
         return "luxcode Render credential readiness broker verified"
 
+    def check_luxcode_control_analytics_local(self) -> str:
+        """Verify Model Katkısı ve Tasarruf analytics without model/network execution."""
+        watched = [
+            ROOT / "luxcode_control_analytics.py",
+            ROOT / "app.py",
+            ROOT / "luxcode_coder_operator.py",
+            ROOT / "static" / "index.html",
+            ROOT / "scripts" / "validate_luxcode_control_analytics.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        from luxcode_control_analytics import build_analytics_summary, build_engine_performance, build_savings_report, get_session_analytics
+
+        session = {
+            "session_id": "smoke-analytics",
+            "work_units": [
+                {"unit_id": "a", "status": "validated", "completed_by_engine": "tier0_deterministic", "validation_evidence": "pass"},
+                {"unit_id": "b", "status": "validated", "completed_by_engine": "nex", "completed_by_model": "nex-agi/nex-n2-pro:free", "validation_evidence": "pass"},
+                {"unit_id": "c", "status": "pending"},
+            ],
+            "engine_runs": [
+                {"engine_id": "tier0_deterministic", "completed_unit_ids": ["a"], "result_class": "completed", "validation_outcome": "pass"},
+                {"engine_id": "free_cloud_worker", "model_id": "nex-agi/nex-n2-pro:free", "completed_unit_ids": ["b"], "result_class": "FREE_PARTIAL", "paid_call_avoided": True, "validation_outcome": "pass"},
+            ],
+        }
+        summary = build_analytics_summary(sessions=[session])
+        assert summary["total_session_count"] == 1, summary
+        assert summary["average_free_contribution_percent"] == 66.67, summary
+        engines = build_engine_performance(sessions=[session])
+        assert any(row["engine"] == "Nex" for row in engines["engines"]), engines
+        savings = build_savings_report(sessions=[session])
+        assert savings["cost_value_available"] is False, savings
+        detail = get_session_analytics("smoke-analytics", sessions=[session])
+        assert detail["metrics"]["paid_call_avoided"] is True, detail
+        html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+        assert "Model Katkısı ve Tasarruf" in html, "web section missing"
+        assert "/luxcode-control/analytics/summary" in html, "web summary endpoint missing"
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during analytics smoke: {path}"
+        return "luxcode control analytics local smoke verified"
+
+    def check_luxcode_control_center_local(self) -> str:
+        """Verify Unified Control Center shared API surface without live model/apply execution."""
+        watched = [
+            ROOT / "luxcode_control_center.py",
+            ROOT / "app.py",
+            ROOT / "luxcode_coder_operator.py",
+            ROOT / "static" / "index.html",
+            ROOT / "scripts" / "validate_luxcode_control_center.py",
+            ROOT / "scripts" / "smoke_check.py",
+        ]
+        before = {str(path): path.read_bytes() for path in watched if path.exists()}
+        import tempfile
+        from luxcode_control_center import get_control_center_status, run_first_usable_task, safe_settings
+
+        with tempfile.TemporaryDirectory(prefix="control_center_smoke_") as tmp:
+            repo = Path(tmp) / "repo"
+            (repo / "src").mkdir(parents=True)
+            (repo / "src" / "app.py").write_text("def greet():\n    return 'old'\n", encoding="utf-8")
+            subprocess.run(["git", "init"], cwd=str(repo), capture_output=True, text=True, timeout=10, shell=False)
+            status = get_control_center_status(str(repo))
+            assert status["ok"] is True, status
+            assert status["live_model_execution"] == "disabled_in_control_center", status
+            first = run_first_usable_task({"repository_root": str(repo), "task_summary": "smoke pilot", "target_files": ["src/app.py"]}, str(repo))
+            assert first["mode"] == "preview_only", first
+            assert first["paid_fallback"] == "blocked", first
+            settings = safe_settings()
+            assert settings["automatic_apply"] == "blocked", settings
+        html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+        assert "Unified Control Center" in html, "control center web entry missing"
+        assert "/luxcode-control/first-usable/run" in html, "first usable web action missing"
+        for path in watched:
+            if path.exists():
+                assert path.read_bytes() == before[str(path)], f"live source changed during control center smoke: {path}"
+        return "luxcode unified control center local smoke verified"
+
     def _build_check_registry(self) -> list[CheckDef]:
         """Build structured check registry for filtering."""
         raw: list[tuple[str, Callable[[], str | None], int | None, str]] = [
@@ -15072,6 +15149,8 @@ class SmokeRunner:
             ("luxcode_free_gemini_fixture_local", self.check_luxcode_free_gemini_fixture_local, None, "core"),
             ("luxcode_free_gemini_e2e_local", self.check_luxcode_free_gemini_e2e_local, None, "core"),
             ("luxcode_free_cloud_worker_fixture_local", self.check_luxcode_free_cloud_worker_fixture_local, None, "core"),
+            ("luxcode_control_analytics_local", self.check_luxcode_control_analytics_local, None, "core"),
+            ("luxcode_control_center_local", self.check_luxcode_control_center_local, None, "core"),
             ("luxcode_free_gemini_live_smoke", self.check_luxcode_free_gemini_live_smoke, None, "core"),
             ("luxcode_direct_deepseek_fixture_local", self.check_luxcode_direct_deepseek_fixture_local, None, "core"),
             ("luxcode_direct_deepseek_live_smoke", self.check_luxcode_direct_deepseek_live_smoke, None, "core"),

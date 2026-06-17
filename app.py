@@ -1000,6 +1000,37 @@ from luxcode_practical_coder_runtime import (
     targeted_code_search,
     validate_practical_coder,
 )
+from luxcode_control_analytics import (
+    build_analytics_summary,
+    build_engine_performance,
+    build_savings_report,
+    get_control_analytics_schema,
+    get_handoff_trace,
+    get_session_analytics,
+)
+from luxcode_control_center import (
+    approval_center,
+    control_context,
+    control_search,
+    control_task_plan,
+    controlled_apply_execute,
+    controlled_apply_prepare,
+    deferred_queue,
+    deferred_resume,
+    evidence_board as control_evidence_board,
+    get_control_center_schema,
+    get_control_center_status,
+    get_control_session,
+    list_control_sessions,
+    motor_status as control_motor_status,
+    repository_diagnostics as control_repository_diagnostics,
+    rollback_snapshot as control_rollback_snapshot,
+    run_first_usable_task,
+    safe_patch_approval,
+    safe_patch_preview as control_safe_patch_preview,
+    safe_settings as control_safe_settings,
+    validation_run as control_validation_run,
+)
 from luxcode_autonomy_permission_controller import (
     approve_scope_expansion,
     build_plain_language_warning,
@@ -13353,6 +13384,162 @@ async def luxcode_coder_validate_endpoint(payload: LuxCodeCoderValidateRequest):
 @app.get("/debug/luxcode-coder-status")
 async def debug_luxcode_coder_status_endpoint(task_id: Optional[str] = None):
     return get_practical_coder_status(task_id=task_id or "")
+
+
+@app.get("/luxcode-control/schema")
+async def luxcode_control_schema_endpoint():
+    return get_control_center_schema()
+
+
+@app.get("/luxcode-control/status")
+async def luxcode_control_status_endpoint(repository_root: Optional[str] = None):
+    return get_control_center_status(repository_root or str(BASE_DIR))
+
+
+@app.get("/luxcode-control/sessions")
+async def luxcode_control_sessions_endpoint(repository_root: Optional[str] = None):
+    return list_control_sessions(repository_root or str(BASE_DIR))
+
+
+@app.get("/luxcode-control/sessions/{session_id}")
+async def luxcode_control_session_endpoint(session_id: str, repository_root: Optional[str] = None):
+    return get_control_session(session_id, repository_root or str(BASE_DIR))
+
+
+@app.post("/luxcode-control/first-usable/run")
+async def luxcode_control_first_usable_run_endpoint(payload: Dict[str, Any]):
+    return run_first_usable_task(payload, payload.get("repository_root") or str(BASE_DIR))
+
+
+@app.post("/luxcode-control/repository/diagnostics")
+async def luxcode_control_repository_diagnostics_endpoint(payload: Dict[str, Any]):
+    return control_repository_diagnostics(payload, payload.get("repository_root") or str(BASE_DIR))
+
+
+@app.post("/luxcode-control/search")
+async def luxcode_control_search_endpoint(payload: Dict[str, Any]):
+    return control_search(payload, payload.get("repository_root") or str(BASE_DIR))
+
+
+@app.post("/luxcode-control/context")
+async def luxcode_control_context_endpoint(payload: Dict[str, Any]):
+    return control_context(payload, payload.get("repository_root") or str(BASE_DIR))
+
+
+@app.post("/luxcode-control/task-plan")
+async def luxcode_control_task_plan_endpoint(payload: Dict[str, Any]):
+    return control_task_plan(payload, payload.get("repository_root") or str(BASE_DIR))
+
+
+@app.post("/luxcode-control/safe-patch/preview")
+async def luxcode_control_safe_patch_preview_endpoint(payload: Dict[str, Any]):
+    return control_safe_patch_preview(payload, payload.get("repository_root") or str(BASE_DIR))
+
+
+@app.post("/luxcode-control/safe-patch/approval")
+async def luxcode_control_safe_patch_approval_endpoint(payload: Dict[str, Any]):
+    return safe_patch_approval(payload)
+
+
+@app.post("/luxcode-control/controlled-apply/prepare")
+async def luxcode_control_controlled_apply_prepare_endpoint(payload: Dict[str, Any]):
+    return controlled_apply_prepare(payload)
+
+
+@app.post("/luxcode-control/controlled-apply/execute")
+async def luxcode_control_controlled_apply_execute_endpoint(payload: Dict[str, Any]):
+    return controlled_apply_execute(payload)
+
+
+@app.post("/luxcode-control/validation/run")
+async def luxcode_control_validation_run_endpoint(payload: Dict[str, Any]):
+    return control_validation_run(payload, payload.get("repository_root") or str(BASE_DIR))
+
+
+@app.post("/luxcode-control/rollback")
+async def luxcode_control_rollback_endpoint(payload: Dict[str, Any]):
+    return control_rollback_snapshot(payload)
+
+
+@app.get("/luxcode-control/evidence-board")
+async def luxcode_control_evidence_board_endpoint(task_id: Optional[str] = None):
+    return control_evidence_board(task_id or "")
+
+
+@app.get("/luxcode-control/deferred-queue")
+async def luxcode_control_deferred_queue_endpoint(repository_root: Optional[str] = None):
+    return deferred_queue(repository_root or str(BASE_DIR))
+
+
+@app.post("/luxcode-control/deferred-queue/resume")
+async def luxcode_control_deferred_resume_endpoint(payload: Dict[str, Any]):
+    return deferred_resume(payload, payload.get("repository_root") or str(BASE_DIR))
+
+
+@app.get("/luxcode-control/approvals")
+async def luxcode_control_approvals_endpoint(repository_root: Optional[str] = None):
+    return approval_center(repository_root or str(BASE_DIR))
+
+
+@app.get("/luxcode-control/motor-status")
+async def luxcode_control_motor_status_endpoint(repository_root: Optional[str] = None):
+    return control_motor_status(repository_root or str(BASE_DIR))
+
+
+@app.get("/luxcode-control/settings")
+async def luxcode_control_settings_endpoint():
+    return control_safe_settings()
+
+
+@app.get("/luxcode-control/analytics/schema")
+async def luxcode_control_analytics_schema_endpoint():
+    return get_control_analytics_schema()
+
+
+@app.get("/luxcode-control/analytics/summary")
+async def luxcode_control_analytics_summary_endpoint(
+    repository_root: Optional[str] = None,
+    from_: Optional[str] = Query(default=None, alias="from"),
+    to: Optional[str] = None,
+    engine: Optional[str] = None,
+    model: Optional[str] = None,
+    status: Optional[str] = None,
+):
+    return build_analytics_summary(repository_root or str(BASE_DIR), from_=from_ or "", to=to or "", engine=engine or "", model=model or "", status=status or "")
+
+
+@app.get("/luxcode-control/analytics/engines")
+async def luxcode_control_analytics_engines_endpoint(
+    repository_root: Optional[str] = None,
+    from_: Optional[str] = Query(default=None, alias="from"),
+    to: Optional[str] = None,
+    engine: Optional[str] = None,
+    model: Optional[str] = None,
+    status: Optional[str] = None,
+):
+    return build_engine_performance(repository_root or str(BASE_DIR), from_=from_ or "", to=to or "", engine=engine or "", model=model or "", status=status or "")
+
+
+@app.get("/luxcode-control/analytics/sessions/{session_id}")
+async def luxcode_control_analytics_session_endpoint(session_id: str, repository_root: Optional[str] = None):
+    return get_session_analytics(session_id, repository_root or str(BASE_DIR))
+
+
+@app.get("/luxcode-control/analytics/savings")
+async def luxcode_control_analytics_savings_endpoint(
+    repository_root: Optional[str] = None,
+    from_: Optional[str] = Query(default=None, alias="from"),
+    to: Optional[str] = None,
+    engine: Optional[str] = None,
+    model: Optional[str] = None,
+    status: Optional[str] = None,
+):
+    return build_savings_report(repository_root or str(BASE_DIR), from_=from_ or "", to=to or "", engine=engine or "", model=model or "", status=status or "")
+
+
+@app.get("/luxcode-control/analytics/handoffs/{session_id}")
+async def luxcode_control_analytics_handoffs_endpoint(session_id: str, repository_root: Optional[str] = None):
+    return get_handoff_trace(session_id, repository_root or str(BASE_DIR))
 
 
 @app.get("/luxcode-autonomy/schema")
