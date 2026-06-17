@@ -10944,6 +10944,7 @@ class SmokeRunner:
         backups_existed = backups.exists()
 
         from luxcode_tier0_deterministic_executor import (
+            analyze_python_imports,
             build_diagnostic_plan,
             build_repository_map,
             create_tier0_executor_payload,
@@ -10959,17 +10960,30 @@ class SmokeRunner:
             (repo / "src").mkdir(parents=True)
             (repo / "tests").mkdir()
             (repo / "scripts").mkdir()
+            (repo / "src" / "__init__.py").write_text("", encoding="utf-8")
             (repo / "src" / "app.py").write_text("def greet():\n    return 'old'\n", encoding="utf-8")
             (repo / "src" / "util.py").write_text("def build(value: str) -> str:\n    return value.strip()\n", encoding="utf-8")
+            (repo / "src" / "cycle_a.py").write_text("from src import cycle_b\n", encoding="utf-8")
+            (repo / "src" / "cycle_b.py").write_text("from src import cycle_a\nfrom src import missing_local\n", encoding="utf-8")
             (repo / "tests" / "test_app.py").write_text("from src.app import greet\nassert greet() == 'old'\n", encoding="utf-8")
+            (repo / "tests" / "app_test.py").write_text("def test_suffix():\n    assert True\n", encoding="utf-8")
             (repo / "scripts" / "validate_dummy.py").write_text("def check_dummy():\n    return True\n", encoding="utf-8")
+            (repo / "large.txt").write_text("x" * 90_001, encoding="utf-8")
             subprocess.run(["git", "init"], cwd=str(repo), capture_output=True, text=True, timeout=10, shell=False)
 
             repository_map = build_repository_map(str(repo))
             assert repository_map.get("repository_root") == str(repo), repository_map
             assert repository_map.get("external_path_readonly") is True, repository_map
             assert repository_map.get("file_count", 0) > 0, repository_map
+            assert repository_map.get("followlinks") is False, repository_map
+            assert any(item.get("path") == "large.txt" and item.get("content_analysis_skipped") is True for item in repository_map.get("large_files", [])), repository_map
             assert "scripts/validate_dummy.py" in "\\n".join(repository_map.get("candidate_validator_files", [])), repository_map.get("candidate_validator_files")
+            assert "tests/test_app.py" in repository_map.get("candidate_test_files", []), repository_map.get("candidate_test_files")
+            assert "tests/app_test.py" in repository_map.get("candidate_test_files", []), repository_map.get("candidate_test_files")
+
+            import_analysis = analyze_python_imports(str(repo))
+            assert any(item.get("evidence") == "src.cycle_a -> src.cycle_b -> src.cycle_a" for item in import_analysis.get("cycles", [])), import_analysis
+            assert any(item.get("resolved_candidate") == "src.missing_local" for item in import_analysis.get("missing_local_imports", [])), import_analysis
 
             symbols = inspect_python_symbols(str(repo), ["src/app.py", "src/util.py", "scripts/validate_dummy.py"], limit=20)
             assert symbols.get("ok") is True, symbols
@@ -10978,6 +10992,7 @@ class SmokeRunner:
             discovery = discover_validations(str(repo))
             assert discovery.get("full_smoke_required") is False, discovery
             assert isinstance(discovery.get("candidate_validators"), list), discovery
+            assert "tests/app_test.py" in discovery.get("candidate_test_files", []), discovery
             assert discovery.get("discovery_count", 0) >= 1, discovery
 
             plan = build_diagnostic_plan(str(repo), task_summary="replace function body", selected_files=["src/app.py"], selected_tier=0)

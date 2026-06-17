@@ -57,6 +57,21 @@ COMMAND_DENYLIST = {
 }
 
 PATH_ALLOWLIST_DIRS = {".", ".git", "scripts", "src", "tests", "tmp", "build"}
+REPOSITORY_MAP_EXCLUDED_NAMES = {
+    ".git",
+    ".env",
+    ".venv",
+    "venv",
+    "node_modules",
+    ".pytest_cache",
+    ".mypy_cache",
+    "__pycache__",
+    ".luxcode_runtime",
+    ".luxcode_snapshots",
+    "luxcode_backups",
+    "luxcode_tasks.db",
+}
+REPOSITORY_MAP_EXCLUDED_SUFFIXES = {".jpg", ".png", ".mp4", ".zip", ".tar", ".gz", ".dll", ".exe", ".so", ".pyc"}
 
 
 def _now() -> str:
@@ -151,6 +166,33 @@ def _check_repository_path(root: Path, raw: str) -> Path:
     if not _is_within_root(root, resolved):
         raise ValueError(f"path escapes repository root: {raw}")
     return resolved
+
+
+def _repo_relative(root: Path, path: Path) -> str:
+    return str(path.resolve().relative_to(root)).replace("\\", "/")
+
+
+def _repo_relative_lexical(root: Path, path: Path) -> str:
+    return str(path.relative_to(root)).replace("\\", "/")
+
+
+def _exclusion_record(root: Path, path: Path, reason: str) -> Dict[str, str]:
+    try:
+        rel = _repo_relative(root, path)
+    except Exception:
+        rel = str(path.name)
+        reason = "path safety rejection"
+    return {"path": rel, "reason": reason}
+
+
+def _is_repository_excluded_name(name: str) -> bool:
+    return name in REPOSITORY_MAP_EXCLUDED_NAMES or name.startswith(".")
+
+
+def _test_file_candidate(rel: str) -> bool:
+    name = Path(rel).name.lower()
+    parts = rel.lower().split("/")
+    return "test" in parts or (name.startswith("test_") and name.endswith(".py")) or (name.endswith("_test.py"))
 
 
 def validate_command(executable: str, args: List[str], tool_id: str) -> None:
@@ -307,32 +349,63 @@ def run_safe_command(repository_root: str, tool_id: str, command_id: str, execut
 
 def build_repository_map(repository_root: str, max_files: int = 180, max_file_bytes: int = 80_000) -> Dict[str, Any]:
     root = _repo_root(repository_root)
-    excluded = {".git", ".env", ".venv", "venv", "node_modules", ".pytest_cache", ".mypy_cache", "__pycache__", ".luxcode_runtime", ".luxcode_snapshots", "luxcode_backups", "luxcode_tasks.db"}
-    excluded_suffixes = {".jpg", ".png", ".mp4", ".zip", ".tar", ".gz", ".dll", ".exe", ".so", ".pyc"}
     language_counts: Dict[str, int] = {}
     candidate_source_files: List[str] = []
     candidate_test_files: List[str] = []
     candidate_validator_files: List[str] = []
     candidate_smoke_files: List[str] = []
+    excluded_paths: List[Dict[str, str]] = []
+    large_files: List[Dict[str, Any]] = []
     candidates: List[Tuple[str, int]] = []
     map_entries: List[Tuple[str, int, str]] = []
     candidate_count = 0
-    for current, dirs, files in os.walk(root):
-        dirs[:] = [d for d in dirs if d not in excluded and not d.startswith(".")]
+    for current, dirs, files in os.walk(root, followlinks=False):
+        current_path = Path(current)
+        kept_dirs: List[str] = []
+        for dirname in sorted(dirs):
+            dir_path = current_path / dirname
+            try:
+                rel_dir = _repo_relative(root, dir_path)
+            except Exception:
+                excluded_paths.append(_exclusion_record(root, dir_path, "path safety rejection"))
+                continue
+            if dir_path.is_symlink():
+                excluded_paths.append({"path": _repo_relative_lexical(root, dir_path), "reason": "symlink directory"})
+                continue
+            if dirname in REPOSITORY_MAP_EXCLUDED_NAMES:
+                excluded_paths.append({"path": rel_dir, "reason": "configured exclusion"})
+                continue
+            if dirname.startswith("."):
+                excluded_paths.append({"path": rel_dir, "reason": "hidden/runtime directory"})
+                continue
+            if dirname in {"build", "dist", "htmlcov"}:
+                excluded_paths.append({"path": rel_dir, "reason": "cache/build directory"})
+                continue
+            kept_dirs.append(dirname)
+        dirs[:] = kept_dirs
         for name in files:
-            rel = str(Path(current).joinpath(name).resolve().relative_to(root)).replace("\\", "/")
+            full = current_path / name
+            try:
+                rel = _repo_relative(root, full)
+            except Exception:
+                excluded_paths.append(_exclusion_record(root, full, "path safety rejection"))
+                continue
             if rel.startswith((".git/", ".")):
+                excluded_paths.append({"path": rel, "reason": "hidden/runtime directory"})
                 continue
-            if any(part in excluded for part in rel.split("/")):
+            if any(part in REPOSITORY_MAP_EXCLUDED_NAMES for part in rel.split("/")):
+                excluded_paths.append({"path": rel, "reason": "configured exclusion"})
                 continue
-            if Path(name).suffix.lower() in excluded_suffixes:
+            if Path(name).suffix.lower() in REPOSITORY_MAP_EXCLUDED_SUFFIXES:
+                excluded_paths.append({"path": rel, "reason": "configured exclusion"})
                 continue
             if name.startswith(".env"):
+                excluded_paths.append({"path": rel, "reason": "configured exclusion"})
                 continue
-            full = root / rel
             _ensure_not_symlink(full)
             size = full.stat().st_size
             if size > max_file_bytes:
+                large_files.append({"path": rel, "size_bytes": size, "threshold_bytes": max_file_bytes, "reason": "large_file", "content_analysis_skipped": True})
                 continue
             if candidate_count >= max_files:
                 continue
@@ -342,7 +415,7 @@ def build_repository_map(repository_root: str, max_files: int = 180, max_file_by
             suffix = Path(name).suffix.lower()
             language_counts[suffix or "extensionless"] = language_counts.get(suffix or "extensionless", 0) + 1
             lowered = rel.lower()
-            if "test" in lowered.split("/"):
+            if _test_file_candidate(lowered):
                 candidate_test_files.append(rel)
             if lowered.startswith("scripts/validate_") and suffix == ".py":
                 candidate_validator_files.append(rel)
@@ -361,7 +434,9 @@ def build_repository_map(repository_root: str, max_files: int = 180, max_file_by
         "candidate_smoke_files": sorted(candidate_smoke_files),
         "truncated": False,
         "map_digest": candidates_digest,
-        "excluded_paths": sorted(excluded),
+        "excluded_paths": sorted(excluded_paths, key=lambda item: (item["path"], item["reason"])),
+        "large_files": sorted(large_files, key=lambda item: item["path"]),
+        "followlinks": False,
         "generated_at": _now(),
         "external_path_readonly": True,
         "network_access_used": False,
@@ -448,17 +523,196 @@ def inspect_python_symbols(repository_root: str, candidate_files: Optional[List[
     }
 
 
+def _python_files_for_analysis(root: Path) -> List[Path]:
+    files: List[Path] = []
+    for current, dirs, names in os.walk(root, followlinks=False):
+        current_path = Path(current)
+        dirs[:] = sorted(
+            dirname
+            for dirname in dirs
+            if not (current_path / dirname).is_symlink()
+            and dirname not in REPOSITORY_MAP_EXCLUDED_NAMES
+            and not dirname.startswith(".")
+            and dirname not in {"build", "dist", "htmlcov"}
+        )
+        for name in sorted(names):
+            if name.endswith(".py"):
+                path = current_path / name
+                try:
+                    _ensure_not_symlink(path)
+                    _repo_relative(root, path)
+                except Exception:
+                    continue
+                files.append(path)
+    return sorted(files, key=lambda item: _repo_relative(root, item))
+
+
+def _module_name_for_file(root: Path, path: Path) -> str:
+    rel = _repo_relative(root, path)
+    parts = rel[:-3].split("/")
+    if parts[-1] == "__init__":
+        parts = parts[:-1]
+    return ".".join(parts)
+
+
+def _build_local_module_index(root: Path) -> Tuple[Dict[str, str], set[str], set[str]]:
+    modules: Dict[str, str] = {}
+    packages: set[str] = set()
+    top_levels: set[str] = set()
+    for path in _python_files_for_analysis(root):
+        module = _module_name_for_file(root, path)
+        if not module:
+            continue
+        rel = _repo_relative(root, path)
+        modules[module] = rel
+        top_levels.add(module.split(".")[0])
+        if path.name == "__init__.py":
+            packages.add(module)
+    return modules, packages, top_levels
+
+
+def _relative_import_base(current_module: str, is_package_init: bool, level: int, module: str | None) -> str:
+    current_parts = current_module.split(".") if current_module else []
+    package_parts = current_parts if is_package_init else current_parts[:-1]
+    keep = max(0, len(package_parts) - max(0, level - 1))
+    parts = package_parts[:keep]
+    if module:
+        parts.extend(part for part in module.split(".") if part)
+    return ".".join(parts)
+
+
+def _missing_import_record(source_file: str, statement: str, candidate: str, reason: str, line: int, severity: str = "warning") -> Dict[str, Any]:
+    return {
+        "source_file": source_file,
+        "import_statement": statement,
+        "resolved_candidate": candidate,
+        "reason": reason,
+        "line_number": line,
+        "severity": severity,
+    }
+
+
+def _add_edge(graph: Dict[str, set[str]], source: str, target: str) -> None:
+    if source != target:
+        graph.setdefault(source, set()).add(target)
+
+
+def _canonical_cycle(path: List[str]) -> Tuple[str, ...]:
+    body = path[:-1]
+    rotations = [tuple(body[index:] + body[:index]) for index in range(len(body))]
+    best = min(rotations)
+    return best + (best[0],)
+
+
+def _find_import_cycles(graph: Dict[str, set[str]]) -> List[Dict[str, Any]]:
+    cycles: set[Tuple[str, ...]] = set()
+
+    def visit(start: str, node: str, path: List[str], seen: set[str]) -> None:
+        for target in sorted(graph.get(node, set())):
+            if target == start:
+                cycles.add(_canonical_cycle(path + [target]))
+            elif target not in seen and target >= start:
+                visit(start, target, path + [target], seen | {target})
+
+    for module in sorted(graph):
+        visit(module, module, [module], {module})
+    return [
+        {
+            "path": list(cycle),
+            "evidence": " -> ".join(cycle),
+            "cycle_type": "direct" if len(cycle) == 3 else "indirect",
+        }
+        for cycle in sorted(cycles)
+    ]
+
+
+def analyze_python_imports(repository_root: str) -> Dict[str, Any]:
+    root = _repo_root(repository_root)
+    modules, packages, top_levels = _build_local_module_index(root)
+    graph: Dict[str, set[str]] = {module: set() for module in modules}
+    missing: List[Dict[str, Any]] = []
+    parse_warnings: List[Dict[str, Any]] = []
+
+    for path in _python_files_for_analysis(root):
+        source_file = _repo_relative(root, path)
+        source_module = _module_name_for_file(root, path)
+        if not source_module:
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"), filename=source_file)
+        except SyntaxError as exc:
+            parse_warnings.append({"source_file": source_file, "reason": "syntax_error", "line_number": exc.lineno or 0, "severity": "warning"})
+            continue
+        is_package_init = path.name == "__init__.py"
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    candidate = alias.name
+                    line = int(getattr(node, "lineno", 0) or 0)
+                    if candidate in modules:
+                        _add_edge(graph, source_module, candidate)
+                    elif candidate.split(".")[0] in top_levels:
+                        missing.append(_missing_import_record(source_file, f"import {candidate}", candidate, "local absolute import target not found", line))
+            elif isinstance(node, ast.ImportFrom):
+                line = int(getattr(node, "lineno", 0) or 0)
+                if node.level:
+                    base = _relative_import_base(source_module, is_package_init, node.level, node.module)
+                    statement = f"from {'.' * node.level}{node.module or ''} import " + ", ".join(alias.name for alias in node.names)
+                    if base in modules:
+                        _add_edge(graph, source_module, base)
+                        if base in packages:
+                            for alias in node.names:
+                                child = f"{base}.{alias.name}"
+                                if child in modules:
+                                    _add_edge(graph, source_module, child)
+                                elif alias.name != "*":
+                                    missing.append(_missing_import_record(source_file, statement, child, "relative package import target not found", line))
+                    else:
+                        missing.append(_missing_import_record(source_file, statement, base, "relative import target not found", line))
+                else:
+                    base = node.module or ""
+                    statement = f"from {base} import " + ", ".join(alias.name for alias in node.names)
+                    if base in modules:
+                        _add_edge(graph, source_module, base)
+                        if base in packages:
+                            for alias in node.names:
+                                child = f"{base}.{alias.name}"
+                                if child in modules:
+                                    _add_edge(graph, source_module, child)
+                                elif alias.name != "*":
+                                    missing.append(_missing_import_record(source_file, statement, child, "local package import target not found", line))
+                    elif base.split(".")[0] in top_levels:
+                        missing.append(_missing_import_record(source_file, statement, base, "local from-import base not found", line))
+
+    serial_graph = {module: sorted(targets) for module, targets in sorted(graph.items()) if targets}
+    cycles = _find_import_cycles(graph)
+    payload = {
+        "import_graph": serial_graph,
+        "cycles": cycles,
+        "cycle_count": len(cycles),
+        "missing_local_imports": sorted(missing, key=lambda item: (item["source_file"], item["line_number"], item["resolved_candidate"])),
+        "parse_warnings": sorted(parse_warnings, key=lambda item: (item["source_file"], item["line_number"])),
+        "module_count": len(modules),
+        "generated_at": _now(),
+    }
+    payload["import_analysis_digest"] = _digest(payload, prefix="import-analysis")
+    return payload
+
+
 def discover_validations(repository_root: str) -> Dict[str, Any]:
     root = _repo_root(repository_root)
-    validator_files = sorted(str(p.relative_to(root)).replace("\\", "/") for p in root.glob("scripts/validate_*.py"))
+    map_payload = build_repository_map(repository_root)
+    validator_files = sorted(set(map_payload.get("candidate_validator_files", [])))
+    test_files = sorted(set(map_payload.get("candidate_test_files", [])))
     smoke_check_source = root / "scripts" / "smoke_check.py"
     smoke_checks: List[str] = []
     if smoke_check_source.exists():
         smoke_text = smoke_check_source.read_text(encoding="utf-8", errors="replace")
-        for match in re.finditer(r"def\\s+(check_\\w+)\\(", smoke_text):
+        for match in re.finditer(r"def\s+(check_\w+)\(", smoke_text):
             smoke_checks.append(match.group(1))
     discovery = {
         "candidate_validators": validator_files,
+        "candidate_test_files": test_files,
         "candidate_smoke_checks": sorted({name for name in smoke_checks if name.startswith("check_")}),
         "recommended_minimum_plan": [
             "luxcode_coder_operator_cli_local",
@@ -470,9 +724,9 @@ def discover_validations(repository_root: str) -> Dict[str, Any]:
         "missing_symbol": [],
         "reason": "deterministic local discovery",
         "generated_at": _now(),
-        "discover_digest": _digest({"validators": validator_files, "checks": sorted(smoke_checks)}, prefix="discover"),
+        "discover_digest": _digest({"validators": validator_files, "tests": test_files, "checks": sorted(smoke_checks)}, prefix="discover"),
     }
-    discovery["discovery_count"] = len(discovery["candidate_validators"]) + len(discovery["candidate_smoke_checks"])
+    discovery["discovery_count"] = len(discovery["candidate_validators"]) + len(discovery["candidate_test_files"]) + len(discovery["candidate_smoke_checks"])
     return discovery
 
 

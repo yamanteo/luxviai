@@ -12,6 +12,7 @@ if str(ROOT) not in __import__("sys").path:
 
 from luxcode_tier0_deterministic_executor import (
     _repo_root,
+    analyze_python_imports,
     build_diagnostic_plan,
     build_repository_map,
     discover_validations,
@@ -80,6 +81,11 @@ def _make_repo() -> tempfile.TemporaryDirectory[str]:
     return temp
 
 
+def _write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
 def validate_static(counter: Counter) -> None:
     for rel in APPROVED_FILES:
         counter.check((ROOT / rel).exists(), f"missing {rel}")
@@ -93,6 +99,10 @@ def validate_static(counter: Counter) -> None:
     counter.contains(module_src, "run_tier0_diagnostics", "missing diagnostic entrypoint")
     counter.contains(module_src, "build_diagnostic_plan", "missing plan builder")
     counter.contains(module_src, "discover_validations", "missing validation discovery")
+    counter.contains(module_src, "analyze_python_imports", "missing import diagnostics")
+    counter.contains(module_src, "followlinks=False", "repo walk must not follow symlinks")
+    counter.contains(module_src, "large_files", "large file metadata missing")
+    counter.contains(module_src, "excluded_paths", "excluded path metadata missing")
     counter.contains(module_src, "run_safe_command", "missing safe command runner")
     counter.contains(module_src, "_check_repository_path", "path containment helper missing")
     counter.contains(module_src, "normalize_error", "error normalizer missing")
@@ -123,6 +133,9 @@ def validate_runtime(counter: Counter) -> None:
         counter.check("map_digest" in map_payload, "map digest")
         counter.check(int(map_payload["file_count"]) > 0, "map not empty")
         counter.check(len(map_payload["candidate_validator_files"]) >= 1, "validator candidates")
+        counter.check(map_payload["followlinks"] is False, "repo map followlinks metadata")
+        counter.check(isinstance(map_payload["excluded_paths"], list), "excluded path metadata list")
+        counter.check(isinstance(map_payload["large_files"], list), "large file metadata list")
 
         # symbols
         symbols = inspect_python_symbols(str(repo), ["src/app.py", "src/util.py", "scripts/validate_dummy.py"], limit=12)
@@ -134,6 +147,7 @@ def validate_runtime(counter: Counter) -> None:
         counter.check("discover_digest" in discovery, "discovery digest")
         counter.check(discovery["full_smoke_required"] is False, "no full smoke required")
         counter.check(isinstance(discovery["candidate_validators"], list), "validation candidates list")
+        counter.check(isinstance(discovery["candidate_test_files"], list), "test candidates list")
 
         plan = build_diagnostic_plan(str(repo), "local deterministic diagnostics", ["src/app.py"], selected_tier=0)
         counter.check(plan["selected_tier"] == 0, "selected tier 0")
@@ -193,6 +207,82 @@ def validate_runtime(counter: Counter) -> None:
             counter.check(before == after, f"source not modified: {path.name}")
 
 
+def validate_hardening_fixtures(counter: Counter) -> None:
+    with tempfile.TemporaryDirectory(prefix="tier0_hardening_validate_") as temp:
+        repo = Path(temp) / "repo"
+        repo.mkdir()
+        _write(repo / "a.py", "import b\n")
+        _write(repo / "b.py", "import a\n")
+        _write(repo / "c.py", "import d\n")
+        _write(repo / "d.py", "import e\n")
+        _write(repo / "e.py", "import c\n")
+        _write(repo / "acyclic.py", "import json\n")
+        _write(repo / "uses_third_party.py", "import requests\nfrom numpy import array\n")
+        _write(repo / "pkg" / "__init__.py", "from . import rel_a\n")
+        _write(repo / "pkg" / "rel_a.py", "from . import rel_b\n")
+        _write(repo / "pkg" / "rel_b.py", "from . import rel_a\nfrom . import missing_rel\n")
+        _write(repo / "pkg" / "missing_abs_probe.py", "from pkg import missing_abs\n")
+        _write(repo / "bad_syntax.py", "def broken(:\n")
+        _write(repo / "tests" / "test_example.py", "def test_ok():\n    assert True\n")
+        _write(repo / "tests" / "example_test.py", "def test_ok():\n    assert True\n")
+        _write(repo / "tests" / "normal_example.py", "VALUE = 1\n")
+        _write(repo / "scripts" / "validate_fixture.py", "print('ok')\n")
+        _write(repo / "scripts" / "smoke_check.py", "def check_fixture():\n    return 'ok'\n")
+        _write(repo / ".pytest_cache" / "test_hidden.py", "raise RuntimeError('must not discover')\n")
+        _write(repo / "build" / "test_build.py", "raise RuntimeError('must not discover')\n")
+        _write(repo / "large.txt", "x" * 90)
+        _write(repo / ".env", "OPENROUTER_API_KEY=sk-should-not-persist\n")
+
+        symlink_checked = False
+        try:
+            (repo / "linked_tests").symlink_to(repo / "tests", target_is_directory=True)
+            symlink_checked = True
+        except OSError:
+            symlink_checked = False
+
+        imports = analyze_python_imports(str(repo))
+        cycle_evidence = {item["evidence"] for item in imports["cycles"]}
+        counter.check("a -> b -> a" in cycle_evidence, "direct cycle evidence")
+        counter.check("c -> d -> e -> c" in cycle_evidence, "indirect cycle evidence")
+        counter.check("pkg.rel_a -> pkg.rel_b -> pkg.rel_a" in cycle_evidence, "relative import cycle evidence")
+        counter.check(not any("requests" in target for targets in imports["import_graph"].values() for target in targets), "third-party import excluded from graph")
+        counter.check(not any(item["resolved_candidate"] in {"json", "requests", "numpy"} for item in imports["missing_local_imports"]), "stdlib/third-party false positive blocked")
+        missing_candidates = {item["resolved_candidate"]: item for item in imports["missing_local_imports"]}
+        counter.check("pkg.missing_rel" in missing_candidates, "missing relative local import")
+        counter.check("pkg.missing_abs" in missing_candidates, "missing absolute local import")
+        counter.check(missing_candidates["pkg.missing_rel"]["source_file"] == "pkg/rel_b.py", "missing import source file")
+        counter.check(missing_candidates["pkg.missing_rel"]["line_number"] > 0, "missing import line number")
+        counter.check(missing_candidates["pkg.missing_rel"]["severity"] == "warning", "missing import severity")
+        counter.check(imports["parse_warnings"][0]["source_file"] == "bad_syntax.py", "parse warning safe")
+
+        map_payload = build_repository_map(str(repo), max_file_bytes=80)
+        test_files = set(map_payload["candidate_test_files"])
+        counter.check("tests/test_example.py" in test_files, "test_*.py discovered")
+        counter.check("tests/example_test.py" in test_files, "*_test.py discovered")
+        counter.check("tests/normal_example.py" not in test_files, "normal file not test")
+        counter.check(len(map_payload["candidate_test_files"]) == len(set(map_payload["candidate_test_files"])), "test discovery deduplicated")
+        counter.check(".pytest_cache/test_hidden.py" not in test_files, "excluded path test not discovered")
+        counter.check("build/test_build.py" not in test_files, "build path test not discovered")
+        counter.check(map_payload["followlinks"] is False, "followlinks false")
+        if symlink_checked:
+            counter.check("linked_tests/test_example.py" not in test_files, "symlink directory not traversed")
+            counter.check(any(item["path"] == "linked_tests" and item["reason"] == "symlink directory" for item in map_payload["excluded_paths"]), "symlink directory metadata")
+        else:
+            counter.check("followlinks=False" in read("luxcode_tier0_deterministic_executor.py"), "symlink traversal disabled statically")
+        reasons = {item["reason"] for item in map_payload["excluded_paths"]}
+        counter.check("configured exclusion" in reasons, "configured exclusion metadata")
+        counter.check("hidden/runtime directory" in reasons or "cache/build directory" in reasons, "runtime/cache exclusion metadata")
+        counter.check(any(item["path"] == "large.txt" and item["reason"] == "large_file" and item["threshold_bytes"] == 80 for item in map_payload["large_files"]), "large file metadata")
+        counter.check(all(not str(item.get("path", "")).startswith(str(repo)) for item in map_payload["excluded_paths"]), "repo-relative excluded paths")
+        counter.check(all(not str(item.get("path", "")).startswith(str(repo)) for item in map_payload["large_files"]), "repo-relative large files")
+        counter.check("sk-should-not-persist" not in str(map_payload), "secret redaction from map metadata")
+
+        discovery = discover_validations(str(repo))
+        counter.check("tests/test_example.py" in discovery["candidate_test_files"], "test discovery in validations")
+        counter.check("tests/example_test.py" in discovery["candidate_test_files"], "suffix test discovery in validations")
+        counter.check(discovery["candidate_test_files"] == sorted(discovery["candidate_test_files"]), "deterministic test order")
+
+
 def validate_git_state(counter: Counter) -> None:
     result = subprocess.run(["git", "diff", "--name-only"], cwd=str(ROOT), capture_output=True, text=True, timeout=10, shell=False)
     counter.check(result.returncode == 0, "git diff name-only command works")
@@ -212,6 +302,7 @@ def main() -> None:
     counter = Counter()
     validate_static(counter)
     validate_runtime(counter)
+    validate_hardening_fixtures(counter)
     validate_git_state(counter)
     while counter.count < 220:
         counter.count += 1
