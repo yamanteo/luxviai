@@ -4,3 +4,5 @@ __pycache__/
 *.log
 data/
 _check.js
+.luxcode_runtime/
+*.before_*

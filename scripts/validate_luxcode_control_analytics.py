@@ -177,18 +177,22 @@ def validate_fixtures(counter: Counter) -> None:
 
 def validate_integration_contract(counter: Counter) -> None:
     app = read("app.py")
+    routes = read("luxcode_control_routes.py")
     cli = read("luxcode_coder_operator.py")
     html = read("static/index.html")
+    luxcode_html = read("static/luxcode/index.html")
     smoke = read("scripts/smoke_check.py")
-    counter.check("/luxcode-control/analytics/summary" in app, "summary endpoint wired")
-    counter.check("/luxcode-control/analytics/engines" in app, "engines endpoint wired")
-    counter.check("/luxcode-control/analytics/sessions/{session_id}" in app, "session endpoint wired")
-    counter.check("/luxcode-control/analytics/savings" in app, "savings endpoint wired")
-    counter.check("/luxcode-control/analytics/handoffs/{session_id}" in app, "handoffs endpoint wired")
+    counter.check('prefix="/luxcode-control"' in routes, "control API prefix wired")
+    counter.check('"/analytics/summary"' in routes, "summary endpoint wired")
+    counter.check('"/analytics/engines"' in routes, "engines endpoint wired")
+    counter.check('"/analytics/sessions/{session_id}"' in routes, "session endpoint wired")
+    counter.check('"/analytics/savings"' in routes, "savings endpoint wired")
+    counter.check('"/analytics/handoffs/{session_id}"' in routes, "handoffs endpoint wired")
     for command in ["analytics-summary", "engine-performance", "session-contribution", "savings-report", "handoff-trace"]:
         counter.check(command in cli, f"CLI command wired: {command}")
-    counter.check("Model Katkısı ve Tasarruf" in html, "web section title")
-    counter.check("Canlı Görev Akışı" in html, "web live task tab")
+    counter.check("build_luxcode_control_router" in app, "control analytics router included")
+    counter.check("Model Katkısı ve Tasarruf" not in html and "Model Katkısı ve Tasarruf" not in luxcode_html, "model contribution web tab removed")
+    counter.check("Canlı Görev Akışı" not in html and "Canlı Görev Akışı" not in luxcode_html, "analytics web tabs removed")
     counter.check("luxcode_control_analytics_local" in smoke, "targeted smoke registered")
 
 

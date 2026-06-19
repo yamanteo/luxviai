@@ -4,6 +4,7 @@ import hashlib
 import json
 import time
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Any, Dict, Sequence
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
@@ -127,30 +128,63 @@ def check_ollama_model(
 
 
 def _tier1_prompt(request: WorkerRequest) -> str:
-    files = ", ".join(request.target_files)
-    symbols = ", ".join(request.target_symbols)
     context = {key: value for key, value in request.minimum_context.items() if not key.startswith("_")}
+    schema_example = {
+        "response_id": "rsp-local-unique",
+        "request_id": request.request_id,
+        "status": "completed",
+        "analysis_summary": "Short explanation of the exact proposed change.",
+        "completed_scope": ["tier1_local_patch_draft"],
+        "remaining_gap": "safe_patch_preview_ready",
+        "target_files": list(request.target_files),
+        "target_symbols": list(request.target_symbols),
+        "patch_operations": [
+            {
+                "operation_id": "op-1",
+                "operation_type": "replace_text",
+                "file_path": request.target_files[0] if request.target_files else "",
+                "anchor_text": "",
+                "old_text": "exact text copied from minimum_context_json",
+                "new_text": "replacement text",
+                "expected_occurrences": 1,
+                "reason": "why this exact edit is required",
+                "confidence": 0.9,
+            }
+        ],
+        "validation_recommendations": ["py_compile", "targeted test"],
+        "assumptions": [],
+        "uncertainties": [],
+        "risk_flags": [],
+        "unsupported_requests": [],
+        "model_metadata": {
+            "runtime_id": TIER1_OLLAMA_RUNTIME_ID,
+            "local_only": True,
+            "external_api_used": False,
+        },
+    }
     return (
-        "Return only one JSON object. Do not use markdown.\n"
-        "You are a local coding model producing a safe patch draft for LUXCODE.\n"
+        "Return exactly one JSON object. Do not use markdown or code fences.\n"
+        "You are the local Tier-1 coding model for LUXCODE. Produce only a SAFE PATCH PREVIEW; "
+        "never claim that a file was written, a command was run, or a patch was applied.\n"
         f"request_id: {request.request_id}\n"
         f"task_summary: {request.task_summary}\n"
-        f"target_files: {files}\n"
-        f"target_symbols: {symbols}\n"
-        f"minimum_context_json: {json.dumps(context, sort_keys=True)}\n"
-        "Required JSON keys: response_id, request_id, status, analysis_summary, completed_scope, "
-        "remaining_gap, target_files, target_symbols, patch_operations, validation_recommendations, "
-        "assumptions, uncertainties, risk_flags, unsupported_requests, model_metadata.\n"
-        'model_metadata must include {"runtime_id":"ollama_loopback","local_only":true,"external_api_used":false}.\n'
-        "Use status completed. Use exactly one patch_operations item with this exact shape: "
-        '{"operation_id":"op-1","operation_type":"replace_text","file_path":"src/app.py",'
-        '"anchor_text":"","old_text":"def greet():\\n    return 1\\n",'
-        '"new_text":"def greet():\\n    return 2\\n","expected_occurrences":1,'
-        '"reason":"safe local fixture patch","confidence":0.95}. '
-        "Do not omit file_path. Do not use a file outside target_files. "
-        "For the fixture, replace return 1 with return 2."
+        f"remaining_gap: {request.remaining_gap}\n"
+        f"allowed_target_files_json: {json.dumps(request.target_files, ensure_ascii=False)}\n"
+        f"allowed_target_symbols_json: {json.dumps(request.target_symbols, ensure_ascii=False)}\n"
+        f"minimum_context_json: {json.dumps(context, ensure_ascii=False, sort_keys=True)}\n"
+        "Rules:\n"
+        "1. Use only files listed in allowed_target_files_json.\n"
+        "2. Use only replace_text operations in this phase.\n"
+        "3. old_text must be copied exactly from minimum_context_json and expected_occurrences must be 1.\n"
+        "4. Never invent a file, symbol, function, line, API, or repository fact.\n"
+        "5. Return at most 3 patch operations. Keep edits minimal.\n"
+        "6. If exact safe replacement text cannot be proven from the supplied context, return status "
+        "needs_more_context, an empty patch_operations list, and explain the missing context in remaining_gap.\n"
+        "7. target_files and target_symbols in the response must be subsets of the allowed lists.\n"
+        "8. status must be completed, partial, needs_more_context, or blocked.\n"
+        "Required response shape example (replace example values with real grounded values):\n"
+        f"{json.dumps(schema_example, ensure_ascii=False, sort_keys=True)}"
     )
-
 
 def _extract_model_text(data: Dict[str, Any]) -> str:
     text = str(data.get("response") or "")
@@ -162,6 +196,63 @@ def _extract_model_text(data: Dict[str, Any]) -> str:
     return ""
 
 
+def _normalize_ollama_response_payload(
+    raw_text: str,
+    *,
+    request: WorkerRequest,
+    ollama_data: Dict[str, Any],
+) -> str:
+    try:
+        data = json.loads(raw_text)
+    except json.JSONDecodeError as exc:
+        raise ValueError("invalid_json") from exc
+    if not isinstance(data, dict):
+        raise ValueError("response must be object")
+
+    operations = data.get("patch_operations")
+    if not isinstance(operations, list):
+        operations = []
+        data["patch_operations"] = operations
+
+    operation_files = [
+        str(item.get("file_path") or "")
+        for item in operations
+        if isinstance(item, dict) and str(item.get("file_path") or "")
+    ]
+    data.setdefault("response_id", _stable_digest({"request": request.request_id, "text": raw_text}, prefix="ollama-rsp"))
+    data["request_id"] = request.request_id
+    data["provider_id"] = request.provider_id
+    data["model_id"] = request.model_id
+    data.setdefault("status", "completed" if operations else "needs_more_context")
+    data.setdefault("analysis_summary", "Local model returned no analysis summary.")
+    data.setdefault("completed_scope", ["tier1_local_patch_draft"] if operations else [])
+    data.setdefault("remaining_gap", "safe_patch_preview_ready" if operations else "more exact source context required")
+    data.setdefault("target_files", sorted(set(operation_files)))
+    data.setdefault("target_symbols", [])
+    data.setdefault("validation_recommendations", ["py_compile", "targeted test"] if operations else [])
+    data.setdefault("assumptions", [])
+    data.setdefault("uncertainties", [])
+    data.setdefault("risk_flags", [])
+    data.setdefault("scope_violations", [])
+    data.setdefault("unsupported_requests", [])
+    data["usage_metadata"] = {
+        "input_tokens": int(ollama_data.get("prompt_eval_count") or 0),
+        "output_tokens": int(ollama_data.get("eval_count") or 0),
+        "estimated_cost": 0.0,
+    }
+    metadata = data.get("model_metadata") if isinstance(data.get("model_metadata"), dict) else {}
+    metadata.update(
+        {
+            "runtime_id": TIER1_OLLAMA_RUNTIME_ID,
+            "local_only": True,
+            "external_api_used": False,
+            "done_reason": str(ollama_data.get("done_reason") or ""),
+        }
+    )
+    data["model_metadata"] = metadata
+    return json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
 def run_ollama_tier1_inference(
     *,
     request: WorkerRequest,
@@ -170,33 +261,67 @@ def run_ollama_tier1_inference(
     timeout_seconds: int = 90,
     repair_attempt: bool = False,
 ) -> Dict[str, Any]:
+    started = time.perf_counter()
     model = check_ollama_model(model_id, endpoint=endpoint, timeout_seconds=5)
     if not model.get("ok"):
-        return {"ok": False, "state": model.get("state", "runtime_unavailable"), "error": model.get("error", "")}
+        return {
+            "ok": False,
+            "state": model.get("state", "runtime_unavailable"),
+            "error": model.get("error", ""),
+            "duration_ms": int((time.perf_counter() - started) * 1000),
+        }
     if not model.get("model_available"):
-        return {"ok": False, "state": "model_missing", "model_id": model_id, "models": model.get("models", [])}
+        return {
+            "ok": False,
+            "state": "model_missing",
+            "model_id": model_id,
+            "models": model.get("models", []),
+            "duration_ms": int((time.perf_counter() - started) * 1000),
+        }
     prompt = _tier1_prompt(request)
     if repair_attempt:
-        prompt += "\nPrevious output was not valid JSON. Return only valid JSON matching the requested schema."
+        prompt += (
+            "\nThe previous output was invalid. Return only one valid JSON object matching the exact schema. "
+            "Do not add commentary."
+        )
     payload = {
         "model": model_id,
         "prompt": prompt,
         "stream": False,
         "format": "json",
-        "options": {"temperature": 0, "num_predict": 450},
+        "options": {"temperature": 0, "num_predict": 1400},
     }
     result = _ollama_json_request(endpoint, "/api/generate", payload, timeout_seconds=timeout_seconds)
     if not result.get("ok"):
-        return result
-    text = _extract_model_text(result.get("data", {}))
+        return {**result, "duration_ms": int((time.perf_counter() - started) * 1000)}
+    ollama_data = result.get("data", {})
+    text = _extract_model_text(ollama_data)
     if not text:
-        return {"ok": False, "state": "empty_response", "raw": result.get("data", {})}
+        return {
+            "ok": False,
+            "state": "empty_response",
+            "raw": ollama_data,
+            "duration_ms": int((time.perf_counter() - started) * 1000),
+        }
     try:
-        response = parse_tier1_response(text, request=request, runtime_id=TIER1_OLLAMA_RUNTIME_ID)
+        normalized = _normalize_ollama_response_payload(text, request=request, ollama_data=ollama_data)
+        response = parse_tier1_response(normalized, request=request, runtime_id=TIER1_OLLAMA_RUNTIME_ID)
     except ValueError as exc:
-        return {"ok": False, "state": "invalid_json", "error": str(exc), "raw_text": text[:4000]}
-    return {"ok": True, "state": "response_parsed", "response": response, "raw_text": text, "model_id": model_id}
-
+        return {
+            "ok": False,
+            "state": "invalid_json",
+            "error": str(exc),
+            "raw_text": text[:4000],
+            "duration_ms": int((time.perf_counter() - started) * 1000),
+        }
+    return {
+        "ok": True,
+        "state": "response_parsed",
+        "response": response,
+        "raw_text": normalized,
+        "model_id": model_id,
+        "duration_ms": int((time.perf_counter() - started) * 1000),
+    }
 
 def _remaining_gap_payload(tier0_diagnostics: Dict[str, Any]) -> Dict[str, Any]:
     gap = tier0_diagnostics.get("remaining_gap") or {}
@@ -440,6 +565,51 @@ def _tier1_router_availability(model_state: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _safe_repository_file_contents(
+    repository_root: str,
+    target_files: Sequence[str],
+    *,
+    max_file_bytes: int = 2_000_000,
+) -> Dict[str, str]:
+    root = Path(repository_root).resolve()
+    contents: Dict[str, str] = {}
+    for raw in target_files:
+        rel = str(raw or "").replace("\\", "/").strip()
+        if not rel or rel.startswith(("/", "../")) or ".." in Path(rel).parts:
+            continue
+        path = (root / rel).resolve()
+        try:
+            path.relative_to(root)
+        except ValueError:
+            continue
+        if not path.is_file() or path.is_symlink() or path.stat().st_size > max_file_bytes:
+            continue
+        contents[rel] = path.read_text(encoding="utf-8", errors="replace")
+    return contents
+
+
+def _controlled_patch_steps_from_response(response: WorkerResponse) -> list[Dict[str, Any]]:
+    steps: list[Dict[str, Any]] = []
+    for operation in response.patch_operations:
+        if operation.operation_type != "replace_text":
+            continue
+        steps.append(
+            {
+                "target_file": operation.file_path,
+                "change_type": "replace_exact",
+                "expected_original_text": operation.old_text,
+                "replacement_text": operation.new_text,
+                "purpose": operation.reason or "Ollama local safe patch preview",
+                "validation_after_change": list(response.validation_recommendations),
+            }
+        )
+    return steps
+
+
+def _file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def execute_tier0_router_tier1_preview(
     *,
     task_id: str,
@@ -451,12 +621,35 @@ def execute_tier0_router_tier1_preview(
     endpoint: str = TIER1_OLLAMA_ENDPOINT,
     model_id: str = TIER1_OLLAMA_MODEL_ID,
     persist: bool = False,
+    tier0_diagnostics: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     from luxcode_task_persistence import save_task_state
     from luxcode_tier0_deterministic_executor import run_tier0_diagnostics
     from luxcode_zero_cost_execution_router import route_zero_cost_task
 
-    diagnostics = run_tier0_diagnostics(repository_root, task_summary, list(target_files))
+    safe_targets = [str(item).replace("\\", "/").strip() for item in target_files if str(item).strip()]
+    exact_contents = _safe_repository_file_contents(repository_root, safe_targets)
+    safe_targets = [item for item in safe_targets if item in exact_contents]
+    if not safe_targets:
+        fingerprint = _stable_digest({"task_id": task_id, "reason": "no_safe_target_files"}, prefix="tier1-failure")
+        return {
+            "ok": False,
+            "state": "tier1_context_missing",
+            "error": "No safe existing target file was available for local model validation.",
+            "evidence": _fallback_evidence(
+                task_id=task_id,
+                model_id=model_id,
+                state="tier1_context_missing",
+                summary="No safe existing target file was available",
+                target_files=target_files,
+                failure_fingerprint=fingerprint,
+            ),
+            "persistence": {"saved": False, "reason": "context_missing"},
+        }
+
+    diagnostics = dict(tier0_diagnostics) if isinstance(tier0_diagnostics, dict) else run_tier0_diagnostics(
+        repository_root, task_summary, list(safe_targets)
+    )
     remaining_gap = diagnostics.get("remaining_gap", {})
     model_state = check_ollama_model(model_id, endpoint=endpoint, timeout_seconds=5)
     route = route_zero_cost_task(
@@ -467,7 +660,7 @@ def execute_tier0_router_tier1_preview(
         required_capabilities=["code_generation", "patch_candidate_draft"],
         forbidden_capabilities=["network_operation"],
         risk_level="low",
-        selected_files=list(target_files),
+        selected_files=list(safe_targets),
         difficulty_score=3,
         availability=_tier1_router_availability(model_state),
         policy={
@@ -486,7 +679,7 @@ def execute_tier0_router_tier1_preview(
             model_id=model_id,
             state=state,
             summary="Tier 1 local worker not selected by router",
-            target_files=target_files,
+            target_files=safe_targets,
             failure_fingerprint=fingerprint,
         )
         return {
@@ -500,14 +693,22 @@ def execute_tier0_router_tier1_preview(
             "persistence": {"saved": False, "reason": "not_selected"},
         }
 
+    bounded_context = {
+        key: str(value)[:12000]
+        for key, value in minimum_context.items()
+        if key in safe_targets and str(value).strip()
+    }
+    for key in safe_targets:
+        bounded_context.setdefault(key, exact_contents[key][:12000])
+
     request = build_tier1_request_from_tier0(
         request_id=_stable_digest({"task_id": task_id, "tier": 1}, prefix="tier1-req"),
         task_id=task_id,
         task_summary=task_summary,
         tier0_diagnostics=diagnostics,
-        target_files=target_files,
+        target_files=safe_targets,
         target_symbols=target_symbols,
-        minimum_context=minimum_context,
+        minimum_context=bounded_context,
         runtime_id=TIER1_OLLAMA_RUNTIME_ID,
         model_id=model_id,
     )
@@ -527,7 +728,7 @@ def execute_tier0_router_tier1_preview(
             model_id=model_id,
             state=str(inference.get("state") or "tier1_inference_failed"),
             summary=str(inference.get("error") or "Tier 1 inference failed"),
-            target_files=target_files,
+            target_files=safe_targets,
             failure_fingerprint=fingerprint,
         )
         return {
@@ -543,13 +744,38 @@ def execute_tier0_router_tier1_preview(
         }
 
     response = inference["response"]
+    if response.response_status.value not in {"completed", "partial"} or not response.patch_operations:
+        fingerprint = _stable_digest(
+            {"task_id": task_id, "status": response.response_status.value, "gap": response.remaining_gap},
+            prefix="tier1-failure",
+        )
+        evidence = _fallback_evidence(
+            task_id=task_id,
+            model_id=model_id,
+            state="tier1_needs_more_context",
+            summary=response.analysis_summary or response.remaining_gap,
+            target_files=safe_targets,
+            failure_fingerprint=fingerprint,
+        )
+        return {
+            "ok": False,
+            "state": "tier1_needs_more_context",
+            "route_decision": route,
+            "model_state": model_state,
+            "analysis_summary": response.analysis_summary,
+            "remaining_gap": response.remaining_gap,
+            "evidence": evidence,
+            "raw_text": str(inference.get("raw_text") or "")[:4000],
+            "persistence": {"saved": False, "reason": "more_context_required"},
+        }
+
     validation = validate_tier1_response(
         request=request,
         response=response,
-        known_files=set(target_files),
+        known_files=set(safe_targets),
         known_symbols=set(target_symbols),
         protected_files=set(),
-        file_contents=minimum_context,
+        file_contents=exact_contents,
         failed_patch_fingerprints=set(request.failed_attempt_fingerprints),
     )
     if not validation.get("valid"):
@@ -559,7 +785,7 @@ def execute_tier0_router_tier1_preview(
             model_id=model_id,
             state="tier1_validation_failed",
             summary="Tier 1 response failed validation",
-            target_files=target_files,
+            target_files=safe_targets,
             failure_fingerprint=fingerprint,
         )
         return {
@@ -575,19 +801,42 @@ def execute_tier0_router_tier1_preview(
             "persistence": {"saved": False, "reason": "validation_failed"},
         }
 
-    contract = build_safe_patch_contract_from_tier1_response(
-        request=request,
-        response=response,
-        repository_root=repository_root,
-        protected_files=[],
-        file_contents=minimum_context,
-    )
-    preview = preview_tier1_safe_patch(contract)
+    try:
+        contract = build_safe_patch_contract_from_tier1_response(
+            request=request,
+            response=response,
+            repository_root=repository_root,
+            protected_files=[],
+            file_contents=exact_contents,
+        )
+        preview = preview_tier1_safe_patch(contract)
+    except Exception as exc:
+        fingerprint = _stable_digest({"task_id": task_id, "error": str(exc)}, prefix="tier1-failure")
+        return {
+            "ok": False,
+            "state": "tier1_contract_failed",
+            "error": str(exc),
+            "validation": validation,
+            "evidence": _fallback_evidence(
+                task_id=task_id,
+                model_id=model_id,
+                state="tier1_contract_failed",
+                summary=str(exc),
+                target_files=safe_targets,
+                failure_fingerprint=fingerprint,
+            ),
+            "persistence": {"saved": False, "reason": "contract_failed"},
+        }
+
+    patch_steps = _controlled_patch_steps_from_response(response)
+    root = Path(repository_root).resolve()
+    expected_hashes = {rel: _file_sha256(root / rel) for rel in safe_targets if (root / rel).is_file()}
     evidence = build_tier1_evidence(
         request=request,
         response=response,
         patch_contract=contract,
         status="safe_patch_preview_ready",
+        duration_ms=int(inference.get("duration_ms") or 0),
         resource_profile="ollama_loopback",
     )
     next_gap = build_tier1_remaining_gap(request=request, response=response)
@@ -599,7 +848,7 @@ def execute_tier0_router_tier1_preview(
                 "current_state": "tier1_safe_patch_preview_ready",
                 "repository_root": repository_root,
                 "original_request": task_summary,
-                "selected_files": list(target_files),
+                "selected_files": list(safe_targets),
                 "zero_cost_routing": route,
                 "tier1_metadata": {
                     "request_digest": request.request_digest,
@@ -613,18 +862,35 @@ def execute_tier0_router_tier1_preview(
             event_type="tier1_preview",
         )
     return {
-        "ok": bool(preview.get("valid") and preview.get("operation_count", 0) >= 1),
+        "ok": bool(preview.get("valid") and patch_steps),
         "state": "safe_patch_preview_ready",
         "tier0_diagnostics": diagnostics,
         "remaining_gap": remaining_gap,
         "route_decision": route,
         "model_state": model_state,
         "request": {"request_id": request.request_id, "request_digest": request.request_digest},
+        "model_response": {
+            "response_id": response.response_id,
+            "response_status": response.response_status.value,
+            "analysis_summary": response.analysis_summary,
+            "completed_scope": list(response.completed_scope),
+            "remaining_gap": response.remaining_gap,
+            "target_files": list(response.target_files),
+            "target_symbols": list(response.target_symbols),
+            "validation_recommendations": list(response.validation_recommendations),
+            "risk_flags": list(response.risk_flags),
+            "usage_metadata": dict(response.usage_metadata),
+            "response_digest": response.response_digest,
+        },
         "validation": validation,
         "safe_patch_contract": contract,
         "safe_patch_preview": preview,
+        "patch_steps": patch_steps,
+        "expected_file_hashes": expected_hashes,
+        "files_to_modify": sorted({step["target_file"] for step in patch_steps}),
         "evidence": evidence,
         "next_remaining_gap": next_gap,
         "persistence": persistence,
         "raw_text": str(inference.get("raw_text") or "")[:4000],
+        "duration_ms": int(inference.get("duration_ms") or 0),
     }

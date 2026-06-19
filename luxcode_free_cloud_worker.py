@@ -25,7 +25,7 @@ MAX_REQUEST_BYTES = 24_000
 MAX_RESPONSE_BYTES = 200_000
 MAX_PROMPT_CHARS = 12_000
 MAX_COMPLETION_TOKENS = 512
-MAX_TRANSPORT_TIMEOUT_SECONDS = 12
+MAX_TRANSPORT_TIMEOUT_SECONDS = 60
 
 PRIMARY_MODEL_ID = "nex-agi/nex-n2-pro:free"
 DEEP_REASONING_FALLBACK_MODEL_ID = "nvidia/nemotron-3-ultra-550b-a55b:free"
@@ -44,7 +44,7 @@ VALID_RESULT_STATUSES = {
     "fallback_required",
 }
 TERMINAL_FAILURES = {"quota_exhausted", "unsafe", "duplicate_failure", "invalid"}
-SCHEMA_SAFE_REASONS = {"provider_unavailable", "rate_limited", "provider_error", "schema_invalid", "empty_response"}
+SCHEMA_SAFE_REASONS = {"provider_unavailable", "rate_limited", "provider_error", "schema_invalid", "empty_response", "timeout"}
 TRANSIENT_DEFER_REASONS = {"rate_limited", "provider_unavailable", "timeout"}
 COOLDOWN_SECONDS_BY_REASON = {
     "rate_limited": 240,
@@ -89,7 +89,10 @@ def redact_secret(value: Any) -> Any:
     patterns = [
         re.compile(r"(?i)(authorization\s*[:=]\s*bearer\s+)([^\s,;]+)"),
         re.compile(r"(?i)(bearer\s+)([A-Za-z0-9._~+/-]{8,})"),
-        re.compile(r"(?i)((?:api[_-]?key|token|secret|password|cookie)\s*[:=]\s*[\"']?)([^\"'\s,;]+)"),
+        re.compile(
+            r"(?i)((?:api[_-]?key|token|access[_-]?token|refresh[_-]?token|auth[_-]?token|"
+            r"secret|password|cookie)\s*[:=]\s*[\"']?)([^\"'\s,;]+)"
+        ),
         re.compile(r"(?i)([?&](?:api[_-]?key|token|secret|password)=)([^&#]+)"),
         re.compile(r"(?i)()(sk-or-[A-Za-z0-9._~+/-]{8,})"),
         re.compile(r"(?i)()(sk-[A-Za-z0-9._~+/-]{8,})"),
@@ -101,12 +104,50 @@ def redact_secret(value: Any) -> Any:
         return result
     if isinstance(value, dict):
         cleaned: Dict[str, Any] = {}
+        safe_usage_keys = {
+            "usage",
+            "usage_metadata",
+            "token_usage",
+            "prompt_tokens",
+            "completion_tokens",
+            "total_tokens",
+            "input_tokens",
+            "output_tokens",
+            "reasoning_tokens",
+            "cached_tokens",
+            "cost",
+            "reported_cost",
+            "maximum_input_tokens",
+            "maximum_output_tokens",
+        }
         for key, item in value.items():
-            lowered = str(key).lower()
-            if any(marker in lowered for marker in ("secret", "token", "api_key", "authorization", "cookie", "password")):
-                cleaned[str(key)] = SECRET_MASK
-            else:
-                cleaned[str(key)] = redact_secret(item)
+            normalized = str(key).lower().replace("-", "_")
+            compact = normalized.replace("_", "")
+            is_safe_usage = (
+                normalized in safe_usage_keys
+                or compact in {item.replace("_", "") for item in safe_usage_keys}
+                or normalized.endswith("_tokens")
+            )
+            is_secret_key = (
+                normalized in {
+                    "secret",
+                    "token",
+                    "api_key",
+                    "authorization",
+                    "cookie",
+                    "password",
+                    "access_token",
+                    "refresh_token",
+                    "auth_token",
+                    "private_key",
+                    "credential",
+                }
+                or normalized.endswith("_api_key")
+                or normalized.endswith("_secret")
+                or normalized.endswith("_password")
+                or normalized.endswith("_credential")
+            )
+            cleaned[str(key)] = SECRET_MASK if is_secret_key and not is_safe_usage else redact_secret(item)
         return cleaned
     if isinstance(value, list):
         return [redact_secret(item) for item in value[:200]]
@@ -233,6 +274,28 @@ def build_openrouter_provider_policy() -> Dict[str, Any]:
 
 
 def build_free_cloud_response_schema() -> Dict[str, Any]:
+    patch_operation = {
+        "type": "object",
+        "properties": {
+            "operation_type": {"type": "string", "enum": ["replace_text"]},
+            "file_path": {"type": "string", "minLength": 1},
+            "old_text": {"type": "string", "minLength": 1},
+            "new_text": {"type": "string"},
+            "expected_occurrences": {"type": "integer", "minimum": 1, "maximum": 20},
+            "reason": {"type": "string"},
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        },
+        "required": [
+            "operation_type",
+            "file_path",
+            "old_text",
+            "new_text",
+            "expected_occurrences",
+            "reason",
+            "confidence",
+        ],
+        "additionalProperties": False,
+    }
     return {
         "name": "free_cloud_worker_result_v1",
         "strict": True,
@@ -243,7 +306,11 @@ def build_free_cloud_response_schema() -> Dict[str, Any]:
                 "summary": {"type": "string"},
                 "completed_scope": {"type": "array", "items": {"type": "string"}},
                 "remaining_gap": {"type": "string"},
-                "patch_operations": {"type": "array", "items": {"type": "object"}},
+                "patch_operations": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": patch_operation,
+                },
                 "validation_suggestions": {"type": "array", "items": {"type": "string"}},
                 "test_suggestions": {"type": "array", "items": {"type": "string"}},
                 "failure_reason": {"type": "string"},
@@ -485,10 +552,22 @@ def _bounded_read_response(response: Any) -> bytes:
     return raw
 
 
-def _request_openrouter_without_redirects(url: str, payload: Dict[str, Any], api_key: str, *, timeout_seconds: int) -> Dict[str, Any]:
+def _request_openrouter_without_redirects(
+    url: str,
+    payload: Dict[str, Any],
+    api_key: str,
+    *,
+    timeout_seconds: int,
+) -> Dict[str, Any]:
     body = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     if len(body) > MAX_REQUEST_BYTES:
-        return {"ok": False, "status": "request_too_large", "retryable": False, "http_attempts": 0}
+        return {
+            "ok": False,
+            "status": "request_too_large",
+            "failure_category": "request_too_large",
+            "retryable": False,
+            "http_attempts": 0,
+        }
     request = Request(
         url,
         data=body,
@@ -509,27 +588,77 @@ def _request_openrouter_without_redirects(url: str, payload: Dict[str, Any], api
             status_code = int(getattr(response, "status", 200))
             request_id = response.headers.get("x-request-id", "")
     except TimeoutError:
-        return {"ok": False, "status": "timeout", "failure_category": "timeout", "retryable": True, "latency_ms": timeout * 1000}
+        return {
+            "ok": False,
+            "status": "timeout",
+            "failure_category": "timeout",
+            "retryable": True,
+            "latency_ms": timeout * 1000,
+        }
     except HTTPError as exc:
-        raw = b""
+        raw_error = b""
         try:
-            raw = exc.read(min(MAX_RESPONSE_BYTES, 4096))
+            raw_error = exc.read(min(MAX_RESPONSE_BYTES, 8192))
         except Exception:
-            raw = b""
+            raw_error = b""
         mapped = classify_openrouter_error(exc.code)
-        return {"ok": False, "status": "http_error", "http_status": exc.code, "failure_category": mapped["failure_category"], "retryable": mapped["retryable"], "error": redact_secret(raw.decode("utf-8", "replace") or str(exc))}
+        provider_message = raw_error.decode("utf-8", "replace") if raw_error else str(exc)
+        retry_after = 2
+        try:
+            retry_after = max(1, min(int(exc.headers.get("Retry-After", "2")), 10))
+        except (TypeError, ValueError, AttributeError):
+            retry_after = 2
+        return {
+            "ok": False,
+            "status": "http_error",
+            "http_status": int(exc.code or 0),
+            "failure_category": mapped["failure_category"],
+            "retryable": mapped["retryable"],
+            "retry_after_seconds": retry_after,
+            "error": redact_secret(provider_message)[:1200],
+        }
     except URLError as exc:
         mapped = classify_openrouter_error(error_status="network_error")
-        return {"ok": False, "status": "network_error", "failure_category": mapped["failure_category"], "retryable": mapped["retryable"], "error": redact_secret(str(exc.reason))}
+        return {
+            "ok": False,
+            "status": "network_error",
+            "failure_category": mapped["failure_category"],
+            "retryable": mapped["retryable"],
+            "error": redact_secret(str(exc.reason))[:1200],
+        }
     except ValueError as exc:
-        return {"ok": False, "status": str(exc), "failure_category": str(exc), "retryable": False}
+        return {
+            "ok": False,
+            "status": str(exc),
+            "failure_category": str(exc),
+            "retryable": False,
+        }
     if not raw:
-        return {"ok": False, "status": "empty_response", "failure_category": "empty_response", "retryable": False, "http_status": status_code}
+        return {
+            "ok": False,
+            "status": "empty_response",
+            "failure_category": "empty_response",
+            "retryable": False,
+            "http_status": status_code,
+        }
     try:
         data = json.loads(raw.decode("utf-8"))
     except json.JSONDecodeError:
-        return {"ok": False, "status": "schema_invalid", "failure_category": "schema_invalid", "retryable": False, "http_status": status_code}
-    return {"ok": True, "status": "success", "http_status": status_code, "response": redact_secret(data), "latency_ms": latency_ms, "provider_request_id": request_id}
+        return {
+            "ok": False,
+            "status": "schema_invalid",
+            "failure_category": "schema_invalid",
+            "retryable": False,
+            "http_status": status_code,
+        }
+    return {
+        "ok": True,
+        "status": "success",
+        "http_status": status_code,
+        "response": redact_secret(data),
+        "latency_ms": latency_ms,
+        "provider_request_id": request_id,
+    }
 
 
 def execute_openrouter_chat_completion(
@@ -545,36 +674,108 @@ def execute_openrouter_chat_completion(
     model_check = validate_free_cloud_model(str(request.get("model_id") or ""))
     gates = evaluate_free_cloud_gates(policy)
     if not live_execution_enabled:
-        return {"ok": False, "transport_ready": False, "failure_reason": "live_execution_disabled", "http_attempts": 0, "endpoint": endpoint, "model": model_check}
+        return {
+            "ok": False,
+            "transport_ready": False,
+            "failure_reason": "live_execution_disabled",
+            "http_attempts": 0,
+            "endpoint": endpoint,
+            "model": model_check,
+        }
     if not endpoint.get("ok"):
-        return {"ok": False, "transport_ready": False, "failure_reason": endpoint.get("reason"), "http_attempts": 0, "endpoint": endpoint}
+        return {
+            "ok": False,
+            "transport_ready": False,
+            "failure_reason": endpoint.get("reason"),
+            "http_attempts": 0,
+            "endpoint": endpoint,
+        }
     if not model_check.get("ok"):
-        return {"ok": False, "transport_ready": False, "failure_reason": model_check.get("reason"), "http_attempts": 0, "model": model_check}
+        return {
+            "ok": False,
+            "transport_ready": False,
+            "failure_reason": model_check.get("reason"),
+            "http_attempts": 0,
+            "model": model_check,
+        }
     if not gates.get("allowed"):
-        return {"ok": False, "transport_ready": False, "failure_reason": "gate_blocked", "blockers": gates["blockers"], "http_attempts": 0}
+        return {
+            "ok": False,
+            "transport_ready": False,
+            "failure_reason": "gate_blocked",
+            "blockers": gates["blockers"],
+            "http_attempts": 0,
+        }
     key_ref = read_openrouter_api_key(environ)
     if not key_ref["api_key_present"]:
-        return {"ok": False, "transport_ready": False, "failure_reason": "missing_api_key", "http_attempts": 0, "api_key_present": False}
+        return {
+            "ok": False,
+            "transport_ready": False,
+            "failure_reason": "missing_api_key",
+            "http_attempts": 0,
+            "api_key_present": False,
+        }
     try:
         payload = build_openrouter_chat_payload(request)
     except ValueError as exc:
-        return {"ok": False, "transport_ready": False, "failure_reason": str(exc), "http_attempts": 0}
+        return {
+            "ok": False,
+            "transport_ready": False,
+            "failure_reason": str(exc),
+            "http_attempts": 0,
+        }
+
     call = http_call or _request_openrouter_without_redirects
     attempts: List[Dict[str, Any]] = []
     for attempt in range(1, MAXIMUM_TRANSPORT_ATTEMPTS + 1):
-        result = call(OPENROUTER_ENDPOINT, payload, key_ref["api_key"], timeout_seconds=timeout_seconds)
+        result = call(
+            OPENROUTER_ENDPOINT,
+            payload,
+            key_ref["api_key"],
+            timeout_seconds=timeout_seconds,
+        )
         safe_result = redact_secret(result)
-        attempts.append({"attempt": attempt, "status": safe_result.get("status"), "http_status": safe_result.get("http_status"), "failure_category": safe_result.get("failure_category")})
+        attempts.append(
+            {
+                "attempt": attempt,
+                "status": safe_result.get("status"),
+                "http_status": safe_result.get("http_status"),
+                "failure_category": safe_result.get("failure_category"),
+            }
+        )
         if result.get("ok"):
             response = result.get("response", {})
             if isinstance(response, dict):
                 response["http_status"] = result.get("http_status")
-            metadata = _inspect_openrouter_response(response if isinstance(response, dict) else {}, payload)
+            metadata = _inspect_openrouter_response(
+                response if isinstance(response, dict) else {},
+                payload,
+            )
             content = _extract_openrouter_content(response if isinstance(response, dict) else {})
-            if metadata.get("http_status") == 200 and metadata.get("choices_present") and metadata.get("message_present") and metadata.get("content_empty") and not metadata.get("safe_single_json_object"):
+            usage = response.get("usage", {}) if isinstance(response, dict) else {}
+            if not isinstance(usage, dict):
+                usage = {}
+            usage_metadata = {
+                "prompt_tokens": int(usage.get("prompt_tokens", 0) or 0),
+                "completion_tokens": int(usage.get("completion_tokens", 0) or 0),
+                "total_tokens": int(usage.get("total_tokens", 0) or 0),
+                "reasoning_tokens": int(
+                    (usage.get("completion_tokens_details") or {}).get("reasoning_tokens", 0) or 0
+                )
+                if isinstance(usage.get("completion_tokens_details"), dict)
+                else 0,
+                "cost": float(usage.get("cost", 0.0) or 0.0),
+            }
+            if (
+                metadata.get("http_status") == 200
+                and metadata.get("choices_present")
+                and metadata.get("message_present")
+                and metadata.get("content_empty")
+                and not metadata.get("safe_single_json_object")
+            ):
                 attempts[-1]["model_result_outcome"] = "empty_response"
                 if attempt < MAXIMUM_TRANSPORT_ATTEMPTS:
-                    time.sleep(0.05)
+                    time.sleep(1)
                     continue
                 empty_result = build_free_cloud_result(
                     request=request,
@@ -598,18 +799,24 @@ def execute_openrouter_chat_completion(
                     "result": empty_result,
                     "attempts": attempts,
                     "response_metadata": metadata,
+                    "usage_metadata": usage_metadata,
                     "paid_fallback_allowed": False,
                 }
             parsed = parse_openrouter_structured_result(content, request=request)
             structured_valid = parsed.get("status") not in {"schema_invalid", "invalid"}
-            attempts[-1]["model_result_outcome"] = classify_savings_outcome(parsed, request.get("remaining_gap")) if structured_valid else "schema_invalid"
+            outcome = (
+                classify_savings_outcome(parsed, request.get("remaining_gap"))
+                if structured_valid
+                else "schema_invalid"
+            )
+            attempts[-1]["model_result_outcome"] = outcome
             return {
                 "ok": structured_valid,
                 "transport_ready": True,
                 "live_external_verified": structured_valid,
                 "transport_status": "success",
-                "model_result_outcome": classify_savings_outcome(parsed, request.get("remaining_gap")) if structured_valid else "schema_invalid",
-                "status": classify_savings_outcome(parsed, request.get("remaining_gap")) if structured_valid else "schema_invalid",
+                "model_result_outcome": outcome,
+                "status": outcome,
                 "failure_reason": "" if structured_valid else "schema_invalid",
                 "http_attempts": len(attempts),
                 "model_attempts": 1,
@@ -618,6 +825,8 @@ def execute_openrouter_chat_completion(
                 "result": parsed,
                 "attempts": attempts,
                 "response_metadata": metadata,
+                "usage_metadata": usage_metadata,
+                "provider_request_id": result.get("provider_request_id", ""),
                 "paid_fallback_allowed": False,
             }
         if not result.get("retryable") or attempt >= MAXIMUM_TRANSPORT_ATTEMPTS:
@@ -627,6 +836,8 @@ def execute_openrouter_chat_completion(
                 "live_external_verified": False,
                 "status": result.get("status"),
                 "failure_reason": result.get("failure_category") or result.get("status"),
+                "provider_message": result.get("error", ""),
+                "http_status": result.get("http_status"),
                 "http_attempts": len(attempts),
                 "model_attempts": 1,
                 "selected_model": request.get("model_id"),
@@ -634,8 +845,16 @@ def execute_openrouter_chat_completion(
                 "attempts": attempts,
                 "paid_fallback_allowed": False,
             }
-        time.sleep(0.05)
-    return {"ok": False, "transport_ready": True, "failure_reason": "retry_exhausted", "http_attempts": len(attempts), "attempts": attempts}
+        retry_after = max(1, min(int(result.get("retry_after_seconds", 2) or 2), 10))
+        if http_call is None:
+            time.sleep(retry_after)
+    return {
+        "ok": False,
+        "transport_ready": True,
+        "failure_reason": "retry_exhausted",
+        "http_attempts": len(attempts),
+        "attempts": attempts,
+    }
 
 
 def build_free_cloud_restore_policy(record: Dict[str, Any] | None = None) -> Dict[str, Any]:
@@ -1211,9 +1430,12 @@ def execute_free_cloud_first_usable_handoff(
     seen_request_digests: set[str] | None = None,
     seen_stage_input_digests: set[str] | None = None,
     failed_engine_fingerprints: Sequence[str] | None = None,
+    environ: Dict[str, str] | None = None,
     http_call: Callable[..., Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
     from luxcode_first_usable_session_flow import build_handoff_preview, build_session_state
+
+    runtime_environ = environ if environ is not None else ({"OPENROUTER_API_KEY": "fixture-not-persisted"} if http_call is not None else os.environ)
 
     if previous_result.get("completed") is True:
         session = build_session_state(session_id=session_id, task_id=task_id, current_stage="completed", completed_scope=completed_scope, remaining_gap=previous_result.get("remaining_gap", ""), final_status="completed", stop_reason="completed_by_lower_tier")
@@ -1264,7 +1486,7 @@ def execute_free_cloud_first_usable_handoff(
         session = build_session_state(session_id=session_id, task_id=task_id, current_stage="blocked", selected_engine=CANONICAL_ENGINE_ID, selected_tier=3, completed_scope=completed_scope, remaining_gap=remaining_gap, target_files=target_files, target_symbols=target_symbols, final_status="blocked", stop_reason=str(request_result.get("reason")))
         return {"ok": False, "completed": False, "transport_called": False, "stop_reason": request_result.get("reason"), "session_state": session}
 
-    result = execute_openrouter_chat_completion(request=request_result["request"], policy=policy, environ={"OPENROUTER_API_KEY": "fixture-not-persisted"}, http_call=http_call, live_execution_enabled=True)
+    result = execute_openrouter_chat_completion(request=request_result["request"], policy=policy, environ=runtime_environ, http_call=http_call, live_execution_enabled=True)
     model_results = [result]
     final_result = result
     parsed = result.get("result") or {}
@@ -1285,7 +1507,7 @@ def execute_free_cloud_first_usable_handoff(
                 seen_request_digests=seen_request_digests,
             )
             if second_request.get("ok"):
-                second_result = execute_openrouter_chat_completion(request=second_request["request"], policy=policy, environ={"OPENROUTER_API_KEY": "fixture-not-persisted"}, http_call=http_call, live_execution_enabled=True)
+                second_result = execute_openrouter_chat_completion(request=second_request["request"], policy=policy, environ=runtime_environ, http_call=http_call, live_execution_enabled=True)
                 model_results.append(second_result)
                 final_result = second_result
                 parsed = second_result.get("result") or {}

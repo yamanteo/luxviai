@@ -370,7 +370,7 @@ def _query_debug_version(port: int) -> Dict[str, Any]:
 
 def _probe_version(path: str) -> str:
     try:
-        proc = subprocess.run([path, "--version"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=2, shell=False)
+        proc = subprocess.run([path, "--version"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", timeout=2, shell=False)
         return (proc.stdout or "").strip().splitlines()[0] if proc.stdout else ""
     except Exception:
         return ""
@@ -385,6 +385,7 @@ def _child_pids(parent_pid: int) -> List[int]:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             text=True,
+            errors="replace",
             timeout=2,
             shell=False,
         )

@@ -14,6 +14,10 @@ from pathlib import Path
 from threading import Lock
 from time import perf_counter
 from typing import Any, Dict, List, Optional
+from luxcode_runtime_settings import (
+    apply_persistent_runtime_environment,
+    get_runtime_status,
+)
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
@@ -21,7 +25,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
 from pydantic import BaseModel, Field
@@ -30,6 +34,8 @@ from learning.pipeline import LearningPipeline
 from learning.cost_logger import CostLogger, estimate_tokens
 from learning.efficiency_router import EfficiencyRouter
 from learning.token_budget_policy import TokenBudgetPolicy
+from luxcode_control_routes import build_luxcode_control_router
+from luxviai_pages import build_page_router
 from adaptive_interface_preview import adaptive_interface_schema, adaptive_interface_status, preview_adaptive_interface
 from ambient_workspace_preview import ambient_workspace_schema, ambient_workspace_status, preview_ambient_workspace
 from autonomy_dial_preview import autonomy_dial_schema, autonomy_dial_status, preview_autonomy_dial
@@ -1167,6 +1173,7 @@ DATA_DIR = BASE_DIR / "data"
 USERS_DIR = DATA_DIR / "users"
 
 load_dotenv(BASE_DIR / ".env", override=True)
+PERSISTENT_RUNTIME_REPORT = apply_persistent_runtime_environment(BASE_DIR)
 
 API_KEY = os.getenv("DEEPSEEK_API_KEY")
 SECRET_TOKEN = os.getenv("SECRET_TOKEN", "luxviai_gizli_token_2026")
@@ -1218,7 +1225,7 @@ else:
 
 logging.info(f"BASE_DIR: {BASE_DIR}")
 logging.info(f".env path: {BASE_DIR / '.env'}")
-logging.info(f"DEEPSEEK_API_KEY mask: {mask_key(API_KEY)} len={len(API_KEY or '')}")
+logging.info("DEEPSEEK_API_KEY_READY=%s", bool(API_KEY))
 
 client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com") if API_KEY else None
 
@@ -1276,6 +1283,7 @@ class ChatRequest(BaseModel):
     location_latitude: Optional[float] = None
     location_longitude: Optional[float] = None
     location_timezone: str = Field(default="", max_length=80)
+    force_new_session: bool = False
 
 
 class ConversationSummaryRequest(BaseModel):
@@ -3227,6 +3235,10 @@ def now_iso() -> str:
     )
 
 
+app.include_router(build_page_router(BASE_DIR, STATIC_DIR, now_iso))
+app.include_router(build_luxcode_control_router(BASE_DIR))
+
+
 def safe_user_id(raw: str) -> str:
     raw = (raw or "default_user").strip().lower()
     raw = re.sub(r"[^a-z0-9_\-]", "_", raw)
@@ -4622,6 +4634,24 @@ def default_session(mode: str = "luxviai") -> Dict[str, Any]:
     }
 
 
+def clear_active_session(user_id: str) -> None:
+    path = active_session_path(user_id)
+    if path.exists():
+        try:
+            path.unlink()
+        except Exception as e:
+            logging.warning(f"active session cleanup skipped for user={safe_user_id(user_id)}: {e}")
+
+
+def clear_all_active_sessions() -> None:
+    if not USERS_DIR.exists():
+        return
+    for user_dir in USERS_DIR.iterdir():
+        if not user_dir.is_dir():
+            continue
+        clear_active_session(user_dir.name)
+
+
 def create_new_session(user_id: str, mode: str) -> tuple[Dict[str, Any], Dict[str, Any]]:
     session = default_session(mode=mode)
     active = {
@@ -4728,6 +4758,11 @@ def add_message(session: Dict[str, Any], role: str, content: str, meta: Optional
 def add_analysis(session: Dict[str, Any], analysis: Dict[str, Any]):
     session["analyses"].append({**analysis, "ts": now_iso()})
     session["analyses"] = session["analyses"][-120:]
+
+
+@app.on_event("startup")
+def _clear_active_session_on_startup():
+    clear_all_active_sessions()
 
 
 # =========================================================
@@ -6404,6 +6439,92 @@ def fallback_reply(mode: str, analysis: Dict[str, Any]) -> str:
     if contains_any(theme.lower(), ["teknik", "proje", "kod", "workspace"]):
         return "Anladım. Bunu ikiye ayırmak daha doğru: önce eksik kısmı netleştirelim, sonra uygulanabilir prompta çevirelim."
     return f"Anladım. Burada ana nokta {theme} gibi görünüyor; bunu büyütmeden netleştirip tek adımlık bir plana çevirelim."
+
+
+def parse_luxcode_handoff_command(message: str) -> bool:
+    low = fold_turkish_ascii((message or "").lower())
+    if "luxcode" not in low:
+        return False
+    return contains_any(
+        low,
+        ["gorev", "todo", "task", "kod", "code", "first usable", "birinci kullanilabilir", "firstusable", "first_usable"],
+    )
+
+
+def parse_speed_command(message: str) -> Optional[float]:
+    low = fold_turkish_ascii((message or "").lower())
+    allowed = {0.8, 0.9, 1.0, 1.1, 1.2, 1.3}
+    default_speed = 1.0
+    step = 0.1
+    if not low:
+        return None
+
+    number_candidates = []
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)", low):
+        try:
+            value = float(m.group(1).replace(",", "."))
+        except ValueError:
+            continue
+        if value in allowed:
+            number_candidates.append(value)
+
+    m = None
+    if "/speed" in low:
+        m = re.search(r"/speed\s*(\d+(?:[.,]\d+)?)", low)
+        if not m and " speed " in f" {low} ":
+            m = re.search(r"\bspeed\s*[:=]?\s*(\d+(?:[.,]\d+)?)", low)
+
+    if not m:
+        m = re.search(r"(\d+(?:[.,]\d+)?)\s*[^\w]{0,12}(?:yazim\s*)?hiz(?:i|ina|inda|inde|ini)?", low)
+    if not m:
+        m = re.search(r"\bhiz(?:i|la|lama|inda)?[^0-9a-z]{0,12}(\d+(?:[.,]\d+)?)", low)
+
+    if not m and len(number_candidates) >= 2 and re.search(r"\b(den|dan|->|=>|to)\s+([0-9]+(?:[.,]\d+)?)", low):
+        return number_candidates[-1]
+    if not m and len(number_candidates) == 1 and re.search(r"\b(hiz|hızı|yazim|yazi|metin|mesaj|speed)\b", low):
+        return number_candidates[0]
+
+    has_speed_subject = bool(re.search(r"\b(hiz|hizi|hizim|hizinda|hizini|yazim\s+hizi|yazma\s+hizin|cevap\s+hizi|yanit\s+hizi)\b", low))
+    has_write_intent = bool(re.search(r"\b(yaz|yazsin|cevap|yanit|metin|paragraf|olsun|yap|ayarla)\b", low))
+    content_like = bool(re.search(r"\b(gibi|kelime|kelimeler|mod|mode|kavram|ornek)\b", low) or re.search(r"\byazilmiyor\b", low))
+
+    if not m:
+        if not (has_speed_subject or has_write_intent) or (content_like and not has_speed_subject):
+            return None
+        if re.search(r"\b(hizli|hizlan|hizlandir|tez|fast|arttir|yukari)\b", low):
+            return round(min(1.3, default_speed + step), 1)
+        if re.search(r"\b(yavas|yavasla|yavaslat|slow|daha\s+az|dusur|azalt)\b", low):
+            return round(max(0.8, default_speed - step), 1)
+        return None
+    try:
+        speed = float(m.group(1).replace(",", "."))
+    except ValueError:
+        return None
+    if speed not in allowed:
+        return None
+    return speed
+
+
+def chat_offline_response(plan: Dict[str, Any], message: str) -> str:
+    low = fold_turkish_ascii((message or "").lower())
+    if parse_speed_command(message):
+        speed = parse_speed_command(message)
+        target_mode = "LUXCODE" if "luxcode" in low else "Normal sohbet"
+        normalized = f"{speed:.1f}"
+        return f"{target_mode} yazım hızı {normalized} olarak ayarlandı."
+    if parse_luxcode_handoff_command(message):
+        return (
+            "Bu bir LUXCODE görevi gibi görünüyor. Lütfen 'First Usable Tek Görev' panelini kullan. "
+            "Normal sohbet alanı yalnız genel konuşma için ayrıldı."
+        )
+    if is_technical_or_utility_context(message):
+        return (
+            "Şu an model servisi bağlı değil; teknik detayları doğrudan cevaplayamıyorum. "
+            "İstersen bunu LUXCODE görev olarak kaydet, daha net bir planla ilerleyelim."
+        )
+    if any(x in low for x in ["selam", "merhaba", "hey", "hi", "gunaydin", "gunaydin", "naber", "nasilsin", "nasıl", "nasil"]):
+        return "Selam! Yazım ve öneri için buradayım; model servisi aktif olsa daha net bir yanıt üreteceğim."
+    return chat_fallback_response(plan)
 
 
 def crisis_reply() -> str:
@@ -9131,6 +9252,7 @@ async def health():
         "status": "ok",
         "app": "luxviai",
         "api_available": client is not None,
+        "persistent_runtime": get_runtime_status(BASE_DIR),
         "analysis_layers": ANALYSIS_LAYER_NAMES,
     }
 
@@ -9154,11 +9276,6 @@ async def user_performance_dashboard(user_id: str = "default_user"):
 @app.get("/learning-dashboard/html")
 async def learning_dashboard_html():
     return HTMLResponse(content=learning_dashboard_engine.render_html())
-
-
-@app.get("/")
-async def index():
-    return FileResponse(str(STATIC_DIR / "index.html"))
 
 
 @app.get("/notes")
@@ -9700,10 +9817,10 @@ async def debug_voice_audio_status():
             "/voice/night-radio-preview",
         ],
         "core_voice_rules": [
-            "default writing speed 0.9",
+            "default writing speed 1.0",
             "quick summary speed 1.3",
             "very fast summary speed 1.5 only when explicitly requested",
-            "long answers stay around 0.9 and do not exceed 1.1 unless explicitly requested",
+            "long answers stay around 1.0 and do not exceed 1.1 unless explicitly requested",
             "smooth_typewriter true",
             "block_dump_allowed false",
             "final_bulk_injection_allowed false",
@@ -13384,162 +13501,6 @@ async def luxcode_coder_validate_endpoint(payload: LuxCodeCoderValidateRequest):
 @app.get("/debug/luxcode-coder-status")
 async def debug_luxcode_coder_status_endpoint(task_id: Optional[str] = None):
     return get_practical_coder_status(task_id=task_id or "")
-
-
-@app.get("/luxcode-control/schema")
-async def luxcode_control_schema_endpoint():
-    return get_control_center_schema()
-
-
-@app.get("/luxcode-control/status")
-async def luxcode_control_status_endpoint(repository_root: Optional[str] = None):
-    return get_control_center_status(repository_root or str(BASE_DIR))
-
-
-@app.get("/luxcode-control/sessions")
-async def luxcode_control_sessions_endpoint(repository_root: Optional[str] = None):
-    return list_control_sessions(repository_root or str(BASE_DIR))
-
-
-@app.get("/luxcode-control/sessions/{session_id}")
-async def luxcode_control_session_endpoint(session_id: str, repository_root: Optional[str] = None):
-    return get_control_session(session_id, repository_root or str(BASE_DIR))
-
-
-@app.post("/luxcode-control/first-usable/run")
-async def luxcode_control_first_usable_run_endpoint(payload: Dict[str, Any]):
-    return run_first_usable_task(payload, payload.get("repository_root") or str(BASE_DIR))
-
-
-@app.post("/luxcode-control/repository/diagnostics")
-async def luxcode_control_repository_diagnostics_endpoint(payload: Dict[str, Any]):
-    return control_repository_diagnostics(payload, payload.get("repository_root") or str(BASE_DIR))
-
-
-@app.post("/luxcode-control/search")
-async def luxcode_control_search_endpoint(payload: Dict[str, Any]):
-    return control_search(payload, payload.get("repository_root") or str(BASE_DIR))
-
-
-@app.post("/luxcode-control/context")
-async def luxcode_control_context_endpoint(payload: Dict[str, Any]):
-    return control_context(payload, payload.get("repository_root") or str(BASE_DIR))
-
-
-@app.post("/luxcode-control/task-plan")
-async def luxcode_control_task_plan_endpoint(payload: Dict[str, Any]):
-    return control_task_plan(payload, payload.get("repository_root") or str(BASE_DIR))
-
-
-@app.post("/luxcode-control/safe-patch/preview")
-async def luxcode_control_safe_patch_preview_endpoint(payload: Dict[str, Any]):
-    return control_safe_patch_preview(payload, payload.get("repository_root") or str(BASE_DIR))
-
-
-@app.post("/luxcode-control/safe-patch/approval")
-async def luxcode_control_safe_patch_approval_endpoint(payload: Dict[str, Any]):
-    return safe_patch_approval(payload)
-
-
-@app.post("/luxcode-control/controlled-apply/prepare")
-async def luxcode_control_controlled_apply_prepare_endpoint(payload: Dict[str, Any]):
-    return controlled_apply_prepare(payload)
-
-
-@app.post("/luxcode-control/controlled-apply/execute")
-async def luxcode_control_controlled_apply_execute_endpoint(payload: Dict[str, Any]):
-    return controlled_apply_execute(payload)
-
-
-@app.post("/luxcode-control/validation/run")
-async def luxcode_control_validation_run_endpoint(payload: Dict[str, Any]):
-    return control_validation_run(payload, payload.get("repository_root") or str(BASE_DIR))
-
-
-@app.post("/luxcode-control/rollback")
-async def luxcode_control_rollback_endpoint(payload: Dict[str, Any]):
-    return control_rollback_snapshot(payload)
-
-
-@app.get("/luxcode-control/evidence-board")
-async def luxcode_control_evidence_board_endpoint(task_id: Optional[str] = None):
-    return control_evidence_board(task_id or "")
-
-
-@app.get("/luxcode-control/deferred-queue")
-async def luxcode_control_deferred_queue_endpoint(repository_root: Optional[str] = None):
-    return deferred_queue(repository_root or str(BASE_DIR))
-
-
-@app.post("/luxcode-control/deferred-queue/resume")
-async def luxcode_control_deferred_resume_endpoint(payload: Dict[str, Any]):
-    return deferred_resume(payload, payload.get("repository_root") or str(BASE_DIR))
-
-
-@app.get("/luxcode-control/approvals")
-async def luxcode_control_approvals_endpoint(repository_root: Optional[str] = None):
-    return approval_center(repository_root or str(BASE_DIR))
-
-
-@app.get("/luxcode-control/motor-status")
-async def luxcode_control_motor_status_endpoint(repository_root: Optional[str] = None):
-    return control_motor_status(repository_root or str(BASE_DIR))
-
-
-@app.get("/luxcode-control/settings")
-async def luxcode_control_settings_endpoint():
-    return control_safe_settings()
-
-
-@app.get("/luxcode-control/analytics/schema")
-async def luxcode_control_analytics_schema_endpoint():
-    return get_control_analytics_schema()
-
-
-@app.get("/luxcode-control/analytics/summary")
-async def luxcode_control_analytics_summary_endpoint(
-    repository_root: Optional[str] = None,
-    from_: Optional[str] = Query(default=None, alias="from"),
-    to: Optional[str] = None,
-    engine: Optional[str] = None,
-    model: Optional[str] = None,
-    status: Optional[str] = None,
-):
-    return build_analytics_summary(repository_root or str(BASE_DIR), from_=from_ or "", to=to or "", engine=engine or "", model=model or "", status=status or "")
-
-
-@app.get("/luxcode-control/analytics/engines")
-async def luxcode_control_analytics_engines_endpoint(
-    repository_root: Optional[str] = None,
-    from_: Optional[str] = Query(default=None, alias="from"),
-    to: Optional[str] = None,
-    engine: Optional[str] = None,
-    model: Optional[str] = None,
-    status: Optional[str] = None,
-):
-    return build_engine_performance(repository_root or str(BASE_DIR), from_=from_ or "", to=to or "", engine=engine or "", model=model or "", status=status or "")
-
-
-@app.get("/luxcode-control/analytics/sessions/{session_id}")
-async def luxcode_control_analytics_session_endpoint(session_id: str, repository_root: Optional[str] = None):
-    return get_session_analytics(session_id, repository_root or str(BASE_DIR))
-
-
-@app.get("/luxcode-control/analytics/savings")
-async def luxcode_control_analytics_savings_endpoint(
-    repository_root: Optional[str] = None,
-    from_: Optional[str] = Query(default=None, alias="from"),
-    to: Optional[str] = None,
-    engine: Optional[str] = None,
-    model: Optional[str] = None,
-    status: Optional[str] = None,
-):
-    return build_savings_report(repository_root or str(BASE_DIR), from_=from_ or "", to=to or "", engine=engine or "", model=model or "", status=status or "")
-
-
-@app.get("/luxcode-control/analytics/handoffs/{session_id}")
-async def luxcode_control_analytics_handoffs_endpoint(session_id: str, repository_root: Optional[str] = None):
-    return get_handoff_trace(session_id, repository_root or str(BASE_DIR))
 
 
 @app.get("/luxcode-autonomy/schema")
@@ -17279,6 +17240,8 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
     check_auth(auth)
 
     msg = (request.message or "").strip()
+    if request.force_new_session:
+        clear_active_session(request.user_id)
     if not msg:
         log_latency("chat_empty", total_ms=ms_since(request_start), message_chars=0)
         return {"response": "Boş mesaj alamam."}
@@ -17355,24 +17318,29 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks, auth: Op
     finish_reason = ""
     auto_parts = 0
     model_error_type = ""
-    try:
-        response_text, finish_reason = call_model_with_finish(
-            plan["openai_messages"],
-            model=plan["model"],
-            temperature=plan["temperature"],
-            max_tokens=plan["max_tokens"],
-        )
-        if not response_text:
-            response_text = chat_fallback_response(plan)
-        else:
-            response_text, finish_reason, auto_parts = auto_continue_text(plan, response_text, finish_reason)
-    except Exception as e:
-        logging.warning(f"Model error fallback used: {e}")
-        model_error_type = type(e).__name__
-        if is_model_auth_error(e):
-            response_text = auth_error_response()
-        else:
-            response_text = chat_fallback_response(plan)
+    if not client:
+        response_text = chat_offline_response(plan, msg)
+        finish_reason = "offline"
+        model_error_type = "service_unavailable"
+    else:
+        try:
+            response_text, finish_reason = call_model_with_finish(
+                plan["openai_messages"],
+                model=plan["model"],
+                temperature=plan["temperature"],
+                max_tokens=plan["max_tokens"],
+            )
+            if not response_text:
+                response_text = chat_offline_response(plan, msg)
+            else:
+                response_text, finish_reason, auto_parts = auto_continue_text(plan, response_text, finish_reason)
+        except Exception as e:
+            logging.warning(f"Model error fallback used: {e}")
+            model_error_type = type(e).__name__
+            if is_model_auth_error(e):
+                response_text = auth_error_response()
+            else:
+                response_text = chat_offline_response(plan, msg)
     model_ms = ms_since(model_start)
 
     response_text = sanitize_false_addressing(response_text, plan)
@@ -17560,6 +17528,7 @@ async def ws_chat(websocket: WebSocket):
             finish_reason = ""
             auto_parts = 0
             count_guarded = False
+            model_error_type = ""
             try:
                 if not typing_sent:
                     await websocket.send_json({
@@ -17595,7 +17564,7 @@ async def ws_chat(websocket: WebSocket):
                                 await asyncio.sleep(STREAM_CHUNK_DELAY)
                     stream_ms = ms_since(stream_start)
 
-                    response_text = "".join(full).strip() or chat_fallback_response(plan)
+                    response_text = "".join(full).strip() or chat_offline_response(plan, msg)
                     continuation_limit = auto_continuation_part_limit(plan)
                     while auto_parts < continuation_limit and should_auto_continue_response(finish_reason, response_text, plan):
                         auto_parts += 1
@@ -17626,7 +17595,9 @@ async def ws_chat(websocket: WebSocket):
                             await websocket.send_json({"type": "chunk", "text": suffix})
                         finish_reason = continuation_reason
                 else:
-                    response_text = chat_fallback_response(plan)
+                    response_text = chat_offline_response(plan, msg)
+                    finish_reason = "offline"
+                    model_error_type = "service_unavailable"
 
                 streamed_response_text = response_text
                 response_text = sanitize_false_addressing(response_text, plan)
@@ -17666,7 +17637,7 @@ async def ws_chat(websocket: WebSocket):
                 )
                 record_cost_event(
                     endpoint="/ws/chat",
-                    route="model",
+                    route="model_fallback" if model_error_type else "model",
                     plan=plan,
                     mode=plan.get("mode", request.mode),
                     model=plan.get("model", ""),
@@ -17681,7 +17652,8 @@ async def ws_chat(websocket: WebSocket):
                     first_chunk_ms=first_chunk_ms,
                     total_ms=ms_since(turn_start),
                     response_text=response_text,
-                    success=True,
+                    success=not bool(model_error_type),
+                    error_type=model_error_type,
                 )
 
                 await websocket.send_json({
@@ -17706,7 +17678,7 @@ async def ws_chat(websocket: WebSocket):
                 if is_model_auth_error(e):
                     response_text = auth_error_response()
                 else:
-                    response_text = chat_fallback_response(plan)
+                    response_text = chat_offline_response(plan, msg)
                 response_text = sanitize_false_addressing(response_text, plan)
                 response_text = trim_self_answer_after_question(response_text)
                 response_text = enforce_count_guard(plan, response_text)
@@ -17769,4 +17741,23 @@ if __name__ == "__main__":
     import uvicorn
 
     port = int(os.getenv("PORT", "5000"))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    reload_enabled = os.getenv("LUXVIAI_RELOAD", "1").strip().lower() not in {"0", "false", "no", "off"}
+    if reload_enabled:
+        uvicorn.run(
+            "app:app",
+            host="0.0.0.0",
+            port=port,
+            reload=True,
+            reload_dirs=[str(BASE_DIR)],
+            reload_includes=["*.py", "static/*.html", "static/luxcode/*.html"],
+            reload_excludes=[
+                "*.log",
+                "__pycache__/*",
+                ".git/*",
+                ".luxcode_runtime/*",
+                ".luxcode_snapshots/*",
+                "data/*",
+            ],
+        )
+    else:
+        uvicorn.run(app, host="0.0.0.0", port=port)

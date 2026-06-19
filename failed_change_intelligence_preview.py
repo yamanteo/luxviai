@@ -567,6 +567,7 @@ def failed_change_intelligence_registry() -> Dict[str, Any]:
                 "pattern_count": len(f.get("failed_change_patterns", [])),
                 "repeated_failure_count": len(f.get("repeated_failures", [])),
                 "failure_confidence": f.get("failure_confidence", 0.0),
+                "failure_signals": f.get("failure_signals", {}),
                 "loop_detected": f.get("failure_signals", {}).get("loop_detected", False),
             }
         )

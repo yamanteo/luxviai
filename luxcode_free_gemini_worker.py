@@ -20,7 +20,7 @@ GEMINI_BASE_URL = "https://generativelanguage.googleapis.com"
 GEMINI_API_VERSION = "v1beta"
 GEMINI_METHOD_TEMPLATE = "models/{model}:generateContent"
 MAX_RESPONSE_BYTES = 1_000_000
-MAX_TIMEOUT_SECONDS = 10
+MAX_TIMEOUT_SECONDS = 60
 SUPPORTED_QUOTA_STATES = {
     "available",
     "quota_low",
@@ -292,15 +292,57 @@ def build_gemini_generate_content_payload(request: Dict[str, Any], *, maximum_ou
     max_tokens = int(maximum_output_tokens or min(int(request.get("maximum_output_tokens", 4000) or 4000), 4000))
     max_tokens = max(1, min(max_tokens, int(request.get("maximum_output_tokens", max_tokens) or max_tokens)))
     prompt_payload = {
+        "task_summary": request.get("task_summary", ""),
         "remaining_gap": request.get("remaining_gap"),
         "minimum_context": request.get("minimum_context", {}),
         "target_files": request.get("target_files", []),
         "target_symbols": request.get("target_symbols", []),
         "acceptance_criteria": request.get("acceptance_criteria", []),
         "required_output_schema": request.get("required_output_schema"),
+        "response_contract": {
+            "status": "completed | partial | needs_more_context | blocked",
+            "analysis_summary": "concise result summary",
+            "completed_scope": ["free_gemini"],
+            "remaining_gap": "empty only when status is completed",
+            "target_files": "subset of the supplied target_files",
+            "target_symbols": "subset of the supplied target_symbols",
+            "patch_operations": [
+                {
+                    "operation_type": "replace_text",
+                    "file_path": "one supplied target file",
+                    "old_text": "exact, complete text copied from minimum_context",
+                    "new_text": "replacement text",
+                    "expected_occurrences": 1,
+                    "reason": "brief reason",
+                    "confidence": 0.0,
+                }
+            ],
+            "validation_recommendations": ["py_compile", "targeted validator"],
+            "assumptions": [],
+            "uncertainties": [],
+            "risk_flags": [],
+        },
     }
+    system_instruction = (
+        "You are the free Gemini coding fallback for LUXCODE. "
+        "Return exactly one JSON object and no markdown. Do not reveal chain-of-thought. "
+        "You have no repository, terminal, git, browser, or file-write access. "
+        "Use only the supplied minimum_context and target_files. "
+        "Never target a file outside target_files. "
+        "For patch_operations, use only replace_text. "
+        "old_text must be copied exactly and completely from minimum_context, and "
+        "expected_occurrences must match the supplied content. "
+        "Do not create, delete, rename, chmod, install, execute, deploy, commit, or push. "
+        "When context is insufficient, return needs_more_context with an empty patch_operations list."
+    )
     return {
-        "contents": [{"role": "user", "parts": [{"text": json.dumps(prompt_payload, sort_keys=True, ensure_ascii=True)}]}],
+        "systemInstruction": {"parts": [{"text": system_instruction}]},
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": json.dumps(prompt_payload, sort_keys=True, ensure_ascii=False)}],
+            }
+        ],
         "generationConfig": {
             "responseMimeType": "application/json",
             "temperature": 0,
@@ -308,6 +350,25 @@ def build_gemini_generate_content_payload(request: Dict[str, Any], *, maximum_ou
         },
         "safetySettings": [],
     }
+
+
+
+def _classify_http_error(status_code: int, payload: Dict[str, Any]) -> str:
+    if status_code == 400:
+        return "invalid_request"
+    if status_code == 401:
+        return "authentication_failed"
+    if status_code == 403:
+        return "permission_denied"
+    if status_code == 404:
+        return "model_unavailable"
+    if status_code == 429:
+        return "rate_limited"
+    if status_code == 503:
+        return "provider_busy"
+    if 500 <= status_code <= 599:
+        return "provider_unavailable"
+    return "http_error"
 
 
 def _request_without_redirects(url: str, payload: Dict[str, Any], api_key: str, *, timeout_seconds: int) -> Dict[str, Any]:
@@ -333,7 +394,40 @@ def _request_without_redirects(url: str, payload: Dict[str, Any], api_key: str, 
     except TimeoutError:
         return {"ok": False, "status": "timeout", "retryable": False, "latency_ms": timeout * 1000}
     except HTTPError as exc:
-        return {"ok": False, "status": "http_error", "http_status": exc.code, "retryable": exc.code == 429 or 500 <= exc.code <= 599, "error": redact_secret(str(exc))}
+        status_code = int(exc.code or 0)
+        try:
+            raw_error = exc.read(MAX_RESPONSE_BYTES + 1)
+        except Exception:
+            raw_error = b""
+        error_payload: Dict[str, Any] = {}
+        error_message = str(exc)
+        provider_status = ""
+        if raw_error:
+            try:
+                decoded = raw_error[:MAX_RESPONSE_BYTES].decode("utf-8", errors="replace")
+                parsed_error = json.loads(decoded)
+                if isinstance(parsed_error, dict):
+                    error_payload = parsed_error
+                    nested = parsed_error.get("error")
+                    if isinstance(nested, dict):
+                        error_message = str(nested.get("message") or error_message)
+                        provider_status = str(nested.get("status") or "")
+            except json.JSONDecodeError:
+                error_message = raw_error[:800].decode("utf-8", errors="replace")
+        retry_after = 3
+        try:
+            retry_after = max(1, min(int(exc.headers.get("Retry-After", "3")), 5))
+        except (TypeError, ValueError, AttributeError):
+            retry_after = 3
+        return {
+            "ok": False,
+            "status": _classify_http_error(status_code, error_payload),
+            "http_status": status_code,
+            "provider_status": provider_status,
+            "retryable": status_code == 429 or 500 <= status_code <= 599,
+            "retry_after_seconds": retry_after,
+            "error": redact_secret(error_message)[:800],
+        }
     except URLError as exc:
         return {"ok": False, "status": "network_error", "retryable": False, "error": redact_secret(str(exc.reason))}
     if len(raw) > MAX_RESPONSE_BYTES:
@@ -402,19 +496,38 @@ def execute_gemini_generate_content(
     payload = build_gemini_generate_content_payload(request)
     transport_call = http_call or _request_without_redirects
     first = transport_call(str(endpoint_url), payload, api_key, timeout_seconds=timeout_seconds)
+    attempts = [redact_secret(first)]
     retry_state = "no_retry"
     result = first
     http_status = int(first.get("http_status", 0) or 0)
     if not first.get("ok") and first.get("retryable") and (http_status == 429 or 500 <= http_status <= 599):
-        retry_state = "bounded_retry_once"
+        retry_state = "bounded_retry_once_with_delay"
+        if http_call is None:
+            time.sleep(max(1, min(int(first.get("retry_after_seconds", 3) or 3), 5)))
         result = transport_call(str(endpoint_url), payload, api_key, timeout_seconds=timeout_seconds)
-    elif not first.get("ok") and http_status in {400, 401, 403}:
+        attempts.append(redact_secret(result))
+    elif not first.get("ok") and http_status in {400, 401, 403, 404}:
         retry_state = "no_retry_permanent_http_status"
     if not result.get("ok"):
-        return {"ok": False, "status": result.get("status", "transport_failed"), "gate": gate, "transport": redact_secret(result), "retry_state": retry_state}
+        return {
+            "ok": False,
+            "status": result.get("status", "transport_failed"),
+            "gate": gate,
+            "transport": redact_secret(result),
+            "attempts": attempts,
+            "retry_state": retry_state,
+        }
     extracted = _extract_candidate_json(result.get("response", {}))
     if not extracted.get("ok"):
-        return {"ok": False, "status": extracted.get("status", "candidate_failed"), "gate": gate, "transport": redact_secret(result), "retry_state": retry_state, "candidate": redact_secret(extracted)}
+        return {
+            "ok": False,
+            "status": extracted.get("status", "candidate_failed"),
+            "gate": gate,
+            "transport": redact_secret(result),
+            "attempts": attempts,
+            "retry_state": retry_state,
+            "candidate": redact_secret(extracted),
+        }
     normalized = normalize_gemini_result_envelope(extracted["candidate_json"], request=request)
     return {
         "ok": bool(normalized.get("validation", {}).get("valid")),
@@ -425,6 +538,7 @@ def execute_gemini_generate_content(
         "finish_reason": extracted.get("finish_reason"),
         "usage_metadata": extracted.get("usage_metadata"),
         "retry_state": retry_state,
+        "attempts": attempts,
         "latency_ms": result.get("latency_ms"),
         "result": normalized,
         "gate": gate,
@@ -534,6 +648,7 @@ def execute_free_gemini_handoff(
     failed_engine_fingerprints: Sequence[str] | None = None,
     http_call=None,
     persist: bool = False,
+    model_id: str = DEFAULT_MODEL_ID,
 ) -> Dict[str, Any]:
     if previous_result.get("completed") is True:
         session = build_session_state(
@@ -559,7 +674,7 @@ def execute_free_gemini_handoff(
     if selection.get("selected_engine") != ENGINE_ID:
         blockers = [item.get("reason", "") for item in selection.get("rejected_candidates", []) if item.get("engine_id") == ENGINE_ID]
         next_candidate = "free_cloud_worker" if selection.get("selected_engine") == "free_cloud_worker" or any(reason.startswith("health_quota_exhausted") or reason.startswith("health_rate_limited") or reason.startswith("health_authentication_failed") or reason == "engine_disabled" or reason == "engine_unverified" for reason in blockers) else selection.get("selected_engine")
-        request_stub = {"request_id": "", "remaining_gap": remaining_gap, "model_id": DEFAULT_MODEL_ID}
+        request_stub = {"request_id": "", "remaining_gap": remaining_gap, "model_id": model_id}
         gate = evaluate_gemini_gates(policy)
         evidence = build_gemini_evidence(request=request_stub, gate={**gate, "blockers": sorted(set(gate.get("blockers", []) + blockers))}, result=None, stop_reason="gemini_skipped")
         session = build_session_state(
@@ -587,10 +702,11 @@ def execute_free_gemini_handoff(
         target_files=target_files,
         target_symbols=target_symbols,
         minimum_context=minimum_context,
+        model_id=model_id,
         seen_request_digests=seen_request_digests,
     )
     if not request_result.get("ok"):
-        request_stub = {"request_id": "", "remaining_gap": remaining_gap, "model_id": DEFAULT_MODEL_ID}
+        request_stub = {"request_id": "", "remaining_gap": remaining_gap, "model_id": model_id}
         gate = evaluate_gemini_gates(policy)
         evidence = build_gemini_evidence(request=request_stub, gate={**gate, "blockers": sorted(set(gate.get("blockers", []) + [str(request_result.get("reason"))]))}, result=None, stop_reason="request_blocked")
         session = build_session_state(session_id=session_id, task_id=task_id, current_stage="blocked", completed_scope=completed_scope, remaining_gap=remaining_gap, target_files=target_files, target_symbols=target_symbols, stop_reason="request_blocked", final_status="blocked", evidence_ids=[evidence["event_digest"]])

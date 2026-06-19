@@ -68,7 +68,7 @@ def digest(value: Any, prefix: str) -> str:
 def redact_secret(value: Any) -> Any:
     patterns = [
         re.compile(r"(?i)(authorization\s*[:=]\s*bearer\s+)([^\s,;]+)"),
-        re.compile(r"(?i)((?:api[_-]?key|token|secret|password|cookie)\s*[:=]\s*[\"']?)([^\"'\s,;]+)"),
+        re.compile(r"(?i)((?:api[_-]?key|access[_-]?token|refresh[_-]?token|auth[_-]?token|secret|password|cookie)\s*[:=]\s*[\"']?)([^\"'\s,;]+)"),
         re.compile(r"(?i)()(sk-[A-Za-z0-9._~+/-]{8,})"),
     ]
     if isinstance(value, str):
@@ -78,11 +78,39 @@ def redact_secret(value: Any) -> Any:
         return result
     if isinstance(value, dict):
         cleaned = {}
+        safe_usage_keys = {
+            "token_usage",
+            "input_tokens",
+            "output_tokens",
+            "total_tokens",
+            "prompttokencount",
+            "candidatestokencount",
+            "totaltokencount",
+            "maximum_input_tokens",
+            "maximum_output_tokens",
+        }
         for key, item in value.items():
-            if any(marker in str(key).lower() for marker in ("secret", "token", "api_key", "authorization", "cookie", "password")):
-                cleaned[str(key)] = SECRET_MASK
-            else:
-                cleaned[str(key)] = redact_secret(item)
+            normalized = str(key).lower().replace("-", "_")
+            compact = normalized.replace("_", "")
+            is_safe_usage = normalized in safe_usage_keys or compact in safe_usage_keys or normalized.endswith("_tokens")
+            is_secret_key = (
+                normalized in {
+                    "secret",
+                    "api_key",
+                    "authorization",
+                    "cookie",
+                    "password",
+                    "access_token",
+                    "refresh_token",
+                    "auth_token",
+                    "private_key",
+                }
+                or normalized.endswith("_api_key")
+                or normalized.endswith("_secret")
+                or normalized.endswith("_password")
+                or normalized.endswith("_credential")
+            )
+            cleaned[str(key)] = SECRET_MASK if is_secret_key and not is_safe_usage else redact_secret(item)
         return cleaned
     if isinstance(value, list):
         return [redact_secret(item) for item in value[:200]]

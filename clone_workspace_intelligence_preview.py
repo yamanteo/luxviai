@@ -457,8 +457,6 @@ def _build_integration_signals(
 
 
 def clone_workspace_intelligence_status() -> Dict[str, Any]:
-    from luxcode_core_status_snapshot import luxcode_core_status_snapshot
-    core = luxcode_core_status_snapshot()
     return {
         "layer": "34.9",
         "name": "Clone Workspace Intelligence Preview",
@@ -500,10 +498,20 @@ def clone_workspace_intelligence_status() -> Dict[str, Any]:
         "file_modification": False,
         "deployment_execution": False,
         "real_action_performed": False,
+        "file_write_enabled": False,
+        "memory_write_enabled": False,
+        "db_write_enabled": False,
+        "git_write_enabled": False,
+        "commit_enabled": False,
+        "push_enabled": False,
+        "deploy_enabled": False,
+        "auto_fix_enabled": False,
+        "patch_apply_enabled": False,
+        "subprocess_execution_enabled": False,
         "chat_stream_touched": False,
         "typewriter_runtime_touched": False,
         "safety_note": "Read-only clone workspace intelligence preview. No actual clone or workspace modification actions performed.",
-        "luxcode_core_health": core.get("core_health", "unknown"),
+        "luxcode_core_health": "not_loaded_to_avoid_status_recursion",
     }
 
 

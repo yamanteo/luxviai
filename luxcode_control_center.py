@@ -23,6 +23,20 @@ from luxcode_practical_coder_runtime import (
     validate_practical_coder,
 )
 from luxcode_tier0_deterministic_executor import analyze_python_imports, build_repository_map, discover_validations, run_tier0_diagnostics
+from luxcode_working_copy_service import (
+    get_working_copy_service_status,
+    prepare_working_copy,
+)
+from luxcode_sandbox_service import (
+    get_sandbox_service_status,
+    prepare_sandbox,
+)
+from luxcode_integration_service import (
+    execute_integration,
+    get_integration_service_status,
+    prepare_integration,
+    rollback_integration,
+)
 
 
 CONTROL_CENTER_VERSION = "luxcode_control_center_v1"
@@ -101,6 +115,12 @@ def get_control_center_schema() -> Dict[str, Any]:
             "GET /luxcode-control/approvals",
             "GET /luxcode-control/motor-status",
             "GET /luxcode-control/settings",
+            "GET /luxcode-control/workspace-services/status",
+            "POST /luxcode-control/working-copy/prepare",
+            "POST /luxcode-control/sandbox/prepare",
+            "POST /luxcode-control/integration/prepare",
+            "POST /luxcode-control/integration/execute",
+            "POST /luxcode-control/integration/rollback",
         ],
         "cli_commands": [
             "control-status",
@@ -136,6 +156,12 @@ def get_control_center_status(repository_root: str | Path = ".") -> Dict[str, An
         "coder_runtime_connected": True,
         "safe_patch_connected": True,
         "controlled_apply_connected": True,
+        "working_copy_service_ready": True,
+        "sandbox_service_ready": True,
+        "integration_service_ready": True,
+        "working_copy_service": get_working_copy_service_status(),
+        "sandbox_service": get_sandbox_service_status(),
+        "integration_service": get_integration_service_status(),
         "evidence_board_connected": True,
         "analytics_connected": True,
         "live_model_execution": "disabled_in_control_center",
@@ -366,6 +392,97 @@ def motor_status(repository_root: str | Path = ".") -> Dict[str, Any]:
         "practical_coder": get_practical_coder_status(),
         "controlled_apply": get_controlled_apply_status(),
     })
+
+
+
+
+def working_copy_prepare(
+    payload: Dict[str, Any],
+    repository_root: str | Path = ".",
+) -> Dict[str, Any]:
+    root = _repo_root(payload.get("repository_root") or repository_root)
+    return prepare_working_copy(
+        root,
+        workspace_id=str(payload.get("workspace_id") or ""),
+        selected_files=[
+            str(item)
+            for item in payload.get("selected_files") or []
+        ],
+        discover_when_empty=bool(payload.get("discover_when_empty", False)),
+        reset_existing=bool(payload.get("reset_existing", False)),
+    )
+
+
+def sandbox_prepare(
+    payload: Dict[str, Any],
+    repository_root: str | Path = ".",
+) -> Dict[str, Any]:
+    root = _repo_root(payload.get("repository_root") or repository_root)
+    return prepare_sandbox(
+        root,
+        str(payload.get("working_copy_root") or ""),
+        sandbox_id=str(payload.get("sandbox_id") or ""),
+        reset_existing=bool(payload.get("reset_existing", False)),
+    )
+
+
+def integration_prepare(
+    payload: Dict[str, Any],
+    repository_root: str | Path = ".",
+) -> Dict[str, Any]:
+    root = _repo_root(payload.get("repository_root") or repository_root)
+    return prepare_integration(
+        root,
+        str(
+            payload.get("source_workspace_root")
+            or payload.get("sandbox_root")
+            or payload.get("working_copy_root")
+            or ""
+        ),
+        patch_id=str(payload.get("patch_id") or ""),
+        approved_files=[
+            str(item)
+            for item in payload.get("approved_files") or []
+        ],
+        forbidden_files=[
+            str(item)
+            for item in payload.get("forbidden_files") or []
+        ]
+        or None,
+        validation_plan=payload.get("validation_plan")
+        if isinstance(payload.get("validation_plan"), list)
+        else [],
+    )
+
+
+def integration_execute(payload: Dict[str, Any]) -> Dict[str, Any]:
+    return execute_integration(
+        payload.get("patch_contract")
+        if isinstance(payload.get("patch_contract"), dict)
+        else {},
+        approval_confirmed=bool(payload.get("approval_confirmed", False)),
+        approval_token=str(payload.get("approval_token") or ""),
+    )
+
+
+def integration_rollback(payload: Dict[str, Any]) -> Dict[str, Any]:
+    return rollback_integration(
+        repository_root=str(payload.get("repository_root") or ""),
+        patch_id=str(payload.get("patch_id") or ""),
+        rollback_id=str(payload.get("rollback_id") or ""),
+        approval_token=str(payload.get("approval_token") or ""),
+        preview_only=bool(payload.get("preview_only", True)),
+    )
+
+
+def workspace_services_status() -> Dict[str, Any]:
+    return _ok(
+        {
+            "working_copy": get_working_copy_service_status(),
+            "sandbox": get_sandbox_service_status(),
+            "integration": get_integration_service_status(),
+        }
+    )
 
 
 def safe_settings() -> Dict[str, Any]:

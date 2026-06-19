@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from dataclasses import dataclass, asdict
 from enum import Enum
 from typing import Any, Dict, List, Sequence, Set
@@ -201,9 +202,31 @@ def _normalize_path(path: str) -> str:
 
 
 def _reject_secret_content(value: str) -> None:
-    lowered = (value or "").lower()
-    if any(marker in lowered for marker in SECRET_MARKERS):
+    text = str(value or "")
+    if "-----BEGIN" in text.upper() and "PRIVATE KEY-----" in text.upper():
         raise ValueError("secret-like content blocked")
+
+    assignment = re.compile(
+        r"(?i)(?:api[_-]?key|access[_-]?token|auth[_-]?token|password|secret|credential|private[_-]?key)"
+        r"\s*[:=]\s*[\"']?([^\s\"']{8,})"
+    )
+    safe_placeholders = {
+        "none",
+        "null",
+        "false",
+        "true",
+        "redacted",
+        "[redacted]",
+        "changeme",
+        "example",
+        "dummy",
+        "placeholder",
+        "test_value",
+    }
+    for match in assignment.finditer(text):
+        candidate = match.group(1).strip().lower()
+        if candidate not in safe_placeholders and not candidate.startswith(("os.getenv(", "getenv(")):
+            raise ValueError("secret-like content blocked")
 
 
 def _validate_requirements(value: Any, *, max_items: int = 500) -> List[str]:

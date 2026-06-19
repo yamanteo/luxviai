@@ -64,29 +64,81 @@ def make_repo() -> tempfile.TemporaryDirectory[str]:
 
 
 def validate_static(counter: Counter) -> None:
-    for rel in ["luxcode_control_center.py", "scripts/validate_luxcode_control_center.py"]:
+    for rel in [
+        "luxcode_control_center.py",
+        "luxcode_control_routes.py",
+        "luxviai_pages.py",
+        "scripts/validate_luxcode_control_center.py",
+    ]:
         counter.check((ROOT / rel).exists(), f"{rel} exists")
         counter.check(bool(parse(rel).body), f"{rel} parses")
     source = read("luxcode_control_center.py")
     for token in ["OpenAI(", "urlopen(", "requests.", "httpx", "git commit", "git push", "shell=True"]:
         counter.check(token not in source, f"forbidden token absent {token}")
     app = read("app.py")
+    routes = read("luxcode_control_routes.py")
     html = read("static/index.html")
+    luxcode_html = read("static/luxcode/index.html")
+    desktop_ui = read("luxcode_desktop/ui/main_window.py")
+    desktop_api = read("luxcode_desktop/api/client.py")
+    desktop_sources = desktop_ui + "\n" + desktop_api
     cli = read("luxcode_coder_operator.py")
     smoke = read("scripts/smoke_check.py")
-    for endpoint in [
-        "/luxcode-control/status",
-        "/luxcode-control/first-usable/run",
-        "/luxcode-control/repository/diagnostics",
-        "/luxcode-control/safe-patch/preview",
-        "/luxcode-control/deferred-queue/resume",
-        "/luxcode-control/motor-status",
+    counter.check('prefix="/luxcode-control"' in routes, "control API prefix wired")
+    for endpoint, route_path, desktop_markers in [
+        (
+            "/luxcode-control/status",
+            '"/status"',
+            ("/luxcode-control/status",),
+        ),
+        (
+            "/luxcode-control/first-usable/run",
+            '"/first-usable/run"',
+            (
+                "/luxcode-task/create",
+                "self.client.submit_task(payload)",
+                "TaskSubmitPayload",
+            ),
+        ),
+        (
+            "/luxcode-control/repository/diagnostics",
+            '"/repository/diagnostics"',
+            ("/luxcode-control/repository/diagnostics",),
+        ),
+        (
+            "/luxcode-control/safe-patch/preview",
+            '"/safe-patch/preview"',
+            ("/luxcode-control/safe-patch/preview",),
+        ),
+        (
+            "/luxcode-control/deferred-queue/resume",
+            '"/deferred-queue/resume"',
+            ("/luxcode-control/deferred-queue/resume",),
+        ),
+        (
+            "/luxcode-control/motor-status",
+            '"/motor-status"',
+            ("/luxcode-control/motor-status",),
+        ),
     ]:
-        counter.check(endpoint in app, f"API endpoint wired {endpoint}")
-        counter.check(endpoint in html, f"web action wired {endpoint}")
+        counter.check(route_path in routes, f"API endpoint wired {endpoint}")
+        counter.check(
+            all(marker in desktop_sources for marker in desktop_markers),
+            f"desktop workflow wired {endpoint}",
+            desktop_markers,
+        )
     for command in ["control-status", "first-usable-run", "repo-diagnostics", "control-search", "safe-patch-preview", "approval-center", "deferred-queue", "motor-status", "control-settings"]:
         counter.check(command in cli, f"CLI command wired {command}")
-    counter.check("Unified Control Center" in html, "web section present")
+    counter.check("Unified Control Center" not in html, "unified control web menu removed")
+    counter.check("Desktop'a taşındı" in luxcode_html, "old luxcode web surface retired")
+    counter.check(
+        "TaskSubmitPayload" in desktop_ui
+        and "self.client.submit_task(payload)" in desktop_ui
+        and "_primary_task_action" in desktop_ui,
+        "desktop task workspace present",
+    )
+    counter.check("/luxcode" in app and "build_page_router" in app, "luxcode page router included")
+    counter.check("build_luxcode_control_router" in app, "control router included")
     counter.check("luxcode_control_center_local" in smoke, "targeted smoke registered")
 
 

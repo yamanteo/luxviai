@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import uuid
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -41,6 +42,34 @@ from luxcode_terminal_process_runtime import (
     execute_terminal_action,
     get_safe_runtime_metadata,
     plan_terminal_action,
+)
+from luxcode_tier1_local_worker import (
+    TIER1_OLLAMA_MODEL_ID,
+    TIER1_OLLAMA_RUNTIME_ID,
+    execute_tier0_router_tier1_preview,
+)
+from luxcode_gemini_task_bridge import (
+    execute_gemini_task_bridge,
+)
+from luxcode_free_cloud_task_bridge import (
+    FREE_CLOUD_PRIMARY_MODEL_ID,
+    execute_free_cloud_task_bridge,
+)
+from luxcode_direct_deepseek_task_bridge import (
+    DIRECT_DEEPSEEK_MODEL_ID,
+    EXACT_APPROVAL_TEXT as DEEPSEEK_EXACT_APPROVAL_TEXT,
+    build_direct_deepseek_task_approval,
+    execute_direct_deepseek_task_bridge,
+)
+from luxcode_codewhale_task_bridge import (
+    EXACT_APPROVAL_TEXT as CODEWHALE_EXACT_APPROVAL_TEXT,
+    build_codewhale_task_approval,
+    execute_codewhale_task_bridge,
+)
+from luxcode_codex_task_bridge import (
+    EXACT_APPROVAL_TEXT as CODEX_EXACT_APPROVAL_TEXT,
+    build_codex_task_approval,
+    execute_codex_task_bridge,
 )
 from luxcode_zero_cost_execution_router import (
     classify_zero_cost_task,
@@ -638,6 +667,18 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "task_id": task["task_id"],
         "current_state": state,
+        "status": state,
+        "active_engine": str(task.get("active_engine") or "-"),
+        "active_model": str(task.get("active_model") or "-"),
+        "real_attempts": _redact(task.get("model_attempts", [])),
+        "evidence": _redact(task.get("model_evidence", [])),
+        "token_usage": str(task.get("token_usage") or "unavailable"),
+        "provider_cost": str(task.get("provider_cost") or "cost_status=unavailable"),
+        "deepseek_escalation": _redact(task.get("deepseek_escalation", {})),
+        "codewhale_escalation": _redact(task.get("codewhale_escalation", {})),
+        "codex_escalation": _redact(task.get("codex_escalation", {})),
+        "external_api_used": bool(task.get("external_api_used", False)),
+        "network_access_used": bool(task.get("network_access_used", False)),
         "original_request": task["original_request"],
         "repository_root": task["repository_root"],
         "route_result": _redact(task.get("route_result", {})),
@@ -947,6 +988,10 @@ def get_task_orchestrator_schema() -> Dict[str, Any]:
             "cancel_luxcode_task_network_access",
             "plan_luxcode_task_test_matrix",
             "execute_luxcode_task_test_matrix",
+            "request_luxcode_codewhale_escalation",
+            "approve_luxcode_codewhale_escalation",
+            "request_luxcode_codex_escalation",
+            "approve_luxcode_codex_escalation",
         ],
         "integrated_engines": [
             "LuxCode Master Router Preview",
@@ -1012,6 +1057,47 @@ def create_luxcode_task(
         "apply_result": {},
         "verification_result": {},
         "recovery_result": {},
+        "active_engine": "-",
+        "active_model": "-",
+        "model_attempts": [],
+        "model_evidence": [],
+        "token_usage": "unavailable",
+        "provider_cost": "cost_status=unavailable",
+        "deepseek_escalation": {
+            "state": "not_requested",
+            "approved": False,
+            "consumed": False,
+            "approval_digest": "",
+            "confirmation_text": "",
+            "model_id": DIRECT_DEEPSEEK_MODEL_ID,
+            "maximum_cost_usd": 0.001,
+            "requested_at": "",
+            "approved_at": "",
+        },
+        "codewhale_escalation": {
+            "state": "not_requested",
+            "approved": False,
+            "consumed": False,
+            "approval_digest": "",
+            "confirmation_text": "",
+            "manual_only": True,
+            "auto_mode_allowed": False,
+            "requested_at": "",
+            "approved_at": "",
+        },
+        "codex_escalation": {
+            "state": "not_requested",
+            "approved": False,
+            "consumed": False,
+            "approval_digest": "",
+            "confirmation_text": "",
+            "manual_only": True,
+            "emergency_only": True,
+            "sandbox_mode": "read-only",
+            "approval_policy": "never",
+            "requested_at": "",
+            "approved_at": "",
+        },
         "selected_files": files,
         "changed_files": _unique(changed_files or []),
         "requested_files": _unique(requested_files or files),
@@ -1123,10 +1209,381 @@ def _advance_diagnosis(task: Dict[str, Any]) -> None:
     )
     task["diagnosis_result"] = diagnosis
     task["adjacent_findings"] = _classify_adjacent(diagnosis.get("adjacent_issues", []))
-    selected = [item.get("path") or item.get("file") for item in diagnosis.get("selected_context", []) if isinstance(item, dict)]
+    selected = [
+        item.get("relative_path") or item.get("path") or item.get("file")
+        for item in diagnosis.get("selected_context", [])
+        if isinstance(item, dict)
+    ]
     task["selected_files"] = _unique(task.get("selected_files", []) + [item for item in selected if item])
-    task["next_safe_action"] = "Advance to safe patch draft preview."
-    _touch(task, "diagnosis_ready", "diagnose")
+    if (
+        str(task.get("mode") or "") == "read_only_analysis"
+        or str(
+            task.get("route_result", {})
+            .get("luxcode_master_router_preview", {})
+            .get("context_hint", "")
+        ) == "read_only_analysis"
+    ):
+        task["patch_draft_result"] = {}
+        task["next_safe_action"] = (
+            "Salt okunur analiz tamamlandı. Dosya değiştirilmedi, "
+            "yama hazırlanmadı, komut çalıştırılmadı ve dış servis kullanılmadı."
+        )
+        _touch(task, "completed", "diagnose")
+    else:
+        task["next_safe_action"] = "Advance to safe patch draft preview."
+        _touch(task, "diagnosis_ready", "diagnose")
+
+
+def _tier1_targets_and_context(task: Dict[str, Any]) -> Tuple[List[str], Dict[str, str]]:
+    root_text = str(task.get("repository_root") or "")
+    if not root_text:
+        return [], {}
+    root = Path(root_text).resolve()
+    diagnosis = _normalize_dict(task.get("diagnosis_result", {}))
+    selected_context = diagnosis.get("selected_context", [])
+    excerpts: Dict[str, str] = {}
+    context_files: List[str] = []
+    for item in selected_context if isinstance(selected_context, list) else []:
+        if not isinstance(item, dict):
+            continue
+        rel = str(item.get("relative_path") or item.get("path") or item.get("file") or "").replace("\\", "/").strip()
+        if not rel:
+            continue
+        context_files.append(rel)
+        excerpt = str(item.get("excerpt") or "")
+        if excerpt:
+            excerpts[rel] = excerpt[:12000]
+
+    candidates = _unique(
+        list(task.get("requested_files", []))
+        + list(task.get("selected_files", []))
+        + context_files
+    )
+    forbidden = {str(item).replace("\\", "/").strip().lower() for item in task.get("forbidden_files", [])}
+    targets: List[str] = []
+    context: Dict[str, str] = {}
+    for rel in candidates:
+        normalized = str(rel).replace("\\", "/").strip()
+        if not normalized or normalized.lower() in forbidden or normalized.startswith(("/", "../")):
+            continue
+        if ".." in Path(normalized).parts:
+            continue
+        path = (root / normalized).resolve()
+        try:
+            path.relative_to(root)
+        except ValueError:
+            continue
+        if not path.is_file() or path.is_symlink():
+            continue
+        targets.append(normalized)
+        if path.stat().st_size <= 12000:
+            context[normalized] = path.read_text(encoding="utf-8", errors="replace")
+        else:
+            context[normalized] = excerpts.get(normalized, "")[:12000]
+        if len(targets) >= 4:
+            break
+    return targets, context
+
+
+def _tier1_diagnostics_stub(task: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "selected_tier": 0,
+        "selected_engine": "deterministic_local_tools",
+        "remaining_gap": {
+            "ok": True,
+            "remaining_gap": {
+                "remaining_gap": "tier1_local_patch_draft_required",
+                "completed_scope": list(task.get("completed_steps", [])),
+                "failed_attempt_fingerprints": [],
+                "required_capabilities": ["code_generation", "patch_candidate_draft"],
+            },
+        },
+        "external_api_used": False,
+        "network_access_used": False,
+    }
+
+
+def _record_model_attempt(task: Dict[str, Any], result: Dict[str, Any]) -> None:
+    evidence = result.get("evidence") if isinstance(result.get("evidence"), dict) else {}
+    model_response = result.get("model_response") if isinstance(result.get("model_response"), dict) else {}
+    attempt = {
+        "engine_id": "tier1_local_worker",
+        "runtime_id": TIER1_OLLAMA_RUNTIME_ID,
+        "model_id": TIER1_OLLAMA_MODEL_ID,
+        "status": str(result.get("state") or ("completed" if result.get("ok") else "failed")),
+        "ok": bool(result.get("ok")),
+        "duration_ms": int(result.get("duration_ms") or evidence.get("duration_ms") or 0),
+        "analysis_summary": str(model_response.get("analysis_summary") or result.get("analysis_summary") or result.get("error") or ""),
+        "failure_fingerprint": str(evidence.get("failure_fingerprint") or ""),
+        "external_api_used": False,
+        "local_only": True,
+    }
+    task.setdefault("model_attempts", []).append(attempt)
+    if evidence:
+        task.setdefault("model_evidence", []).append(evidence)
+
+
+def _record_gemini_attempt(task: Dict[str, Any], result: Dict[str, Any]) -> None:
+    evidence = result.get("evidence") if isinstance(result.get("evidence"), dict) else {}
+    model_response = result.get("model_response") if isinstance(result.get("model_response"), dict) else {}
+    attempt = {
+        "engine_id": "free_gemini",
+        "runtime_id": "gemini_developer_api",
+        "model_id": str(result.get("model_id") or "gemini-3.5-flash"),
+        "status": str(result.get("state") or ("completed" if result.get("ok") else "failed")),
+        "ok": bool(result.get("ok")),
+        "duration_ms": int(result.get("duration_ms") or 0),
+        "analysis_summary": str(
+            model_response.get("analysis_summary")
+            or result.get("analysis_summary")
+            or result.get("error")
+            or ""
+        ),
+        "failure_fingerprint": str(evidence.get("event_digest") or ""),
+        "external_api_used": bool(result.get("external_api_used")),
+        "local_only": False,
+        "transport_called": bool(result.get("transport_called")),
+    }
+    task.setdefault("model_attempts", []).append(attempt)
+    if evidence:
+        task.setdefault("model_evidence", []).append(evidence)
+
+
+
+def _record_free_cloud_attempt(task: Dict[str, Any], result: Dict[str, Any]) -> None:
+    attempts = result.get("model_attempts", [])
+    if not isinstance(attempts, list):
+        attempts = []
+    if not attempts:
+        attempts = [
+            {
+                "model_id": str(result.get("model_id") or FREE_CLOUD_PRIMARY_MODEL_ID),
+                "status": str(result.get("state") or ("completed" if result.get("ok") else "failed")),
+                "ok": bool(result.get("ok")),
+                "http_attempts": 0,
+                "structured_result_valid": bool(result.get("ok")),
+                "usage_metadata": _normalize_dict(result.get("token_usage", {})),
+            }
+        ]
+    for item in attempts[:4]:
+        if not isinstance(item, dict):
+            continue
+        usage = item.get("usage_metadata", {})
+        if not isinstance(usage, dict):
+            usage = {}
+        task.setdefault("model_attempts", []).append(
+            {
+                "engine_id": "free_cloud_worker",
+                "runtime_id": "openrouter_chat_completions",
+                "model_id": str(item.get("model_id") or result.get("model_id") or FREE_CLOUD_PRIMARY_MODEL_ID),
+                "status": str(item.get("status") or item.get("failure_reason") or result.get("state") or "unknown"),
+                "ok": bool(item.get("ok")),
+                "duration_ms": int(result.get("duration_ms") or 0),
+                "analysis_summary": str(
+                    item.get("failure_reason")
+                    or _normalize_dict(result.get("model_response", {})).get("analysis_summary")
+                    or result.get("error")
+                    or ""
+                ),
+                "failure_fingerprint": str(_normalize_dict(result.get("evidence", {})).get("evidence_digest") or ""),
+                "external_api_used": bool(result.get("external_api_used")),
+                "local_only": False,
+                "transport_called": int(item.get("http_attempts", 0) or 0) > 0,
+                "structured_result_valid": bool(item.get("structured_result_valid")),
+                "token_usage": _redact(usage),
+            }
+        )
+    evidence = result.get("evidence")
+    if isinstance(evidence, dict) and evidence:
+        task.setdefault("model_evidence", []).append(evidence)
+
+
+
+def _record_direct_deepseek_attempt(
+    task: Dict[str, Any],
+    result: Dict[str, Any],
+) -> None:
+    evidence = (
+        result.get("evidence")
+        if isinstance(result.get("evidence"), dict)
+        else {}
+    )
+    transport = (
+        result.get("transport")
+        if isinstance(result.get("transport"), dict)
+        else {}
+    )
+    response = (
+        result.get("model_response")
+        if isinstance(result.get("model_response"), dict)
+        else {}
+    )
+    usage = (
+        result.get("token_usage")
+        if isinstance(result.get("token_usage"), dict)
+        else {}
+    )
+    task.setdefault("model_attempts", []).append(
+        {
+            "engine_id": "direct_deepseek",
+            "runtime_id": "deepseek_chat_completions",
+            "model_id": str(
+                result.get("model_id") or DIRECT_DEEPSEEK_MODEL_ID
+            ),
+            "status": str(
+                result.get("state")
+                or ("completed" if result.get("ok") else "failed")
+            ),
+            "ok": bool(result.get("ok")),
+            "duration_ms": int(result.get("duration_ms") or 0),
+            "analysis_summary": str(
+                response.get("analysis_summary")
+                or result.get("error")
+                or ""
+            ),
+            "failure_fingerprint": str(
+                evidence.get("evidence_id") or ""
+            ),
+            "external_api_used": bool(
+                result.get("external_api_used")
+            ),
+            "local_only": False,
+            "transport_called": bool(
+                result.get("external_api_used")
+            ),
+            "structured_result_valid": bool(result.get("ok")),
+            "token_usage": _redact(usage),
+            "provider_cost": str(
+                result.get("provider_cost")
+                if result.get("provider_cost") is not None
+                else transport.get("actual_estimated_cost", "unavailable")
+            ),
+        }
+    )
+    if evidence:
+        task.setdefault("model_evidence", []).append(evidence)
+
+
+
+def _record_codewhale_attempt(
+    task: Dict[str, Any],
+    result: Dict[str, Any],
+) -> None:
+    evidence = (
+        result.get("evidence")
+        if isinstance(result.get("evidence"), dict)
+        else {}
+    )
+    response = (
+        result.get("model_response")
+        if isinstance(result.get("model_response"), dict)
+        else {}
+    )
+    task.setdefault("model_attempts", []).append(
+        {
+            "engine_id": "whale",
+            "runtime_id": "codewhale_cli",
+            "model_id": str(result.get("model_id") or ""),
+            "status": str(
+                result.get("state")
+                or ("completed" if result.get("ok") else "failed")
+            ),
+            "ok": bool(result.get("ok")),
+            "duration_ms": int(
+                _normalize_dict(result.get("process", {})).get(
+                    "duration_ms", 0
+                )
+                or 0
+            ),
+            "analysis_summary": str(
+                response.get("analysis_summary")
+                or result.get("error")
+                or ""
+            ),
+            "failure_fingerprint": str(
+                evidence.get("evidence_id") or ""
+            ),
+            "external_api_used": bool(
+                result.get("external_api_used")
+            ),
+            "local_only": False,
+            "transport_called": bool(
+                result.get("process_started")
+            ),
+            "structured_result_valid": bool(result.get("ok")),
+            "provider_cost": str(
+                result.get("provider_cost")
+                or "unavailable_manual_agent"
+            ),
+            "manual_only": True,
+            "auto_mode_used": False,
+        }
+    )
+    if evidence:
+        task.setdefault("model_evidence", []).append(evidence)
+
+
+
+
+def _record_codex_attempt(
+    task: Dict[str, Any],
+    result: Dict[str, Any],
+) -> None:
+    evidence = (
+        result.get("evidence")
+        if isinstance(result.get("evidence"), dict)
+        else {}
+    )
+    response = (
+        result.get("model_response")
+        if isinstance(result.get("model_response"), dict)
+        else {}
+    )
+    task.setdefault("model_attempts", []).append(
+        {
+            "engine_id": "codex",
+            "runtime_id": "codex_cli",
+            "model_id": "account_default",
+            "status": str(
+                result.get("state")
+                or ("completed" if result.get("ok") else "failed")
+            ),
+            "ok": bool(result.get("ok")),
+            "duration_ms": int(
+                _normalize_dict(result.get("process", {})).get(
+                    "duration_ms", 0
+                )
+                or 0
+            ),
+            "analysis_summary": str(
+                response.get("analysis_summary")
+                or result.get("error")
+                or ""
+            ),
+            "failure_fingerprint": str(
+                evidence.get("evidence_id") or ""
+            ),
+            "external_api_used": bool(
+                result.get("external_api_used")
+            ),
+            "local_only": False,
+            "transport_called": bool(
+                result.get("process_started")
+            ),
+            "structured_result_valid": bool(result.get("ok")),
+            "provider_cost": str(
+                result.get("provider_cost")
+                or "chatgpt_plan_credit_or_unknown_manual_agent"
+            ),
+            "manual_only": True,
+            "emergency_only": True,
+            "sandbox_mode": "read-only",
+            "approval_policy": "never",
+            "dangerous_bypass_used": False,
+        }
+    )
+    if evidence:
+        task.setdefault("model_evidence", []).append(evidence)
 
 
 def _advance_patch(task: Dict[str, Any]) -> None:
@@ -1134,6 +1591,566 @@ def _advance_patch(task: Dict[str, Any]) -> None:
         return
     _touch(task, "patch_drafting")
     diagnosis = task.get("diagnosis_result", {})
+    targets, minimum_context = _tier1_targets_and_context(task)
+    local_result: Dict[str, Any] = {}
+    gemini_result: Dict[str, Any] = {}
+    free_cloud_result: Dict[str, Any] = {}
+    deepseek_result: Dict[str, Any] = {}
+    codewhale_result: Dict[str, Any] = {}
+    codex_result: Dict[str, Any] = {}
+
+    if targets:
+        task["active_engine"] = "tier1_local_worker"
+        task["active_model"] = TIER1_OLLAMA_MODEL_ID
+        task["next_safe_action"] = "Yerel Ollama modeli güvenli yama önizlemesi hazırlıyor. Dosya yazılmayacak."
+        local_result = execute_tier0_router_tier1_preview(
+            task_id=task["task_id"],
+            repository_root=task.get("repository_root") or str(Path.cwd()),
+            task_summary=task["original_request"],
+            target_files=targets,
+            target_symbols=[],
+            minimum_context=minimum_context,
+            model_id=TIER1_OLLAMA_MODEL_ID,
+            persist=False,
+            tier0_diagnostics=_tier1_diagnostics_stub(task),
+        )
+        _record_model_attempt(task, local_result)
+
+    if local_result.get("ok"):
+        model_response = _normalize_dict(local_result.get("model_response", {}))
+        usage = _normalize_dict(model_response.get("usage_metadata", {}))
+        task["token_usage"] = f"input={usage.get('input_tokens', 0)} output={usage.get('output_tokens', 0)}"
+        task["provider_cost"] = "0.0 local"
+        task["selected_files"] = _unique(task.get("selected_files", []) + local_result.get("files_to_modify", []))
+        task["patch_draft_result"] = {
+            "request_id": _normalize_dict(local_result.get("request", {})).get("request_id", ""),
+            "mode": "preview",
+            "source": "tier1_local_worker",
+            "runtime_id": TIER1_OLLAMA_RUNTIME_ID,
+            "model_id": TIER1_OLLAMA_MODEL_ID,
+            "repository_root": task.get("repository_root", ""),
+            "issue_summary": diagnosis.get("normalized_issue") or task["original_request"],
+            "analysis_summary": model_response.get("analysis_summary", ""),
+            "patch_steps": list(local_result.get("patch_steps", [])),
+            "expected_file_hashes": dict(local_result.get("expected_file_hashes", {})),
+            "files_to_modify": list(local_result.get("files_to_modify", [])),
+            "safe_patch_contract": _redact(local_result.get("safe_patch_contract", {})),
+            "safe_patch_preview": _redact(local_result.get("safe_patch_preview", {})),
+            "validation": _redact(local_result.get("validation", {})),
+            "model_response": _redact(model_response),
+            "evidence": _redact(local_result.get("evidence", {})),
+            "approval_required": True,
+            "can_apply_now": False,
+            "file_write_blocked": True,
+            "real_execution_blocked": True,
+            "external_api_used": False,
+            "local_first": True,
+        }
+        task["next_safe_action"] = (
+            "Ollama güvenli yama önizlemesini hazırladı. Dosya değiştirilmedi. "
+            "Uygulama için önce yama ayrıntılarını inceleyip açık onay verin."
+        )
+        _touch(task, "awaiting_approval", "draft_patch")
+        return
+
+    if targets:
+        task["active_engine"] = "free_gemini"
+        task["active_model"] = str(os.getenv("LUXCODE_GEMINI_MODEL_ID") or "gemini-3.5-flash")
+        task["next_safe_action"] = (
+            "Ollama sonucu kullanılamadı. Açık Gemini ücretsiz-katman izinleri denetleniyor; "
+            "izinler kapalıysa hiçbir ağ çağrısı yapılmayacak."
+        )
+        gemini_result = execute_gemini_task_bridge(
+            task_id=task["task_id"],
+            repository_root=task.get("repository_root") or str(Path.cwd()),
+            task_summary=task["original_request"],
+            target_files=targets,
+            target_symbols=[],
+            minimum_context=minimum_context,
+            previous_engine_state=str(local_result.get("state") or "tier1_not_available"),
+            environ=os.environ,
+        )
+        _record_gemini_attempt(task, gemini_result)
+
+    if gemini_result.get("ok"):
+        model_response = _normalize_dict(gemini_result.get("model_response", {}))
+        usage = _normalize_dict(gemini_result.get("token_usage", {}))
+        task["token_usage"] = (
+            f"input={usage.get('input_tokens', 0)} "
+            f"output={usage.get('output_tokens', 0)} "
+            f"total={usage.get('total_tokens', 0)}"
+        )
+        task["provider_cost"] = str(gemini_result.get("provider_cost") or "0.0 free tier")
+        task["external_api_used"] = True
+        task["network_access_used"] = True
+        task["selected_files"] = _unique(
+            task.get("selected_files", []) + gemini_result.get("files_to_modify", [])
+        )
+        task["patch_draft_result"] = {
+            "request_id": str(model_response.get("request_id") or ""),
+            "mode": "preview",
+            "source": "free_gemini",
+            "runtime_id": "gemini_developer_api",
+            "provider_id": "google_gemini",
+            "model_id": str(gemini_result.get("model_id") or "gemini-3.5-flash"),
+            "repository_root": task.get("repository_root", ""),
+            "issue_summary": diagnosis.get("normalized_issue") or task["original_request"],
+            "analysis_summary": model_response.get("analysis_summary", ""),
+            "patch_steps": list(gemini_result.get("patch_steps", [])),
+            "expected_file_hashes": dict(gemini_result.get("expected_file_hashes", {})),
+            "files_to_modify": list(gemini_result.get("files_to_modify", [])),
+            "model_response": _redact(model_response),
+            "transport": _redact(gemini_result.get("transport", {})),
+            "evidence": _redact(gemini_result.get("evidence", {})),
+            "gate": _redact(gemini_result.get("gate", {})),
+            "approval_required": True,
+            "can_apply_now": False,
+            "file_write_blocked": True,
+            "real_execution_blocked": True,
+            "external_api_used": True,
+            "local_first": False,
+            "free_tier_confirmed": True,
+            "billing_allowed": False,
+        }
+        task["next_safe_action"] = (
+            "Gemini ücretsiz katmanı güvenli yama önizlemesini hazırladı. Dosya değiştirilmedi. "
+            "Uygulama için yama ayrıntılarını inceleyip açık onay verin."
+        )
+        _touch(task, "awaiting_approval", "draft_patch")
+        return
+
+    if targets:
+        task["active_engine"] = "free_cloud_worker"
+        task["active_model"] = FREE_CLOUD_PRIMARY_MODEL_ID
+        task["next_safe_action"] = (
+            "Ollama ve Gemini sonucu kullanılamadı. OpenRouter ücretsiz model kapıları denetleniyor; "
+            "izinler kapalıysa hiçbir ağ çağrısı yapılmayacak."
+        )
+        free_cloud_result = execute_free_cloud_task_bridge(
+            task_id=task["task_id"],
+            repository_root=task.get("repository_root") or str(Path.cwd()),
+            task_summary=task["original_request"],
+            target_files=targets,
+            target_symbols=[],
+            minimum_context=minimum_context,
+            previous_engine_state=str(
+                gemini_result.get("state")
+                or local_result.get("state")
+                or "lower_tiers_not_available"
+            ),
+            environ=os.environ,
+        )
+        _record_free_cloud_attempt(task, free_cloud_result)
+
+    if free_cloud_result.get("ok"):
+        model_response = _normalize_dict(free_cloud_result.get("model_response", {}))
+        usage = _normalize_dict(free_cloud_result.get("token_usage", {}))
+        task["token_usage"] = (
+            f"input={usage.get('prompt_tokens', 0)} "
+            f"output={usage.get('completion_tokens', 0)} "
+            f"total={usage.get('total_tokens', 0)}"
+        )
+        task["provider_cost"] = str(
+            free_cloud_result.get("provider_cost")
+            or "0.0 free models only"
+        )
+        task["external_api_used"] = bool(
+            free_cloud_result.get("external_api_used")
+        )
+        task["network_access_used"] = bool(
+            free_cloud_result.get("external_api_used")
+        )
+        task["active_model"] = str(
+            free_cloud_result.get("selected_model")
+            or FREE_CLOUD_PRIMARY_MODEL_ID
+        )
+        task["selected_files"] = _unique(
+            task.get("selected_files", [])
+            + free_cloud_result.get("files_to_modify", [])
+        )
+        task["patch_draft_result"] = {
+            "request_id": str(model_response.get("request_digest") or ""),
+            "mode": "preview",
+            "source": "free_cloud_worker",
+            "runtime_id": "openrouter_chat_completions",
+            "provider_id": "openrouter",
+            "model_id": task["active_model"],
+            "repository_root": task.get("repository_root", ""),
+            "issue_summary": diagnosis.get("normalized_issue") or task["original_request"],
+            "analysis_summary": model_response.get("analysis_summary", ""),
+            "patch_steps": list(free_cloud_result.get("patch_steps", [])),
+            "expected_file_hashes": dict(
+                free_cloud_result.get("expected_file_hashes", {})
+            ),
+            "files_to_modify": list(
+                free_cloud_result.get("files_to_modify", [])
+            ),
+            "model_response": _redact(model_response),
+            "model_attempts": _redact(
+                free_cloud_result.get("model_attempts", [])
+            ),
+            "evidence": _redact(
+                free_cloud_result.get("evidence", {})
+            ),
+            "gate": _redact(
+                free_cloud_result.get("gate", {})
+            ),
+            "approval_required": True,
+            "can_apply_now": False,
+            "file_write_blocked": True,
+            "real_execution_blocked": True,
+            "external_api_used": bool(
+                free_cloud_result.get("external_api_used")
+            ),
+            "local_first": False,
+            "free_tier_confirmed": True,
+            "billing_allowed": False,
+            "paid_fallback_allowed": False,
+        }
+        task["next_safe_action"] = (
+            "OpenRouter ücretsiz modeli güvenli yama önizlemesini hazırladı. Dosya değiştirilmedi. "
+            "Uygulama için yama ayrıntılarını inceleyip açık onay verin."
+        )
+        _touch(task, "awaiting_approval", "draft_patch")
+        return
+
+
+    escalation = task.get("deepseek_escalation", {})
+    if (
+        targets
+        and isinstance(escalation, dict)
+        and escalation.get("approved") is True
+        and escalation.get("consumed") is not True
+    ):
+        task["active_engine"] = "direct_deepseek"
+        task["active_model"] = DIRECT_DEEPSEEK_MODEL_ID
+        task["next_safe_action"] = (
+            "Free tiers did not produce a safe patch. The task-scoped paid "
+            "DeepSeek approval and hard cost cap are being revalidated. "
+            "No file will be written."
+        )
+        deepseek_result = execute_direct_deepseek_task_bridge(
+            task_id=task["task_id"],
+            repository_root=task.get("repository_root") or str(Path.cwd()),
+            task_summary=task["original_request"],
+            target_files=targets,
+            target_symbols=[],
+            minimum_context=minimum_context,
+            previous_result={
+                "free_tier_exhaustion_confirmed": True,
+                "remaining_gap": {
+                    "remaining_gap": (
+                        "tier4_direct_deepseek_patch_draft_required"
+                    ),
+                    "free_cloud_state": str(
+                        free_cloud_result.get("state") or "failed"
+                    ),
+                },
+            },
+            approval=escalation,
+            environ=os.environ,
+        )
+        _record_direct_deepseek_attempt(task, deepseek_result)
+        if deepseek_result.get("external_api_used"):
+            escalation["consumed"] = True
+            escalation["state"] = "consumed"
+            escalation["consumed_at"] = _now()
+            task["deepseek_escalation"] = escalation
+
+    if deepseek_result.get("ok"):
+        model_response = _normalize_dict(
+            deepseek_result.get("model_response", {})
+        )
+        usage = _normalize_dict(
+            deepseek_result.get("token_usage", {})
+        )
+        task["token_usage"] = (
+            f"input={usage.get('input_tokens', 0)} "
+            f"output={usage.get('output_tokens', 0)}"
+        )
+        task["provider_cost"] = str(
+            deepseek_result.get("provider_cost")
+            if deepseek_result.get("provider_cost") is not None
+            else "cost_status=unavailable"
+        )
+        task["external_api_used"] = bool(
+            deepseek_result.get("external_api_used")
+        )
+        task["network_access_used"] = bool(
+            deepseek_result.get("external_api_used")
+        )
+        task["selected_files"] = _unique(
+            task.get("selected_files", [])
+            + deepseek_result.get("files_to_modify", [])
+        )
+        task["patch_draft_result"] = {
+            "request_id": str(
+                _normalize_dict(
+                    deepseek_result.get("evidence", {})
+                ).get("evidence_id")
+                or ""
+            ),
+            "mode": "preview",
+            "source": "direct_deepseek",
+            "runtime_id": "deepseek_chat_completions",
+            "provider_id": "deepseek",
+            "model_id": DIRECT_DEEPSEEK_MODEL_ID,
+            "repository_root": task.get("repository_root", ""),
+            "issue_summary": diagnosis.get("normalized_issue")
+            or task["original_request"],
+            "analysis_summary": model_response.get(
+                "analysis_summary", ""
+            ),
+            "patch_steps": list(
+                deepseek_result.get("patch_steps", [])
+            ),
+            "expected_file_hashes": dict(
+                deepseek_result.get("expected_file_hashes", {})
+            ),
+            "files_to_modify": list(
+                deepseek_result.get("files_to_modify", [])
+            ),
+            "model_response": _redact(model_response),
+            "transport": _redact(
+                deepseek_result.get("transport", {})
+            ),
+            "evidence": _redact(
+                deepseek_result.get("evidence", {})
+            ),
+            "approval_required": True,
+            "can_apply_now": False,
+            "file_write_blocked": True,
+            "real_execution_blocked": True,
+            "external_api_used": bool(
+                deepseek_result.get("external_api_used")
+            ),
+            "local_first": False,
+            "free_tiers_exhausted": True,
+            "paid_escalation_approved": True,
+            "maximum_cost_usd": deepseek_result.get(
+                "maximum_cost_usd", 0.001
+            ),
+            "automatic_purchase_allowed": False,
+            "automatic_upgrade_allowed": False,
+        }
+        task["next_safe_action"] = (
+            "Direct DeepSeek produced a validated paid safe patch preview. "
+            "No file was changed. Review the patch and approve apply separately."
+        )
+        _touch(task, "awaiting_approval", "draft_patch")
+        return
+
+
+    codewhale_escalation = task.get("codewhale_escalation", {})
+    if (
+        targets
+        and isinstance(codewhale_escalation, dict)
+        and codewhale_escalation.get("approved") is True
+        and codewhale_escalation.get("consumed") is not True
+    ):
+        task["active_engine"] = "whale"
+        task["active_model"] = "configured_codewhale_model"
+        task["next_safe_action"] = (
+            "CodeWhale manual one-shot approval is being revalidated. "
+            "The CLI will run without --auto or --continue and no file may change."
+        )
+        codewhale_result = execute_codewhale_task_bridge(
+            task_id=task["task_id"],
+            repository_root=task.get("repository_root") or str(Path.cwd()),
+            task_summary=task["original_request"],
+            target_files=targets,
+            minimum_context=minimum_context,
+            approval=codewhale_escalation,
+            environ=os.environ,
+        )
+        _record_codewhale_attempt(task, codewhale_result)
+        if codewhale_result.get("process_started"):
+            codewhale_escalation["consumed"] = True
+            codewhale_escalation["state"] = "consumed"
+            codewhale_escalation["consumed_at"] = _now()
+            task["codewhale_escalation"] = codewhale_escalation
+
+    if codewhale_result.get("ok"):
+        model_response = _normalize_dict(
+            codewhale_result.get("model_response", {})
+        )
+        task["provider_cost"] = str(
+            codewhale_result.get("provider_cost")
+            or "unavailable_manual_agent"
+        )
+        task["external_api_used"] = bool(
+            codewhale_result.get("external_api_used")
+        )
+        task["network_access_used"] = bool(
+            codewhale_result.get("external_api_used")
+        )
+        task["selected_files"] = _unique(
+            task.get("selected_files", [])
+            + codewhale_result.get("files_to_modify", [])
+        )
+        task["patch_draft_result"] = {
+            "request_id": str(
+                _normalize_dict(
+                    codewhale_result.get("evidence", {})
+                ).get("evidence_id")
+                or ""
+            ),
+            "mode": "preview",
+            "source": "whale",
+            "runtime_id": "codewhale_cli",
+            "provider_id": str(
+                codewhale_result.get("provider_id") or ""
+            ),
+            "model_id": str(
+                codewhale_result.get("model_id") or ""
+            ),
+            "repository_root": task.get("repository_root", ""),
+            "issue_summary": diagnosis.get("normalized_issue")
+            or task["original_request"],
+            "analysis_summary": model_response.get(
+                "analysis_summary", ""
+            ),
+            "patch_steps": list(
+                codewhale_result.get("patch_steps", [])
+            ),
+            "expected_file_hashes": dict(
+                codewhale_result.get("expected_file_hashes", {})
+            ),
+            "files_to_modify": list(
+                codewhale_result.get("files_to_modify", [])
+            ),
+            "model_response": _redact(model_response),
+            "process": _redact(
+                codewhale_result.get("process", {})
+            ),
+            "evidence": _redact(
+                codewhale_result.get("evidence", {})
+            ),
+            "approval_required": True,
+            "can_apply_now": False,
+            "file_write_blocked": True,
+            "real_execution_blocked": True,
+            "external_api_used": bool(
+                codewhale_result.get("external_api_used")
+            ),
+            "manual_only": True,
+            "auto_mode_used": False,
+            "continue_mode_used": False,
+            "provider_cost": "unavailable_manual_agent",
+        }
+        task["next_safe_action"] = (
+            "CodeWhale manual one-shot produced a validated safe patch preview. "
+            "No file was changed. Review and approve apply separately."
+        )
+        _touch(task, "awaiting_approval", "draft_patch")
+        return
+
+
+    codex_escalation = task.get("codex_escalation", {})
+    if (
+        targets
+        and isinstance(codex_escalation, dict)
+        and codex_escalation.get("approved") is True
+        and codex_escalation.get("consumed") is not True
+    ):
+        task["active_engine"] = "codex"
+        task["active_model"] = "account_default"
+        task["next_safe_action"] = (
+            "Codex emergency one-shot approval is being revalidated. "
+            "The CLI is restricted to read-only sandbox with approval policy never."
+        )
+        codex_result = execute_codex_task_bridge(
+            task_id=task["task_id"],
+            repository_root=task.get("repository_root") or str(Path.cwd()),
+            task_summary=task["original_request"],
+            target_files=targets,
+            minimum_context=minimum_context,
+            approval=codex_escalation,
+            environ=os.environ,
+        )
+        _record_codex_attempt(task, codex_result)
+        if codex_result.get("process_started"):
+            codex_escalation["consumed"] = True
+            codex_escalation["state"] = "consumed"
+            codex_escalation["consumed_at"] = _now()
+            task["codex_escalation"] = codex_escalation
+
+    if codex_result.get("ok"):
+        model_response = _normalize_dict(
+            codex_result.get("model_response", {})
+        )
+        task["provider_cost"] = str(
+            codex_result.get("provider_cost")
+            or "chatgpt_plan_credit_or_unknown_manual_agent"
+        )
+        task["external_api_used"] = bool(
+            codex_result.get("external_api_used")
+        )
+        task["network_access_used"] = bool(
+            codex_result.get("external_api_used")
+        )
+        task["selected_files"] = _unique(
+            task.get("selected_files", [])
+            + codex_result.get("files_to_modify", [])
+        )
+        task["patch_draft_result"] = {
+            "request_id": str(
+                _normalize_dict(
+                    codex_result.get("evidence", {})
+                ).get("evidence_id")
+                or ""
+            ),
+            "mode": "preview",
+            "source": "codex",
+            "runtime_id": "codex_cli",
+            "model_id": "account_default",
+            "repository_root": task.get("repository_root", ""),
+            "issue_summary": diagnosis.get("normalized_issue")
+            or task["original_request"],
+            "analysis_summary": model_response.get(
+                "analysis_summary", ""
+            ),
+            "patch_steps": list(
+                codex_result.get("patch_steps", [])
+            ),
+            "expected_file_hashes": dict(
+                codex_result.get("expected_file_hashes", {})
+            ),
+            "files_to_modify": list(
+                codex_result.get("files_to_modify", [])
+            ),
+            "model_response": _redact(model_response),
+            "process": _redact(
+                codex_result.get("process", {})
+            ),
+            "evidence": _redact(
+                codex_result.get("evidence", {})
+            ),
+            "approval_required": True,
+            "can_apply_now": False,
+            "file_write_blocked": True,
+            "real_execution_blocked": True,
+            "external_api_used": bool(
+                codex_result.get("external_api_used")
+            ),
+            "manual_only": True,
+            "emergency_only": True,
+            "sandbox_mode": "read-only",
+            "approval_policy": "never",
+            "dangerous_bypass_used": False,
+            "provider_cost": (
+                "chatgpt_plan_credit_or_unknown_manual_agent"
+            ),
+        }
+        task["next_safe_action"] = (
+            "Codex emergency read-only run produced a validated safe patch preview. "
+            "No file was changed. Review and approve apply separately."
+        )
+        _touch(task, "awaiting_approval", "draft_patch")
+        return
+
+    task["active_engine"] = "deterministic_local_tools"
+    task["active_model"] = "-"
     draft = build_safe_patch_draft(
         issue_summary=diagnosis.get("normalized_issue") or task["original_request"],
         root_cause_hypotheses=diagnosis.get("root_cause_hypotheses", []),
@@ -1146,8 +2163,129 @@ def _advance_patch(task: Dict[str, Any]) -> None:
         max_patch_files=4,
         max_hunks_per_file=3,
     )
+    if local_result:
+        draft["local_worker_fallback"] = {
+            "state": str(local_result.get("state") or "failed"),
+            "error": str(local_result.get("error") or ""),
+            "evidence": _redact(local_result.get("evidence", {})),
+        }
+    if gemini_result:
+        draft["free_gemini_fallback"] = {
+            "state": str(gemini_result.get("state") or "skipped"),
+            "error": str(gemini_result.get("error") or ""),
+            "transport_called": bool(gemini_result.get("transport_called")),
+            "gate": _redact(gemini_result.get("gate", {})),
+            "evidence": _redact(gemini_result.get("evidence", {})),
+        }
+    if free_cloud_result:
+        draft["free_cloud_fallback"] = {
+            "state": str(free_cloud_result.get("state") or "skipped"),
+            "error": str(free_cloud_result.get("error") or ""),
+            "models_attempted": _redact(
+                free_cloud_result.get("model_attempts", [])
+            ),
+            "external_api_used": bool(
+                free_cloud_result.get("external_api_used")
+            ),
+            "external_service_deferred": bool(
+                free_cloud_result.get("external_service_deferred")
+            ),
+            "deferred_retry": _redact(
+                free_cloud_result.get("deferred_retry", {})
+            ),
+            "gate": _redact(free_cloud_result.get("gate", {})),
+            "evidence": _redact(
+                free_cloud_result.get("evidence", {})
+            ),
+        }
+    if codex_result:
+        draft["codex_fallback"] = {
+            "state": str(
+                codex_result.get("state") or "skipped"
+            ),
+            "blockers": _redact(
+                codex_result.get("blockers", [])
+            ),
+            "process": _redact(
+                codex_result.get("process", {})
+            ),
+            "evidence": _redact(
+                codex_result.get("evidence", {})
+            ),
+            "external_api_used": bool(
+                codex_result.get("external_api_used")
+            ),
+            "manual_only": True,
+            "emergency_only": True,
+            "sandbox_mode": "read-only",
+            "approval_policy": "never",
+            "dangerous_bypass_used": False,
+            "provider_cost": (
+                "chatgpt_plan_credit_or_unknown_manual_agent"
+            ),
+        }
+    if codewhale_result:
+        draft["codewhale_fallback"] = {
+            "state": str(
+                codewhale_result.get("state") or "skipped"
+            ),
+            "blockers": _redact(
+                codewhale_result.get("blockers", [])
+            ),
+            "process": _redact(
+                codewhale_result.get("process", {})
+            ),
+            "evidence": _redact(
+                codewhale_result.get("evidence", {})
+            ),
+            "external_api_used": bool(
+                codewhale_result.get("external_api_used")
+            ),
+            "manual_only": True,
+            "auto_mode_used": False,
+            "provider_cost": "unavailable_manual_agent",
+        }
+    if deepseek_result:
+        draft["direct_deepseek_fallback"] = {
+            "state": str(
+                deepseek_result.get("state") or "skipped"
+            ),
+            "blockers": _redact(
+                deepseek_result.get("blockers", [])
+            ),
+            "transport": _redact(
+                deepseek_result.get("transport", {})
+            ),
+            "evidence": _redact(
+                deepseek_result.get("evidence", {})
+            ),
+            "external_api_used": bool(
+                deepseek_result.get("external_api_used")
+            ),
+            "provider_cost": str(
+                deepseek_result.get("provider_cost")
+                if deepseek_result.get("provider_cost") is not None
+                else "unavailable"
+            ),
+        }
+    if (
+        local_result
+        or gemini_result
+        or free_cloud_result
+        or deepseek_result
+        or codewhale_result
+        or codex_result
+    ):
+        task["next_safe_action"] = (
+            "Ollama, izinli Gemini, OpenRouter ücretsiz yolları, varsa "
+            "task-scoped Direct DeepSeek, manuel CodeWhale ve acil durum "
+            "Codex denemesi güvenli bir yama üretemedi; deterministik güvenli "
+            "önizlemeye dönüldü. "
+            "Dosya değiştirilmedi."
+        )
+    else:
+        task["next_safe_action"] = "Review patch draft and submit exact approval before apply preparation."
     task["patch_draft_result"] = draft
-    task["next_safe_action"] = "Review patch draft and submit exact approval before apply preparation."
     _touch(task, "awaiting_approval", "draft_patch")
 
 
@@ -1271,6 +2409,392 @@ def _execute_verification(task: Dict[str, Any]) -> None:
     else:
         task["next_safe_action"] = "Task verified; no recovery needed."
         _touch(task, "completed", "execute_verification")
+
+
+
+def request_luxcode_deepseek_escalation(
+    task_id: str,
+    maximum_cost_usd: float = 0.001,
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {
+            "task_id": task_id,
+            "found": False,
+            "safe_response": True,
+            **SAFE_INVARIANTS,
+        }
+    if task["current_state"] in EXECUTION_BLOCKED_STATES:
+        return _summary(task)
+    if "draft_patch" in task.get("completed_steps", []):
+        task["next_safe_action"] = (
+            "DeepSeek paid escalation must be requested before patch drafting."
+        )
+        return _persist_and_summarize(
+            task,
+            event_type="deepseek_escalation_request_rejected",
+            previous_state=task["current_state"],
+        )
+    try:
+        bounded_cost = max(0.0, min(float(maximum_cost_usd), 0.001))
+    except (TypeError, ValueError):
+        bounded_cost = 0.001
+    package = build_direct_deepseek_task_approval(
+        task_id=task_id,
+        repository_root=task.get("repository_root") or str(Path.cwd()),
+        target_files=task.get("requested_files")
+        or task.get("selected_files", []),
+        maximum_cost_usd=bounded_cost,
+        model_id=DIRECT_DEEPSEEK_MODEL_ID,
+    )
+    task["deepseek_escalation"] = {
+        **package,
+        "state": "approval_required",
+        "approved": False,
+        "consumed": False,
+        "confirmation_text": "",
+        "requested_at": _now(),
+        "approved_at": "",
+    }
+    task["next_safe_action"] = (
+        "Direct DeepSeek is paid. Review the task-scoped approval digest, "
+        f"maximum cost ${bounded_cost:.6f}, and submit the exact confirmation "
+        f"text: {DEEPSEEK_EXACT_APPROVAL_TEXT}"
+    )
+    return _persist_and_summarize(
+        task,
+        event_type="deepseek_escalation_requested",
+        previous_state=task["current_state"],
+    )
+
+
+def approve_luxcode_deepseek_escalation(
+    task_id: str,
+    approval_digest: str,
+    confirmation_text: str,
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {
+            "task_id": task_id,
+            "found": False,
+            "safe_response": True,
+            **SAFE_INVARIANTS,
+        }
+    if task["current_state"] in EXECUTION_BLOCKED_STATES:
+        return _summary(task)
+    escalation = task.get("deepseek_escalation", {})
+    if not isinstance(escalation, dict):
+        escalation = {}
+    expected = build_direct_deepseek_task_approval(
+        task_id=task_id,
+        repository_root=task.get("repository_root") or str(Path.cwd()),
+        target_files=task.get("requested_files")
+        or task.get("selected_files", []),
+        maximum_cost_usd=escalation.get("maximum_cost_usd", 0.001),
+        model_id=str(
+            escalation.get("model_id") or DIRECT_DEEPSEEK_MODEL_ID
+        ),
+    )
+    blockers = []
+    if str(approval_digest or "") != expected["approval_digest"]:
+        blockers.append("approval_digest_mismatch")
+    if str(confirmation_text or "") != DEEPSEEK_EXACT_APPROVAL_TEXT:
+        blockers.append("approval_text_mismatch")
+    if escalation.get("state") != "approval_required":
+        blockers.append("approval_request_missing")
+    if blockers:
+        escalation.update(
+            {
+                "state": "approval_rejected",
+                "approved": False,
+                "approval_blockers": blockers,
+            }
+        )
+        task["deepseek_escalation"] = escalation
+        task["next_safe_action"] = (
+            "Paid DeepSeek approval was rejected; no external request was made."
+        )
+        return _persist_and_summarize(
+            task,
+            event_type="deepseek_escalation_approval_rejected",
+            previous_state=task["current_state"],
+        )
+
+    escalation.update(
+        {
+            **expected,
+            "state": "approved_for_one_request",
+            "approved": True,
+            "consumed": False,
+            "confirmation_text": DEEPSEEK_EXACT_APPROVAL_TEXT,
+            "approved_at": _now(),
+            "approval_blockers": [],
+        }
+    )
+    task["deepseek_escalation"] = escalation
+    task["user_requires_free_only"] = False
+    task["next_safe_action"] = (
+        "One task-scoped Direct DeepSeek request is approved. "
+        "Advance patch drafting to use it only after free tiers fail."
+    )
+    return _persist_and_summarize(
+        task,
+        event_type="deepseek_escalation_approved",
+        previous_state=task["current_state"],
+    )
+
+
+
+
+def request_luxcode_codewhale_escalation(
+    task_id: str,
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {
+            "task_id": task_id,
+            "found": False,
+            "safe_response": True,
+            **SAFE_INVARIANTS,
+        }
+    if task["current_state"] in EXECUTION_BLOCKED_STATES:
+        return _summary(task)
+    if "draft_patch" in task.get("completed_steps", []):
+        task["next_safe_action"] = (
+            "CodeWhale manual escalation must be requested before patch drafting."
+        )
+        return _persist_and_summarize(
+            task,
+            event_type="codewhale_escalation_request_rejected",
+            previous_state=task["current_state"],
+        )
+    package = build_codewhale_task_approval(
+        task_id=task_id,
+        repository_root=task.get("repository_root") or str(Path.cwd()),
+        target_files=task.get("requested_files")
+        or task.get("selected_files", []),
+    )
+    task["codewhale_escalation"] = {
+        **package,
+        "state": "approval_required",
+        "approved": False,
+        "consumed": False,
+        "confirmation_text": "",
+        "requested_at": _now(),
+        "approved_at": "",
+    }
+    task["next_safe_action"] = (
+        "CodeWhale is configured with an external model and CLI cost telemetry "
+        "is not bounded by LuxCode. Review the task-scoped digest and submit "
+        f"the exact confirmation text: {CODEWHALE_EXACT_APPROVAL_TEXT}"
+    )
+    return _persist_and_summarize(
+        task,
+        event_type="codewhale_escalation_requested",
+        previous_state=task["current_state"],
+    )
+
+
+def approve_luxcode_codewhale_escalation(
+    task_id: str,
+    approval_digest: str,
+    confirmation_text: str,
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {
+            "task_id": task_id,
+            "found": False,
+            "safe_response": True,
+            **SAFE_INVARIANTS,
+        }
+    if task["current_state"] in EXECUTION_BLOCKED_STATES:
+        return _summary(task)
+    escalation = task.get("codewhale_escalation", {})
+    if not isinstance(escalation, dict):
+        escalation = {}
+    expected = build_codewhale_task_approval(
+        task_id=task_id,
+        repository_root=task.get("repository_root") or str(Path.cwd()),
+        target_files=task.get("requested_files")
+        or task.get("selected_files", []),
+    )
+    blockers = []
+    if str(approval_digest or "") != expected["approval_digest"]:
+        blockers.append("approval_digest_mismatch")
+    if str(confirmation_text or "") != CODEWHALE_EXACT_APPROVAL_TEXT:
+        blockers.append("approval_text_mismatch")
+    if escalation.get("state") != "approval_required":
+        blockers.append("approval_request_missing")
+    if blockers:
+        escalation.update(
+            {
+                "state": "approval_rejected",
+                "approved": False,
+                "approval_blockers": blockers,
+            }
+        )
+        task["codewhale_escalation"] = escalation
+        task["next_safe_action"] = (
+            "CodeWhale manual approval was rejected; no CLI process started."
+        )
+        return _persist_and_summarize(
+            task,
+            event_type="codewhale_escalation_approval_rejected",
+            previous_state=task["current_state"],
+        )
+
+    escalation.update(
+        {
+            **expected,
+            "state": "approved_for_one_request",
+            "approved": True,
+            "consumed": False,
+            "confirmation_text": CODEWHALE_EXACT_APPROVAL_TEXT,
+            "approved_at": _now(),
+            "approval_blockers": [],
+        }
+    )
+    task["codewhale_escalation"] = escalation
+    task["user_requires_free_only"] = False
+    task["next_safe_action"] = (
+        "One manual CodeWhale plain-exec request is approved. "
+        "It may run only after earlier tiers fail and will never use --auto."
+    )
+    return _persist_and_summarize(
+        task,
+        event_type="codewhale_escalation_approved",
+        previous_state=task["current_state"],
+    )
+
+
+
+
+def request_luxcode_codex_escalation(
+    task_id: str,
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {
+            "task_id": task_id,
+            "found": False,
+            "safe_response": True,
+            **SAFE_INVARIANTS,
+        }
+    if task["current_state"] in EXECUTION_BLOCKED_STATES:
+        return _summary(task)
+    if "draft_patch" in task.get("completed_steps", []):
+        task["next_safe_action"] = (
+            "Codex emergency escalation must be requested before patch drafting."
+        )
+        return _persist_and_summarize(
+            task,
+            event_type="codex_escalation_request_rejected",
+            previous_state=task["current_state"],
+        )
+
+    package = build_codex_task_approval(
+        task_id=task_id,
+        repository_root=task.get("repository_root") or str(Path.cwd()),
+        target_files=task.get("requested_files")
+        or task.get("selected_files", []),
+    )
+    task["codex_escalation"] = {
+        **package,
+        "state": "approval_required",
+        "approved": False,
+        "consumed": False,
+        "confirmation_text": "",
+        "requested_at": _now(),
+        "approved_at": "",
+    }
+    task["next_safe_action"] = (
+        "Codex may consume ChatGPT plan credits and is emergency-only. "
+        "Review the task-scoped digest and submit the exact confirmation text: "
+        f"{CODEX_EXACT_APPROVAL_TEXT}"
+    )
+    return _persist_and_summarize(
+        task,
+        event_type="codex_escalation_requested",
+        previous_state=task["current_state"],
+    )
+
+
+def approve_luxcode_codex_escalation(
+    task_id: str,
+    approval_digest: str,
+    confirmation_text: str,
+) -> Dict[str, Any]:
+    task = _TASKS.get(task_id)
+    if not task:
+        return {
+            "task_id": task_id,
+            "found": False,
+            "safe_response": True,
+            **SAFE_INVARIANTS,
+        }
+    if task["current_state"] in EXECUTION_BLOCKED_STATES:
+        return _summary(task)
+
+    escalation = task.get("codex_escalation", {})
+    if not isinstance(escalation, dict):
+        escalation = {}
+    expected = build_codex_task_approval(
+        task_id=task_id,
+        repository_root=task.get("repository_root") or str(Path.cwd()),
+        target_files=task.get("requested_files")
+        or task.get("selected_files", []),
+    )
+    blockers = []
+    if str(approval_digest or "") != expected["approval_digest"]:
+        blockers.append("approval_digest_mismatch")
+    if str(confirmation_text or "") != CODEX_EXACT_APPROVAL_TEXT:
+        blockers.append("approval_text_mismatch")
+    if escalation.get("state") != "approval_required":
+        blockers.append("approval_request_missing")
+
+    if blockers:
+        escalation.update(
+            {
+                "state": "approval_rejected",
+                "approved": False,
+                "approval_blockers": blockers,
+            }
+        )
+        task["codex_escalation"] = escalation
+        task["next_safe_action"] = (
+            "Codex emergency approval was rejected; no CLI process started."
+        )
+        return _persist_and_summarize(
+            task,
+            event_type="codex_escalation_approval_rejected",
+            previous_state=task["current_state"],
+        )
+
+    escalation.update(
+        {
+            **expected,
+            "state": "approved_for_one_request",
+            "approved": True,
+            "consumed": False,
+            "confirmation_text": CODEX_EXACT_APPROVAL_TEXT,
+            "approved_at": _now(),
+            "approval_blockers": [],
+        }
+    )
+    task["codex_escalation"] = escalation
+    task["user_requires_free_only"] = False
+    task["next_safe_action"] = (
+        "One emergency Codex read-only request is approved. "
+        "It may run only after earlier tiers fail; workspace writes and "
+        "dangerous bypass remain forbidden."
+    )
+    return _persist_and_summarize(
+        task,
+        event_type="codex_escalation_approved",
+        previous_state=task["current_state"],
+    )
 
 
 def advance_luxcode_task(

@@ -593,61 +593,6 @@ body.luxdream-mode .light-line { display: block; }
 }
 .menu-item.active { border-color: var(--lux); color: var(--lux); }
 .menu-item.fark { background: #B85C5A; border: none; color: #000; }
-.analytics-panel {
-  width: min(980px, 100%);
-  margin: 0 auto 18px;
-  padding: 16px;
-  border: 1px solid rgba(237,145,7,0.26);
-  background: rgba(4,5,6,0.94);
-}
-.analytics-tabs {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 12px 0 14px;
-}
-.analytics-tab {
-  border: 1px solid rgba(237,145,7,0.28);
-  color: #F0C16A;
-  background: rgba(237,145,7,0.08);
-  padding: 8px 10px;
-  font-size: .72rem;
-}
-.analytics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 10px;
-}
-.analytics-card {
-  border: 1px solid rgba(167,169,172,0.18);
-  padding: 10px;
-  min-height: 74px;
-}
-.analytics-label {
-  color: var(--muted);
-  font-size: .68rem;
-  text-transform: uppercase;
-}
-.analytics-value {
-  color: var(--fg);
-  font-size: 1.05rem;
-  margin-top: 6px;
-}
-.analytics-chain {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
-}
-.analytics-engine {
-  border-left: 3px solid var(--lux);
-  padding: 8px 10px;
-  background: rgba(255,255,255,0.035);
-}
-.analytics-muted {
-  color: var(--muted);
-  font-size: .78rem;
-}
 .tiny-row { display: flex; gap: 8px; margin-top: 8px; }
 .tiny-row .menu-item { flex: 1; font-size: 0.72rem; padding: 8px 6px; }
 .luxta-panel {
@@ -1481,7 +1426,7 @@ body.topics-open .composer-wrap {
   <div class="composer-wrap">
     <div class="composer">
       <div class="input-wrapper">
-        <textarea id="messageInput" rows="1" placeholder="Light your way!"></textarea>
+        <textarea id="messageInput" rows="1" placeholder="LUXVIAI ile konuş..."></textarea>
         <div id="lightLine" class="light-line"></div>
       </div>
 
@@ -1513,12 +1458,6 @@ body.topics-open .composer-wrap {
     </div>
     <div class="tiny-row">
       <div class="menu-item" id="notesBtn">NOTLAR</div>
-    </div>
-    <div class="tiny-row">
-      <div class="menu-item" id="modelSavingsBtn">Model Katkısı ve Tasarruf</div>
-    </div>
-    <div class="tiny-row">
-      <div class="menu-item" id="controlCenterBtn">Unified Control Center</div>
     </div>
   </div>
 
@@ -1722,8 +1661,6 @@ const farkBtn = document.getElementById("farkBtn");
 const summaryBtn = document.getElementById("summaryBtn");
 const memoryBtn = document.getElementById("memoryBtn");
 const notesBtn = document.getElementById("notesBtn");
-const modelSavingsBtn = document.getElementById("modelSavingsBtn");
-const controlCenterBtn = document.getElementById("controlCenterBtn");
 const lightLine = document.getElementById("lightLine");
 const recorderPanel = document.getElementById("recorderPanel");
 const eqCanvas = document.getElementById("eqCanvas");
@@ -1792,6 +1729,25 @@ const CLIENT_STATE_VERSION = "2026-06-04-local-state-safety";
 const DRAFT_MAX_CHARS = 4000;
 const DRAFT_TTL_MS = 6 * 60 * 60 * 1000;
 const COMPLETED_MESSAGE_MAX_CHARS = 24000;
+const DEFAULT_WRITING_SPEED = 1.0;
+const DEFAULT_LUXCODE_WRITING_SPEED = 1.1;
+const WRITING_SPEED_STEPS = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3];
+const ALLOWED_WRITING_SPEEDS = new Set(WRITING_SPEED_STEPS);
+let shouldForceNewSessionForThisLoad = false;
+let normalWritingSpeed = DEFAULT_WRITING_SPEED;
+let luxcodeWritingSpeed = DEFAULT_LUXCODE_WRITING_SPEED;
+
+function normalizeForSpeedText(raw) {
+  return String(raw || "")
+    .toLowerCase()
+    .replace(/,/g, ".")
+    .replace(/[çÇ]/g, "c")
+    .replace(/[ğĞ]/g, "g")
+    .replace(/[ıİ]/g, "i")
+    .replace(/[şŞ]/g, "s")
+    .replace(/[öÖ]/g, "o")
+    .replace(/[üÜ]/g, "u");
+}
 
 function ensureClientStateVersion() {
   try {
@@ -1813,7 +1769,13 @@ try {
 } catch (_) {
   hasActivePageSession = false;
 }
-const userHistory = loadHistory();
+let userHistory = loadHistory();
+if (!hasActivePageSession) {
+  shouldForceNewSessionForThisLoad = true;
+  localStorage.removeItem(HISTORY_KEY);
+  sessionStorage.removeItem(PAGE_ACTIVE_CONVERSATION_KEY);
+  userHistory = { conversations: [], activeId: null };
+}
 let safeClientState = loadSafeClientState();
 if (!hasActivePageSession) {
   safeClientState = { ...safeClientState, activeConversationId: null, draft: null, pending: null, updatedAt: Date.now() };
@@ -1858,7 +1820,7 @@ const textMap = {
     greetDay: "Merhaba",
     greetEvening: "İyi akşamlar",
     greetNight: "İyi geceler",
-    placeholder: "Light your way!",
+    placeholder: "LUXVIAI ile konuş...",
   },
   en: { tagline: "Light your way!", greetMorning: "Good morning", greetDay: "Hello", greetEvening: "Good evening", greetNight: "Good night", placeholder: "Write your message..." },
   de: { tagline: "Erhelle deinen Weg!", greetMorning: "Guten Morgen", greetDay: "Hallo", greetEvening: "Guten Abend", greetNight: "Gute Nacht", placeholder: "Schreibe deine Nachricht..." },
@@ -1979,7 +1941,7 @@ Object.assign(textMap, {
     greetDay: "Merhaba",
     greetEvening: "İyi akşamlar",
     greetNight: "İyi geceler",
-    placeholder: "Light your way!"
+    placeholder: "LUXVIAI ile konuş..."
   },
   ru: {
     tagline: "Освещай свой путь!",
@@ -4041,7 +4003,8 @@ async function sendMessage(customText) {
         location_latitude: hiddenLocationContext ? hiddenLocationContext.latitude : null,
         location_longitude: hiddenLocationContext ? hiddenLocationContext.longitude : null,
         location_timezone: hiddenLocationContext ? hiddenLocationContext.timezone : "",
-        client_signals: collectClientSignals()
+        client_signals: collectClientSignals(),
+        force_new_session: shouldForceNewSessionForThisLoad
       })
     });
     const data = await res.json();
@@ -4052,6 +4015,7 @@ async function sendMessage(customText) {
     }
     appendMessage("ai", response);
     resetTypingSignals();
+    shouldForceNewSessionForThisLoad = false;
   } catch (_) {
     appendMessage("ai", "Baglanti kurulamadı. Sunucu calisiyor mu kontrol et.");
   }
@@ -4095,10 +4059,21 @@ function setResponseLock(locked) {
   sendButton.style.background = locked ? "rgba(155,58,35,.92)" : "rgba(237,145,7,0.9)";
 }
 
-function createPacedWriter(targetEl, speedFactor = 0.9, runId = null) {
+function createPacedWriter(targetEl, speedFactor = DEFAULT_WRITING_SPEED, runId = null) {
   const queue = [];
-  const baseDelay = 50;
-  const delay = Math.max(22, Math.round(baseDelay / Math.max(0.2, speedFactor)));
+  const speedToDelay = (s) => {
+    const normalized = Number((Number(s) || DEFAULT_WRITING_SPEED).toFixed(1));
+    const map = {
+      0.8: 220,
+      0.9: 150,
+      1.0: 100,
+      1.1: 65,
+      1.2: 38,
+      1.3: 18
+    };
+    return map[normalized] || 100;
+  };
+  const delay = Math.max(18, speedToDelay(speedFactor));
   let timer = null;
   let current = "";
   let stopped = false;
@@ -4113,12 +4088,10 @@ function createPacedWriter(targetEl, speedFactor = 0.9, runId = null) {
 
   const runStillActive = () => runId === null || isRunActive(runId);
 
-  const writeQueuedChars = (count) => {
-    let take = Math.min(Math.max(1, count || 1), queue.length);
-    while (take > 0 && queue.length) {
-      current += queue.shift();
-      take -= 1;
-    }
+  const writeOneChar = () => {
+    if (!queue.length) return false;
+    current += queue.shift();
+    return true;
   };
 
   const renderCurrent = () => {
@@ -4139,10 +4112,8 @@ function createPacedWriter(targetEl, speedFactor = 0.9, runId = null) {
       resolveIdle();
       return;
     }
-    const now = Date.now();
-    const elapsed = lastPumpAt ? Math.max(delay, now - lastPumpAt) : delay;
-    lastPumpAt = now;
-    writeQueuedChars(Math.floor(elapsed / delay));
+    lastPumpAt = Date.now();
+    writeOneChar();
     renderCurrent();
     timer = setTimeout(pump, delay);
   };
@@ -4184,7 +4155,7 @@ function createPacedWriter(targetEl, speedFactor = 0.9, runId = null) {
       const elapsed = lastPumpAt ? Math.max(0, now - lastPumpAt) : 0;
       if (elapsed < delay) return;
       lastPumpAt = now;
-      writeQueuedChars(Math.floor(elapsed / delay));
+      writeOneChar();
       renderCurrent();
       if (!queue.length) {
         if (timer) {
@@ -4211,6 +4182,177 @@ function createPacedWriter(targetEl, speedFactor = 0.9, runId = null) {
   };
 }
 
+function parseWritingSpeedCommand(text) {
+  const raw = normalizeForSpeedText(text).trim();
+  const allowed = ALLOWED_WRITING_SPEEDS;
+
+  if (!raw) {
+    return null;
+  }
+
+  const numberCandidates = [];
+  for (const m of raw.matchAll(/([0-9]+(?:[.,][0-9]+)?)/g)) {
+    const v = Number(m[1].replace(",", "."));
+    if (!Number.isFinite(v)) continue;
+    if (allowed.has(v)) numberCandidates.push({ value: v, index: m.index });
+  }
+
+  if (raw.match(/(?:^|\s)\/\s*speed\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)/i)) {
+    const m = raw.match(/(?:^|\s)\/\s*speed\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)/i);
+    const speed = Number(m[1].replace(",", "."));
+    return allowed.has(speed) ? speed : null;
+  }
+
+  if (raw.match(/(?:^|\s)h[iı]z(?:la|l[ıi]g[ıi])?[:=]?\s*([0-9]+(?:[.,][0-9]+)?)/i)) {
+    const m = raw.match(/(?:^|\s)h[iı]z(?:la|l[ıi]g[ıi])?[:=]?\s*([0-9]+(?:[.,][0-9]+)?)/i);
+    const speed = Number(m[1].replace(",", "."));
+    return allowed.has(speed) ? speed : null;
+  }
+
+  const commandDirectionPattern = /\b(h[iı]z[a-zçğıöşü]*|hiz[a-zçğıöşü]*|yazim|yaz[ıi]|yanit|metin|mesaj|speed)\b/i;
+  const transitionPattern = /\b(den|dan|->|=>|to)\s+([0-9]+(?:[.,][0-9]+)?)/i;
+  if (transitionPattern.test(raw) && numberCandidates.length >= 2) {
+    const speed = numberCandidates[numberCandidates.length - 1].value;
+    if (allowed.has(speed)) return speed;
+  }
+  if (numberCandidates.length === 1 && commandDirectionPattern.test(raw)) {
+    const speed = numberCandidates[0].value;
+    if (allowed.has(speed)) return speed;
+  }
+  if (!commandDirectionPattern.test(raw)) {
+    const numLikeCommandPattern = /(?:[0-9]{1,2}[.,][0-9]{1,2})/;
+    if (numLikeCommandPattern.test(raw) && !/\b(hizli|hiz|yavas|yavasla|tez|fast|slow|arttir|dusur)\b/i.test(raw)) {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function detectRelativeWritingSpeedCommand(text) {
+  const raw = normalizeForSpeedText(text).trim();
+  if (!raw) return null;
+  const hasSpeedSubject = /\b(hiz|hizi|hizim|hizinda|hizini|yazim\s+hizi|yazma\s+hizin|cevap\s+hizi|yanit\s+hizi)\b/.test(raw);
+  const hasWriteIntent = /\b(yaz|yazsin|yaziyorum|cevap|yanit|metin|paragraf|olsun|yap|ayarla)\b/.test(raw);
+  const contentLike = /\b(gibi|kelime|kelimeler|mod|mode|kavram|ornek|örnek)\b/.test(raw) || /\byazilmiyor\b/.test(raw);
+  const slow = /\b(yavas|yavasla|yavaslat|daha\s+yavas|daha\s+az|slow|dusur|azalt)\b/.test(raw);
+  const fast = /\b(hizli|hizlan|hizlandir|daha\s+hizli|fast|arttir|yukari)\b/.test(raw);
+  if (contentLike && !hasSpeedSubject) return null;
+  if (slow && (hasSpeedSubject || hasWriteIntent)) return "down";
+  if (fast && (hasSpeedSubject || hasWriteIntent)) return "up";
+  return null;
+}
+
+function currentWritingSpeedForScope(targetLuxcode) {
+  return targetLuxcode ? luxcodeWritingSpeed : normalWritingSpeed;
+}
+
+function stepWritingSpeed(current, direction) {
+  const normalized = Number((Number(current) || DEFAULT_WRITING_SPEED).toFixed(1));
+  const currentIndex = Math.max(0, WRITING_SPEED_STEPS.indexOf(normalized));
+  const nextIndex = direction === "up"
+    ? Math.min(WRITING_SPEED_STEPS.length - 1, currentIndex + 1)
+    : Math.max(0, currentIndex - 1);
+  return WRITING_SPEED_STEPS[nextIndex];
+}
+
+function buildWritingSpeedCommand(text, scopeMode = null) {
+  const targetLuxcode = scopeMode === "luxcode" || isLuxcodeSpeedScope(text);
+  const explicitSpeed = parseWritingSpeedCommand(text);
+  const direction = explicitSpeed === null ? detectRelativeWritingSpeedCommand(text) : null;
+  if (explicitSpeed === null && !direction) return null;
+  const speed = explicitSpeed !== null
+    ? explicitSpeed
+    : stepWritingSpeed(currentWritingSpeedForScope(targetLuxcode), direction);
+  return {
+    speed,
+    targetLuxcode,
+    cleanedText: sanitizeWritingSpeedCommandFromMessage(text)
+  };
+}
+
+function sanitizeWritingSpeedCommandFromMessage(text) {
+  let cleaned = String(text || "");
+  const normalized = normalizeForSpeedText(cleaned);
+  const commandOnlyPattern = new RegExp(
+    "^\\s*(?:(?:luxcode|normal|sohbet|chat|kod|code)\\s+(?:modunda\\s+)?)?" +
+    "(?:" +
+      "\\/\\s*speed\\s*[:=]?\\s*[0-9]+(?:[.,][0-9]+)?" +
+      "|(?:hiz|hizi|hizinda|yazim\\s+hizi)\\s*[:=]?\\s*[0-9]+(?:[.,][0-9]+)?" +
+      "|[0-9]+(?:[.,][0-9]+)?\\s*(?:hiz|hizi|hizinda|hizinda|hizindeki)" +
+      "|[0-9]+(?:[.,][0-9]+)?\\s*(?:den|dan|->|=>|to)\\s*[0-9]+(?:[.,][0-9]+)?" +
+    ")" +
+    "\\s*(?:hizinda|hizda|hizde|hizli|hiz|yaz|yap|ayarla|olsun)?\\s*$",
+    "i"
+  );
+  if (commandOnlyPattern.test(normalized)) return "";
+
+  const spans = [];
+  const addSpan = (m) => {
+    if (!m) return;
+    spans.push({ start: m.index, end: m.index + m[0].length });
+  };
+  const addAll = (re) => {
+    const normalizedPattern = new RegExp(re, re.flags.includes("g") ? re.flags : `${re.flags}g`);
+    let match;
+    while ((match = normalizedPattern.exec(normalized)) !== null) {
+      addSpan(match);
+    }
+  };
+
+  addAll(/(?:^|\s)\/\s*speed\s*[:=]?\s*[0-9]+(?:[.,][0-9]+)?/ig);
+  addAll(/\b[0-9]+(?:[.,][0-9]+)?\s*(?:h[iı]z|hiz)(?:indeki|inde|indi|inda|ina|ini|ind|i)?\s*(?:yaz|yap|ayarla)?/ig);
+  addAll(/(?:^|\s)h[iı]z(?:la|l[ıi]g[ıi])?[:=]?\s*[0-9]+(?:[.,][0-9]+)?/ig);
+  addAll(/\b(?:[0-9]+(?:[.,][0-9]+)?)\s*(?:(?:den|dan|->|=>|to)\s*)?(?:h[iı]z|hiz)(?:indeki|inde|indi|inda|ina|ini|ind|i)?\s*(?:yaz|yap|ayarla)?/ig);
+  addAll(/\b(?:daha\s+)?(?:yavas|yavasla|yavaslat|yavaslasin|daha\s+az|yavaş|yavaşla|daha\s+yavaş)\b[^.!?\n]{0,80}/ig);
+  addAll(/\b(?:hizli|hızli|tez|hizlan|hizla|hızla|yukarı|yukari|arttir|arttır|hızlandır|hizlandir)\b[^.!?\n]{0,80}/ig);
+
+  if (!spans.length) return cleaned.trim();
+
+  const merged = [];
+  for (const s of spans.sort((a, b) => a.start - b.start)) {
+    if (!merged.length || s.start > merged[merged.length - 1].end) merged.push({ ...s });
+    else merged[merged.length - 1].end = Math.max(merged[merged.length - 1].end, s.end);
+  }
+
+  const chars = cleaned.split("");
+  for (const s of merged) {
+    for (let i = Math.max(0, s.start); i < Math.min(chars.length, s.end); i += 1) {
+      chars[i] = " ";
+    }
+  }
+  cleaned = chars.join("");
+
+  cleaned = cleaned.replace(/\s{2,}/g, " ").trim();
+  const leftover = normalizeForSpeedText(cleaned)
+    .replace(/\bluxcode\b/g, " ")
+    .replace(/\b(normal|sohbet|modunda|mod|mode|hiz|hizi|hizinda|yaz|yap|ayarla|olsun|lutfen|lütfen|nda|da)\b/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  if (!leftover) return "";
+  return cleaned;
+}
+
+function isLuxcodeSpeedScope(text) {
+  const raw = String(text || "").toLowerCase();
+  return /\bluxcode\b/.test(raw) || /\bfirst[-_\s]?usable\b/.test(raw) || /\bkod\b/.test(raw) || /\bcode\b/.test(raw);
+}
+
+function resolveWritingSpeedForMessage(message, scopeMode = null) {
+  const targetLuxcode = scopeMode === "luxcode" || isLuxcodeSpeedScope(message);
+  return currentWritingSpeedForScope(targetLuxcode);
+}
+
+function applyWritingSpeedCommand(command) {
+  if (!command) return null;
+  if (command.targetLuxcode) {
+    luxcodeWritingSpeed = command.speed;
+    return luxcodeWritingSpeed;
+  }
+  normalWritingSpeed = command.speed;
+  return normalWritingSpeed;
+}
+
 function catchUpActiveWriter() {
   if (
     activeGeneration &&
@@ -4224,6 +4366,69 @@ function catchUpActiveWriter() {
 document.addEventListener("visibilitychange", catchUpActiveWriter);
 window.addEventListener("focus", catchUpActiveWriter);
 window.addEventListener("pageshow", catchUpActiveWriter);
+
+const DEV_AUTO_RELOAD_ENABLED = true;
+const DEV_AUTO_RELOAD_INTERVAL_MS = 2000;
+let luxviaiDevBuildVersion = "";
+let luxviaiDevReloadPending = false;
+let luxviaiDevReloadNoticeShown = false;
+window.__luxviaiDevAutoReload = {
+  enabled: DEV_AUTO_RELOAD_ENABLED,
+  intervalMs: DEV_AUTO_RELOAD_INTERVAL_MS,
+  version: "",
+  pending: false,
+  lastCheckedAt: ""
+};
+document.documentElement.dataset.luxviaiDevAutoReload = DEV_AUTO_RELOAD_ENABLED ? "enabled" : "disabled";
+
+function canReloadForDevUpdate() {
+  return !aiResponding && !activeGeneration && !activeFetchController && !wsPending;
+}
+
+async function pollLuxviaiDevVersion() {
+  if (!DEV_AUTO_RELOAD_ENABLED) return;
+  try {
+    const response = await fetch(`/luxviai-dev/version?t=${Date.now()}`, {
+      cache: "no-store",
+      headers: { "Accept": "application/json" }
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    const version = String(data.version || "");
+    if (!version) return;
+    window.__luxviaiDevAutoReload.lastCheckedAt = new Date().toISOString();
+    document.documentElement.dataset.luxviaiDevLastCheckedAt = window.__luxviaiDevAutoReload.lastCheckedAt;
+    if (!luxviaiDevBuildVersion) {
+      luxviaiDevBuildVersion = version;
+      window.__luxviaiDevAutoReload.version = version;
+      document.documentElement.dataset.luxviaiDevVersion = version;
+      return;
+    }
+    if (version === luxviaiDevBuildVersion && !luxviaiDevReloadPending) return;
+    if (version !== luxviaiDevBuildVersion) {
+      luxviaiDevBuildVersion = version;
+      luxviaiDevReloadPending = true;
+      window.__luxviaiDevAutoReload.version = version;
+      window.__luxviaiDevAutoReload.pending = true;
+      document.documentElement.dataset.luxviaiDevVersion = version;
+      document.documentElement.dataset.luxviaiDevReloadPending = "true";
+    }
+    if (!luxviaiDevReloadPending) return;
+    if (canReloadForDevUpdate()) {
+      window.location.reload();
+      return;
+    }
+    if (!luxviaiDevReloadNoticeShown) {
+      luxviaiDevReloadNoticeShown = true;
+      showMiniToast("Yeni arayüz hazır; cevap bitince otomatik yenilenecek.");
+    }
+  } catch (_) {}
+}
+
+setInterval(pollLuxviaiDevVersion, DEV_AUTO_RELOAD_INTERVAL_MS);
+window.addEventListener("focus", pollLuxviaiDevVersion);
+window.addEventListener("pageshow", pollLuxviaiDevVersion);
+setTimeout(pollLuxviaiDevVersion, 400);
 
 function isRunStopped(runId) {
   return runId === null || runId === undefined || stoppedRunIds.has(runId);
@@ -4574,9 +4779,19 @@ async function continueInterruptedResponse(targetAiEl) {
   markRunStarted(continueRunId);
   stopStreamRequested = false;
   setResponseLock(true);
-  const writer = createPacedWriter(targetAiEl, 0.9, continueRunId);
+  const continueSpeed = typeof state.writingSpeed === "number" && state.writingSpeed > 0
+    ? state.writingSpeed
+    : resolveWritingSpeedForMessage("", state.mode);
+  const writer = createPacedWriter(targetAiEl, continueSpeed, continueRunId);
   targetAiEl.dataset.runId = String(continueRunId);
-  activeGeneration = { runId: continueRunId, conversationId, messageEl: targetAiEl, writer, kind: "continue" };
+  activeGeneration = {
+    runId: continueRunId,
+    conversationId,
+    messageEl: targetAiEl,
+    writer,
+    kind: "continue",
+    writingSpeed: continueSpeed
+  };
   setPendingState({ conversationId, runId: continueRunId, kind: "continue" });
   writer.setExact(cleanBaseText);
   streamAbort = (options = {}) => {
@@ -4813,6 +5028,20 @@ async function sendMessageLive(customText) {
   if (aiResponding) return;
   const text = (customText || messageInput.value).trim();
   if (!text) return;
+  const speedCommand = buildWritingSpeedCommand(text, currentMode);
+  if (speedCommand) {
+    const cleanedText = speedCommand.cleanedText;
+    const targetSpeed = applyWritingSpeedCommand(speedCommand);
+    const speedLabel = speedCommand.targetLuxcode ? "LUXCODE" : "Normal sohbet";
+    showMiniToast(`${speedLabel} yazım hızı ${targetSpeed.toFixed(1)} olarak ayarlandı.`);
+    if (!cleanedText) {
+      messageInput.value = "";
+      clearDraftState();
+      return;
+    }
+    messageInput.value = cleanedText;
+    if (!customText) clearDraftState();
+  }
   const localSummaryCommand = parseConversationSummaryCommand(text);
   if (localSummaryCommand) {
     handleLocalConversationSummaryCommand(text, localSummaryCommand.limit);
@@ -4834,13 +5063,15 @@ async function sendMessageLive(customText) {
     clearInterruptedState(true);
     hardCancelActiveTransport(null, true);
   }
+  const effectiveText = speedCommand ? speedCommand.cleanedText : text;
+  const responseWriteSpeed = resolveWritingSpeedForMessage(effectiveText || text, currentMode);
   const runId = ++responseRunId;
   markRunStarted(runId);
 
   stopStreamRequested = false;
   setResponseLock(true);
   clearInterruptedState(true);
-  appendMessage("user", text);
+  appendMessage("user", effectiveText);
   messageInput.value = "";
   clearDraftState();
   triggerDreamLight();
@@ -4848,12 +5079,12 @@ async function sendMessageLive(customText) {
 
   const aiDiv = appendMessage("ai", "", false);
   activeAiDiv = aiDiv;
-  const writer = createPacedWriter(aiDiv, 0.9, runId);
+  const writer = createPacedWriter(aiDiv, responseWriteSpeed, runId);
   aiDiv.dataset.runId = String(runId);
-  activeGeneration = { runId, conversationId, messageEl: aiDiv, writer, kind: "response" };
+  activeGeneration = { runId, conversationId, messageEl: aiDiv, writer, kind: "response", writingSpeed: responseWriteSpeed };
   setPendingState({ conversationId, runId, kind: "response" });
   const payload = {
-    message: text,
+    message: effectiveText,
     user_id: userId,
     mode: currentMode,
     ghost_hesitation: false,
@@ -4884,10 +5115,11 @@ async function sendMessageLive(customText) {
         interruptedState = {
           conversationId,
           mode: currentMode,
-          userText: text,
+          userText: effectiveText,
           partialText: safePartialText || aiDiv.innerText || "",
           generatedAnswerBuffer,
-          messageEl: aiDiv
+          messageEl: aiDiv,
+          writingSpeed: responseWriteSpeed
         };
       } else {
         interruptedState = null;
@@ -5083,156 +5315,6 @@ async function openNotesPopup() {
 }
 notesBtn.onclick = () => { closeMenu(); setTimeout(() => openNotesPopup(), 30); };
 bindFastTap(notesBtn, () => { closeMenu(); setTimeout(() => openNotesPopup(), 30); });
-
-function formatAnalyticsPercent(value) {
-  if (value === null || value === undefined || value === "") return "Yüzde hesaplanamadı";
-  return `${Number(value).toFixed(2)}%`;
-}
-
-function analyticsCard(label, value) {
-  return `<div class="analytics-card"><div class="analytics-label">${escapeHtml(label)}</div><div class="analytics-value">${escapeHtml(value)}</div></div>`;
-}
-
-async function openModelSavingsPanel() {
-  closeMenu();
-  const panelId = "modelSavingsPanel";
-  const previous = document.getElementById(panelId);
-  if (previous) previous.remove();
-  const panel = document.createElement("div");
-  panel.id = panelId;
-  panel.className = "analytics-panel";
-  panel.innerHTML = `<div class="analytics-value">Model Katkısı ve Tasarruf</div><div class="analytics-muted">Yükleniyor...</div>`;
-  chatBox.prepend(panel);
-  try {
-    const [summary, engines, savings] = await Promise.all([
-      fetchJson("/luxcode-control/analytics/summary"),
-      fetchJson("/luxcode-control/analytics/engines"),
-      fetchJson("/luxcode-control/analytics/savings")
-    ]);
-    const engineRows = (engines.engines || []).map(row => `
-      <div class="analytics-engine">
-        <strong>${escapeHtml(row.engine || "")}</strong>
-        <div class="analytics-muted">
-          ${escapeHtml(row.model || "model yok")} · katkı ${escapeHtml(formatAnalyticsPercent(row.average_contribution_percent))}
-          · validation ${escapeHtml(formatAnalyticsPercent(row.validation_success_percent))}
-        </div>
-      </div>
-    `).join("") || `<div class="analytics-muted">Yüzde hesaplanamadı — yeterli ölçülebilir görev birimi yok</div>`;
-    panel.innerHTML = `
-      <div class="analytics-value">Model Katkısı ve Tasarruf</div>
-      <div class="analytics-tabs">
-        <div class="analytics-tab">Canlı Görev Akışı</div>
-        <div class="analytics-tab">Motor Katkıları</div>
-        <div class="analytics-tab">Devir Haritası</div>
-        <div class="analytics-tab">Tasarruf Özeti</div>
-        <div class="analytics-tab">Geçmiş Performans</div>
-        <div class="analytics-tab">Hesaplama Kanıtları</div>
-      </div>
-      <div class="analytics-grid">
-        ${analyticsCard("Toplam görev", String(summary.total_session_count || 0))}
-        ${analyticsCard("Ücretsiz tamamlanan", String(summary.fully_free_completed_count || 0))}
-        ${analyticsCard("Codex çağrısı önlenen", String(summary.codex_call_avoided_count || 0))}
-        ${analyticsCard("Whale çağrısı önlenen", String(summary.whale_call_avoided_count || 0))}
-        ${analyticsCard("DeepSeek çağrısı önlenen", String(summary.deepseek_call_avoided_count || 0))}
-        ${analyticsCard("Ortalama ücretsiz katkı", formatAnalyticsPercent(summary.average_free_contribution_percent))}
-        ${analyticsCard("Paid-work reduction", formatAnalyticsPercent(summary.average_paid_work_reduction_percent))}
-        ${analyticsCard("Maliyet verisi", savings.cost_value_available ? "Ölçülü" : "Para değeri üretilmedi")}
-      </div>
-      <div class="analytics-chain">${engineRows}</div>
-      <div class="analytics-muted">${escapeHtml(summary.percentage_message || "Yüzdeler ölçülebilir benzersiz iş birimlerinden hesaplanır.")}</div>
-    `;
-  } catch (_) {
-    panel.innerHTML = `<div class="analytics-value">Model Katkısı ve Tasarruf</div><div class="analytics-muted">Veri alınamadı.</div>`;
-  }
-}
-
-if (modelSavingsBtn) {
-  modelSavingsBtn.onclick = openModelSavingsPanel;
-  bindFastTap(modelSavingsBtn, openModelSavingsPanel);
-}
-
-async function callControlEndpoint(endpoint, method = "GET", body = null) {
-  const options = { method, headers: { "Content-Type": "application/json" } };
-  if (body) options.body = JSON.stringify(body);
-  const response = await fetch(endpoint, options);
-  return response.json();
-}
-
-function renderControlPayload(title, payload) {
-  const text = JSON.stringify(payload, null, 2);
-  return `
-    <div class="analytics-engine">
-      <strong>${escapeHtml(title)}</strong>
-      <pre class="analytics-muted" style="white-space:pre-wrap;overflow:auto;max-height:260px">${escapeHtml(text)}</pre>
-    </div>
-  `;
-}
-
-async function openControlCenterPanel() {
-  closeMenu();
-  const panelId = "controlCenterPanel";
-  const previous = document.getElementById(panelId);
-  if (previous) previous.remove();
-  const panel = document.createElement("div");
-  panel.id = panelId;
-  panel.className = "analytics-panel";
-  panel.innerHTML = `<div class="analytics-value">LUXCODE Unified Control Center</div><div class="analytics-muted">Yükleniyor...</div>`;
-  chatBox.prepend(panel);
-  const controlActions = [
-    ["Durum", "/luxcode-control/status", "GET"],
-    ["First Usable Tek Görev", "/luxcode-control/first-usable/run", "POST", { task_summary: "Control Center pilot preview", remaining_gap: { remaining_gap: "pilot preview" } }],
-    ["Repository Diagnostics", "/luxcode-control/repository/diagnostics", "POST", { task_summary: "control center diagnostics", selected_files: ["app.py"] }],
-    ["Search", "/luxcode-control/search", "POST", { query: "luxcode-control", selected_files: ["app.py", "static/index.html"], max_results: 5 }],
-    ["Context", "/luxcode-control/context", "POST", { task_summary: "control center context", query: "luxcode-control", max_files: 4 }],
-    ["Task Plan", "/luxcode-control/task-plan", "POST", { task_summary: "control center pilot plan", selected_files: ["app.py"] }],
-    ["Safe Patch Preview", "/luxcode-control/safe-patch/preview", "POST", { task_summary: "preview only", approved_files: ["app.py"], operations: [] }],
-    ["Approval Merkezi", "/luxcode-control/approvals", "GET"],
-    ["Deferred Queue", "/luxcode-control/deferred-queue", "GET"],
-    ["Explicit Deferred Resume", "/luxcode-control/deferred-queue/resume", "POST", { session_id: "manual-session-id-required", explicit_resume: true }],
-    ["Evidence Board", "/luxcode-control/evidence-board", "GET"],
-    ["Motor/System Status", "/luxcode-control/motor-status", "GET"],
-    ["Güvenli Ayarlar", "/luxcode-control/settings", "GET"],
-    ["Model Katkısı ve Tasarruf", "/luxcode-control/analytics/summary", "GET"]
-  ];
-  try {
-    const status = await callControlEndpoint("/luxcode-control/status");
-    panel.innerHTML = `
-      <div class="analytics-value">LUXCODE Unified Control Center</div>
-      <div class="analytics-tabs">
-        ${controlActions.map((item, idx) => `<button class="analytics-tab" data-control-action="${idx}">${escapeHtml(item[0])}</button>`).join("")}
-      </div>
-      <div class="analytics-grid">
-        ${analyticsCard("First Usable", status.first_usable_connected ? "Bağlı" : "Henüz bağlanmadı")}
-        ${analyticsCard("Repository Diagnostics", status.repository_diagnostics_connected ? "Bağlı" : "Henüz bağlanmadı")}
-        ${analyticsCard("Safe Patch", status.safe_patch_connected ? "Bağlı" : "Henüz bağlanmadı")}
-        ${analyticsCard("Controlled Apply", status.controlled_apply_connected ? "Onay kapılı" : "Henüz bağlanmadı")}
-        ${analyticsCard("Live model", status.live_model_execution || "Kapalı")}
-        ${analyticsCard("Paid fallback", status.paid_fallback || "Blocked")}
-      </div>
-      <div id="controlCenterOutput" class="analytics-chain">${renderControlPayload("Durum", status)}</div>
-    `;
-    panel.querySelectorAll("[data-control-action]").forEach(button => {
-      button.addEventListener("click", async () => {
-        const action = controlActions[Number(button.dataset.controlAction)];
-        const output = document.getElementById("controlCenterOutput");
-        output.innerHTML = `<div class="analytics-muted">Yükleniyor...</div>`;
-        try {
-          const payload = await callControlEndpoint(action[1], action[2], action[3] || null);
-          output.innerHTML = renderControlPayload(action[0], payload);
-        } catch (_) {
-          output.innerHTML = `<div class="analytics-muted">Veri alınamadı.</div>`;
-        }
-      });
-    });
-  } catch (_) {
-    panel.innerHTML = `<div class="analytics-value">LUXCODE Unified Control Center</div><div class="analytics-muted">Veri alınamadı.</div>`;
-  }
-}
-
-if (controlCenterBtn) {
-  controlCenterBtn.onclick = openControlCenterPanel;
-  bindFastTap(controlCenterBtn, openControlCenterPanel);
-}
 
 function setupNotesActions(notes) {
   document.querySelectorAll(".note-dot").forEach(dot => {

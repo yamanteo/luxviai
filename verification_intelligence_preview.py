@@ -399,8 +399,6 @@ def _build_integration_signals(
 
 
 def verification_intelligence_status() -> Dict[str, Any]:
-    from luxcode_core_status_snapshot import luxcode_core_status_snapshot
-    core = luxcode_core_status_snapshot()
     return {
         "layer": "34.8",
         "name": "Verification Intelligence Preview",
@@ -442,10 +440,20 @@ def verification_intelligence_status() -> Dict[str, Any]:
         "rollback_execution": False,
         "file_modification": False,
         "real_action_performed": False,
+        "file_write_enabled": False,
+        "memory_write_enabled": False,
+        "db_write_enabled": False,
+        "git_write_enabled": False,
+        "commit_enabled": False,
+        "push_enabled": False,
+        "deploy_enabled": False,
+        "auto_fix_enabled": False,
+        "patch_apply_enabled": False,
+        "subprocess_execution_enabled": False,
         "chat_stream_touched": False,
         "typewriter_runtime_touched": False,
         "safety_note": "Read-only verification intelligence preview. No actual verification or deployment actions performed.",
-        "luxcode_core_health": core.get("core_health", "unknown"),
+        "luxcode_core_health": "not_loaded_to_avoid_status_recursion",
     }
 
 

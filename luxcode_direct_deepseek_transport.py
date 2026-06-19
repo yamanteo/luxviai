@@ -28,7 +28,10 @@ OFFICIAL_ENDPOINT = "https://api.deepseek.com/chat/completions"
 SECRET_MASK = "sk-********************************"
 MAX_RESPONSE_BYTES = 1_000_000
 MAX_DEFAULT_TIMEOUT_SECONDS = 10
+MAX_TASK_TIMEOUT_SECONDS = 60
 MAX_LIVE_SMOKE_COST_USD = 0.001
+MAX_TASK_OUTPUT_TOKENS = 512
+MAX_TASK_COST_USD = 0.001
 
 
 @dataclass(frozen=True)
@@ -197,20 +200,41 @@ def build_deepseek_chat_payload(
     prompt: str,
     model_id: str = DEFAULT_MODEL_ID,
     max_tokens: int = 16,
+    json_mode: bool = False,
 ) -> Dict[str, Any]:
-    if max_tokens <= 0 or max_tokens > 16:
-        raise ValueError("max_tokens must be between 1 and 16 for controlled smoke")
-    return {
+    if max_tokens <= 0 or max_tokens > MAX_TASK_OUTPUT_TOKENS:
+        raise ValueError(
+            f"max_tokens must be between 1 and {MAX_TASK_OUTPUT_TOKENS}"
+        )
+    payload: Dict[str, Any] = {
         "model": model_id,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "Return only the requested final answer. "
+                    "Do not reveal hidden reasoning."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ],
         "stream": False,
         "max_tokens": max_tokens,
         "thinking": {"type": "disabled"},
     }
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
+    return payload
 
 
 def _request_without_redirects(url: str, payload: Dict[str, Any], api_key: str, *, timeout_seconds: int) -> Dict[str, Any]:
-    timeout = max(1, min(int(timeout_seconds or MAX_DEFAULT_TIMEOUT_SECONDS), MAX_DEFAULT_TIMEOUT_SECONDS))
+    timeout = max(
+        1,
+        min(
+            int(timeout_seconds or MAX_DEFAULT_TIMEOUT_SECONDS),
+            MAX_TASK_TIMEOUT_SECONDS,
+        ),
+    )
     body = json.dumps(payload, sort_keys=True).encode("utf-8")
     request = Request(
         url,
@@ -233,7 +257,38 @@ def _request_without_redirects(url: str, payload: Dict[str, Any], api_key: str, 
     except TimeoutError:
         return {"ok": False, "status": "timeout", "retryable": False, "latency_ms": timeout * 1000}
     except HTTPError as exc:
-        return {"ok": False, "status": "http_error", "http_status": exc.code, "retryable": exc.code == 429 or 500 <= exc.code <= 599, "error": redact_secret(str(exc))}
+        status_code = int(exc.code or 0)
+        try:
+            raw_error = exc.read(MAX_RESPONSE_BYTES + 1)
+        except Exception:
+            raw_error = b""
+        error_message = str(exc)
+        provider_status = ""
+        if raw_error:
+            decoded = raw_error[:MAX_RESPONSE_BYTES].decode(
+                "utf-8", errors="replace"
+            )
+            try:
+                parsed = json.loads(decoded)
+            except json.JSONDecodeError:
+                parsed = {}
+            if isinstance(parsed, dict):
+                nested = parsed.get("error")
+                if isinstance(nested, dict):
+                    error_message = str(
+                        nested.get("message") or error_message
+                    )
+                    provider_status = str(nested.get("type") or "")
+            elif decoded:
+                error_message = decoded[:800]
+        return {
+            "ok": False,
+            "status": "http_error",
+            "http_status": status_code,
+            "provider_status": provider_status,
+            "retryable": status_code == 429 or 500 <= status_code <= 599,
+            "error": redact_secret(error_message)[:800],
+        }
     except URLError as exc:
         return {"ok": False, "status": "network_error", "retryable": False, "error": redact_secret(str(exc.reason))}
     if len(raw) > MAX_RESPONSE_BYTES:
@@ -283,6 +338,7 @@ def execute_deepseek_chat_completion(
     max_tokens: int = 16,
     maximum_estimated_cost_usd: float = MAX_LIVE_SMOKE_COST_USD,
     timeout_seconds: int = MAX_DEFAULT_TIMEOUT_SECONDS,
+    json_mode: bool = False,
     http_call: Callable[..., Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
     pricing = get_deepseek_pricing_snapshot(model_id)
@@ -299,7 +355,12 @@ def execute_deepseek_chat_completion(
         gates["blockers"] = sorted(set(list(gates.get("blockers", [])) + ["missing_api_key"]))
     if not gates.get("allowed") or not api_key:
         return {"ok": False, "status": "blocked_by_policy", "gate": gates, "retry_decision": "no_http_call"}
-    payload = build_deepseek_chat_payload(prompt=prompt, model_id=model_id, max_tokens=max_tokens)
+    payload = build_deepseek_chat_payload(
+        prompt=prompt,
+        model_id=model_id,
+        max_tokens=max_tokens,
+        json_mode=json_mode,
+    )
     transport_call = http_call or _request_without_redirects
     first = transport_call(endpoint_url, payload, api_key, timeout_seconds=timeout_seconds)
     retry_decision = "no_retry"
@@ -319,6 +380,19 @@ def execute_deepseek_chat_completion(
     if not content:
         return {"ok": False, "status": "missing_content", "gate": gates, "transport": redact_secret(result), "retry_decision": retry_decision}
     usage = _usage_cost(response, pricing)
+    actual_cost = usage.get("actual_estimated_cost")
+    if (
+        actual_cost is not None
+        and actual_cost > maximum_estimated_cost_usd
+    ):
+        return {
+            "ok": False,
+            "status": "actual_cost_cap_exceeded",
+            "gate": gates,
+            "transport": redact_secret(result),
+            "retry_decision": retry_decision,
+            **usage,
+        }
     return {
         "ok": True,
         "status": "success",
@@ -358,6 +432,9 @@ def build_deepseek_request_from_remaining_gap(
     minimum_context: Dict[str, str],
     failed_attempt_fingerprints: Sequence[str] | None = None,
     model_id: str = DEFAULT_MODEL_ID,
+    maximum_cost: float = MAX_TASK_COST_USD,
+    maximum_output_tokens: int = MAX_TASK_OUTPUT_TOKENS,
+    timeout_seconds: int = MAX_TASK_TIMEOUT_SECONDS,
 ) -> WorkerRequest:
     return build_worker_request(
         request_id=request_id,
@@ -377,9 +454,18 @@ def build_deepseek_request_from_remaining_gap(
         risk_level="low",
         permission_mode="preview_only",
         maximum_input_tokens=12000,
-        maximum_output_tokens=4000,
-        maximum_cost=0.0,
-        timeout_seconds=60,
+        maximum_output_tokens=max(
+            1,
+            min(int(maximum_output_tokens), MAX_TASK_OUTPUT_TOKENS),
+        ),
+        maximum_cost=max(
+            0.0,
+            min(float(maximum_cost), MAX_TASK_COST_USD),
+        ),
+        timeout_seconds=max(
+            1,
+            min(int(timeout_seconds), MAX_TASK_TIMEOUT_SECONDS),
+        ),
     )
 
 
@@ -440,7 +526,7 @@ def build_deepseek_safe_patch_contract(
         protected_files=protected_files or [],
         file_contents=file_contents,
     )
-    contract["source"] = "direct_deepseek_fixture"
+    contract["source"] = "direct_deepseek"
     contract["provider_id"] = request.provider_id
     contract["pricing_snapshot_version"] = PRICING_SNAPSHOT_VERSION
     return contract
@@ -617,8 +703,11 @@ def execute_direct_deepseek_handoff(
     policy: DeepSeekTransportPolicy,
     endpoint_url: str = OFFICIAL_ENDPOINT,
     model_id: str = DEFAULT_MODEL_ID,
-    hard_cost_cap: float = MAX_LIVE_SMOKE_COST_USD,
+    hard_cost_cap: float = MAX_TASK_COST_USD,
     health_state: str = "healthy",
+    api_key: str | None = None,
+    max_tokens: int = MAX_TASK_OUTPUT_TOKENS,
+    timeout_seconds: int = MAX_TASK_TIMEOUT_SECONDS,
     http_call: Callable[..., Dict[str, Any]] | None = None,
     persist: bool = False,
     persistence_mode: str = "memory_only",
@@ -644,6 +733,9 @@ def execute_direct_deepseek_handoff(
         minimum_context=minimum_context,
         failed_attempt_fingerprints=previous_result.get("failed_attempt_fingerprints") or [],
         model_id=model_id,
+        maximum_cost=hard_cost_cap,
+        maximum_output_tokens=max_tokens,
+        timeout_seconds=timeout_seconds,
     )
     pricing = get_deepseek_pricing_snapshot(model_id)
     gate_result = evaluate_deepseek_gates(
@@ -651,7 +743,7 @@ def execute_direct_deepseek_handoff(
         policy=policy,
         pricing=pricing,
         input_tokens=max(1, len(task_summary.split()) + len(_remaining_gap_text(remaining_gap).split()) + 8),
-        output_tokens=16,
+        output_tokens=max_tokens,
         hard_cost_cap=hard_cost_cap,
     )
     blockers = set(gate_result.get("blockers", []))
@@ -699,25 +791,64 @@ def execute_direct_deepseek_handoff(
 
     prompt = json.dumps(
         {
+            "instruction": (
+                "Return one JSON object only. Use the exact contract keys. "
+                "Do not use markdown. Do not request tools. "
+                "Only propose replace_text operations for the listed files."
+            ),
             "request_id": request.request_id,
             "task_summary": task_summary,
             "remaining_gap": remaining_gap,
             "target_files": list(target_files),
             "target_symbols": list(target_symbols),
             "minimum_context": minimum_context,
-            "required_output_format": "structured_json_v1",
+            "required_output_contract": {
+                "response_id": "string",
+                "request_id": request.request_id,
+                "response_status": "completed|partial|blocked|rejected",
+                "analysis_summary": "string",
+                "completed_scope": ["string"],
+                "remaining_gap": "string",
+                "target_files": list(target_files),
+                "target_symbols": list(target_symbols),
+                "patch_operations": [
+                    {
+                        "operation_id": "string",
+                        "operation_type": "replace_text",
+                        "file_path": "one listed target file",
+                        "anchor_text": "string",
+                        "old_text": "exact existing text",
+                        "new_text": "replacement text",
+                        "expected_occurrences": 1,
+                        "reason": "string",
+                        "confidence": 0.0,
+                    }
+                ],
+                "validation_recommendations": ["string"],
+                "assumptions": ["string"],
+                "uncertainties": ["string"],
+                "risk_flags": ["string"],
+                "scope_violations": [],
+                "unsupported_requests": [],
+                "usage_metadata": {
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "estimated_cost": 0.0,
+                },
+            },
         },
         sort_keys=True,
     )
     transport = execute_deepseek_chat_completion(
         prompt=prompt,
-        api_key="sk-live-placeholder" if http_call else None,
+        api_key=("sk-live-placeholder" if http_call else api_key),
         policy=policy,
         endpoint_url=endpoint_url,
         model_id=model_id,
-        max_tokens=16,
+        max_tokens=max_tokens,
         maximum_estimated_cost_usd=hard_cost_cap,
-        timeout_seconds=MAX_DEFAULT_TIMEOUT_SECONDS,
+        timeout_seconds=timeout_seconds,
+        json_mode=True,
         http_call=http_call,
     )
     if not transport.get("ok"):
@@ -865,6 +996,8 @@ def execute_direct_deepseek_handoff(
         "validation": validation,
         "safe_patch_contract": contract,
         "safe_patch_preview": preview,
+        "model_response": redact_secret(asdict(response)),
+        "transport": redact_secret(transport),
         "evidence": evidence,
         "remaining_gap": None if completed else build_deepseek_remaining_gap(request=request, reason=response.remaining_gap, evidence=evidence),
         "persistence": persistence,

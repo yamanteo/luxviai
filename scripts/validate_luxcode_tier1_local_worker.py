@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 import tempfile
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,6 +58,8 @@ def main() -> int:
         check_ollama_health,
         check_ollama_model,
         execute_tier0_router_tier1_preview,
+        run_ollama_tier1_inference,
+        _tier1_prompt,
         parse_tier1_response,
         preview_tier1_safe_patch,
         validate_tier1_response,
@@ -89,6 +92,40 @@ def main() -> int:
                 request.required_output_format == "structured_json_v1",
                 request.maximum_cost == 0.0,
                 request.permission_mode == "preview_only",
+            ]
+        )
+
+        prompt = _tier1_prompt(request)
+        checks.extend(
+            [
+                "src/app.py" in prompt,
+                "Patch greet return using fixture local worker" in prompt,
+                "For the fixture, replace return 1 with return 2" not in prompt,
+                "needs_more_context" in prompt,
+                "never claim that a file was written" in prompt,
+            ]
+        )
+
+        fake_ollama_data = {
+            "response": _fixture_response(request),
+            "prompt_eval_count": 37,
+            "eval_count": 91,
+            "done_reason": "stop",
+        }
+        with mock.patch(
+            "luxcode_tier1_local_worker.check_ollama_model",
+            return_value={"ok": True, "model_available": True, "state": "model_available"},
+        ), mock.patch(
+            "luxcode_tier1_local_worker._ollama_json_request",
+            return_value={"ok": True, "state": "available", "data": fake_ollama_data},
+        ):
+            live_shape = run_ollama_tier1_inference(request=request, timeout_seconds=2)
+        checks.extend(
+            [
+                live_shape.get("ok") is True,
+                live_shape.get("response").usage_metadata.get("input_tokens") == "37",
+                live_shape.get("response").usage_metadata.get("output_tokens") == "91",
+                live_shape.get("response").model_id == request.model_id,
             ]
         )
 

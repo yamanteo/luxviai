@@ -53,6 +53,7 @@ def main() -> int:
         DeepSeekPricingSnapshot,
         DeepSeekTransportPolicy,
         MAX_LIVE_SMOKE_COST_USD,
+        MAX_TASK_COST_USD,
         OFFICIAL_ENDPOINT,
         PRICING_SNAPSHOT_VERSION,
         build_deepseek_chat_payload,
@@ -89,7 +90,7 @@ def main() -> int:
             minimum_context={"src/app.py": "def greet():\n    return 1\n"},
             failed_attempt_fingerprints=["fp-old"],
         )
-        checks.extend([request.provider_id == "direct_deepseek", request.maximum_cost == 0.0])
+        checks.extend([request.provider_id == "direct_deepseek", request.maximum_cost == MAX_TASK_COST_USD])
 
         endpoint = validate_deepseek_endpoint(OFFICIAL_ENDPOINT)
         unofficial = validate_deepseek_endpoint("https://example.com/chat/completions?api_key=sk-live")
@@ -362,7 +363,7 @@ def main() -> int:
         )
 
         def mock_deepseek_structured(url, payload, api_key, *, timeout_seconds):
-            prompt_payload = json.loads(payload["messages"][0]["content"])
+            prompt_payload = json.loads(payload["messages"][-1]["content"])
             request_id = prompt_payload["request_id"]
             content = json.dumps(
                 {
