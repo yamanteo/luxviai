@@ -582,9 +582,10 @@ def _launch_browser(runtime: Dict[str, Any], headless: bool = True) -> Tuple[_CD
             authority_digest=runtime["live_test_runtime_id"],
             fallback_policy={"allow_fallback": requested_family == "chromium_fallback"},
         )
+        launch_request["controlled_url"] = "about:blank"
     launch_request["authority_digest"] = launch_request.get("authority_digest") or runtime["live_test_runtime_id"]
     launch_request["headless"] = headless
-    launch_request["controlled_url"] = scenario.get("base_url") or launch_request.get("controlled_url") or "about:blank"
+    launch_request["controlled_url"] = launch_request.get("controlled_url") or "about:blank"
     launched = launch_selected_browser(launch_request)
     if not launched.get("ok"):
         raise RuntimeError(launched.get("reason", "browser launch failed"))

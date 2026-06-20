@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -53,7 +54,7 @@ class SmokeRunner:
     def add(self, status: str, name: str, detail: str = "") -> None:
         self.results.append(CheckResult(status=status, name=name, detail=detail))
         suffix = f" - {detail}" if detail else ""
-        print(f"{status} {name}{suffix}")
+        print(f"{status} {name}{suffix}", flush=True)
 
     def pass_(self, name: str, detail: str = "") -> None:
         self.add("PASS", name, detail)
@@ -65,6 +66,8 @@ class SmokeRunner:
         self.add("SKIP", name, detail)
 
     def check(self, name: str, fn: Callable[[], str | None]) -> None:
+        started = time.perf_counter()
+        print(f"START {name}", flush=True)
         try:
             detail = fn() or ""
             self.pass_(name, detail)
@@ -72,6 +75,9 @@ class SmokeRunner:
             self.skip(name, str(exc))
         except Exception as exc:
             self.fail(name, f"{type(exc).__name__}: {exc}")
+        finally:
+            elapsed = time.perf_counter() - started
+            print(f"END {name} elapsed={elapsed:.2f}s", flush=True)
 
     def make_temp_dir(self, prefix: str) -> Path:
         path = Path(tempfile.mkdtemp(prefix=prefix))
@@ -13980,7 +13986,7 @@ class SmokeRunner:
                 approved_files=["src/app.py"],
                 protected_files=[".env"],
             ).get("patch_contract", {})
-            preview_manifest = Path(tempfile.gettempdir()) / "luxcoder_cli_preview.json"
+            preview_manifest = repo / "luxcoder_cli_preview.json"
             preview_manifest.write_text(json.dumps(contract), encoding="utf-8")
             _write_json(preview_manifest, contract)
 
@@ -14103,7 +14109,7 @@ class SmokeRunner:
             _mark("snapshot_created_before_apply", bool(patch_apply_json.get("snapshot_id")))
             _mark("only_allowed_file_changed", _repo_file_hash(repo / "src" / "app.py") != initial_hash and _repo_file_hash(repo / "tests" / "test_app.py") == initial_test_hash)
 
-            run_payload = Path(tempfile.gettempdir()) / "luxcoder_cli_run.json"
+            run_payload = repo / "luxcoder_cli_run.json"
             run_payload.write_text(
                 json.dumps(
                     {
@@ -14163,7 +14169,7 @@ class SmokeRunner:
                 approved_files=["src/app.py"],
                 protected_files=[".env"],
             ).get("patch_contract", {})
-            failure_manifest = Path(tempfile.gettempdir()) / "luxcoder_cli_preview_fail.json"
+            failure_manifest = repo / "luxcoder_cli_preview_fail.json"
             _write_json(failure_manifest, failing_contract)
             _mark("intentional_validation_failed", bool(failing_contract))
             failure_preview = _run_json(

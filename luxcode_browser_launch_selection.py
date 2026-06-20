@@ -356,6 +356,22 @@ def _wait_for_ready_port(port: int, timeout: float = DEFAULT_STARTUP_TIMEOUT_SEC
     raise TimeoutError("browser debug port not ready")
 
 
+def _wait_for_debug_version(port: int, timeout: float = DEFAULT_STARTUP_TIMEOUT_SECONDS) -> Dict[str, Any]:
+    deadline = time.time() + timeout
+    last_error = ""
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/json/version", timeout=1.0) as response:
+                data = json.loads(response.read().decode("utf-8"))
+                if isinstance(data, dict) and data.get("webSocketDebuggerUrl"):
+                    return data
+                last_error = "missing_websocket_debugger_url"
+        except Exception as exc:
+            last_error = type(exc).__name__
+        time.sleep(0.1)
+    raise TimeoutError(f"browser debug endpoint not ready: {last_error}")
+
+
 def _query_debug_version(port: int) -> Dict[str, Any]:
     try:
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/json/version", timeout=1.5) as response:
@@ -539,8 +555,8 @@ def launch_selected_browser(payload: Dict[str, Any]) -> Dict[str, Any]:
         proc = subprocess.Popen(
             launch_args,
             cwd=str(Path.cwd()),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
             shell=False,
             text=False,
@@ -551,6 +567,7 @@ def launch_selected_browser(payload: Dict[str, Any]) -> Dict[str, Any]:
     if effective_port:
         try:
             _wait_for_ready_port(effective_port, timeout=DEFAULT_STARTUP_TIMEOUT_SECONDS)
+            _wait_for_debug_version(effective_port, timeout=DEFAULT_STARTUP_TIMEOUT_SECONDS)
         except Exception as exc:
             try:
                 proc.terminate()
@@ -681,12 +698,16 @@ def terminate_selected_browser(runtime_id: str, reason: str = "user_requested") 
     if proc:
         try:
             if proc.poll() is None:
-                proc.terminate()
-                try:
+                if os.name == "nt":
+                    subprocess.run(["taskkill", "/T", "/F", "/PID", str(int(pid))], check=False, shell=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     proc.wait(timeout=float(runtime.get("cleanup_timeout") or 3))
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                    proc.wait(timeout=3)
+                else:
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=float(runtime.get("cleanup_timeout") or 3))
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait(timeout=3)
         except Exception as exc:
             cleanup_error = f"{type(exc).__name__}: {exc}"
     if os.name == "nt":
