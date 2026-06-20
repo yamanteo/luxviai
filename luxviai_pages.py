@@ -27,8 +27,17 @@ def build_page_router(base_dir: Path, static_dir: Path, now_iso: Callable[[], st
     async def luxcode_index():
         return _no_cache_file_response(static_dir / "luxcode" / "index.html", now_iso)
 
+    @router.get("/luxcode-v1/")
+    async def luxcode_v1_index():
+        return _no_cache_file_response(static_dir / "luxcode_v1" / "index.html", now_iso)
+
     def luxviai_dev_version_payload() -> Dict[str, Any]:
-        watched = [base_dir / "app.py", static_dir / "index.html", static_dir / "luxcode" / "index.html"]
+        watched = [
+            base_dir / "app.py",
+            static_dir / "index.html",
+            static_dir / "luxcode" / "index.html",
+            static_dir / "luxcode_v1" / "index.html",
+        ]
         parts = []
         for path in watched:
             try:

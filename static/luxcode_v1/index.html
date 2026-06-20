@@ -1,0 +1,2117 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUXCODE — Geliştirici Çalışma Alanı</title>
+    <style>
+        /* Google Fonts üzerinden Cormorant Garamond yazı tipinin yüklenmesi */
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+        :root {
+            --bg-main: #000000; /* Tam Siyah */
+            --bg-sidebar: #000000; /* Tam Siyah */
+            --bg-card: #111111; /* Antrasit / Siyaha yakın */
+            --bg-input: #111111; /* Antrasit / Siyaha yakın */
+            --lux-yellow: #ab6b0c; /* Yeni Belirlenen Asil Altın Kodu */
+            --border: rgba(171, 107, 12, 0.15); /* Çok ince, hafifçe hissedilen Lux Sarısı */
+            --border-soft: rgba(171, 107, 12, 0.08);
+            --text-main: #e5e7eb; /* Normal Beyaz Tonu */
+            --text-muted: #8a95a5;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-orange: #ab6b0c;
+            --accent-purple: #a78bfa;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 1. SOL MENÜ (SIDEBAR) */
+        .sidebar {
+            width: 250px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            font-size: 13px;
+            justify-content: space-between;
+            flex-shrink: 0;
+            transition: width 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 56px;
+            padding: 15px 8px;
+            align-items: center;
+        }
+
+        .sidebar.collapsed .sidebar-hide-on-collapse,
+        .sidebar.collapsed .section-title {
+            display: none !important;
+        }
+
+        .sidebar-top {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 100%;
+        }
+
+        /* YENİ SOHBET BUTONU (DİKDÖRTGEN ÇERÇEVELER SİLİNDİ, ÖZGÜN SADELİKTE) */
+        .btn-new-chat {
+            background-color: transparent;
+            border: none; /* Çerçeve tamamen silindi */
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 0;
+            cursor: pointer;
+            font-weight: 500;
+            margin-bottom: 15px;
+            width: 100%;
+            justify-content: flex-start;
+            font-size: 13.5px;
+            transition: opacity 0.2s;
+        }
+
+        .btn-new-chat:hover {
+            opacity: 0.85;
+        }
+
+        .btn-new-chat .plus-sign {
+            color: var(--lux-yellow); /* Artı işareti Lux Sarısı */
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .btn-new-chat .chat-text {
+            color: var(--text-main); /* Yeni sohbet yazısı normal beyaz tonu */
+        }
+
+        .sidebar.collapsed .btn-new-chat {
+            justify-content: center;
+            padding: 10px 0;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text-main);
+            text-decoration: none;
+            transition: background 0.2s;
+            width: 100%;
+        }
+
+        .sidebar.collapsed .menu-item {
+            justify-content: center;
+            padding: 10px 0;
+        }
+
+        .menu-item:hover {
+            background-color: rgba(171, 107, 12, 0.08);
+        }
+
+        .section-title {
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin: 18px 0 6px 10px;
+            font-weight: 600;
+        }
+
+        .project-item {
+            padding-left: 20px;
+            font-size: 12.5px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .project-item.active {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        /* AYARLAR ÜSTÜNDEKİ KISA ÇİZGİ SİLİNDİ */
+        .sidebar-bottom {
+            padding-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+        }
+
+        .online-indicator-sidebar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            font-size: 12.5px;
+            color: var(--text-main);
+        }
+
+        .sidebar.collapsed .online-indicator-sidebar {
+            justify-content: center;
+            padding: 10px 0;
+        }
+
+        .online-dot {
+            width: 7px;
+            height: 7px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+        }
+
+        /* 2. GENEL ÇALIŞMA ALANI */
+        .workspace-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            position: relative;
+            background-color: var(--bg-main);
+        }
+
+        /* ÜST BÖLÜM (TOP BAR - 46PX DARALTILMIŞ, LOGO VE METRİKLER DİKEY ORTALANMIŞ) */
+        .top-bar {
+            height: 46px; /* Yarım santim yukarı kaldırıldı */
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-size: 12px;
+            background-color: var(--bg-main);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        /* Sol Hizalı Başlık Alanı (Dikey Olarak Tam Ortalanmış) */
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            z-index: 10;
+        }
+
+        .brand-logo-container {
+            display: flex;
+            align-items: center;
+            height: 100%;
+        }
+
+        /* Cormorant Garamond Yazı Tipi & Büyük Boyut */
+        .brand-logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 25px;
+            font-weight: 700;
+            color: var(--lux-yellow);
+            letter-spacing: -0.01em;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            height: 100%;
+        }
+
+        /* Sağ Hizalı Bilgiler ve Gizlenebilir Metrik Bölümü (Dikey Olarak Tam Ortalanmış) */
+        .top-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            z-index: 10;
+            margin-left: auto;
+            height: 100%;
+        }
+
+        /* Göster/Gizle Butonu (Metrics v / Metrics ^) */
+        .toggle-metrics-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-main); /* Metrics yazısı normal beyaz */
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            font-size: 12px;
+            font-weight: 600;
+            height: 100%;
+        }
+
+        .toggle-metrics-btn:hover {
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .toggle-metrics-btn .arrow-indicator {
+            color: var(--lux-yellow); /* v veya ^ işareti Lux Sarısı */
+            margin-left: 5px;
+            font-weight: bold;
+        }
+
+        /* Gizlenebilir Bilgi Alanı (Dikey Olarak Tam Ortalanmış) */
+        .metrics-group-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        .metrics-group-wrapper.hidden {
+            width: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .project-branch-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 11.5px;
+            color: var(--text-muted);
+            border-right: 1px solid var(--border);
+            padding-right: 16px;
+            white-space: nowrap;
+            height: 100%;
+        }
+
+        .project-branch-info strong {
+            color: var(--text-main);
+        }
+
+        .metrics-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 11.5px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            height: 100%;
+        }
+
+        .metrics-bar strong {
+            color: var(--text-main);
+        }
+
+        /* 4 KONTROL İKONU ÇİZGİNİN HEMEN ALTINDA SAĞ ÜST KÖŞEDE HAVADA ASILI */
+        .floating-controls-container {
+            position: absolute;
+            top: 56px; /* Üst bar çizgisinin hemen altında */
+            right: 20px; /* Sağ üst köşede */
+            z-index: 85;
+        }
+
+        .top-controls-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Boş Dropdown Kapsülü */
+        .empty-github-dropdown {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            width: 54px;
+            height: 26px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .empty-github-dropdown:hover {
+            background-color: rgba(255, 255, 255, 0.06);
+        }
+
+        /* BAĞLANTI BAŞLATICISI */
+        .connection-launcher {
+            position: relative;
+        }
+
+        .connection-launcher-btn {
+            gap: 7px;
+            color: var(--text-muted);
+        }
+
+        .connection-launcher-btn.active,
+        .connection-launcher-btn:hover {
+            border-color: rgba(171, 107, 12, 0.48);
+            color: var(--text-main);
+        }
+
+        .launcher-symbol {
+            color: var(--lux-yellow);
+            font-size: 13px;
+            line-height: 1;
+        }
+
+        .connection-launcher-menu {
+            position: absolute;
+            top: 34px;
+            right: 0;
+            width: 238px;
+            display: none;
+            flex-direction: column;
+            gap: 2px;
+            padding: 8px;
+            border: 1px solid rgba(171, 107, 12, 0.24);
+            border-radius: 12px;
+            background: rgba(22, 22, 22, 0.98);
+            box-shadow: 0 18px 48px rgba(0,0,0,.62);
+            backdrop-filter: blur(14px);
+            z-index: 420;
+        }
+
+        .connection-launcher.open .connection-launcher-menu {
+            display: flex;
+        }
+
+        .connection-menu-label {
+            padding: 5px 8px 7px;
+            color: var(--text-muted);
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: .1em;
+        }
+
+        .connection-option {
+            width: 100%;
+            min-height: 34px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 8px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 12px;
+        }
+
+        .connection-option:hover {
+            background: rgba(255,255,255,.045);
+            border-color: rgba(171, 107, 12, 0.14);
+        }
+
+        .connection-option-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 22px;
+            background: #242424;
+            color: #f3f4f6;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: -.02em;
+        }
+
+        .connection-option-copy {
+            min-width: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .connection-option-copy small {
+            color: var(--text-muted);
+            font-size: 9px;
+        }
+
+        .connection-state-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex: 0 0 6px;
+            background: #555b65;
+        }
+
+        .connection-menu-divider {
+            height: 1px;
+            margin: 5px 4px;
+            background: var(--border-soft);
+        }
+
+        .connection-option.add-model {
+            color: var(--lux-yellow);
+        }
+
+        .utility-icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .utility-icon-btn:hover, .utility-icon-btn.active {
+            color: var(--text-main);
+            background-color: rgba(255, 255, 255, 0.03);
+            border-color: var(--border-soft);
+        }
+
+        /* ANA İÇERİK ALANI */
+        .content-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 120px;
+        }
+
+        /* AÇILIŞ GÖRÜNÜMÜ */
+        .landing-view {
+            width: 100%;
+            max-width: 680px;
+            margin-top: auto;
+            margin-bottom: auto;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .greeting {
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 25px;
+            letter-spacing: -0.025em;
+        }
+
+        /* ANTRASİT GÖREV YAZMA KUTUSU (OMNIBOX - DİĞER TÜM ÇİZGİLERLE TAMAMEN AYNI İNCELİK VE RENKTE) */
+        .omnibox {
+            width: 100%;
+            max-width: 680px;
+            background-color: var(--bg-input); /* Antrasit / Siyaha yakın */
+            border: 1px solid var(--border); /* İnce bölme çizgisiyle tamamen aynı incelik ve renkte */
+            border-radius: 12px;
+            padding: 16px 16px 12px 16px; /* İçeriyi ferah tutmak için padding optimize edildi */
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            transition: border-color 0.2s;
+        }
+
+        .omnibox:focus-within {
+            border-color: var(--lux-yellow);
+        }
+
+        .omnibox textarea {
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-size: 14.5px;
+            resize: none;
+            outline: none;
+            width: 100%;
+            height: 60px; /* Mesaj yazma alanı genişletildi */
+            line-height: 1.6;
+        }
+
+        .omnibox-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.02);
+            padding-top: 12px;
+        }
+
+        /* İÇ BUTONLARIN ÖZEL DURUMU (VARSAYILAN OLARAK ÇERÇEVESİZ, SEÇİLİNCE OVAL/KAPSÜL YAPILI) */
+        .control-group-left {
+            display: flex;
+            align-items: center;
+            gap: 10px; /* Butonlar arası boşluk */
+        }
+
+        .control-group-left .badge-pill-flat {
+            background-color: transparent;
+            border: 1px solid transparent;
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-main);
+            transition: all 0.2s ease;
+        }
+
+        /* Fareyle Üzerine Gelindiğinde veya Tıklandığında Oval Çerçeve ve Arka Plan Belirir */
+        .control-group-left .badge-pill-flat:hover,
+        .control-group-left .badge-pill-flat:active {
+            background-color: rgba(171, 107, 12, 0.06);
+            border-color: var(--lux-yellow);
+        }
+
+        .btn-submit {
+            background-color: var(--text-main);
+            color: var(--bg-main);
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        .btn-submit:hover {
+            background-color: var(--lux-yellow);
+        }
+
+        /* GÖNDERME OKU YUKARI BAKAR */
+        .btn-submit svg {
+            transform: rotate(-90deg); /* Oku yukarı çevirmek için rotasyon */
+        }
+
+        /* MİKROFON BUTONU */
+        .mic-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            margin-right: 4px;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .mic-btn:hover {
+            color: var(--lux-yellow);
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .scope-bar {
+            display: flex;
+            gap: 12px;
+            margin-top: 15px;
+            font-size: 11.5px;
+            color: var(--text-muted);
+        }
+
+        /* AKTİF SOHBET / GÖREV AKIŞI GÖRÜNÜMÜ */
+        .active-task-view {
+            width: 100%;
+            max-width: 680px;
+            padding: 24px 0;
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .chat-bubble {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* KULLANICI YAZILARI DA ANTRASİT KART ALANINA ALINDI (ÇERÇEVESİ DİĞERLERİYLE AYNI İNCELİKTE) */
+        .chat-user {
+            background: var(--bg-card); /* Antrasit / Siyaha yakın */
+            border: 1px solid var(--border);
+            padding: 14px 18px;
+            border-radius: 8px;
+        }
+
+        .chat-lux {
+            padding: 0 4px;
+        }
+
+        /* GÖREV İLERLEME SÜRECİ (ÇERÇEVESİ DİĞERLERİYLE AYNI İNCELİKTE) */
+        .pipeline-progress {
+            background-color: rgba(255, 255, 255, 0.01);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 12.5px;
+        }
+
+        .pipeline-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-muted);
+        }
+
+        .pipeline-step.active {
+            color: var(--accent-blue);
+            font-weight: 500;
+        }
+
+        .pipeline-step.completed {
+            color: var(--accent-green);
+        }
+
+        .step-icon {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+        }
+
+        .pipeline-step.completed .step-icon {
+            background-color: var(--accent-green);
+            border-color: var(--accent-green);
+            color: var(--bg-main);
+        }
+
+        .code-snippet {
+            background-color: #0b0f19;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            font-family: Consolas, Monaco, monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        /* ANTRASİT INLINE ONAY KARTI (ÇERÇEVESİ DİĞERLERİYLE AYNI İNCELİKTE) */
+        .approval-card {
+            background-color: var(--bg-card); /* Antrasit / Siyaha yakın */
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-top: 15px;
+        }
+
+        .approval-title {
+            font-weight: 600;
+            color: var(--lux-yellow);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .approval-summary {
+            font-size: 13px;
+            color: var(--text-main);
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 3px solid var(--lux-yellow);
+        }
+
+        .approval-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s;
+        }
+
+        .action-btn:hover { opacity: 0.9; }
+        .btn-approve { background-color: var(--accent-green); color: black; }
+        .btn-view-diff { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-reject { background-color: var(--accent-red); color: white; }
+
+        /* SABİT ALT GİRİŞ KUTUSU */
+        .docked-input-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to top, var(--bg-main) 70%, transparent);
+            padding: 20px 40px 30px 40px;
+            display: none;
+            justify-content: center;
+            z-index: 99;
+        }
+
+        /* SAĞ BOŞ PANEL */
+        .right-panel {
+            width: 380px;
+            background-color: var(--bg-sidebar);
+            border-left: 1px solid var(--border);
+            display: none;
+            flex-direction: column;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 100;
+        }
+
+        .panel-resizer {
+            width: 4px;
+            background-color: transparent;
+            position: absolute;
+            left: -2px;
+            top: 0;
+            bottom: 0;
+            cursor: col-resize;
+            z-index: 200;
+        }
+
+        .panel-resizer:hover {
+            background-color: var(--lux-yellow);
+        }
+
+        /* Panel boyutlandırılırken tarayıcının metin seçmesini engeller. */
+        body.is-resizing,
+        body.is-resizing * {
+            -webkit-user-select: none !important;
+            user-select: none !important;
+        }
+
+        /* ALT PANEL TERMINAL TRAY (YÜKSEKLİĞİ AYARLANABİLİR SÜRÜKLENEBİLİR YAPI) */
+        #dockedTerminalTray {
+            position: absolute;
+            bottom: 0;
+            left: 250px;
+            right: 0;
+            height: 180px; /* Varsayılan başlangıç yüksekliği */
+            background-color: #030303;
+            border-top: 1px solid var(--border);
+            display: none;
+            z-index: 80;
+            padding: 18px 15px 15px 15px; /* Resize çubuğu için üst padding genişletildi */
+            font-family: monospace;
+            transition: left 0.3s ease;
+        }
+
+        /* Alt Panel Dikey Boyutlandırma Çubuğu (Üst Sınırda) */
+        .terminal-resizer {
+            height: 4px;
+            background-color: transparent;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            cursor: row-resize;
+            z-index: 220;
+        }
+
+        .terminal-resizer:hover {
+            background-color: var(--lux-yellow);
+        }
+
+
+        /* V1: SAĞ PANEL, RAPOR VE DURUM BİLEŞENLERİ */
+        .right-panel-head {
+            min-height: 58px;
+            padding: 14px 16px 12px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+        .panel-eyebrow,
+        .final-report-kicker {
+            color: var(--text-muted);
+            font-size: 9px;
+            letter-spacing: .12em;
+            margin-bottom: 4px;
+        }
+        .right-panel-head strong { font-size: 13px; font-weight: 600; }
+        .panel-close-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            background: transparent;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .panel-close-btn:hover { color: var(--lux-yellow); border-color: var(--lux-yellow); }
+        .panel-tabs {
+            display: flex;
+            gap: 2px;
+            padding: 8px 10px 0;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--border-soft);
+            scrollbar-width: none;
+        }
+        .panel-tabs::-webkit-scrollbar { display: none; }
+        .panel-tab {
+            border: none;
+            border-bottom: 2px solid transparent;
+            background: transparent;
+            color: var(--text-muted);
+            padding: 8px 9px 9px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 11px;
+        }
+        .panel-tab:hover { color: var(--text-main); }
+        .panel-tab.active { color: var(--lux-yellow); border-bottom-color: var(--lux-yellow); }
+        .panel-content { flex: 1; min-height: 0; overflow: hidden; }
+        .panel-view {
+            display: none;
+            height: 100%;
+            overflow-y: auto;
+            padding: 14px;
+        }
+        .panel-view.active { display: block; }
+        .panel-summary-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 11px;
+            margin-bottom: 10px;
+        }
+        .panel-card {
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            padding: 12px;
+            background: rgba(255,255,255,.015);
+            margin-bottom: 10px;
+        }
+        .panel-card p { color: var(--text-muted); font-size: 11.5px; line-height: 1.55; margin: 8px 0 0; }
+        .panel-card-head { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; }
+        .panel-card-head span { color: var(--text-muted); font-size: 10px; }
+        .mini-diff {
+            margin: 10px 0 0;
+            padding: 10px;
+            border-radius: 6px;
+            background: #070707;
+            color: #cbd5e1;
+            font-size: 10.5px;
+            line-height: 1.65;
+            white-space: pre-wrap;
+        }
+        .diff-plus { color: var(--accent-green); }
+        .diff-minus { color: var(--accent-red); }
+        .panel-primary-action {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: rgba(171,107,12,.08);
+            color: var(--text-main);
+            padding: 9px 12px;
+            cursor: pointer;
+            font-size: 11.5px;
+        }
+        .panel-primary-action:hover { border-color: var(--lux-yellow); }
+        .panel-search {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: 34px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 0 10px;
+            margin-bottom: 12px;
+            color: var(--text-muted);
+        }
+        .panel-search input { flex: 1; border: none; outline: none; background: transparent; color: var(--text-main); font-size: 11px; }
+        .file-tree { color: var(--text-muted); font-size: 11.5px; line-height: 2; }
+        .tree-indent { padding-left: 16px; }
+        .tree-indent-2 { padding-left: 34px; }
+        .active-file { color: var(--lux-yellow); background: rgba(171,107,12,.07); border-radius: 5px; }
+        .test-total { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; font-size: 11px; }
+        .test-total strong { color: var(--accent-green); }
+        .test-total span { color: var(--text-muted); }
+        .test-row { display: flex; gap: 10px; align-items: center; padding: 9px 4px; border-bottom: 1px solid var(--border-soft); font-size: 11px; }
+        .test-row.pass > span { color: var(--accent-green); }
+        .test-row div { display: flex; flex-direction: column; gap: 2px; }
+        .test-row small { color: var(--text-muted); }
+        .environment-list { margin: 0; }
+        .environment-list div, .integration-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 2px; border-bottom: 1px solid var(--border-soft); font-size: 11.5px; }
+        .environment-list dt { color: var(--text-muted); }
+        .environment-list dd { margin: 0; }
+        .integration-row strong { font-size: 10.5px; font-weight: 500; }
+        .status-ready { color: var(--accent-green); }
+        .status-pending { color: var(--text-muted); }
+        .connection-row {
+            width: 100%;
+            border: none;
+            border-bottom: 1px solid var(--border-soft);
+            background: transparent;
+            color: var(--text-main);
+            cursor: pointer;
+            text-align: left;
+            font-family: inherit;
+        }
+        .connection-row:hover,
+        .connection-row.highlight {
+            background: rgba(171,107,12,.065);
+        }
+        .integration-name {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+        }
+        .integration-mini-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #202020;
+            color: #f0f0f0;
+            font-size: 9px;
+            font-weight: 700;
+        }
+        .model-add-form {
+            display: none;
+            margin-top: 10px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            background: rgba(255,255,255,.018);
+        }
+        .model-add-form.open { display: block; }
+        .model-add-form label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+            font-size: 10px;
+        }
+        .model-add-form input,
+        .model-add-form select {
+            width: 100%;
+            height: 34px;
+            margin-bottom: 9px;
+            padding: 0 9px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: #090909;
+            color: var(--text-main);
+            outline: none;
+        }
+        .model-add-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 7px;
+        }
+        .model-add-actions button {
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: transparent;
+            color: var(--text-main);
+            padding: 7px 10px;
+            cursor: pointer;
+            font-size: 10.5px;
+        }
+        .model-add-actions .save-model {
+            background: rgba(171,107,12,.16);
+            border-color: rgba(171,107,12,.5);
+            color: var(--lux-yellow);
+        }
+        .terminal-close-btn {
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 5px 10px;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 10px;
+        }
+        .final-report {
+            display: none;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px;
+            background: rgba(255,255,255,.012);
+            margin-bottom: 90px;
+        }
+        .final-report-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+        .final-report h3 { margin: 0; font-size: 16px; font-weight: 600; }
+        .final-status { border: 1px solid currentColor; border-radius: 999px; padding: 4px 8px; font-size: 9px; font-weight: 700; letter-spacing: .08em; }
+        .final-status.success { color: var(--accent-green); }
+        .final-status.rejected { color: var(--accent-red); }
+        .final-report-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin: 16px 0; }
+        .report-item { border: 1px solid var(--border-soft); border-radius: 7px; padding: 10px; display: flex; flex-direction: column; gap: 4px; }
+        .report-item span { color: var(--text-muted); font-size: 10px; }
+        .report-item strong { font-size: 11.5px; }
+        .final-report-body { color: #c8cbd0; font-size: 12.5px; line-height: 1.6; }
+        .final-report-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+        .ui-toast {
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            transform: translate(-50%, 18px);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 500;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: rgba(8,8,8,.96);
+            color: var(--text-main);
+            padding: 8px 13px;
+            font-size: 11px;
+            transition: opacity .18s ease, transform .18s ease;
+        }
+        .ui-toast.show { opacity: 1; transform: translate(-50%, 0); }
+        @media (max-width: 960px) {
+            .right-panel {
+                position: fixed;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                width: min(88vw, 430px) !important;
+                box-shadow: -18px 0 50px rgba(0,0,0,.65);
+            }
+            .metrics-group-wrapper { max-width: 58vw; overflow-x: auto; }
+        }
+        @media (max-width: 720px) {
+            .sidebar { width: 56px; padding: 15px 8px; align-items: center; }
+            .sidebar .sidebar-hide-on-collapse, .sidebar .section-title { display: none !important; }
+            .sidebar .menu-item, .sidebar .btn-new-chat, .sidebar .online-indicator-sidebar { justify-content: center; padding-left: 0; padding-right: 0; }
+            .top-bar { padding: 0 12px; }
+            .floating-controls-container { right: 10px; }
+            .landing-view, .active-task-view { max-width: calc(100vw - 88px); }
+            .greeting { font-size: 19px; }
+            .omnibox { border-radius: 10px; }
+            .scope-bar { flex-wrap: wrap; justify-content: center; }
+            .docked-input-container { padding: 16px 12px 18px 70px; }
+            #dockedTerminalTray { left: 56px !important; }
+            .final-report-grid { grid-template-columns: 1fr; }
+        }
+
+    
+
+        /* Seçili çalışma aracı ve sağ panel işlevsel içerikleri */
+        .launcher-selected-icon {
+            width: 18px;
+            height: 18px;
+            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #242424;
+            color: #f3f4f6;
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: -.02em;
+            overflow: hidden;
+            flex: 0 0 18px;
+        }
+        .launcher-selected-icon .connection-option-icon {
+            width: 18px;
+            height: 18px;
+            flex: 0 0 18px;
+            border-radius: 5px;
+            font-size: 8px;
+        }
+        .tool-vscode { color: #4ba3e3; }
+        .tool-github { color: #f2f2f2; }
+        .tool-github-desktop { color: #b18cff; }
+        .tool-file-explorer { color: #e1ad35; }
+        .tool-terminal { color: #aeb4bd; font-family: Consolas, monospace; }
+        .tool-git-bash { color: #df805f; }
+        .tool-wsl { color: #70b7e8; font-size: 7px !important; }
+        .panel-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+        .panel-toolbar-group { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+        .panel-chip, .panel-icon-action {
+            border:1px solid var(--border); border-radius:999px; background:rgba(255,255,255,.018);
+            color:var(--text-muted); padding:6px 9px; font-size:10px; cursor:pointer;
+        }
+        .panel-chip:hover, .panel-chip.active, .panel-icon-action:hover {
+            color:var(--text-main); border-color:rgba(171,107,12,.48); background:rgba(171,107,12,.07);
+        }
+        .panel-empty-state {
+            min-height:150px; border:1px dashed rgba(171,107,12,.22); border-radius:10px;
+            display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+            padding:24px 18px; color:var(--text-muted); background:rgba(255,255,255,.008);
+        }
+        .panel-empty-state strong { color:var(--text-main); font-size:12px; font-weight:600; margin-bottom:6px; }
+        .panel-empty-state span { max-width:290px; font-size:10.5px; line-height:1.55; }
+        .panel-stat-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
+        .panel-stat { border:1px solid var(--border-soft); border-radius:8px; padding:10px; background:rgba(255,255,255,.012); }
+        .panel-stat span { display:block; color:var(--text-muted); font-size:9px; margin-bottom:4px; }
+        .panel-stat strong { color:var(--text-main); font-size:13px; font-weight:600; }
+        .panel-two-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+        .panel-secondary-action {
+            border:1px solid var(--border); border-radius:7px; background:transparent; color:var(--text-muted);
+            padding:9px 10px; cursor:pointer; font-size:10.5px;
+        }
+        .panel-secondary-action:hover { color:var(--text-main); border-color:rgba(171,107,12,.48); }
+        .panel-secondary-action:disabled, .panel-primary-action:disabled { opacity:.38; cursor:not-allowed; }
+        .test-status-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
+        .test-status-box { border:1px solid var(--border-soft); border-radius:8px; padding:10px 8px; text-align:center; background:rgba(255,255,255,.012); }
+        .test-status-box strong { display:block; font-size:14px; margin-bottom:3px; }
+        .test-status-box span { color:var(--text-muted); font-size:9px; }
+        .test-status-box.pass strong { color:var(--accent-green); }
+        .test-status-box.fail strong { color:var(--accent-red); }
+        .test-status-box.skip strong { color:var(--lux-yellow); }
+        .browser-toolbar { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
+        .browser-nav-btn { width:28px; height:28px; border:1px solid var(--border); border-radius:6px; background:transparent; color:var(--text-muted); cursor:pointer; }
+        .browser-nav-btn:hover { color:var(--text-main); border-color:rgba(171,107,12,.48); }
+        .browser-address { flex:1; min-width:80px; height:30px; border:1px solid var(--border); border-radius:7px; background:rgba(255,255,255,.014); color:var(--text-main); padding:0 9px; font-size:10.5px; outline:none; }
+        .browser-address:focus { border-color:var(--lux-yellow); }
+        .browser-preview {
+            min-height:270px; border:1px solid var(--border); border-radius:9px; background:#050505;
+            display:flex; align-items:center; justify-content:center; text-align:center; padding:20px;
+            color:var(--text-muted); font-size:10.5px; transition:width .18s ease;
+        }
+        .browser-preview strong { display:block; color:var(--text-main); font-size:12px; margin-bottom:5px; }
+        .evidence-timeline { position:relative; padding-left:18px; }
+        .evidence-timeline::before { content:""; position:absolute; left:5px; top:4px; bottom:4px; width:1px; background:var(--border); }
+        .evidence-item { position:relative; padding:0 0 14px 8px; font-size:10.5px; }
+        .evidence-item::before { content:""; position:absolute; left:-17px; top:4px; width:7px; height:7px; border-radius:50%; background:#454a52; border:1px solid #000; }
+        .evidence-item strong { display:block; color:var(--text-main); font-size:11px; margin-bottom:3px; }
+        .evidence-item span { color:var(--text-muted); line-height:1.45; }
+        .environment-group-title { color:var(--lux-yellow); font-size:9px; font-weight:700; letter-spacing:.08em; margin:13px 0 5px; }
+        .status-neutral { color:var(--text-muted); }
+
+</style>
+</head>
+<body>
+    <div class="ui-toast" id="uiToast" role="status" aria-live="polite"></div>
+
+    <!-- 1. SOL MENÜ (SIDEBAR) -->
+    <div class="sidebar" id="leftSidebar">
+        <div class="sidebar-top">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <span class="sidebar-hide-on-collapse" style="font-weight: 700; color: var(--text-muted); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase;">Workspace</span>
+                <button class="sidebar-toggle-btn" onclick="toggleSidebar()" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer;">
+                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>
+                </button>
+            </div>
+
+            <!-- YENİ SOHBET BUTONU (DİKDÖRTGEN ÇERÇEVELER SİLİNDİ, ÖZGÜN SADELİKTE) -->
+            <button class="btn-new-chat" onclick="resetToHome()">
+                <span class="plus-sign">+</span>
+                <span class="chat-text sidebar-hide-on-collapse">Yeni sohbet</span>
+            </button>
+            
+            <div class="menu-item">
+                <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
+                <span class="sidebar-hide-on-collapse">Arama</span>
+            </div>
+            <div class="menu-item">
+                <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M1 11a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3zm5-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm5-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-2a1 1-0 0 1-1-1V2z"/></svg>
+                <span class="sidebar-hide-on-collapse">Eklentiler</span>
+            </div>
+            <div class="menu-item">
+                <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/></svg>
+                <span class="sidebar-hide-on-collapse">Otomasyonlar</span>
+            </div>
+
+            <!-- Gerçek sabitlenenler, projeler ve sohbetler backend bağlandığında
+                 bu alana dinamik olarak yüklenecek. Ekran görüntüsünden kalan
+                 örnek içerikler özellikle kaldırıldı. -->
+            <div id="sidebarDynamicContent" class="sidebar-hide-on-collapse"></div>
+        </div>
+
+        <div class="sidebar-bottom">
+            <!-- AYARLAR SEKMESİ -->
+            <div class="menu-item">
+                <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
+                <span class="sidebar-hide-on-collapse">Ayarlar</span>
+            </div>
+
+            <!-- ÇEVRİMİÇİ STATÜ PANELİ (SOL EN ALTTA) -->
+            <div class="online-indicator-sidebar">
+                <div class="online-dot"></div>
+                <span class="sidebar-hide-on-collapse" style="font-weight: 500;">Çevrimiçi</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. GENEL ÇALIŞMA ALANI -->
+    <div class="workspace-container">
+        <!-- TOP STATUS BAR (HASSAS HİZALANMIŞ VE DARALTILMIŞ YENİ DÜZEN) -->
+        <div class="top-bar">
+            <!-- Sol Hizalı Başlık: Sadece "Cormorant Garamond" Yazı Tipiyle LuxCode -->
+            <div class="top-bar-left">
+                <div class="brand-logo-container">
+                    <div class="brand-logo">LuxCode</div>
+                </div>
+            </div>
+
+            <!-- Merkez Boş -->
+            <div class="top-bar-center"></div>
+
+            <!-- Sağ Hizalı Göstergeler ve Gizlenebilir Metrik Bölümü -->
+            <div class="top-bar-right">
+                <!-- Göster / Gizle Butonu (Metrics v / Metrics ^) -->
+                <button class="toggle-metrics-btn" id="btnToggleMetrics" onclick="toggleMetricsGroup()" title="Bilgilendirmeleri Göster/Gizle">
+                    Metrics<span class="arrow-indicator" id="metricsArrow">v</span>
+                </button>
+
+                <!-- Gizlenebilir Bölüm -->
+                <div class="metrics-group-wrapper hidden" id="metricsGroup">
+                    <!-- Proje & Branch -->
+                    <div class="project-branch-info">
+                        <span>Proje: <strong id="metricProject">—</strong></span>
+                        <span>Branch: <strong id="metricBranch">—</strong></span>
+                    </div>
+
+                    <!-- İlerleme ve Kota Bilgileri -->
+                    <div class="metrics-bar">
+                        <span>İlerleme: <strong id="metricProgress" style="color: var(--lux-yellow);">—</strong></span>
+                        <span>Yapıldı: <strong id="metricDone">—</strong></span>
+                        <span>Kaldı: <strong id="metricRemaining">—</strong></span>
+                        <span>Tasarruf: <strong id="metricSavings">—</strong></span>
+                        <span>Token: <strong id="metricTokens">—</strong></span>
+                        <span>Maliyet: <strong id="metricCost">—</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4 KONTROL İKONU ÇİZGİNİN HEMEN ALTINDA SAĞ ÜST KÖŞEDE HAVADA ASILI -->
+        <div class="floating-controls-container">
+            <div class="top-controls-group">
+                <!-- Hızlı çalışma araçları seçici -->
+                <div class="connection-launcher" id="connectionLauncher">
+                    <button class="empty-github-dropdown connection-launcher-btn" id="connectionLauncherBtn" type="button" title="Araçları Aç" aria-expanded="false" onclick="toggleConnectionMenu(event)">
+                        <span class="launcher-selected-icon" id="connectionLauncherSelectedIcon"></span>
+                        <svg width="8" height="8" fill="currentColor" viewBox="0 0 16 16"><path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/></svg>
+                    </button>
+                    <div class="connection-launcher-menu" id="connectionLauncherMenu" role="menu">
+                        <div class="connection-menu-label">ARAÇLAR</div>
+                        <button class="connection-option" type="button" onclick="launchWorkspaceTool('vscode')"><span class="connection-option-icon tool-vscode">&lt;/&gt;</span><span class="connection-option-copy"><span>VS Code</span><small>Kod düzenleyici</small></span></button>
+                        <button class="connection-option" type="button" onclick="launchWorkspaceTool('github')"><span class="connection-option-icon tool-github">GH</span><span class="connection-option-copy"><span>GitHub</span><small>Depo ve uzak bağlantı</small></span></button>
+                        <button class="connection-option" type="button" onclick="launchWorkspaceTool('github-desktop')"><span class="connection-option-icon tool-github-desktop">GD</span><span class="connection-option-copy"><span>GitHub Desktop</span><small>Masaüstü Git istemcisi</small></span></button>
+                        <button class="connection-option" type="button" onclick="launchWorkspaceTool('file-explorer')"><span class="connection-option-icon tool-file-explorer">▰</span><span class="connection-option-copy"><span>File Explorer</span><small>Proje klasörünü aç</small></span></button>
+                        <button class="connection-option" type="button" onclick="launchWorkspaceTool('terminal')"><span class="connection-option-icon tool-terminal">&gt;_</span><span class="connection-option-copy"><span>Terminal</span><small>Yerel komut satırı</small></span></button>
+                        <button class="connection-option" type="button" onclick="launchWorkspaceTool('git-bash')"><span class="connection-option-icon tool-git-bash">GB</span><span class="connection-option-copy"><span>Git Bash</span><small>Git kabuğu</small></span></button>
+                        <button class="connection-option" type="button" onclick="launchWorkspaceTool('wsl')"><span class="connection-option-icon tool-wsl">WS</span><span class="connection-option-copy"><span>WSL</span><small>Linux çalışma ortamı</small></span></button>
+                    </div>
+                </div>
+
+                <!-- Liste Ayar -->
+                <button class="utility-icon-btn" title="Yapılandırma">
+                    <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5 11.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zm-3 7a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm0-4a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm0-4a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
+                </button>
+
+                <!-- Alt Panel Tray Toggle -->
+                <button class="utility-icon-btn" id="btnTerminalToggle" onclick="toggleTerminalDock()" title="Terminal Paneli">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+                </button>
+
+                <!-- Sağ Panel Toggle -->
+                <button class="utility-icon-btn" id="btnRightPanelToggle" onclick="toggleRightPanel()" title="Sağ Paneli Göster">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- ANA İÇERİK ALANI -->
+        <div class="content-area" id="contentArea">
+            
+            <!-- LANDING GÖRÜNÜMÜ (AÇILIŞ) -->
+            <div class="landing-view" id="landingView">
+                <div class="greeting">LuxCode ile ne geliştirmek istersiniz?</div>
+                
+                <!-- BÜYÜK GİRİŞ KUTUSU -->
+                <div class="omnibox">
+                    <textarea placeholder="Geliştirilecek görevi veya hata açıklamasını buraya yazın..." id="txtLandingInput"></textarea>
+                    <div class="omnibox-controls">
+                        <!-- SOL ALTA SIRAYLA YAN YANA YERLEŞTİRİLEN LUX SARISI İKONLU BUTONLAR -->
+                        <div class="control-group-left">
+                            <button class="badge-pill-flat" style="color: var(--lux-yellow); font-weight: bold; font-size: 15px;">+</button>
+                            <!-- Kalkan İçinde Ünlem İkonu (Birebir Çizim) -->
+                            <button class="badge-pill-flat">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--lux-yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                    <line x1="12" y1="8" x2="12" y2="12"/>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                                </svg>
+                                <span style="color: var(--text-main);">Tam erişim</span>
+                            </button>
+                            <!-- Şimşek İkonu -->
+                            <button class="badge-pill-flat">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--lux-yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                </svg>
+                                <span style="color: var(--text-main);">5.5 Orta</span>
+                            </button>
+                        </div>
+                        <!-- SAĞ ALTA SIRAYLA YAN YANA YERLEŞTİRİLEN MİKROFON VE GÖNDERME BUTONLARI -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <!-- Sesli Komut Mikrofon Simgesi -->
+                            <button class="mic-btn" title="Sesli Komut">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+                            </button>
+                            <!-- Gönderme Oku Yukarı Bakan Buton -->
+                            <button class="btn-submit" onclick="simulateSend()">
+                                <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.08l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="scope-bar">
+                    <span>📂 LUXDEEP</span>
+                    <span>💻 Yerel çalışma</span>
+                    <span>🌱 main</span>
+                </div>
+            </div>
+
+            <!-- SOHBET VE ÇALIŞMA GEÇMİŞİ AKIŞI -->
+            <div class="active-task-view" id="activeTaskView">
+                <!-- Antrasit Kart Alanına Alınmış Kullanıcı Mesajı -->
+                <div class="chat-bubble chat-user">
+                    <strong style="font-size: 11px; text-transform: uppercase; color: var(--accent-blue);">Kullanıcı Talebi</strong>
+                    <span id="userTaskText">Fix the fault report preview chain that now dies at status and times out downstream</span>
+                </div>
+
+                <div class="pipeline-progress">
+                    <div class="pipeline-step completed">
+                        <div class="step-icon">✓</div>
+                        <span>Görev hazırlanıyor</span>
+                    </div>
+                    <div class="pipeline-step completed">
+                        <div class="step-icon">✓</div>
+                        <span>Proje inceleniyor</span>
+                    </div>
+                    <div class="pipeline-step" id="pipelineStep3">
+                        <div class="step-icon">●</div>
+                        <span id="lblPipelineStep3">Çözüm hazırlanıyor...</span>
+                    </div>
+                </div>
+
+                <div class="chat-bubble chat-lux" id="analysisBlock">
+                    <strong style="font-size: 11px; text-transform: uppercase; color: var(--accent-purple);">LUXCODE Analiz & Çözüm Önerisi</strong>
+                    <p style="margin: 6px 0 12px 0;">Yapılan taramada, `services/fault_report.py` dosyasındaki asenkron önizleme API bağlantısının timeout limitini aştığı ve downstream servis kilitlendiğinde kural dizininin hata fırlatamadan çöktüğü doğrulanmıştır.</p>
+                    
+                    <strong>Hata Analizi ve Tespit Edilen Satır:</strong>
+                    <div class="code-snippet">
+<span style="color: #6a737d;"># services/fault_report.py</span>
+<span style="color: var(--accent-red);">- response = await client.post("/v1/report/preview", timeout=10.0)</span>
+<span style="color: var(--accent-green);">+ try:</span>
+<span style="color: var(--accent-green);">+     response = await client.post("/v1/report/preview", timeout=30.0)</span>
+<span style="color: var(--accent-green);">+ except TimeoutError:</span>
+<span style="color: var(--accent-green);">+     return {"status": "failed", "reason": "downstream_timeout"}</span>
+                    </div>
+                </div>
+
+                <!-- ANTRASİT INLINE ONAY KARTI (ÇERÇEVESİ DİĞERLERİYLE AYNI İNCELİKTE) -->
+                <div class="approval-card" id="approvalCard">
+                    <div class="approval-title">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
+                        Onayınız Bekleniyor
+                    </div>
+                    <div class="approval-summary">
+                        <strong>Yapılacak İşlem:</strong> Timeout konfigürasyon düzeltmesi ve hata yakalama (try-except) bloğu entegrasyonu.<br>
+                        <strong>Değişecek Dosya:</strong> 1 adet (<code>services/fault_report.py</code>)<br>
+                        <strong>Değişiklik Metrikleri:</strong> +5 ekleme / -1 silme
+                    </div>
+                    <div class="approval-actions">
+                        <button class="action-btn btn-view-diff" onclick="openRightPanel('review')">Değişiklikleri Gör (Sağ Panel)</button>
+                        <button class="action-btn btn-approve" onclick="approveTask()">Onayla ve Çalıştır</button>
+                        <button class="action-btn btn-reject" onclick="rejectTask()">Reddet</button>
+                    </div>
+                </div>
+
+                <section class="final-report" id="finalReport" aria-live="polite">
+                    <div class="final-report-head">
+                        <div>
+                            <div class="final-report-kicker">LUXCODE SONUÇ RAPORU</div>
+                            <h3 id="finalReportTitle">Görev başarıyla tamamlandı</h3>
+                        </div>
+                        <span class="final-status success" id="finalStatus">BAŞARILI</span>
+                    </div>
+                    <div class="final-report-grid">
+                        <div class="report-item"><span>Değişen dosya</span><strong id="finalFiles">1</strong></div>
+                        <div class="report-item"><span>Testler</span><strong id="finalTests">7 PASS</strong></div>
+                        <div class="report-item"><span>Git durumu</span><strong id="finalGit">Değişiklikler hazır</strong></div>
+                        <div class="report-item"><span>Geri alma</span><strong id="finalRollback">Hazır</strong></div>
+                    </div>
+                    <div class="final-report-body" id="finalReportBody">
+                        Timeout davranışı güvenli biçimde güncellendi, hata yakalama eklendi ve doğrulama kontrolleri tamamlandı.
+                    </div>
+                    <div class="final-report-actions">
+                        <button class="action-btn btn-view-diff" onclick="openRightPanel('review')">Değişiklikleri incele</button>
+                        <button class="action-btn btn-view-diff" onclick="openRightPanel('tests')">Test sonuçları</button>
+                        <button class="action-btn btn-approve" onclick="resetToHome()">Yeni görev</button>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- SIKISTIRILMIS ALT GİRİŞ ALANI (DİGER ÇİZGİLERLE AYNI RENK VE İNCELİKTE) -->
+        <div class="docked-input-container" id="dockedInputContainer">
+            <div class="omnibox">
+                <textarea placeholder="Görevi devam ettirmek için buraya yazın..." id="txtDockedInput"></textarea>
+                <div class="omnibox-controls">
+                    <!-- ALT BÖLÜMDE AYNI HİZAYLA YAN YANA YERLEŞEN SOL GRUP -->
+                    <div class="control-group-left">
+                        <button class="badge-pill-flat" style="color: var(--lux-yellow); font-weight: bold; font-size: 15px;">+</button>
+                        <button class="badge-pill-flat">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--lux-yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                            <span style="color: var(--text-main);">Tam erişim</span>
+                        </button>
+                        <button class="badge-pill-flat">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--lux-yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                            </svg>
+                            <span style="color: var(--text-main);">5.5 Orta</span>
+                        </button>
+                    </div>
+                    <!-- ALT BÖLÜMDE AYNI HİZAYLA YAN YANA YERLEŞEN SAĞ GRUP -->
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button class="mic-btn" title="Sesli Komut">
+                            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+                        </button>
+                        <button class="btn-submit" onclick="submitDockedText()">
+                            <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.08l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. SAĞ PANEL (SEKMELİ VE SÜRÜKLENEBİLİR) -->
+    <aside class="right-panel" id="rightPanel" aria-label="LUXCODE araç paneli">
+        <div class="panel-resizer" id="resizer"></div>
+        <div class="right-panel-head">
+            <div>
+                <div class="panel-eyebrow">LUXCODE PANELİ</div>
+                <strong id="panelTitle">Modeller</strong>
+            </div>
+            <button class="panel-close-btn" onclick="closeRightPanel()" aria-label="Sağ paneli kapat">×</button>
+        </div>
+        <nav class="panel-tabs" aria-label="Araç sekmeleri">
+                <button class="panel-tab active" data-panel-tab="integrations">Modeller</button>
+                <button class="panel-tab" data-panel-tab="review">İncele</button>
+                <button class="panel-tab" data-panel-tab="files">Dosyalar</button>
+                <button class="panel-tab" data-panel-tab="tests">Testler</button>
+                <button class="panel-tab" data-panel-tab="browser">Tarayıcı</button>
+                <button class="panel-tab" data-panel-tab="evidence">Kanıtlar</button>
+                <button class="panel-tab" data-panel-tab="environment">Ortam</button>
+            </nav>
+            <div class="panel-content">
+                <section class="panel-view active" data-panel-view="integrations">
+                    <div class="panel-section-kicker">MODELLER</div>
+                    <div id="integrationList">
+                        <button class="integration-row connection-row" type="button" data-connection-id="ollama" onclick="selectConnection('ollama')"><span class="integration-name"><span class="integration-mini-icon">OL</span>Ollama</span><strong class="status-pending">Durum bekleniyor</strong></button>
+                        <button class="integration-row connection-row" type="button" data-connection-id="gemini" onclick="selectConnection('gemini')"><span class="integration-name"><span class="integration-mini-icon">GE</span>Gemini</span><strong class="status-pending">Durum bekleniyor</strong></button>
+                        <button class="integration-row connection-row" type="button" data-connection-id="claude" onclick="selectConnection('claude')"><span class="integration-name"><span class="integration-mini-icon">CL</span>Claude</span><strong class="status-pending">Durum bekleniyor</strong></button>
+                        <button class="integration-row connection-row" type="button" data-connection-id="deepseek" onclick="selectConnection('deepseek')"><span class="integration-name"><span class="integration-mini-icon">DS</span>DeepSeek</span><strong class="status-pending">Durum bekleniyor</strong></button>
+                        <button class="integration-row connection-row" type="button" data-connection-id="whale" onclick="selectConnection('whale')"><span class="integration-name"><span class="integration-mini-icon">WH</span>Whale</span><strong class="status-pending">Durum bekleniyor</strong></button>
+                        <button class="integration-row connection-row" type="button" data-connection-id="codex" onclick="selectConnection('codex')"><span class="integration-name"><span class="integration-mini-icon">CX</span>Codex</span><strong class="status-pending">Durum bekleniyor</strong></button>
+                    </div>
+                    <button class="panel-primary-action" type="button" style="margin-top:12px;" onclick="openModelAddForm()">＋ Model ekle</button>
+                    <div class="model-add-form" id="modelAddForm">
+                        <label for="modelNameInput">Model veya sağlayıcı adı</label>
+                        <input id="modelNameInput" type="text" maxlength="50" placeholder="Örn. Qwen, Mistral, OpenRouter">
+                        <label for="modelTypeSelect">Bağlantı türü</label>
+                        <select id="modelTypeSelect">
+                            <option value="Yerel model">Yerel model</option>
+                            <option value="API sağlayıcı">API sağlayıcı</option>
+                            <option value="Yürütme köprüsü">Yürütme köprüsü</option>
+                        </select>
+                        <div class="model-add-actions">
+                            <button type="button" onclick="closeModelAddForm()">Vazgeç</button>
+                            <button type="button" class="save-model" onclick="saveCustomModel()">Ekle</button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel-view" data-panel-view="review">
+                <div class="panel-toolbar">
+                    <div class="panel-toolbar-group">
+                        <button class="panel-chip active" type="button" data-review-filter="all">Tümü</button>
+                        <button class="panel-chip" type="button" data-review-filter="modified">Değişen</button>
+                        <button class="panel-chip" type="button" data-review-filter="untracked">Yeni</button>
+                    </div>
+                    <button class="panel-icon-action" type="button" onclick="panelAction('İnceleme görünümü yenilendi')">↻</button>
+                </div>
+                <div class="panel-stat-grid">
+                    <div class="panel-stat"><span>Dosya</span><strong id="reviewFileCount">—</strong></div>
+                    <div class="panel-stat"><span>Ekleme</span><strong id="reviewAdditions">—</strong></div>
+                    <div class="panel-stat"><span>Silme</span><strong id="reviewDeletions">—</strong></div>
+                </div>
+                <div class="panel-empty-state" id="reviewEmptyState">
+                    <strong>Henüz değişiklik yok</strong>
+                    <span>Görev bir dosya değişikliği önerdiğinde fark, dosya listesi ve geri alma seçenekleri burada gösterilecek.</span>
+                </div>
+                <div class="panel-two-actions">
+                    <button class="panel-secondary-action" type="button" disabled>Geri al</button>
+                    <button class="panel-primary-action" type="button" disabled>Tam farkı aç</button>
+                </div>
+            </section>
+
+            <section class="panel-view" data-panel-view="files">
+                <label class="panel-search"><span>⌕</span><input id="panelFileSearch" type="search" placeholder="Dosya ve klasör ara"></label>
+                <div class="panel-toolbar">
+                    <div class="panel-toolbar-group">
+                        <button class="panel-chip active" type="button" data-file-filter="tree">Ağaç</button>
+                        <button class="panel-chip" type="button" data-file-filter="recent">Son kullanılanlar</button>
+                        <button class="panel-chip" type="button" data-file-filter="allowed">İzin verilenler</button>
+                    </div>
+                </div>
+                <div class="panel-empty-state" id="fileTreeEmptyState">
+                    <strong>Proje seçilmedi</strong>
+                    <span>Bir çalışma alanı açıldığında dosya ağacı, arama sonuçları ve dosya önizlemesi burada görünecek.</span>
+                </div>
+                <div class="panel-two-actions">
+                    <button class="panel-secondary-action" type="button" onclick="panelAction('Dosya seçici backend bağlantısında açılacak')">Klasör aç</button>
+                    <button class="panel-secondary-action" type="button" onclick="panelAction('Yeni dosya oluşturma backend bağlantısında etkinleşecek')">Yeni dosya</button>
+                </div>
+            </section>
+
+            <section class="panel-view" data-panel-view="tests">
+                <div class="test-status-grid">
+                    <div class="test-status-box pass"><strong id="testPassCount">—</strong><span>PASS</span></div>
+                    <div class="test-status-box fail"><strong id="testFailCount">—</strong><span>FAIL</span></div>
+                    <div class="test-status-box skip"><strong id="testSkipCount">—</strong><span>SKIP</span></div>
+                </div>
+                <div class="panel-toolbar"><div class="panel-toolbar-group">
+                    <button class="panel-chip active" type="button" data-test-filter="all">Tümü</button>
+                    <button class="panel-chip" type="button" data-test-filter="failed">Başarısız</button>
+                    <button class="panel-chip" type="button" data-test-filter="slow">Yavaş</button>
+                </div></div>
+                <div class="panel-empty-state" id="testEmptyState">
+                    <strong>Henüz test çalıştırılmadı</strong>
+                    <span>Doğrulama başladığında test adı, sonucu, süresi ve hata ayrıntıları burada listelenecek.</span>
+                </div>
+                <div class="panel-two-actions">
+                    <button class="panel-secondary-action" type="button" onclick="panelAction('Smoke test isteği görev motoruna gönderilecek')">Smoke test</button>
+                    <button class="panel-primary-action" type="button" onclick="panelAction('Test çalıştırma isteği görev motoruna gönderilecek')">Testleri çalıştır</button>
+                </div>
+            </section>
+
+            <section class="panel-view" data-panel-view="browser">
+                <div class="browser-toolbar">
+                    <button class="browser-nav-btn" type="button" onclick="panelAction('Geri')">←</button>
+                    <button class="browser-nav-btn" type="button" onclick="panelAction('İleri')">→</button>
+                    <button class="browser-nav-btn" type="button" onclick="panelAction('Önizleme yenilendi')">↻</button>
+                    <input class="browser-address" id="browserAddress" type="text" value="http://localhost:8000" aria-label="Önizleme adresi">
+                    <button class="browser-nav-btn" type="button" onclick="openBrowserPreview()">↗</button>
+                </div>
+                <div class="panel-toolbar"><div class="panel-toolbar-group">
+                    <button class="panel-chip active" type="button" data-device-size="desktop">Masaüstü</button>
+                    <button class="panel-chip" type="button" data-device-size="tablet">Tablet</button>
+                    <button class="panel-chip" type="button" data-device-size="mobile">Mobil</button>
+                </div></div>
+                <div class="browser-preview" id="browserPreview"><div><strong>Yerel önizleme hazır değil</strong>Backend bir geliştirme sunucusu başlattığında sayfa burada açılacak.</div></div>
+            </section>
+
+            <section class="panel-view" data-panel-view="evidence">
+                <div class="panel-toolbar"><div class="panel-toolbar-group">
+                    <button class="panel-chip active" type="button">Zaman çizelgesi</button>
+                    <button class="panel-chip" type="button">Raporlar</button>
+                    <button class="panel-chip" type="button">Ekran görüntüleri</button>
+                </div></div>
+                <div class="evidence-timeline" id="evidenceTimeline">
+                    <div class="evidence-item"><strong>Kanıt bekleniyor</strong><span>Görev başladığında komutlar, doğrulamalar, raporlar ve dosya hash’leri kronolojik olarak burada tutulacak.</span></div>
+                </div>
+                <div class="panel-two-actions">
+                    <button class="panel-secondary-action" type="button" onclick="panelAction('Kanıt paketi henüz oluşmadı')">Paketi dışa aktar</button>
+                    <button class="panel-secondary-action" type="button" onclick="panelAction('Rapor henüz oluşmadı')">Raporu aç</button>
+                </div>
+            </section>
+
+            <section class="panel-view" data-panel-view="environment">
+                <div class="environment-group-title">ÇALIŞMA ALANI</div>
+                <dl class="environment-list">
+                    <div><dt>Proje</dt><dd id="envProject">—</dd></div>
+                    <div><dt>Çalışma kopyası</dt><dd id="envWorkspace">—</dd></div>
+                    <div><dt>Branch</dt><dd id="envBranch">—</dd></div>
+                    <div><dt>Git durumu</dt><dd id="envGitState">—</dd></div>
+                    <div><dt>Çalışma modu</dt><dd id="envMode">—</dd></div>
+                </dl>
+                <div class="environment-group-title">ÇALIŞTIRMA</div>
+                <dl class="environment-list">
+                    <div><dt>Backend</dt><dd id="envBackend" class="status-neutral">Bağlantı bekleniyor</dd></div>
+                    <div><dt>Persistent Runtime</dt><dd id="envRuntime" class="status-neutral">Bağlantı bekleniyor</dd></div>
+                    <div><dt>Sandbox</dt><dd id="envSandbox" class="status-neutral">Bağlantı bekleniyor</dd></div>
+                    <div><dt>Terminal</dt><dd id="envTerminal" class="status-neutral">Bağlantı bekleniyor</dd></div>
+                    <div><dt>Tarayıcı</dt><dd id="envBrowser" class="status-neutral">Bağlantı bekleniyor</dd></div>
+                </dl>
+                <button class="panel-primary-action" type="button" style="margin-top:12px;" onclick="panelAction('Ortam durumu yenileme isteği gönderilecek')">Durumu yenile</button>
+            </section>
+
+            </div>
+        </aside>
+
+    <!-- ALT PANEL TERMINAL TRAY (YÜKSEKLİĞİ SÜRÜKLENEREK DEĞİŞTİRİLEBİLİR) -->
+    <div id="dockedTerminalTray">
+        <!-- Üst Sürükleme Tutamacı -->
+        <div class="terminal-resizer" id="terminalResizer"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="color: var(--lux-yellow); font-size: 12px; font-weight: bold;">Terminal Ekranı</span>
+            <button class="terminal-close-btn" onclick="toggleTerminalDock()">Kapat</button>
+        </div>
+        <div style="color: var(--accent-green); font-size: 12px; height: calc(100% - 30px); overflow-y: auto;" id="dockedTerminalLog">
+            $ luxcode task --status<br>
+            Görev motoru: bağlantı bekliyor<br>
+            $ _
+        </div>
+    </div>
+
+    <script>
+        const terminalTray = document.getElementById("dockedTerminalTray");
+        const terminalResizer = document.getElementById("terminalResizer");
+        const rightPanel = document.getElementById("rightPanel");
+        const resizer = document.getElementById("resizer");
+        const uiToast = document.getElementById("uiToast");
+        let isResizingTerminal = false;
+        let isResizing = false;
+        let taskTimer = null;
+
+        const panelTitles = {
+            review: "Değişiklikler",
+            files: "Dosyalar",
+            tests: "Test sonuçları",
+            browser: "Tarayıcı önizlemesi",
+            evidence: "Kanıtlar",
+            environment: "Ortam",
+            integrations: "Modeller"
+        };
+
+        function showToast(message) {
+            uiToast.textContent = message;
+            uiToast.classList.add("show");
+            clearTimeout(showToast.timer);
+            showToast.timer = setTimeout(() => uiToast.classList.remove("show"), 1800);
+        }
+
+        function panelAction(message) {
+            showToast(message);
+        }
+
+        function openBrowserPreview() {
+            const address = document.getElementById("browserAddress")?.value.trim();
+            const preview = document.getElementById("browserPreview");
+            if (!address) {
+                showToast("Önizleme adresi yazın");
+                return;
+            }
+            if (preview) preview.innerHTML = `<div><strong>${address}</strong>Gerçek tarayıcı önizlemesi backend bağlantısı kurulduğunda bu alanda açılacak.</div>`;
+            showToast("Önizleme adresi seçildi");
+        }
+
+        const builtInConnections = {
+            ollama: "Ollama",
+            gemini: "Gemini",
+            claude: "Claude",
+            deepseek: "DeepSeek",
+            whale: "Whale",
+            codex: "Codex"
+        };
+
+        const workspaceTools = {
+            vscode: "VS Code",
+            github: "GitHub",
+            "github-desktop": "GitHub Desktop",
+            "file-explorer": "File Explorer",
+            terminal: "Terminal",
+            "git-bash": "Git Bash",
+            wsl: "WSL"
+        };
+
+        const workspaceToolIcons = {
+            vscode: '<span class="connection-option-icon tool-vscode">&lt;/&gt;</span>',
+            github: '<span class="connection-option-icon tool-github">GH</span>',
+            "github-desktop": '<span class="connection-option-icon tool-github-desktop">GD</span>',
+            "file-explorer": '<span class="connection-option-icon tool-file-explorer">▰</span>',
+            terminal: '<span class="connection-option-icon tool-terminal">&gt;_</span>',
+            "git-bash": '<span class="connection-option-icon tool-git-bash">GB</span>',
+            wsl: '<span class="connection-option-icon tool-wsl">WS</span>'
+        };
+
+        let selectedWorkspaceTool = localStorage.getItem("luxcode_selected_workspace_tool") || "vscode";
+
+        function renderSelectedWorkspaceTool(toolId) {
+            const iconHost = document.getElementById("connectionLauncherSelectedIcon");
+            const button = document.getElementById("connectionLauncherBtn");
+            const safeToolId = workspaceToolIcons[toolId] ? toolId : "vscode";
+            selectedWorkspaceTool = safeToolId;
+            if (iconHost) iconHost.innerHTML = workspaceToolIcons[safeToolId];
+            if (button) button.title = `Araçlar: ${workspaceTools[safeToolId]} seçili`;
+            localStorage.setItem("luxcode_selected_workspace_tool", safeToolId);
+        }
+
+        function launchWorkspaceTool(toolId) {
+            renderSelectedWorkspaceTool(toolId);
+            closeConnectionMenu();
+            const label = workspaceTools[toolId] || "Çalışma aracı";
+            if (toolId === "terminal") {
+                toggleTerminalDock();
+                showToast("Terminal açıldı");
+                return;
+            }
+            showToast(`${label} seçildi`);
+        }
+
+        function toggleConnectionMenu(event) {
+            event?.stopPropagation();
+            const launcher = document.getElementById("connectionLauncher");
+            const button = document.getElementById("connectionLauncherBtn");
+            const shouldOpen = !launcher.classList.contains("open");
+            launcher.classList.toggle("open", shouldOpen);
+            button.classList.toggle("active", shouldOpen);
+            button.setAttribute("aria-expanded", String(shouldOpen));
+        }
+
+        function closeConnectionMenu() {
+            const launcher = document.getElementById("connectionLauncher");
+            const button = document.getElementById("connectionLauncherBtn");
+            launcher?.classList.remove("open");
+            button?.classList.remove("active");
+            button?.setAttribute("aria-expanded", "false");
+        }
+
+        function selectConnection(connectionId) {
+            openRightPanel("integrations");
+            closeConnectionMenu();
+            const rows = document.querySelectorAll("[data-connection-id]");
+            rows.forEach(row => row.classList.toggle("highlight", row.dataset.connectionId === connectionId));
+            const target = document.querySelector(`[data-connection-id="${CSS.escape(connectionId)}"]`);
+            target?.scrollIntoView({ block: "center", behavior: "smooth" });
+            const label = builtInConnections[connectionId] || target?.querySelector(".integration-name")?.textContent?.trim() || "Bağlantı";
+            showToast(`${label} bağlantı ayrıntıları açıldı`);
+        }
+
+        function openModelAddForm() {
+            openRightPanel("integrations");
+            closeConnectionMenu();
+            const form = document.getElementById("modelAddForm");
+            form.classList.add("open");
+            setTimeout(() => document.getElementById("modelNameInput")?.focus(), 50);
+        }
+
+        function closeModelAddForm() {
+            document.getElementById("modelAddForm")?.classList.remove("open");
+            const input = document.getElementById("modelNameInput");
+            if (input) input.value = "";
+        }
+
+        function connectionIdFromName(name) {
+            return "custom-" + name.toLocaleLowerCase("tr-TR")
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/^-+|-+$/g, "") + "-" + Date.now().toString(36);
+        }
+
+        function initialsForConnection(name) {
+            return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join("").toUpperCase().slice(0, 2) || "AI";
+        }
+
+        function addCustomModelToUi(model) {
+            const integrationList = document.getElementById("integrationList");
+            if (!integrationList || document.querySelector(`[data-connection-id="${CSS.escape(model.id)}"]`)) return;
+
+            const row = document.createElement("button");
+            row.className = "integration-row connection-row";
+            row.type = "button";
+            row.dataset.connectionId = model.id;
+            row.innerHTML = `<span class="integration-name"><span class="integration-mini-icon">${initialsForConnection(model.name)}</span>${model.name}</span><strong class="status-pending">Yapılandırılmadı</strong>`;
+            row.addEventListener("click", () => selectConnection(model.id));
+            integrationList.appendChild(row);
+        }
+
+        function saveCustomModel() {
+            const input = document.getElementById("modelNameInput");
+            const select = document.getElementById("modelTypeSelect");
+            const name = input?.value.trim();
+            if (!name) {
+                showToast("Model adını yazın");
+                input?.focus();
+                return;
+            }
+            const model = { id: connectionIdFromName(name), name, type: select?.value || "API sağlayıcı" };
+            const saved = JSON.parse(localStorage.getItem("luxcode_custom_models_v1") || "[]");
+            saved.push(model);
+            localStorage.setItem("luxcode_custom_models_v1", JSON.stringify(saved));
+            addCustomModelToUi(model);
+            closeModelAddForm();
+            selectConnection(model.id);
+            showToast(`${name} eklendi`);
+        }
+
+        function loadCustomModels() {
+            try {
+                const saved = JSON.parse(localStorage.getItem("luxcode_custom_models_v1") || "[]");
+                if (Array.isArray(saved)) saved.forEach(addCustomModelToUi);
+            } catch (_) {}
+        }
+
+        function setTaskState(state) {
+            const landingView = document.getElementById("landingView");
+            const activeTaskView = document.getElementById("activeTaskView");
+            const dockedInputContainer = document.getElementById("dockedInputContainer");
+            const approvalCard = document.getElementById("approvalCard");
+            const finalReport = document.getElementById("finalReport");
+            const analysisBlock = document.getElementById("analysisBlock");
+            const pipelineStep3 = document.getElementById("pipelineStep3");
+            const lblPipelineStep3 = document.getElementById("lblPipelineStep3");
+
+            landingView.style.display = state === "home" ? "flex" : "none";
+            activeTaskView.style.display = state === "home" ? "none" : "flex";
+            dockedInputContainer.style.display = state === "home" ? "none" : "flex";
+            approvalCard.style.display = state === "approval" ? "flex" : "none";
+            finalReport.style.display = state === "completed" || state === "rejected" ? "block" : "none";
+            analysisBlock.style.display = state === "working" ? "none" : "flex";
+
+            if (state === "working") {
+                pipelineStep3.className = "pipeline-step active";
+                lblPipelineStep3.textContent = "Çözüm hazırlanıyor...";
+            } else if (state === "approval") {
+                pipelineStep3.className = "pipeline-step completed";
+                lblPipelineStep3.textContent = "Çözüm analiz edildi";
+            } else if (state === "completed") {
+                pipelineStep3.className = "pipeline-step completed";
+                lblPipelineStep3.textContent = "Uygulama ve doğrulama tamamlandı";
+            } else if (state === "rejected") {
+                pipelineStep3.className = "pipeline-step";
+                lblPipelineStep3.textContent = "Değişiklik kullanıcı tarafından reddedildi";
+            }
+        }
+
+        function simulateSend() {
+            const input = document.getElementById("txtLandingInput");
+            const task = input.value.trim() || "Fix the fault report preview chain that now dies at status and times out downstream";
+            document.getElementById("userTaskText").textContent = task;
+            clearTimeout(taskTimer);
+            setTaskState("working");
+            showToast("Görev akışı başlatıldı");
+            taskTimer = setTimeout(() => setTaskState("approval"), 950);
+        }
+
+        function resetToHome() {
+            clearTimeout(taskTimer);
+            closeRightPanel();
+            if (terminalTray.style.display === "block") toggleTerminalDock();
+            document.getElementById("txtLandingInput").value = "";
+            document.getElementById("txtDockedInput").value = "";
+            setTaskState("home");
+        }
+
+        function submitDockedText() {
+            const input = document.getElementById("txtDockedInput");
+            const value = input.value.trim();
+            if (!value) {
+                showToast("Önce bir komut yazın");
+                return;
+            }
+            input.value = "";
+            showToast("Ek komut görev akışına eklendi");
+        }
+
+        function approveTask() {
+            const status = document.getElementById("finalStatus");
+            status.textContent = "BAŞARILI";
+            status.className = "final-status success";
+            document.getElementById("finalReportTitle").textContent = "Görev başarıyla tamamlandı";
+            document.getElementById("finalFiles").textContent = "1";
+            document.getElementById("finalTests").textContent = "7 PASS";
+            document.getElementById("finalGit").textContent = "Değişiklikler hazır";
+            document.getElementById("finalRollback").textContent = "Hazır";
+            document.getElementById("finalReportBody").textContent = "Timeout davranışı güvenli biçimde güncellendi, hata yakalama eklendi ve doğrulama kontrolleri tamamlandı.";
+            setTaskState("completed");
+            showToast("Görev tamamlandı");
+        }
+
+        function rejectTask() {
+            const status = document.getElementById("finalStatus");
+            status.textContent = "REDDEDİLDİ";
+            status.className = "final-status rejected";
+            document.getElementById("finalReportTitle").textContent = "Değişiklik uygulanmadı";
+            document.getElementById("finalFiles").textContent = "0";
+            document.getElementById("finalTests").textContent = "Çalıştırılmadı";
+            document.getElementById("finalGit").textContent = "Temiz";
+            document.getElementById("finalRollback").textContent = "Gerekmedi";
+            document.getElementById("finalReportBody").textContent = "Önerilen değişiklik kullanıcı tarafından reddedildi. Dosyalarda herhangi bir değişiklik yapılmadı.";
+            setTaskState("rejected");
+            showToast("Değişiklik reddedildi");
+        }
+
+        function switchPanelTab(tabName) {
+            document.querySelectorAll(".panel-tab").forEach(button => {
+                button.classList.toggle("active", button.dataset.panelTab === tabName);
+            });
+            document.querySelectorAll(".panel-view").forEach(view => {
+                view.classList.toggle("active", view.dataset.panelView === tabName);
+            });
+            document.getElementById("panelTitle").textContent = panelTitles[tabName] || "Çalışma araçları";
+        }
+
+        function openRightPanel(tabName = "review") {
+            rightPanel.style.display = "flex";
+            document.getElementById("btnRightPanelToggle").classList.add("active");
+            switchPanelTab(tabName);
+        }
+
+        function closeRightPanel() {
+            rightPanel.style.display = "none";
+            document.getElementById("btnRightPanelToggle").classList.remove("active");
+        }
+
+        function toggleRightPanel() {
+            if (getComputedStyle(rightPanel).display === "flex") closeRightPanel();
+            else openRightPanel("integrations");
+        }
+
+        function toggleMetricsGroup() {
+            const wrapper = document.getElementById("metricsGroup");
+            const arrow = document.getElementById("metricsArrow");
+            wrapper.classList.toggle("hidden");
+            arrow.textContent = wrapper.classList.contains("hidden") ? "v" : "^";
+        }
+
+        function toggleTerminalDock() {
+            const btn = document.getElementById("btnTerminalToggle");
+            const shouldOpen = getComputedStyle(terminalTray).display === "none";
+            terminalTray.style.display = shouldOpen ? "block" : "none";
+            btn.classList.toggle("active", shouldOpen);
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById("leftSidebar");
+            sidebar.classList.toggle("collapsed");
+            terminalTray.style.left = sidebar.classList.contains("collapsed") ? "56px" : "250px";
+        }
+
+        terminalResizer.addEventListener("mousedown", (event) => {
+            event.preventDefault();
+            isResizingTerminal = true;
+            document.body.classList.add("is-resizing");
+            document.body.style.cursor = "row-resize";
+            window.getSelection()?.removeAllRanges();
+        });
+
+        resizer.addEventListener("mousedown", (event) => {
+            event.preventDefault();
+            isResizing = true;
+            document.body.classList.add("is-resizing");
+            document.body.style.cursor = "col-resize";
+            window.getSelection()?.removeAllRanges();
+        });
+
+        document.addEventListener("mousemove", (event) => {
+            if (isResizingTerminal) {
+                const newHeight = window.innerHeight - event.clientY;
+                if (newHeight > 100 && newHeight < 450) terminalTray.style.height = newHeight + "px";
+            }
+            if (isResizing) {
+                const newWidth = window.innerWidth - event.clientX;
+                if (newWidth > 300 && newWidth < window.innerWidth * 0.6) rightPanel.style.width = newWidth + "px";
+            }
+        });
+
+        document.addEventListener("mouseup", () => {
+            isResizingTerminal = false;
+            isResizing = false;
+            document.body.classList.remove("is-resizing");
+            document.body.style.cursor = "default";
+            window.getSelection()?.removeAllRanges();
+        });
+
+        window.addEventListener("blur", () => {
+            isResizingTerminal = false;
+            isResizing = false;
+            document.body.classList.remove("is-resizing");
+            document.body.style.cursor = "default";
+        });
+
+        document.querySelectorAll(".panel-tab").forEach(button => {
+            button.addEventListener("click", () => switchPanelTab(button.dataset.panelTab));
+        });
+
+        document.querySelectorAll("[data-review-filter], [data-file-filter], [data-test-filter], [data-device-size]").forEach(button => {
+            button.addEventListener("click", () => {
+                const attribute = button.hasAttribute("data-review-filter") ? "data-review-filter"
+                    : button.hasAttribute("data-file-filter") ? "data-file-filter"
+                    : button.hasAttribute("data-test-filter") ? "data-test-filter"
+                    : "data-device-size";
+                document.querySelectorAll(`[${attribute}]`).forEach(item => item.classList.remove("active"));
+                button.classList.add("active");
+                if (attribute === "data-device-size") {
+                    const preview = document.getElementById("browserPreview");
+                    const sizes = { desktop: "100%", tablet: "78%", mobile: "42%" };
+                    if (preview) {
+                        preview.style.width = sizes[button.dataset.deviceSize] || "100%";
+                        preview.style.margin = "0 auto";
+                    }
+                }
+            });
+        });
+
+        document.getElementById("txtLandingInput").addEventListener("keydown", event => {
+            if ((event.ctrlKey || event.metaKey) && event.key === "Enter") simulateSend();
+        });
+
+        document.addEventListener("click", event => {
+            if (!document.getElementById("connectionLauncher")?.contains(event.target)) closeConnectionMenu();
+        });
+
+        document.addEventListener("keydown", event => {
+            if (event.key === "Escape") {
+                closeConnectionMenu();
+                closeModelAddForm();
+            }
+        });
+
+        document.getElementById("modelNameInput")?.addEventListener("keydown", event => {
+            if (event.key === "Enter") saveCustomModel();
+        });
+
+        renderSelectedWorkspaceTool(selectedWorkspaceTool);
+        loadCustomModels();
+        setTaskState("home");
+    </script>
+</body>
+</html>
