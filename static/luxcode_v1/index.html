@@ -2014,6 +2014,7 @@
                 window.LuxCodeTaskState.setCurrentTask(createdTask);
                 renderTask(createdTask);
                 window.LuxCodeTaskState.startTaskPolling(taskId);
+                window.LuxCodeTaskState.startAutoAdvance(taskId);
                 showToast(`Gorev olusturuldu: ${taskId}`);
             } catch (error) {
                 renderTaskError(window.LuxCodeApi.normalizeApiError(error));
@@ -2080,10 +2081,20 @@
             document.getElementById("metricTokens").textContent = task.token_usage || "—";
 
             if (status === "awaiting_approval") {
-                document.getElementById("approvalSummaryText").textContent = nextAction || "Gorev onay bekliyor. Onay baglantisi sonraki asamada hazirlanacak.";
+                const approval = task.approval_state || {};
+                const approvalDetails = [];
+                if (nextAction) approvalDetails.push(nextAction);
+                if (approval.patch_id) approvalDetails.push(`Patch: ${approval.patch_id}`);
+                if (changed.length) approvalDetails.push(`Dosyalar: ${changed.join(", ")}`);
+                document.getElementById("approvalSummaryText").textContent = approvalDetails.join(" · ") || "Gorev onay bekliyor. Onay baglantisi sonraki asamada hazirlanacak.";
                 setTaskState("approval");
             } else if (status === "completed") {
                 renderFinalReport(task);
+            } else if (["blocked", "failed", "cancelled"].includes(status)) {
+                const reasons = Array.isArray(task.blocked_reasons) && task.blocked_reasons.length
+                    ? task.blocked_reasons.join(" · ")
+                    : task.error || nextAction || friendlyTaskStatus(status);
+                renderTaskError({ normalized: true, message: reasons, code: status, detail: task });
             } else {
                 setTaskState("working");
             }
@@ -2098,9 +2109,18 @@
 
         function retryCurrentTask() {
             const taskId = window.LuxCodeTaskState.state.currentTaskId;
+            const current = window.LuxCodeTaskState.state.currentTask;
+            if (current && window.LuxCodeTaskState.isTerminalTaskState(taskStatus(current))) {
+                const submitted = window.LuxCodeTaskState.state.submittedText || current.original_request || "";
+                window.LuxCodeTaskState.resetTaskState();
+                document.getElementById("txtLandingInput").value = submitted;
+                simulateSend();
+                return;
+            }
             if (taskId) {
                 setTaskState("working");
                 window.LuxCodeTaskState.startTaskPolling(taskId);
+                window.LuxCodeTaskState.startAutoAdvance(taskId);
                 return;
             }
             const submitted = window.LuxCodeTaskState.state.submittedText;
@@ -2283,6 +2303,7 @@
 
         window.addEventListener("beforeunload", () => {
             window.LuxCodeTaskState.stopTaskPolling();
+            window.LuxCodeTaskState.stopAutoAdvance();
         });
 
         renderSelectedWorkspaceTool(selectedWorkspaceTool);

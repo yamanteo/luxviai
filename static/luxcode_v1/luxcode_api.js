@@ -95,9 +95,32 @@
         });
     }
 
+    function advanceLuxCodeTask(taskId, payload = {}, options = {}) {
+        if (!taskId) {
+            return Promise.reject({
+                normalized: true,
+                message: "Gorev kimligi eksik",
+                code: "missing_task_id",
+            });
+        }
+        return requestJson("/luxcode-task/advance", {
+            method: "POST",
+            body: JSON.stringify({
+                task_id: taskId,
+                action: payload.action || "next",
+                ...(payload.patch_steps ? { patch_steps: payload.patch_steps } : {}),
+                ...(payload.verification_checks ? { verification_checks: payload.verification_checks } : {}),
+            }),
+            headers: { "Content-Type": "application/json" },
+            timeoutMs: options.timeoutMs,
+            controller: options.controller,
+        });
+    }
+
     window.LuxCodeApi = {
         createLuxCodeTask,
         getLuxCodeTask,
+        advanceLuxCodeTask,
         normalizeApiError,
     };
 })();
