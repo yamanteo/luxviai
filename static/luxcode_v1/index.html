@@ -1388,7 +1388,7 @@
                                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
                             </button>
                             <!-- Gönderme Oku Yukarı Bakan Buton -->
-                            <button class="btn-submit" onclick="simulateSend()">
+                            <button class="btn-submit" id="btnSubmitTask" onclick="simulateSend()">
                                 <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.08l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/></svg>
                             </button>
                         </div>
@@ -1407,7 +1407,7 @@
                 <!-- Antrasit Kart Alanına Alınmış Kullanıcı Mesajı -->
                 <div class="chat-bubble chat-user">
                     <strong style="font-size: 11px; text-transform: uppercase; color: var(--accent-blue);">Kullanıcı Talebi</strong>
-                    <span id="userTaskText">Fix the fault report preview chain that now dies at status and times out downstream</span>
+                    <span id="userTaskText">Gorev bekleniyor</span>
                 </div>
 
                 <div class="pipeline-progress">
@@ -1425,31 +1425,34 @@
                     </div>
                 </div>
 
-                <div class="chat-bubble chat-lux" id="analysisBlock">
-                    <strong style="font-size: 11px; text-transform: uppercase; color: var(--accent-purple);">LUXCODE Analiz & Çözüm Önerisi</strong>
-                    <p style="margin: 6px 0 12px 0;">Yapılan taramada, `services/fault_report.py` dosyasındaki asenkron önizleme API bağlantısının timeout limitini aştığı ve downstream servis kilitlendiğinde kural dizininin hata fırlatamadan çöktüğü doğrulanmıştır.</p>
-                    
-                    <strong>Hata Analizi ve Tespit Edilen Satır:</strong>
-                    <div class="code-snippet">
-<span style="color: #6a737d;"># services/fault_report.py</span>
-<span style="color: var(--accent-red);">- response = await client.post("/v1/report/preview", timeout=10.0)</span>
-<span style="color: var(--accent-green);">+ try:</span>
-<span style="color: var(--accent-green);">+     response = await client.post("/v1/report/preview", timeout=30.0)</span>
-<span style="color: var(--accent-green);">+ except TimeoutError:</span>
-<span style="color: var(--accent-green);">+     return {"status": "failed", "reason": "downstream_timeout"}</span>
-                    </div>
+                <div class="chat-bubble chat-lux" id="analysisBlock" style="display:none;">
+                    <strong style="font-size: 11px; text-transform: uppercase; color: var(--accent-purple);">LUXCODE Analiz</strong>
+                    <p style="margin: 6px 0 12px 0;">Gercek gorev detaylari backend yaniti ile doldurulur.</p>
                 </div>
 
                 <!-- ANTRASİT INLINE ONAY KARTI (ÇERÇEVESİ DİĞERLERİYLE AYNI İNCELİKTE) -->
+                <div class="chat-bubble chat-lux" id="taskStatusBlock">
+                    <strong style="font-size: 11px; text-transform: uppercase; color: var(--accent-purple);" id="taskStatusTitle">LUXCODE gorev durumu</strong>
+                    <p style="margin: 6px 0 12px 0;" id="taskStatusDetails">Gorev olusturuluyor. Gercek backend durumu alindiginda bu alan guncellenecek.</p>
+                    <div class="code-snippet" id="taskStatusMeta"></div>
+                </div>
+
+                <div class="chat-bubble chat-lux" id="taskErrorCard" style="display:none;">
+                    <strong style="font-size: 11px; text-transform: uppercase; color: var(--accent-red);">Baglanti sorunu</strong>
+                    <p style="margin: 6px 0 12px 0;" id="taskErrorText">Backend yaniti alinamadi.</p>
+                    <div class="approval-actions">
+                        <button class="action-btn btn-view-diff" type="button" onclick="retryCurrentTask()">Tekrar dene</button>
+                        <button class="action-btn btn-reject" type="button" onclick="resetToHome()">Ana ekrana don</button>
+                    </div>
+                </div>
+
                 <div class="approval-card" id="approvalCard">
                     <div class="approval-title">
                         <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
                         Onayınız Bekleniyor
                     </div>
                     <div class="approval-summary">
-                        <strong>Yapılacak İşlem:</strong> Timeout konfigürasyon düzeltmesi ve hata yakalama (try-except) bloğu entegrasyonu.<br>
-                        <strong>Değişecek Dosya:</strong> 1 adet (<code>services/fault_report.py</code>)<br>
-                        <strong>Değişiklik Metrikleri:</strong> +5 ekleme / -1 silme
+                        <span id="approvalSummaryText">Gorev guvenli inceleme icin onay bekliyor.</span>
                     </div>
                     <div class="approval-actions">
                         <button class="action-btn btn-view-diff" onclick="openRightPanel('review')">Değişiklikleri Gör (Sağ Panel)</button>
@@ -1467,13 +1470,13 @@
                         <span class="final-status success" id="finalStatus">BAŞARILI</span>
                     </div>
                     <div class="final-report-grid">
-                        <div class="report-item"><span>Değişen dosya</span><strong id="finalFiles">1</strong></div>
-                        <div class="report-item"><span>Testler</span><strong id="finalTests">7 PASS</strong></div>
-                        <div class="report-item"><span>Git durumu</span><strong id="finalGit">Değişiklikler hazır</strong></div>
-                        <div class="report-item"><span>Geri alma</span><strong id="finalRollback">Hazır</strong></div>
+                        <div class="report-item" id="finalFilesItem"><span>Degisen dosya</span><strong id="finalFiles">—</strong></div>
+                        <div class="report-item" id="finalTestsItem"><span>Dogrulama</span><strong id="finalTests">—</strong></div>
+                        <div class="report-item" id="finalGitItem"><span>Durum</span><strong id="finalGit">—</strong></div>
+                        <div class="report-item" id="finalRollbackItem"><span>Sonraki guvenli adim</span><strong id="finalRollback">—</strong></div>
                     </div>
                     <div class="final-report-body" id="finalReportBody">
-                        Timeout davranışı güvenli biçimde güncellendi, hata yakalama eklendi ve doğrulama kontrolleri tamamlandı.
+                        Gorev sonucu backend yaniti ile doldurulacak.
                     </div>
                     <div class="final-report-actions">
                         <button class="action-btn btn-view-diff" onclick="openRightPanel('review')">Değişiklikleri incele</button>
@@ -1701,6 +1704,8 @@
         </div>
     </div>
 
+    <script src="/static/luxcode_v1/luxcode_api.js"></script>
+    <script src="/static/luxcode_v1/luxcode_state.js"></script>
     <script>
         const terminalTray = document.getElementById("dockedTerminalTray");
         const terminalResizer = document.getElementById("terminalResizer");
@@ -1709,7 +1714,6 @@
         const uiToast = document.getElementById("uiToast");
         let isResizingTerminal = false;
         let isResizing = false;
-        let taskTimer = null;
 
         const panelTitles = {
             review: "Değişiklikler",
@@ -1889,13 +1893,63 @@
             } catch (_) {}
         }
 
+        const taskStatusLabels = {
+            created: "Gorev olusturuldu",
+            routed: "Uygun calisma motoru seciliyor",
+            diagnosing: "Proje inceleniyor",
+            diagnosis_ready: "Inceleme hazir",
+            patch_drafting: "Cozum taslagi hazirlaniyor",
+            patch_ready: "Cozum taslagi hazir",
+            awaiting_approval: "Onay bekleniyor",
+            approval_verified: "Onay dogrulandi",
+            apply_prepared: "Uygulama hazirlandi",
+            applying: "Uygulaniyor",
+            applied: "Uygulandi",
+            verification_prepared: "Dogrulama hazirlandi",
+            verifying: "Dogrulaniyor",
+            verified: "Dogrulandi",
+            recovery_review: "Kurtarma incelemesi",
+            rollback_recommended: "Geri alma oneriliyor",
+            completed: "Tamamlandi",
+            blocked: "Islem engellendi",
+            failed: "Islem basarisiz",
+            cancelled: "Iptal edildi",
+            paused: "Duraklatildi",
+            awaiting_scope_permission: "Kapsam izni bekleniyor",
+            awaiting_irreversible_confirmation: "Kritik onay bekleniyor",
+            autonomy_paused: "Otonomi duraklatildi",
+            budget_exhausted: "Butce limiti doldu"
+        };
+
+        function taskStatus(task) {
+            return String(task?.current_state || task?.status || task?.outcome || "created").toLowerCase();
+        }
+
+        function friendlyTaskStatus(status) {
+            return taskStatusLabels[status] || "Gorev durumu guncelleniyor";
+        }
+
+        function progressFromTask(task) {
+            if (Number.isFinite(Number(task?.progress_percent))) return Math.max(0, Math.min(100, Number(task.progress_percent)));
+            const completed = Array.isArray(task?.completed_steps) ? task.completed_steps.length : 0;
+            const pending = Array.isArray(task?.pending_steps) ? task.pending_steps.length : 0;
+            if (taskStatus(task) === "completed") return 100;
+            return completed + pending ? Math.round((completed / (completed + pending)) * 100) : 0;
+        }
+
+        function setSubmitBusy(isBusy) {
+            const button = document.getElementById("btnSubmitTask");
+            if (button) button.disabled = Boolean(isBusy);
+        }
+
         function setTaskState(state) {
             const landingView = document.getElementById("landingView");
             const activeTaskView = document.getElementById("activeTaskView");
             const dockedInputContainer = document.getElementById("dockedInputContainer");
             const approvalCard = document.getElementById("approvalCard");
             const finalReport = document.getElementById("finalReport");
-            const analysisBlock = document.getElementById("analysisBlock");
+            const taskStatusBlock = document.getElementById("taskStatusBlock");
+            const taskErrorCard = document.getElementById("taskErrorCard");
             const pipelineStep3 = document.getElementById("pipelineStep3");
             const lblPipelineStep3 = document.getElementById("lblPipelineStep3");
 
@@ -1903,40 +1957,78 @@
             activeTaskView.style.display = state === "home" ? "none" : "flex";
             dockedInputContainer.style.display = state === "home" ? "none" : "flex";
             approvalCard.style.display = state === "approval" ? "flex" : "none";
-            finalReport.style.display = state === "completed" || state === "rejected" ? "block" : "none";
-            analysisBlock.style.display = state === "working" ? "none" : "flex";
+            finalReport.style.display = state === "completed" ? "block" : "none";
+            taskStatusBlock.style.display = state === "error" ? "none" : "flex";
+            taskErrorCard.style.display = state === "error" ? "flex" : "none";
 
-            if (state === "working") {
-                pipelineStep3.className = "pipeline-step active";
-                lblPipelineStep3.textContent = "Çözüm hazırlanıyor...";
-            } else if (state === "approval") {
-                pipelineStep3.className = "pipeline-step completed";
-                lblPipelineStep3.textContent = "Çözüm analiz edildi";
+            if (state === "working" || state === "approval") {
+                pipelineStep3.className = state === "approval" ? "pipeline-step completed" : "pipeline-step active";
+                lblPipelineStep3.textContent = state === "approval" ? "Onay bekleniyor" : "Gorev durumu aliniyor...";
             } else if (state === "completed") {
                 pipelineStep3.className = "pipeline-step completed";
-                lblPipelineStep3.textContent = "Uygulama ve doğrulama tamamlandı";
-            } else if (state === "rejected") {
+                lblPipelineStep3.textContent = "Gorev tamamlandi";
+            } else if (state === "error") {
                 pipelineStep3.className = "pipeline-step";
-                lblPipelineStep3.textContent = "Değişiklik kullanıcı tarafından reddedildi";
+                lblPipelineStep3.textContent = "Baglanti sorunu";
             }
         }
 
-        function simulateSend() {
+        function buildCreatePayload(taskText) {
+            return {
+                original_request: taskText,
+                mode: "read_only_analysis",
+                permission_mode: "approval_required",
+                suspected_files: [],
+                changed_files: [],
+                traceback_text: "",
+                selected_files: [],
+                requested_files: [],
+                forbidden_files: [],
+                scope_items: [],
+                selected_folders: [],
+                autonomy_budgets: {}
+            };
+        }
+
+        async function simulateSend() {
             const input = document.getElementById("txtLandingInput");
-            const task = input.value.trim() || "Fix the fault report preview chain that now dies at status and times out downstream";
+            const task = input.value.trim();
+            if (!task) {
+                showToast("Once bir gorev yazin");
+                input.focus();
+                return;
+            }
+
+            setSubmitBusy(true);
+            window.LuxCodeTaskState.resetTaskState();
+            window.LuxCodeTaskState.state.submittedText = task;
             document.getElementById("userTaskText").textContent = task;
-            clearTimeout(taskTimer);
+            document.getElementById("taskStatusDetails").textContent = "Gorev backend tarafinda olusturuluyor.";
+            document.getElementById("taskStatusMeta").textContent = "";
             setTaskState("working");
-            showToast("Görev akışı başlatıldı");
-            taskTimer = setTimeout(() => setTaskState("approval"), 950);
+
+            try {
+                const createdTask = await window.LuxCodeApi.createLuxCodeTask(buildCreatePayload(task), { timeoutMs: 20000 });
+                const taskId = createdTask?.task_id || createdTask?.id;
+                if (!taskId) throw { normalized: true, message: "Backend gorev kimligi dondurmedi", code: "missing_task_id", detail: createdTask };
+                window.LuxCodeTaskState.setCurrentTask(createdTask);
+                renderTask(createdTask);
+                window.LuxCodeTaskState.startTaskPolling(taskId);
+                showToast(`Gorev olusturuldu: ${taskId}`);
+            } catch (error) {
+                renderTaskError(window.LuxCodeApi.normalizeApiError(error));
+            } finally {
+                setSubmitBusy(false);
+            }
         }
 
         function resetToHome() {
-            clearTimeout(taskTimer);
+            window.LuxCodeTaskState.resetTaskState();
             closeRightPanel();
             if (terminalTray.style.display === "block") toggleTerminalDock();
             document.getElementById("txtLandingInput").value = "";
             document.getElementById("txtDockedInput").value = "";
+            document.getElementById("taskErrorText").textContent = "";
             setTaskState("home");
         }
 
@@ -1951,32 +2043,100 @@
             showToast("Ek komut görev akışına eklendi");
         }
 
-        function approveTask() {
+        function renderTask(task) {
+            const status = taskStatus(task);
+            const progress = progressFromTask(task);
+            const completed = Array.isArray(task.completed_steps) ? task.completed_steps : [];
+            const pending = Array.isArray(task.pending_steps) ? task.pending_steps : [];
+            const changed = Array.isArray(task.changed_files) ? task.changed_files : [];
+            const nextAction = task.next_safe_action || "";
+            const engine = task.active_engine && task.active_engine !== "-" ? task.active_engine : "";
+            const model = task.active_model && task.active_model !== "-" ? task.active_model : "";
+
+            document.getElementById("userTaskText").textContent = task.original_request || window.LuxCodeTaskState.state.submittedText || "Gorev";
+            document.getElementById("taskStatusTitle").textContent = friendlyTaskStatus(status);
+            document.getElementById("lblPipelineStep3").textContent = friendlyTaskStatus(status);
+            document.getElementById("pipelineStep3").className = window.LuxCodeTaskState.isTerminalTaskState(status) ? "pipeline-step completed" : "pipeline-step active";
+
+            const detailParts = [
+                `Gorev kimligi: ${task.task_id || "bekleniyor"}`,
+                `Ilerleme: %${progress}`,
+            ];
+            if (nextAction) detailParts.push(`Sonraki adim: ${nextAction}`);
+            document.getElementById("taskStatusDetails").textContent = detailParts.join(" · ");
+
+            const meta = [];
+            if (completed.length) meta.push(`Tamamlanan: ${completed.join(", ")}`);
+            if (pending.length) meta.push(`Bekleyen: ${pending.slice(0, 5).join(", ")}`);
+            if (engine) meta.push(`Motor: ${engine}`);
+            if (model) meta.push(`Model: ${model}`);
+            if (changed.length) meta.push(`Dosyalar: ${changed.join(", ")}`);
+            document.getElementById("taskStatusMeta").textContent = meta.join("\n");
+
+            document.getElementById("metricProgress").textContent = `%${progress}`;
+            document.getElementById("metricDone").textContent = String(completed.length || "—");
+            document.getElementById("metricRemaining").textContent = String(pending.length || "—");
+            document.getElementById("metricCost").textContent = task.provider_cost || "—";
+            document.getElementById("metricTokens").textContent = task.token_usage || "—";
+
+            if (status === "awaiting_approval") {
+                document.getElementById("approvalSummaryText").textContent = nextAction || "Gorev onay bekliyor. Onay baglantisi sonraki asamada hazirlanacak.";
+                setTaskState("approval");
+            } else if (status === "completed") {
+                renderFinalReport(task);
+            } else {
+                setTaskState("working");
+            }
+        }
+
+        function renderTaskError(error) {
+            const normalized = window.LuxCodeApi.normalizeApiError(error);
+            const prefix = normalized.status ? `HTTP ${normalized.status}: ` : "";
+            document.getElementById("taskErrorText").textContent = `${prefix}${normalized.message}`;
+            setTaskState("error");
+        }
+
+        function retryCurrentTask() {
+            const taskId = window.LuxCodeTaskState.state.currentTaskId;
+            if (taskId) {
+                setTaskState("working");
+                window.LuxCodeTaskState.startTaskPolling(taskId);
+                return;
+            }
+            const submitted = window.LuxCodeTaskState.state.submittedText;
+            if (submitted) {
+                document.getElementById("txtLandingInput").value = submitted;
+                simulateSend();
+            }
+        }
+
+        function setReportItem(itemId, valueId, value) {
+            const item = document.getElementById(itemId);
+            const field = document.getElementById(valueId);
+            const hasValue = value !== undefined && value !== null && String(value).trim() !== "";
+            item.style.display = hasValue ? "flex" : "none";
+            if (hasValue) field.textContent = String(value);
+        }
+
+        function renderFinalReport(task) {
             const status = document.getElementById("finalStatus");
-            status.textContent = "BAŞARILI";
+            status.textContent = "TAMAMLANDI";
             status.className = "final-status success";
-            document.getElementById("finalReportTitle").textContent = "Görev başarıyla tamamlandı";
-            document.getElementById("finalFiles").textContent = "1";
-            document.getElementById("finalTests").textContent = "7 PASS";
-            document.getElementById("finalGit").textContent = "Değişiklikler hazır";
-            document.getElementById("finalRollback").textContent = "Hazır";
-            document.getElementById("finalReportBody").textContent = "Timeout davranışı güvenli biçimde güncellendi, hata yakalama eklendi ve doğrulama kontrolleri tamamlandı.";
+            document.getElementById("finalReportTitle").textContent = "Gorev tamamlandi";
+            setReportItem("finalFilesItem", "finalFiles", Array.isArray(task.changed_files) && task.changed_files.length ? task.changed_files.length : "");
+            setReportItem("finalTestsItem", "finalTests", task.verification_summary?.summary ? JSON.stringify(task.verification_summary.summary) : "");
+            setReportItem("finalGitItem", "finalGit", friendlyTaskStatus(taskStatus(task)));
+            setReportItem("finalRollbackItem", "finalRollback", task.next_safe_action || "");
+            document.getElementById("finalReportBody").textContent = task.next_safe_action || "Gorev terminal duruma ulasti. Ayrintilar backend yanitinda mevcut alanlarla sinirlidir.";
             setTaskState("completed");
-            showToast("Görev tamamlandı");
+        }
+
+        function approveTask() {
+            showToast("Onay baglantisi hazirlaniyor");
         }
 
         function rejectTask() {
-            const status = document.getElementById("finalStatus");
-            status.textContent = "REDDEDİLDİ";
-            status.className = "final-status rejected";
-            document.getElementById("finalReportTitle").textContent = "Değişiklik uygulanmadı";
-            document.getElementById("finalFiles").textContent = "0";
-            document.getElementById("finalTests").textContent = "Çalıştırılmadı";
-            document.getElementById("finalGit").textContent = "Temiz";
-            document.getElementById("finalRollback").textContent = "Gerekmedi";
-            document.getElementById("finalReportBody").textContent = "Önerilen değişiklik kullanıcı tarafından reddedildi. Dosyalarda herhangi bir değişiklik yapılmadı.";
-            setTaskState("rejected");
-            showToast("Değişiklik reddedildi");
+            showToast("Onay baglantisi hazirlaniyor");
         }
 
         function switchPanelTab(tabName) {
@@ -2107,6 +2267,22 @@
 
         document.getElementById("modelNameInput")?.addEventListener("keydown", event => {
             if (event.key === "Enter") saveCustomModel();
+        });
+
+        window.addEventListener("luxcode:task-update", event => {
+            if (event.detail?.task) renderTask(event.detail.task);
+        });
+
+        window.addEventListener("luxcode:task-error", event => {
+            renderTaskError(event.detail?.error);
+        });
+
+        window.addEventListener("luxcode:task-terminal", event => {
+            if (event.detail?.task) renderTask(event.detail.task);
+        });
+
+        window.addEventListener("beforeunload", () => {
+            window.LuxCodeTaskState.stopTaskPolling();
         });
 
         renderSelectedWorkspaceTool(selectedWorkspaceTool);
