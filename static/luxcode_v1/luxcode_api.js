@@ -9,13 +9,13 @@
     }
 
     function normalizeApiError(error) {
-        if (!error) return { message: "Bilinmeyen backend hatasi", code: "unknown_error" };
+        if (!error) return { message: "Bilinmeyen backend hatası", code: "unknown_error" };
         if (error.name === "AbortError") {
-            return { message: "Backend istegi zaman asimina ugradi", code: "request_timeout" };
+            return { message: "Backend isteği zaman aşımına uğradı", code: "request_timeout" };
         }
         if (error.normalized) return error;
         return {
-            message: error.message || "Backend baglantisi kurulamadı",
+            message: error.message || "Backend bağlantısı kurulamadı",
             code: error.code || "network_error",
             status: error.status || 0,
             detail: error.detail || null,
@@ -50,7 +50,7 @@
         } catch (error) {
             throw {
                 normalized: true,
-                message: "Backend gecersiz JSON yaniti dondurdu",
+                message: "Backend geçersiz JSON yanıtı döndürdü",
                 code: "invalid_json",
                 status: response.status,
                 detail: text.slice(0, 300),
@@ -130,6 +130,105 @@
         });
     }
 
+    function looksLikeCoderPrompt(prompt) {
+        return /\b(create|read|write|update|edit|delete|patch|test|run|fix|dosya|klas[oö]r|oku|yaz|olu[sş]tur|d[üu]zelt|test|kod|commit|deploy)\b/i.test(prompt || "");
+    }
+
+    async function sendConversationMessage(payload = {}, options = {}) {
+        const prompt = String(payload.message || payload.prompt || "").trim();
+        const workspaceRoot = payload.repository_root
+            || payload.workspace_root
+            || payload.project_path
+            || "C:\\Users\\Teoman\\OneDrive\\Desktop\\LUXDEEP";
+        const sessionId = payload.session_id || "default";
+        let result;
+        if (looksLikeCoderPrompt(prompt)) {
+            result = await runLuxCodeAgent({
+                prompt,
+                workspace_root: workspaceRoot,
+                session_id: sessionId,
+            }, {
+                timeoutMs: options.timeoutMs || 90000,
+                controller: options.controller,
+            });
+        } else {
+            result = {
+                ok: true,
+                response: "Merhaba, buradayım. Normal sohbet edebiliriz; kod işi için seçili klasörde ne yapmamı istediğini yazman yeterli.",
+            };
+        }
+        const assistantText = result.response
+            || result.message
+            || result.output
+            || result.content
+            || (result.ok === false ? "Agent yanıt üretemedi." : "İşlem tamamlandı.");
+        return {
+            ok: result.ok !== false,
+            route: "agent",
+            response: assistantText,
+            agent: result,
+            session: {
+                session_id: sessionId,
+                active_task_id: result.task_id || "",
+                active_task_state: result.task || null,
+                message_history: [
+                    {
+                        id: payload.client_message_id || `client-${Date.now()}`,
+                        role: "user",
+                        content: prompt,
+                        meta: { status: "sent" },
+                    },
+                    {
+                        id: payload.assistant_message_id || `asst-${Date.now()}`,
+                        role: "assistant",
+                        content: assistantText,
+                        meta: { route: "agent", ok: result.ok !== false },
+                    },
+                ],
+            },
+        };
+    }
+
+    function inspectWorkspace(payload, options = {}) {
+        return requestJson("/luxcode-workspace/inspect", {
+            method: "POST",
+            body: JSON.stringify(payload || {}),
+            headers: { "Content-Type": "application/json" },
+            timeoutMs: options.timeoutMs || 20000,
+            controller: options.controller,
+        });
+    }
+
+    function selectWorkspaceFolder(payload = {}, options = {}) {
+        return requestJson("/luxcode-workspace/select-folder", {
+            method: "POST",
+            body: JSON.stringify(payload || {}),
+            headers: { "Content-Type": "application/json" },
+            timeoutMs: options.timeoutMs || 120000,
+            controller: options.controller,
+        });
+    }
+
+    function runWorkspaceCommand(payload, options = {}) {
+        return requestJson("/luxcode-workspace/run-command", {
+            method: "POST",
+            body: JSON.stringify(payload || {}),
+            headers: { "Content-Type": "application/json" },
+            timeoutMs: options.timeoutMs || 120000,
+            controller: options.controller,
+        });
+    }
+
+    function commitWorkspace(payload, options = {}) {
+        return requestJson("/luxcode-workspace/commit", {
+            method: "POST",
+            body: JSON.stringify(payload || {}),
+            headers: { "Content-Type": "application/json" },
+            timeoutMs: options.timeoutMs || 120000,
+            controller: options.controller,
+        });
+    }
+
     async function requestLuxCodeAgentStream(payload, options = {}) {
         const controller = options.controller || new AbortController();
         const timeoutMs = Number(options.timeoutMs || 90000);
@@ -187,7 +286,7 @@
                 }
             }
             if (!result) {
-                throw { normalized: true, message: "Akış tamamlanamadi", code: "agent_stream_incomplete" };
+                throw { normalized: true, message: "Akış tamamlanamadı", code: "agent_stream_incomplete" };
             }
             return result;
         } catch (error) {
@@ -201,7 +300,12 @@
         createLuxCodeTask,
         getLuxCodeTask,
         advanceLuxCodeTask,
+        inspectWorkspace,
+        selectWorkspaceFolder,
+        runWorkspaceCommand,
+        commitWorkspace,
         runLuxCodeAgent,
+        sendConversationMessage,
         normalizeApiError,
     };
 })();
