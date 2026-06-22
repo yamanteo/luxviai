@@ -547,10 +547,6 @@
             width: 100%;
             height: 60px; /* Mesaj yazma alanı genişletildi */
             line-height: 1.6;
-            pointer-events: auto;
-            user-select: text;
-            position: relative;
-            z-index: 10;
         }
 
         .omnibox-controls {
@@ -1138,101 +1134,6 @@
             transition: opacity .18s ease, transform .18s ease;
         }
         .ui-toast.show { opacity: 1; transform: translate(-50%, 0); }
-        .side-workspace-panel {
-            display: none;
-            margin: 8px 0 10px;
-            padding: 10px;
-            border: 1px solid var(--border-soft);
-            border-radius: 8px;
-            background: rgba(255,255,255,.014);
-            color: var(--text-main);
-            font-size: 11px;
-        }
-        .side-workspace-panel.active { display: block; }
-        .sidebar:not(.collapsed) .side-workspace-panel.active { display: block !important; }
-        .side-workspace-panel h3 {
-            margin: 0 0 8px;
-            font-size: 11px;
-            color: var(--lux-yellow);
-            font-weight: 600;
-        }
-        .side-workspace-panel input,
-        .side-workspace-panel select {
-            width: 100%;
-            height: 30px;
-            margin: 5px 0 7px;
-            padding: 0 8px;
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            background: #090909;
-            color: var(--text-main);
-            outline: none;
-            pointer-events: auto;
-            user-select: text;
-        }
-        .side-workspace-panel button,
-        .project-actions button {
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            background: transparent;
-            color: var(--text-main);
-            padding: 6px 8px;
-            cursor: pointer;
-            font-size: 10.5px;
-        }
-        .side-workspace-panel button:hover,
-        .project-actions button:hover { border-color: var(--lux-yellow); color: var(--lux-yellow); }
-        .project-panel {
-            margin: 16px 0 8px;
-            padding: 10px;
-            border-top: 1px solid var(--border-soft);
-            border-bottom: 1px solid var(--border-soft);
-        }
-        .project-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            color: var(--text-muted);
-            font-size: 10px;
-            letter-spacing: .06em;
-            margin-bottom: 8px;
-        }
-        .project-actions { display: flex; gap: 4px; }
-        .lux-project-item,
-        .file-tree-item {
-            padding: 5px 6px;
-            border-radius: 6px;
-            cursor: pointer;
-            color: var(--text-muted);
-            font-size: 11px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .lux-project-item:hover,
-        .file-tree-item:hover { background: rgba(171,107,12,.07); color: var(--text-main); }
-        .file-tree-list {
-            max-height: 180px;
-            overflow: auto;
-            border-top: 1px solid var(--border-soft);
-            margin-top: 8px;
-            padding-top: 6px;
-        }
-        .side-panel-output {
-            margin-top: 8px;
-            padding: 8px;
-            border: 1px solid var(--border-soft);
-            border-radius: 7px;
-            background: #070707;
-            color: var(--text-muted);
-            font-family: monospace;
-            font-size: 10.5px;
-            line-height: 1.45;
-            white-space: pre-wrap;
-            max-height: 180px;
-            overflow: auto;
-        }
         @media (max-width: 960px) {
             .right-panel {
                 position: fixed;
@@ -1366,51 +1267,17 @@
                 <span class="chat-text sidebar-hide-on-collapse">Yeni sohbet</span>
             </button>
             
-            <div class="menu-item" data-side-tab="search" onclick="openSidePanel('search')">
+            <div class="menu-item">
                 <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
                 <span class="sidebar-hide-on-collapse">Arama</span>
             </div>
-            <div class="menu-item" data-side-tab="plugins" onclick="openSidePanel('plugins')">
+            <div class="menu-item">
                 <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M1 11a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3zm5-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm5-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-2a1 1-0 0 1-1-1V2z"/></svg>
                 <span class="sidebar-hide-on-collapse">Eklentiler</span>
             </div>
-            <div class="menu-item" data-side-tab="automation" onclick="openSidePanel('automation')">
+            <div class="menu-item">
                 <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/></svg>
                 <span class="sidebar-hide-on-collapse">Otomasyonlar</span>
-            </div>
-
-            <div id="sidePanelSearch" class="side-workspace-panel sidebar-hide-on-collapse">
-                <h3>Arama</h3>
-                <input id="fileSearchInput" type="search" placeholder="Dosyalarda ara">
-                <button type="button" onclick="doFileSearch()">Ara</button>
-                <div id="fileSearchResults" class="side-panel-output">Aranacak kelimeyi yazın.</div>
-            </div>
-
-            <div id="sidePanelPlugins" class="side-workspace-panel sidebar-hide-on-collapse">
-                <h3>Eklentiler</h3>
-                <button type="button" onclick="runGitStatus()">Git durumu</button>
-                <button type="button" onclick="runDependencyScan()">Bağımlılık tara</button>
-                <div id="pluginOutput" class="side-panel-output">Eklenti çıktısı burada görünecek.</div>
-            </div>
-
-            <div id="sidePanelAutomation" class="side-workspace-panel sidebar-hide-on-collapse">
-                <h3>Otomasyon</h3>
-                <button type="button" onclick="runAutoTest()">Testleri çalıştır</button>
-                <button type="button" onclick="runAutoFormat()">Format kontrolü</button>
-                <div id="automationOutput" class="side-panel-output">Otomasyon çıktısı burada görünecek.</div>
-            </div>
-
-            <div class="project-panel sidebar-hide-on-collapse">
-                <div class="project-header">
-                    <span>PROJELER</span>
-                    <div class="project-actions">
-                        <button type="button" onclick="addProject()" title="Proje ekle">+</button>
-                        <button type="button" onclick="addFolder()" title="Klasör ekle">Klasör</button>
-                        <button type="button" onclick="refreshProject()" title="Yenile">Yenile</button>
-                    </div>
-                </div>
-                <div id="projectList"></div>
-                <div id="fileTree" class="file-tree-list"></div>
             </div>
 
             <!-- Gerçek sabitlenenler, projeler ve sohbetler backend bağlandığında
@@ -1421,25 +1288,9 @@
 
         <div class="sidebar-bottom">
             <!-- AYARLAR SEKMESİ -->
-            <div class="menu-item" data-side-tab="settings" onclick="openSidePanel('settings')">
+            <div class="menu-item">
                 <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
                 <span class="sidebar-hide-on-collapse">Ayarlar</span>
-            </div>
-
-            <div id="sidePanelSettings" class="side-workspace-panel sidebar-hide-on-collapse">
-                <h3>Ayarlar</h3>
-                <label for="settingsApiKey">Cloud API anahtarı</label>
-                <input id="settingsApiKey" type="password" placeholder="API key">
-                <label for="settingsTheme">Tema</label>
-                <select id="settingsTheme">
-                    <option value="dark">Dark</option>
-                    <option value="premium">Premium siyah</option>
-                </select>
-                <label for="settingsMaxTokens">Max token</label>
-                <input id="settingsMaxTokens" type="number" min="512" max="64000" value="4096">
-                <button type="button" onclick="saveSettings()">Ayarları kaydet</button>
-                <button type="button" onclick="logoutSession()">Oturumu kapat</button>
-                <div id="settingsOutput" class="side-panel-output">Profil ve oturum ayarları hazır.</div>
             </div>
 
             <!-- ÇEVRİMİÇİ STATÜ PANELİ (SOL EN ALTTA) -->
@@ -1733,7 +1584,7 @@
                     <div id="integrationList">
                         <button class="integration-row connection-row" type="button" data-connection-id="ollama" onclick="selectConnection('ollama')"><span class="integration-name"><span class="integration-mini-icon">OL</span>Ollama</span><strong class="status-pending">Durum bekleniyor</strong></button>
                         <button class="integration-row connection-row" type="button" data-connection-id="gemini" onclick="selectConnection('gemini')"><span class="integration-name"><span class="integration-mini-icon">GE</span>Gemini</span><strong class="status-pending">Durum bekleniyor</strong></button>
-                        <button class="integration-row connection-row" type="button" data-connection-id="cloud-models" onclick="selectConnection('cloud-models')"><span class="integration-name"><span class="integration-mini-icon">CM</span>Cloud Models</span><strong class="status-pending">API key gerekli</strong></button>
+                        <button class="integration-row connection-row" type="button" data-connection-id="claude" onclick="selectConnection('claude')"><span class="integration-name"><span class="integration-mini-icon">CL</span>Claude</span><strong class="status-pending">Durum bekleniyor</strong></button>
                         <button class="integration-row connection-row" type="button" data-connection-id="deepseek" onclick="selectConnection('deepseek')"><span class="integration-name"><span class="integration-mini-icon">DS</span>DeepSeek</span><strong class="status-pending">Durum bekleniyor</strong></button>
                         <button class="integration-row connection-row" type="button" data-connection-id="whale" onclick="selectConnection('whale')"><span class="integration-name"><span class="integration-mini-icon">WH</span>Whale</span><strong class="status-pending">Durum bekleniyor</strong></button>
                         <button class="integration-row connection-row" type="button" data-connection-id="codex" onclick="selectConnection('codex')"><span class="integration-name"><span class="integration-mini-icon">CX</span>Codex</span><strong class="status-pending">Durum bekleniyor</strong></button>
@@ -1986,7 +1837,7 @@
         const builtInConnections = {
             ollama: "Ollama",
             gemini: "Gemini",
-            "cloud-models": "Cloud Models",
+            claude: "Claude",
             deepseek: "DeepSeek",
             whale: "Whale",
             codex: "Codex"
@@ -2032,90 +1883,6 @@
             document.getElementById("btnChatMode")?.classList.toggle("active", luxCodeMode === "chat");
             document.getElementById("btnAgentMode")?.classList.toggle("active", luxCodeMode === "agent");
             if (!silent) showToast(luxCodeMode === "agent" ? "Coder modu aktif" : "Chat modu aktif");
-        }
-
-        function setMode(mode) {
-            setLuxCodeMode(mode === "coder" ? "agent" : mode);
-        }
-
-        function openSidePanel(panelName) {
-            document.querySelectorAll("[data-side-tab]").forEach(item => {
-                item.classList.toggle("active", item.dataset.sideTab === panelName);
-            });
-            document.querySelectorAll(".side-workspace-panel").forEach(panel => {
-                panel.classList.toggle("active", panel.id === `sidePanel${panelName[0].toUpperCase()}${panelName.slice(1)}`);
-            });
-        }
-
-        function getActiveWorkspaceRoot() {
-            const payload = resolveWorkspacePayload();
-            return payload.repository_root || localStorage.getItem("luxcode_workspace_root") || ".";
-        }
-
-        async function runAgentTool(tool, params = {}, outputId = "") {
-            const response = await fetch("/luxcode-agent/tool", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ tool, params, workspace_root: getActiveWorkspaceRoot() })
-            });
-            const data = await response.json();
-            if (outputId) {
-                const output = document.getElementById(outputId);
-                if (output) output.textContent = JSON.stringify(data.result || data.error || data, null, 2);
-            }
-            return data;
-        }
-
-        async function doFileSearch() {
-            const input = document.getElementById("fileSearchInput");
-            const q = input?.value.trim();
-            if (!q) {
-                showToast("Aranacak metni yazın");
-                input?.focus();
-                return;
-            }
-            await runAgentTool("search_in_files", { directory: ".", pattern: q }, "fileSearchResults");
-            showToast("Arama tamamlandı");
-        }
-
-        async function runGitStatus() {
-            await runAgentTool("run_command", { command: "git status" }, "pluginOutput");
-            showToast("Git durumu alındı");
-        }
-
-        async function runDependencyScan() {
-            await runAgentTool("run_command", { command: "python -m pip --version" }, "pluginOutput");
-            showToast("Bağımlılık kontrolü tamamlandı");
-        }
-
-        async function runAutoTest() {
-            await runAgentTool("run_command", { command: "python -m py_compile app.py luxcode_agent_runtime.py" }, "automationOutput");
-            showToast("Test komutu tamamlandı");
-        }
-
-        async function runAutoFormat() {
-            await runAgentTool("run_command", { command: "python -m py_compile app.py" }, "automationOutput");
-            showToast("Format/syntax kontrolü tamamlandı");
-        }
-
-        function saveSettings() {
-            const settings = {
-                apiKey: document.getElementById("settingsApiKey")?.value || "",
-                theme: document.getElementById("settingsTheme")?.value || "dark",
-                maxTokens: document.getElementById("settingsMaxTokens")?.value || "4096",
-            };
-            localStorage.setItem("luxcode_settings_v1", JSON.stringify(settings));
-            const output = document.getElementById("settingsOutput");
-            if (output) output.textContent = "Ayarlar kaydedildi.";
-            showToast("Ayarlar kaydedildi");
-        }
-
-        function logoutSession() {
-            localStorage.removeItem("luxcode_agent_session_id");
-            luxCodeAgentSessionId = "lux-agent-" + Date.now().toString(36) + "-" + Math.random().toString(16).slice(2);
-            localStorage.setItem("luxcode_agent_session_id", luxCodeAgentSessionId);
-            resetToHome();
-            showToast("Oturum yenilendi");
         }
 
         function renderSelectedWorkspaceTool(toolId) {
@@ -2316,112 +2083,6 @@
                 if (inferred) workspaceContext.repositoryRoot = inferred;
             }
             renderWorkspaceContext();
-            rememberWorkspaceProject();
-            refreshProject();
-        }
-
-        function loadProjects() {
-            try {
-                const saved = JSON.parse(localStorage.getItem("luxcode_projects_v1") || "[]");
-                return Array.isArray(saved) ? saved : [];
-            } catch (_) {
-                return [];
-            }
-        }
-
-        function saveProjects(projects) {
-            localStorage.setItem("luxcode_projects_v1", JSON.stringify(projects || []));
-        }
-
-        function rememberWorkspaceProject() {
-            const payload = resolveWorkspacePayload();
-            const root = payload.repository_root || payload.selected_folders[0] || "";
-            if (!root) return;
-            localStorage.setItem("luxcode_workspace_root", root);
-            const name = root.split(/[\\/]/).filter(Boolean).pop() || root;
-            const projects = loadProjects();
-            if (!projects.some(project => project.path === root)) {
-                projects.push({ name, path: root });
-                saveProjects(projects);
-            }
-            renderProjects();
-        }
-
-        function addProject() {
-            const path = window.prompt("Proje klasör yolunu yazın:");
-            if (!path) return;
-            const clean = normalizeWorkspacePath(path);
-            const name = clean.split(/[\\/]/).filter(Boolean).pop() || "Proje";
-            setWorkspaceContext({ selectedFolders: [clean], repositoryRoot: clean });
-            rememberWorkspaceProject();
-            refreshProject();
-            showToast(`${name} proje olarak eklendi`);
-        }
-
-        function addFolder() {
-            openLandingPicker(true);
-            showToast("Klasör seçici açıldı");
-        }
-
-        function openProject(path) {
-            const clean = normalizeWorkspacePath(path);
-            setWorkspaceContext({ selectedFolders: [clean], repositoryRoot: clean });
-            localStorage.setItem("luxcode_workspace_root", clean);
-            renderProjects();
-            refreshProject();
-            showToast("Proje açıldı");
-        }
-
-        function removeProject(index) {
-            const projects = loadProjects();
-            projects.splice(index, 1);
-            saveProjects(projects);
-            renderProjects();
-        }
-
-        function renderProjects() {
-            const list = document.getElementById("projectList");
-            if (!list) return;
-            const activeRoot = getActiveWorkspaceRoot();
-            const projects = loadProjects();
-            if (!projects.length) {
-                list.innerHTML = `<div class="lux-project-item">Henüz proje eklenmedi</div>`;
-                return;
-            }
-            list.innerHTML = projects.map((project, index) => {
-                const active = project.path === activeRoot ? " active" : "";
-                return `<div class="lux-project-item${active}" title="${escapeAgentHtml(project.path)}"><span onclick="openProject('${escapeAgentHtml(project.path).replace(/'/g, "&#39;")}')">${escapeAgentHtml(project.name)}</span><button type="button" style="float:right;padding:1px 5px;" onclick="removeProject(${index})">x</button></div>`;
-            }).join("");
-        }
-
-        async function refreshProject() {
-            const tree = document.getElementById("fileTree");
-            if (!tree) return;
-            tree.innerHTML = `<div class="file-tree-item">Yükleniyor...</div>`;
-            try {
-                const data = await runAgentTool("list_directory", { path: "." });
-                const entries = Array.isArray(data.result) ? data.result : [];
-                if (!entries.length) {
-                    tree.innerHTML = `<div class="file-tree-item">Dosya bulunamadı</div>`;
-                    return;
-                }
-                tree.innerHTML = entries.slice(0, 80).map(entry => {
-                    const icon = entry.type === "directory" ? "▰" : "·";
-                    const path = entry.path || entry.name || "";
-                    return `<div class="file-tree-item" title="${escapeAgentHtml(path)}" onclick="openFileInChat('${escapeAgentHtml(path).replace(/'/g, "&#39;")}')">${icon} ${escapeAgentHtml(entry.name || path)}</div>`;
-                }).join("");
-            } catch (error) {
-                tree.innerHTML = `<div class="file-tree-item">Dosya ağacı alınamadı</div>`;
-            }
-        }
-
-        function openFileInChat(filePath) {
-            const input = document.getElementById("txtLandingInput");
-            if (input) {
-                input.value = `${filePath} dosyasını oku ve özetle`;
-                input.focus();
-            }
-            setLuxCodeMode("agent");
         }
 
         function openLandingPicker(useFolder = false) {
@@ -3001,16 +2662,6 @@
             if ((event.ctrlKey || event.metaKey) && event.key === "Enter") simulateSend();
         });
 
-        ["txtLandingInput", "txtDockedInput"].forEach(inputId => {
-            const input = document.getElementById(inputId);
-            input?.addEventListener("mousedown", event => event.stopPropagation());
-            input?.addEventListener("mouseup", event => event.stopPropagation());
-            input?.addEventListener("click", event => {
-                event.stopPropagation();
-                input.focus();
-            });
-        });
-
         document.getElementById("btnLandingAttach")?.addEventListener("click", event => {
             openLandingPicker(event?.shiftKey || false);
         });
@@ -3061,51 +2712,10 @@
             window.LuxCodeTaskState.stopAutoAdvance();
         });
 
-        Object.assign(window, {
-            addFolder,
-            addProject,
-            approveTask,
-            closeModelAddForm,
-            closeRightPanel,
-            doFileSearch,
-            launchWorkspaceTool,
-            logoutSession,
-            openBrowserPreview,
-            openFileInChat,
-            openModelAddForm,
-            openProject,
-            openRightPanel,
-            openSidePanel,
-            refreshProject,
-            rejectTask,
-            removeProject,
-            resetToHome,
-            retryCurrentTask,
-            runAutoFormat,
-            runAutoTest,
-            runDependencyScan,
-            runGitStatus,
-            saveCustomModel,
-            saveSettings,
-            selectConnection,
-            setLuxCodeMode,
-            setMode,
-            simulateSend,
-            submitDockedText,
-            switchPanelTab,
-            toggleConnectionMenu,
-            toggleMetricsGroup,
-            toggleRightPanel,
-            toggleSidebar,
-            toggleTerminalDock,
-        });
-
         ensureFreshLandingSession();
         renderSelectedWorkspaceTool(selectedWorkspaceTool);
         setLuxCodeMode(luxCodeMode, true);
         renderWorkspaceContext();
-        renderProjects();
-        refreshProject();
         loadCustomModels();
         setTaskState("home");
     </script>
