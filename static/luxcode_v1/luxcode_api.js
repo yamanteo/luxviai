@@ -141,22 +141,14 @@
             || payload.project_path
             || "C:\\Users\\Teoman\\OneDrive\\Desktop\\LUXDEEP";
         const sessionId = payload.session_id || "default";
-        let result;
-        if (looksLikeCoderPrompt(prompt)) {
-            result = await runLuxCodeAgent({
-                prompt,
-                workspace_root: workspaceRoot,
-                session_id: sessionId,
-            }, {
-                timeoutMs: options.timeoutMs || 90000,
-                controller: options.controller,
-            });
-        } else {
-            result = {
-                ok: true,
-                response: "Merhaba, buradayım. Normal sohbet edebiliriz; kod işi için seçili klasörde ne yapmamı istediğini yazman yeterli.",
-            };
-        }
+        const result = await runLuxCodeAgent({
+            prompt,
+            workspace_root: workspaceRoot,
+            session_id: sessionId,
+        }, {
+            timeoutMs: options.timeoutMs || 90000,
+            controller: options.controller,
+        });
         const assistantText = result.response
             || result.message
             || result.output

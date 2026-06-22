@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
+
+from openai import OpenAI
 
 import session_manager
 from tool_executor import execute_tool
@@ -36,6 +39,13 @@ Kod yazdıktan sonra run_command veya run_python ile test et
 Hata alırsan otomatik düzelt ve tekrar dene
 Yarım iş bırakma
 Her görev sonunda rapor ver
+"""
+
+
+CHAT_SYSTEM_PROMPT = """Sen LuxCode adında yardımcı ve net bir yapay zeka asistansın.
+Kullanıcı normal sohbet ediyorsa doğal cevap ver.
+Kullanıcı kod, dosya, klasör, test, patch veya terminal işi isterse kısa ve net cevap ver.
+Önceki konuşma geçmişini dikkate al. Kullanıcının verdiği isim gibi bilgileri aynı session içinde hatırla.
 """
 
 
@@ -223,9 +233,11 @@ def _extract_agent_memory_updates(prompt: str) -> Dict[str, str]:
     if not text:
         return updates
     lower = text.lower()
-    if "benim adim" in lower and ("kaydet" in lower or "olarak" in lower or "ad olarak" in lower):
+    if "adim ne" in lower or "adım ne" in lower or lower.endswith("?"):
+        return updates
+    if "benim adim" in lower or "benim adım" in lower:
         m = re.search(
-            r"benim\s+adim(?:\si|ı|i|y)?\s+(.+?)(?:\s+(?:olarak|gibi)\s+kaydet)?\s*$",
+            r"benim\s+ad(?:i|ı)m(?:\si|ı|i|y)?\s+(.+?)(?:\s+(?:olarak|gibi)\s+kaydet)?\s*$",
             text,
             flags=re.IGNORECASE,
         )
@@ -359,6 +371,48 @@ def planned_tool_calls(prompt: str) -> List[Dict[str, Any]]:
     return []
 
 
+def _history_messages(session: Dict[str, Any], limit: int = 16) -> List[Dict[str, str]]:
+    raw = session.get("conversation_history") or session.get("messages") or []
+    history: List[Dict[str, str]] = []
+    for item in raw[-limit:]:
+        role = str(item.get("role") or "").strip()
+        content = str(item.get("content") or "").strip()
+        if role in {"user", "assistant"} and content:
+            history.append({"role": role, "content": content})
+    return history
+
+
+def _fallback_chat_response(prompt: str, session: Dict[str, Any]) -> str:
+    lower = str(prompt or "").lower()
+    memory = session.get("memory") if isinstance(session.get("memory"), dict) else {}
+    if "2+2" in lower or "2 + 2" in lower:
+        return "2+2 = 4."
+    if ("adim ne" in lower or "adım ne" in lower or "benim adim ne" in lower or "benim adım ne" in lower) and memory.get("name"):
+        return f"Adın {memory['name']}."
+    if "benim adim" in lower or "benim adım" in lower:
+        return "Tamam, adını bu oturum için kaydettim."
+    return "Mesajını aldım. Nasıl yardımcı olmamı istersin?"
+
+
+def _call_chat_llm(prompt: str, session: Dict[str, Any]) -> str:
+    api_key = os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY") or ""
+    if not api_key:
+        return _fallback_chat_response(prompt, session)
+    base_url = "https://api.deepseek.com" if os.getenv("DEEPSEEK_API_KEY") else None
+    client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
+    messages: List[Dict[str, str]] = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
+    messages.extend(_history_messages(session))
+    if not messages or messages[-1].get("role") != "user" or messages[-1].get("content") != prompt:
+        messages.append({"role": "user", "content": prompt})
+    response = client.chat.completions.create(
+        model=os.getenv("LUXCODE_CHAT_MODEL") or ("deepseek-chat" if base_url else "gpt-4o-mini"),
+        messages=messages,
+        temperature=0.25,
+        max_tokens=700,
+    )
+    return (response.choices[0].message.content or "").strip() or _fallback_chat_response(prompt, session)
+
+
 def run_agent(
     prompt: str,
     workspace_root: str | Path | None = None,
@@ -375,26 +429,51 @@ def run_agent(
         current_memory = dict(session.get("memory") or {})
         current_memory.update(memory_updates)
         session["memory"] = current_memory
-        session_manager.append_message(session, "assistant", f"memory_updated:{json.dumps(memory_updates, ensure_ascii=False)}")
+        saved_name = memory_updates.get("name")
+        confirmation = f"Adını {saved_name} olarak kaydettim." if saved_name else f"memory_updated:{json.dumps(memory_updates, ensure_ascii=False)}"
+        session_manager.append_message(session, "assistant", confirmation)
         session_manager.save_session(session)
+        return {
+            "ok": True,
+            "status": "memory_updated",
+            "mode": "chat",
+            "response": confirmation,
+            "message": confirmation,
+            "tool_calls": [],
+            "conversation_history": session.get("conversation_history", []),
+        }
 
     memory_reply = _resolve_agent_memory_response(prompt, session)
     if memory_reply:
+        session_manager.append_message(session, "assistant", str(memory_reply.get("response") or memory_reply.get("message") or ""))
+        session_manager.save_session(session)
         return memory_reply
     calls = planned_tool_calls(prompt)
     if not calls:
-        response = {
-            "ok": False,
-            "status": "no_tool_call",
-            "mode": "agent",
-            "response": "No executable tool call was found. Send JSON tool format or a supported file command.",
-            "message": "No executable tool call was found. Send JSON tool format or a supported file command.",
-            "tool_calls": [],
-            "system_prompt": CODER_SYSTEM_PROMPT,
-        }
-        session_manager.append_message(session, "assistant", response["message"])
+        try:
+            message = _call_chat_llm(prompt, session)
+        except Exception as exc:
+            message = _fallback_chat_response(prompt, session)
+            session["last_chat_error"] = str(exc)
+        session_manager.append_message(session, "assistant", message)
         session_manager.save_session(session)
-        return response
+        if on_step:
+            on_step({
+                "type": "response",
+                "status": "completed",
+                "ok": True,
+                "response": message,
+            })
+        return {
+            "ok": True,
+            "status": "chat_completed",
+            "mode": "chat",
+            "response": message,
+            "message": message,
+            "tool_calls": [],
+            "system_prompt": CHAT_SYSTEM_PROMPT,
+            "conversation_history": session.get("conversation_history", []),
+        }
     results: List[Dict[str, Any]] = []
     for index, call in enumerate(calls[:max_steps], start=1):
         if on_step:

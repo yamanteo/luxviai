@@ -63,7 +63,9 @@ def save_session(session: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def append_message(session: Dict[str, Any], role: str, content: str) -> Dict[str, Any]:
-    session.setdefault("messages", []).append({"role": role, "content": content, "at": _now()})
+    message = {"role": role, "content": content, "at": _now()}
+    session.setdefault("messages", []).append(message)
+    session.setdefault("conversation_history", []).append({"role": role, "content": content})
     if len(session["messages"]) % 5 == 0:
         save_session(session)
     return session
@@ -78,4 +80,3 @@ def end_session(session: Dict[str, Any], summary: str = "") -> Dict[str, Any]:
     session["summary"] = summary or f"{len(session.get('messages', []))} messages, {len(session.get('changes', []))} tool changes."
     session["ended_at"] = _now()
     return save_session(session)
-
