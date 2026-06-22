@@ -209,11 +209,14 @@ def run_command(command: str, workspace_root: str | Path | None = None, timeout:
             errors="replace",
             timeout=max(1, min(int(timeout), 300)),
         )
-        return _ok("run_command", {
+        payload = {
             "exit_code": completed.returncode,
             "stdout": completed.stdout,
             "stderr": completed.stderr,
-        }, command=command)
+        }
+        if completed.returncode != 0:
+            return _fail("run_command", "command_failed", command=command, **payload)
+        return _ok("run_command", payload, command=command)
     except subprocess.TimeoutExpired as exc:
         return _fail("run_command", "command_timeout", command=command, timeout=exc.timeout)
     except Exception as exc:
@@ -221,7 +224,31 @@ def run_command(command: str, workspace_root: str | Path | None = None, timeout:
 
 
 def run_python(code: str, workspace_root: str | Path | None = None, timeout: int = 30) -> Dict[str, Any]:
-    return run_command(f"{sys.executable} -c {code!r}", workspace_root=workspace_root, timeout=timeout)
+    try:
+        root = Path(workspace_root).expanduser().resolve() if workspace_root else PROJECT_ROOT
+        root = _safe(".", must_exist=True, workspace_root=root)
+        completed = subprocess.run(
+            [sys.executable, "-c", str(code or "")],
+            cwd=str(root),
+            shell=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=max(1, min(int(timeout), 300)),
+        )
+        payload = {
+            "exit_code": completed.returncode,
+            "stdout": completed.stdout,
+            "stderr": completed.stderr,
+        }
+        if completed.returncode != 0:
+            return _fail("run_python", "python_failed", **payload)
+        return _ok("run_python", payload)
+    except subprocess.TimeoutExpired as exc:
+        return _fail("run_python", "python_timeout", timeout=exc.timeout)
+    except Exception as exc:
+        return _fail("run_python", str(exc))
 
 
 def execute_tool(tool: str, params: Dict[str, Any], workspace_root: str | Path | None = None) -> Dict[str, Any]:
@@ -245,4 +272,3 @@ def execute_tool(tool: str, params: Dict[str, Any], workspace_root: str | Path |
     if tool == "run_python":
         return run_python(params.get("code", ""), workspace_root=workspace_root, timeout=int(params.get("timeout", 30)))
     return _fail("execute_tool", "unknown_tool", tool=tool)
-

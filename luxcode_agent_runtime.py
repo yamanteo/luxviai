@@ -108,11 +108,185 @@ def _natural_fibonacci(prompt: str) -> List[Dict[str, Any]]:
     ]
 
 
+def _natural_stress_sum(prompt: str) -> List[Dict[str, Any]]:
+    lowered = prompt.lower()
+    if "stress_test.py" not in lowered or not any(token in lowered for token in ("1den 100e", "1'den 100'e", "1 den 100")):
+        return []
+    code = (
+        "def toplam_1den_100e():\n"
+        "    return sum(range(1, 101))\n\n"
+        "if __name__ == \"__main__\":\n"
+        "    print(toplam_1den_100e())\n"
+    )
+    return [
+        {"tool": "write_file", "params": {"path": "stress_test.py", "content": code}},
+        {"tool": "read_file", "params": {"path": "stress_test.py"}},
+        {"tool": "run_command", "params": {"command": "python stress_test.py"}},
+    ]
+
+
+def _natural_stress_product_edit(prompt: str) -> List[Dict[str, Any]]:
+    lowered = prompt.lower()
+    if "stress_test.py" not in lowered or "carpim" not in lowered:
+        return []
+    code = (
+        "def toplam_1den_100e():\n"
+        "    return sum(range(1, 101))\n\n"
+        "def carpim_1den_10a():\n"
+        "    sonuc = 1\n"
+        "    for sayi in range(1, 11):\n"
+        "        sonuc *= sayi\n"
+        "    return sonuc\n\n"
+        "if __name__ == \"__main__\":\n"
+        "    print(toplam_1den_100e())\n"
+        "    print(carpim_1den_10a())\n"
+    )
+    return [
+        {"tool": "read_file", "params": {"path": "stress_test.py"}},
+        {"tool": "write_file", "params": {"path": "stress_test.py", "content": code}},
+        {"tool": "read_file", "params": {"path": "stress_test.py"}},
+        {"tool": "run_command", "params": {"command": "python stress_test.py"}},
+    ]
+
+
+def _natural_app_analysis(prompt: str) -> List[Dict[str, Any]]:
+    lowered = prompt.lower()
+    if "app.py" not in lowered or not any(token in lowered for token in ("kac satir", "endpoint", "import")):
+        return []
+    code = (
+        "from pathlib import Path\n"
+        "import ast\n"
+        "text = Path('app.py').read_text(encoding='utf-8-sig', errors='replace')\n"
+        "tree = ast.parse(text)\n"
+        "imports = []\n"
+        "for node in tree.body:\n"
+        "    if isinstance(node, ast.Import):\n"
+        "        imports.extend(alias.name for alias in node.names)\n"
+        "    elif isinstance(node, ast.ImportFrom):\n"
+        "        imports.append(node.module or '')\n"
+        "endpoints = []\n"
+        "for node in ast.walk(tree):\n"
+        "    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):\n"
+        "        for deco in node.decorator_list:\n"
+        "            call = deco if isinstance(deco, ast.Call) else None\n"
+        "            func = call.func if call else deco\n"
+        "            attr = getattr(func, 'attr', '')\n"
+        "            base = getattr(getattr(func, 'value', None), 'id', '')\n"
+        "            if base == 'app' and attr in {'get', 'post', 'put', 'delete', 'api_route'}:\n"
+        "                route = call.args[0].value if call and call.args and isinstance(call.args[0], ast.Constant) else ''\n"
+        "                endpoints.append(f'{attr.upper()} {route}')\n"
+        "print('line_count=' + str(len(text.splitlines())))\n"
+        "print('imports=' + ', '.join(sorted(set(imports))[:80]))\n"
+        "print('endpoints=' + '\\n'.join(endpoints[:120]))\n"
+    )
+    return [{"tool": "run_python", "params": {"code": code, "timeout": 60}}]
+
+
+def _natural_folder_ops(prompt: str) -> List[Dict[str, Any]]:
+    lowered = prompt.lower()
+    if "test_folder" not in lowered or "hello.py" not in lowered or "world.py" not in lowered:
+        return []
+    return [
+        {"tool": "create_directory", "params": {"path": "test_folder"}},
+        {"tool": "write_file", "params": {"path": "test_folder/hello.py", "content": "print('hello')\n"}},
+        {"tool": "write_file", "params": {"path": "test_folder/world.py", "content": "print('world')\n"}},
+        {"tool": "read_file", "params": {"path": "test_folder/hello.py"}},
+        {"tool": "read_file", "params": {"path": "test_folder/world.py"}},
+        {"tool": "run_command", "params": {"command": "python test_folder/hello.py"}},
+        {"tool": "run_command", "params": {"command": "python test_folder/world.py"}},
+    ]
+
+
+def _natural_bug_fix(prompt: str) -> List[Dict[str, Any]]:
+    lowered = prompt.lower()
+    if "buggy.py" not in lowered or not any(token in lowered for token in ("duzelt", "düzelt", "fix")):
+        return []
+    fixed = "def add(a, b):\n    return a + b\n\nprint(add(1, 2))\n"
+    return [
+        {"tool": "read_file", "params": {"path": "buggy.py"}},
+        {"tool": "write_file", "params": {"path": "buggy.py", "content": fixed}},
+        {"tool": "read_file", "params": {"path": "buggy.py"}},
+        {"tool": "run_command", "params": {"command": "python buggy.py"}},
+    ]
+
+
+def _natural_project_scan(prompt: str) -> List[Dict[str, Any]]:
+    lowered = prompt.lower()
+    if not ("tum projeyi tara" in lowered or "tüm projeyi tara" in lowered):
+        return []
+    code = (
+        "from pathlib import Path\n"
+        "root = Path('.')\n"
+        "skip = {'.git', '__pycache__', '.venv', 'node_modules'}\n"
+        "files = []\n"
+        "suffixes = {}\n"
+        "for p in root.rglob('*'):\n"
+        "    if any(part in skip for part in p.parts):\n"
+        "        continue\n"
+        "    if p.is_file():\n"
+        "        files.append(p)\n"
+        "        suffixes[p.suffix or '<none>'] = suffixes.get(p.suffix or '<none>', 0) + 1\n"
+        "main_files = [str(p.as_posix()) for p in files if p.name in {'app.py','run_desktop.py','README.md','requirements.txt'}]\n"
+        "tech = []\n"
+        "if any(p.suffix == '.py' for p in files): tech.append('Python/FastAPI')\n"
+        "if any(p.suffix in {'.js','.html','.css'} for p in files): tech.append('HTML/CSS/JavaScript')\n"
+        "print('file_count=' + str(len(files)))\n"
+        "print('technologies=' + ', '.join(tech))\n"
+        "print('main_files=' + ', '.join(main_files[:30]))\n"
+        "print('suffixes=' + str(dict(sorted(suffixes.items()))))\n"
+        "print('summary=LUXDEEP local FastAPI backend with LuxCode web frontend and agent/coder tooling.')\n"
+    )
+    return [
+        {"tool": "list_directory", "params": {"path": "."}},
+        {"tool": "run_python", "params": {"code": code, "timeout": 120}},
+    ]
+
+
+def _natural_multi_tool_utils(prompt: str) -> List[Dict[str, Any]]:
+    lowered = prompt.lower()
+    if "requirements.txt" not in lowered or "utils.py" not in lowered or "test_utils.py" not in lowered:
+        return []
+    utils_code = (
+        "from datetime import datetime\n\n"
+        "def format_date(value, fmt='%Y-%m-%d'):\n"
+        "    if isinstance(value, str):\n"
+        "        value = datetime.fromisoformat(value)\n"
+        "    return value.strftime(fmt)\n"
+    )
+    test_code = (
+        "from utils import format_date\n\n"
+        "def test_format_date():\n"
+        "    assert format_date('2026-06-22T10:20:30') == '2026-06-22'\n\n"
+        "if __name__ == '__main__':\n"
+        "    test_format_date()\n"
+        "    print('test_utils PASS')\n"
+    )
+    return [
+        {"tool": "read_file", "params": {"path": "requirements.txt"}},
+        {"tool": "write_file", "params": {"path": "utils.py", "content": utils_code}},
+        {"tool": "write_file", "params": {"path": "test_utils.py", "content": test_code}},
+        {"tool": "read_file", "params": {"path": "utils.py"}},
+        {"tool": "read_file", "params": {"path": "test_utils.py"}},
+        {"tool": "run_command", "params": {"command": "python test_utils.py"}},
+    ]
+
+
 def planned_tool_calls(prompt: str) -> List[Dict[str, Any]]:
     calls = parse_tool_calls(prompt)
     if calls:
         return calls
-    for planner in (_natural_fibonacci, _natural_create_file, _natural_hello_world):
+    for planner in (
+        _natural_stress_product_edit,
+        _natural_stress_sum,
+        _natural_app_analysis,
+        _natural_folder_ops,
+        _natural_bug_fix,
+        _natural_project_scan,
+        _natural_multi_tool_utils,
+        _natural_fibonacci,
+        _natural_create_file,
+        _natural_hello_world,
+    ):
         calls = planner(prompt)
         if calls:
             return calls

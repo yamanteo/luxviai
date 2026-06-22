@@ -1,0 +1,3523 @@
+{
+  "changes": [
+    {
+      "at": "2026-06-22T14:54:42Z",
+      "payload": {
+        "params": {
+          "path": "."
+        },
+        "result": {
+          "error": "",
+          "path": "C:\\Users\\Teoman\\OneDrive\\Desktop\\LUXDEEP",
+          "result": [
+            {
+              "name": ".codewhale",
+              "path": ".codewhale",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": ".codex_reference",
+              "path": ".codex_reference",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": ".env",
+              "path": ".env",
+              "size": 93,
+              "type": "file"
+            },
+            {
+              "name": ".git",
+              "path": ".git",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": ".gitignore",
+              "path": ".gitignore",
+              "size": 83,
+              "type": "file"
+            },
+            {
+              "name": ".luxcode_runtime",
+              "path": ".luxcode_runtime",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": ".venv",
+              "path": ".venv",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "__pycache__",
+              "path": "__pycache__",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "adaptive_interface_preview.py",
+              "path": "adaptive_interface_preview.py",
+              "size": 12656,
+              "type": "file"
+            },
+            {
+              "name": "agent_action_engine_preview.py",
+              "path": "agent_action_engine_preview.py",
+              "size": 3810,
+              "type": "file"
+            },
+            {
+              "name": "agent_collaboration_runtime_preview.py",
+              "path": "agent_collaboration_runtime_preview.py",
+              "size": 4095,
+              "type": "file"
+            },
+            {
+              "name": "agent_constitution_engine_preview.py",
+              "path": "agent_constitution_engine_preview.py",
+              "size": 9146,
+              "type": "file"
+            },
+            {
+              "name": "agent_continuity_runtime_preview.py",
+              "path": "agent_continuity_runtime_preview.py",
+              "size": 4021,
+              "type": "file"
+            },
+            {
+              "name": "agent_core_preview.py",
+              "path": "agent_core_preview.py",
+              "size": 7109,
+              "type": "file"
+            },
+            {
+              "name": "agent_decision_trace.py",
+              "path": "agent_decision_trace.py",
+              "size": 7862,
+              "type": "file"
+            },
+            {
+              "name": "agent_deployment_executor_preview.py",
+              "path": "agent_deployment_executor_preview.py",
+              "size": 3748,
+              "type": "file"
+            },
+            {
+              "name": "agent_execution_core_preview.py",
+              "path": "agent_execution_core_preview.py",
+              "size": 4294,
+              "type": "file"
+            },
+            {
+              "name": "agent_execution_master_status_preview.py",
+              "path": "agent_execution_master_status_preview.py",
+              "size": 5068,
+              "type": "file"
+            },
+            {
+              "name": "agent_execution_orchestrator_preview.py",
+              "path": "agent_execution_orchestrator_preview.py",
+              "size": 3540,
+              "type": "file"
+            },
+            {
+              "name": "agent_execution_recovery_coordinator_preview.py",
+              "path": "agent_execution_recovery_coordinator_preview.py",
+              "size": 3751,
+              "type": "file"
+            },
+            {
+              "name": "agent_execution_supervisor_preview.py",
+              "path": "agent_execution_supervisor_preview.py",
+              "size": 3767,
+              "type": "file"
+            },
+            {
+              "name": "agent_lifecycle_runtime_preview.py",
+              "path": "agent_lifecycle_runtime_preview.py",
+              "size": 4147,
+              "type": "file"
+            },
+            {
+              "name": "agent_memory_loop_runtime_preview.py",
+              "path": "agent_memory_loop_runtime_preview.py",
+              "size": 4080,
+              "type": "file"
+            },
+            {
+              "name": "agent_recovery_resilience_runtime_preview.py",
+              "path": "agent_recovery_resilience_runtime_preview.py",
+              "size": 4216,
+              "type": "file"
+            },
+            {
+              "name": "agent_runtime_consolidation_preview.py",
+              "path": "agent_runtime_consolidation_preview.py",
+              "size": 4331,
+              "type": "file"
+            },
+            {
+              "name": "agent_runtime_core_preview.py",
+              "path": "agent_runtime_core_preview.py",
+              "size": 4195,
+              "type": "file"
+            },
+            {
+              "name": "agent_runtime_master_status_preview.py",
+              "path": "agent_runtime_master_status_preview.py",
+              "size": 5310,
+              "type": "file"
+            },
+            {
+              "name": "agent_scaffold.py",
+              "path": "agent_scaffold.py",
+              "size": 30802,
+              "type": "file"
+            },
+            {
+              "name": "agent_session_runtime_preview.py",
+              "path": "agent_session_runtime_preview.py",
+              "size": 4042,
+              "type": "file"
+            },
+            {
+              "name": "agent_task_executor_preview.py",
+              "path": "agent_task_executor_preview.py",
+              "size": 3770,
+              "type": "file"
+            },
+            {
+              "name": "agent_verification_executor_preview.py",
+              "path": "agent_verification_executor_preview.py",
+              "size": 3767,
+              "type": "file"
+            },
+            {
+              "name": "agent_workspace_executor_preview.py",
+              "path": "agent_workspace_executor_preview.py",
+              "size": 3666,
+              "type": "file"
+            },
+            {
+              "name": "agent_workspace_runtime_preview.py",
+              "path": "agent_workspace_runtime_preview.py",
+              "size": 4230,
+              "type": "file"
+            },
+            {
+              "name": "AI_STUDIO_CONTEXT",
+              "path": "AI_STUDIO_CONTEXT",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "ambient_workspace_preview.py",
+              "path": "ambient_workspace_preview.py",
+              "size": 12531,
+              "type": "file"
+            },
+            {
+              "name": "app.py",
+              "path": "app.py",
+              "size": 747931,
+              "type": "file"
+            },
+            {
+              "name": "app.py.backup_agent_tool_layer",
+              "path": "app.py.backup_agent_tool_layer",
+              "size": 745921,
+              "type": "file"
+            },
+            {
+              "name": "app.py.backup_luxcode_swarm",
+              "path": "app.py.backup_luxcode_swarm",
+              "size": 736568,
+              "type": "file"
+            },
+            {
+              "name": "app.py.backup_state_machine_safe_create",
+              "path": "app.py.backup_state_machine_safe_create",
+              "size": 742636,
+              "type": "file"
+            },
+            {
+              "name": "app.py.backup_swarm_legacy_bridge",
+              "path": "app.py.backup_swarm_legacy_bridge",
+              "size": 736666,
+              "type": "file"
+            },
+            {
+              "name": "app.py.backup_swarm_payload_fields",
+              "path": "app.py.backup_swarm_payload_fields",
+              "size": 742221,
+              "type": "file"
+            },
+            {
+              "name": "app.py.before_persistent_runtime_v1",
+              "path": "app.py.before_persistent_runtime_v1",
+              "size": 752507,
+              "type": "file"
+            },
+            {
+              "name": "app.py.before_smoke_alignment_v1",
+              "path": "app.py.before_smoke_alignment_v1",
+              "size": 735277,
+              "type": "file"
+            },
+            {
+              "name": "audio_privacy_boundary.py",
+              "path": "audio_privacy_boundary.py",
+              "size": 3711,
+              "type": "file"
+            },
+            {
+              "name": "audio_signal_schema.py",
+              "path": "audio_signal_schema.py",
+              "size": 7019,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_agent_operating_model_preview.py",
+              "path": "autonomous_agent_operating_model_preview.py",
+              "size": 5076,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_engineering_coordinator_preview.py",
+              "path": "autonomous_engineering_coordinator_preview.py",
+              "size": 24144,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_execution_decision_intelligence_preview.py",
+              "path": "autonomous_execution_decision_intelligence_preview.py",
+              "size": 4196,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_execution_governance_intelligence_preview.py",
+              "path": "autonomous_execution_governance_intelligence_preview.py",
+              "size": 4118,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_execution_planning_intelligence_preview.py",
+              "path": "autonomous_execution_planning_intelligence_preview.py",
+              "size": 4053,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_execution_simulation_intelligence_preview.py",
+              "path": "autonomous_execution_simulation_intelligence_preview.py",
+              "size": 4187,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_execution_strategy_intelligence_preview.py",
+              "path": "autonomous_execution_strategy_intelligence_preview.py",
+              "size": 4153,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_operations_continuity_preview.py",
+              "path": "autonomous_operations_continuity_preview.py",
+              "size": 4257,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_operations_core_preview.py",
+              "path": "autonomous_operations_core_preview.py",
+              "size": 4216,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_operations_governance_preview.py",
+              "path": "autonomous_operations_governance_preview.py",
+              "size": 4313,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_operations_master_status_preview.py",
+              "path": "autonomous_operations_master_status_preview.py",
+              "size": 6223,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_operations_monitoring_preview.py",
+              "path": "autonomous_operations_monitoring_preview.py",
+              "size": 4243,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_operations_optimization_preview.py",
+              "path": "autonomous_operations_optimization_preview.py",
+              "size": 4290,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_operations_orchestrator_preview.py",
+              "path": "autonomous_operations_orchestrator_preview.py",
+              "size": 4599,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_operations_planning_preview.py",
+              "path": "autonomous_operations_planning_preview.py",
+              "size": 4236,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_operations_scheduling_preview.py",
+              "path": "autonomous_operations_scheduling_preview.py",
+              "size": 4276,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_operations_supervisor_preview.py",
+              "path": "autonomous_operations_supervisor_preview.py",
+              "size": 4376,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_repair_intelligence_preview.py",
+              "path": "autonomous_repair_intelligence_preview.py",
+              "size": 30590,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_task_network_intelligence_preview.py",
+              "path": "autonomous_task_network_intelligence_preview.py",
+              "size": 4006,
+              "type": "file"
+            },
+            {
+              "name": "autonomous_workflow_intelligence_preview.py",
+              "path": "autonomous_workflow_intelligence_preview.py",
+              "size": 4094,
+              "type": "file"
+            },
+            {
+              "name": "autonomy_dial_preview.py",
+              "path": "autonomy_dial_preview.py",
+              "size": 14592,
+              "type": "file"
+            },
+            {
+              "name": "background_support_registry.py",
+              "path": "background_support_registry.py",
+              "size": 19812,
+              "type": "file"
+            },
+            {
+              "name": "backups",
+              "path": "backups",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "bug_intake_planner.py",
+              "path": "bug_intake_planner.py",
+              "size": 6900,
+              "type": "file"
+            },
+            {
+              "name": "buggy.py",
+              "path": "buggy.py",
+              "size": 50,
+              "type": "file"
+            },
+            {
+              "name": "buggy.py.backup",
+              "path": "buggy.py.backup",
+              "size": 45,
+              "type": "file"
+            },
+            {
+              "name": "change_memory_intelligence_preview.py",
+              "path": "change_memory_intelligence_preview.py",
+              "size": 29231,
+              "type": "file"
+            },
+            {
+              "name": "change_planning_intelligence_preview.py",
+              "path": "change_planning_intelligence_preview.py",
+              "size": 36249,
+              "type": "file"
+            },
+            {
+              "name": "change_preview_engine_preview.py",
+              "path": "change_preview_engine_preview.py",
+              "size": 11777,
+              "type": "file"
+            },
+            {
+              "name": "clone_workspace_intelligence_preview.py",
+              "path": "clone_workspace_intelligence_preview.py",
+              "size": 28044,
+              "type": "file"
+            },
+            {
+              "name": "codex_handoff_builder_preview.py",
+              "path": "codex_handoff_builder_preview.py",
+              "size": 9470,
+              "type": "file"
+            },
+            {
+              "name": "context_bridge_preview.py",
+              "path": "context_bridge_preview.py",
+              "size": 12696,
+              "type": "file"
+            },
+            {
+              "name": "cost_privacy_policy.py",
+              "path": "cost_privacy_policy.py",
+              "size": 4848,
+              "type": "file"
+            },
+            {
+              "name": "credit_saver_engine.py",
+              "path": "credit_saver_engine.py",
+              "size": 14280,
+              "type": "file"
+            },
+            {
+              "name": "data",
+              "path": "data",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "debug_intelligence_core.py",
+              "path": "debug_intelligence_core.py",
+              "size": 13871,
+              "type": "file"
+            },
+            {
+              "name": "delivery_readiness_intelligence_preview.py",
+              "path": "delivery_readiness_intelligence_preview.py",
+              "size": 20438,
+              "type": "file"
+            },
+            {
+              "name": "dependency_intelligence_preview.py",
+              "path": "dependency_intelligence_preview.py",
+              "size": 23638,
+              "type": "file"
+            },
+            {
+              "name": "dependency_mapper_preview.py",
+              "path": "dependency_mapper_preview.py",
+              "size": 8421,
+              "type": "file"
+            },
+            {
+              "name": "deployment_agent_preview.py",
+              "path": "deployment_agent_preview.py",
+              "size": 8209,
+              "type": "file"
+            },
+            {
+              "name": "deployment_bridge_intelligence_preview.py",
+              "path": "deployment_bridge_intelligence_preview.py",
+              "size": 17116,
+              "type": "file"
+            },
+            {
+              "name": "deployment_verification_intelligence_preview.py",
+              "path": "deployment_verification_intelligence_preview.py",
+              "size": 18588,
+              "type": "file"
+            },
+            {
+              "name": "dev_agent_explorer_preview.py",
+              "path": "dev_agent_explorer_preview.py",
+              "size": 10873,
+              "type": "file"
+            },
+            {
+              "name": "dev_agent_readiness_snapshot.py",
+              "path": "dev_agent_readiness_snapshot.py",
+              "size": 6387,
+              "type": "file"
+            },
+            {
+              "name": "device_action_intelligence_preview.py",
+              "path": "device_action_intelligence_preview.py",
+              "size": 15159,
+              "type": "file"
+            },
+            {
+              "name": "device_bridge_preview.py",
+              "path": "device_bridge_preview.py",
+              "size": 19178,
+              "type": "file"
+            },
+            {
+              "name": "diff_preview_engine_preview.py",
+              "path": "diff_preview_engine_preview.py",
+              "size": 12709,
+              "type": "file"
+            },
+            {
+              "name": "drive_mode_preview.py",
+              "path": "drive_mode_preview.py",
+              "size": 14452,
+              "type": "file"
+            },
+            {
+              "name": "emotional_reflection_support.py",
+              "path": "emotional_reflection_support.py",
+              "size": 15259,
+              "type": "file"
+            },
+            {
+              "name": "endpoint_coverage_matrix.py",
+              "path": "endpoint_coverage_matrix.py",
+              "size": 91673,
+              "type": "file"
+            },
+            {
+              "name": "engineering_autonomy_intelligence_preview.py",
+              "path": "engineering_autonomy_intelligence_preview.py",
+              "size": 19000,
+              "type": "file"
+            },
+            {
+              "name": "engineering_brain_dynamic_priority_queue_preview.py",
+              "path": "engineering_brain_dynamic_priority_queue_preview.py",
+              "size": 17680,
+              "type": "file"
+            },
+            {
+              "name": "engineering_brain_multi_session_continuity_preview.py",
+              "path": "engineering_brain_multi_session_continuity_preview.py",
+              "size": 18275,
+              "type": "file"
+            },
+            {
+              "name": "engineering_brain_persistent_execution_intelligence_preview.py",
+              "path": "engineering_brain_persistent_execution_intelligence_preview.py",
+              "size": 20529,
+              "type": "file"
+            },
+            {
+              "name": "engineering_brain_task_consciousness_preview.py",
+              "path": "engineering_brain_task_consciousness_preview.py",
+              "size": 17987,
+              "type": "file"
+            },
+            {
+              "name": "engineering_brain_user_intent_continuity_preview.py",
+              "path": "engineering_brain_user_intent_continuity_preview.py",
+              "size": 18459,
+              "type": "file"
+            },
+            {
+              "name": "engineering_brain_workspace_consciousness_preview.py",
+              "path": "engineering_brain_workspace_consciousness_preview.py",
+              "size": 17921,
+              "type": "file"
+            },
+            {
+              "name": "engineering_decision_intelligence_preview.py",
+              "path": "engineering_decision_intelligence_preview.py",
+              "size": 18353,
+              "type": "file"
+            },
+            {
+              "name": "engineering_knowledge_graph_intelligence_preview.py",
+              "path": "engineering_knowledge_graph_intelligence_preview.py",
+              "size": 21041,
+              "type": "file"
+            },
+            {
+              "name": "engineering_memory_failure_intelligence_preview.py",
+              "path": "engineering_memory_failure_intelligence_preview.py",
+              "size": 20007,
+              "type": "file"
+            },
+            {
+              "name": "engineering_observability_monitoring_preview.py",
+              "path": "engineering_observability_monitoring_preview.py",
+              "size": 20725,
+              "type": "file"
+            },
+            {
+              "name": "engineering_prediction_forecast_intelligence_preview.py",
+              "path": "engineering_prediction_forecast_intelligence_preview.py",
+              "size": 18353,
+              "type": "file"
+            },
+            {
+              "name": "engineering_self_reflection_meta_intelligence_preview.py",
+              "path": "engineering_self_reflection_meta_intelligence_preview.py",
+              "size": 18723,
+              "type": "file"
+            },
+            {
+              "name": "engineering_strategy_intelligence_preview.py",
+              "path": "engineering_strategy_intelligence_preview.py",
+              "size": 18309,
+              "type": "file"
+            },
+            {
+              "name": "ethical_boundary_soul_preview.py",
+              "path": "ethical_boundary_soul_preview.py",
+              "size": 13489,
+              "type": "file"
+            },
+            {
+              "name": "evidence_store_preview.py",
+              "path": "evidence_store_preview.py",
+              "size": 9744,
+              "type": "file"
+            },
+            {
+              "name": "explorer_agent_preview.py",
+              "path": "explorer_agent_preview.py",
+              "size": 8097,
+              "type": "file"
+            },
+            {
+              "name": "failed_change_intelligence_preview.py",
+              "path": "failed_change_intelligence_preview.py",
+              "size": 32468,
+              "type": "file"
+            },
+            {
+              "name": "failure_memory_intelligence_preview.py",
+              "path": "failure_memory_intelligence_preview.py",
+              "size": 22831,
+              "type": "file"
+            },
+            {
+              "name": "finality_sense_preview.py",
+              "path": "finality_sense_preview.py",
+              "size": 12025,
+              "type": "file"
+            },
+            {
+              "name": "github_bridge_consolidation_preview.py",
+              "path": "github_bridge_consolidation_preview.py",
+              "size": 9203,
+              "type": "file"
+            },
+            {
+              "name": "github_bridge_intelligence_preview.py",
+              "path": "github_bridge_intelligence_preview.py",
+              "size": 17545,
+              "type": "file"
+            },
+            {
+              "name": "github_project_intelligence_preview.py",
+              "path": "github_project_intelligence_preview.py",
+              "size": 9696,
+              "type": "file"
+            },
+            {
+              "name": "impact_analyzer_preview.py",
+              "path": "impact_analyzer_preview.py",
+              "size": 7711,
+              "type": "file"
+            },
+            {
+              "name": "index.html",
+              "path": "index.html",
+              "size": 117532,
+              "type": "file"
+            },
+            {
+              "name": "intention_timeline_preview.py",
+              "path": "intention_timeline_preview.py",
+              "size": 11035,
+              "type": "file"
+            },
+            {
+              "name": "investigation_context_preview.py",
+              "path": "investigation_context_preview.py",
+              "size": 13570,
+              "type": "file"
+            },
+            {
+              "name": "investigation_priority_engine_preview.py",
+              "path": "investigation_priority_engine_preview.py",
+              "size": 10887,
+              "type": "file"
+            },
+            {
+              "name": "investigation_starter_preview.py",
+              "path": "investigation_starter_preview.py",
+              "size": 10877,
+              "type": "file"
+            },
+            {
+              "name": "investigation_task_planner_preview.py",
+              "path": "investigation_task_planner_preview.py",
+              "size": 9856,
+              "type": "file"
+            },
+            {
+              "name": "investigation_timeline_preview.py",
+              "path": "investigation_timeline_preview.py",
+              "size": 10757,
+              "type": "file"
+            },
+            {
+              "name": "knowledge_extractor_preview.py",
+              "path": "knowledge_extractor_preview.py",
+              "size": 8884,
+              "type": "file"
+            },
+            {
+              "name": "Launch_LuxCode.cmd",
+              "path": "Launch_LuxCode.cmd",
+              "size": 195,
+              "type": "file"
+            },
+            {
+              "name": "layer21_status.py",
+              "path": "layer21_status.py",
+              "size": 4677,
+              "type": "file"
+            },
+            {
+              "name": "layer22_candidate_scoring.py",
+              "path": "layer22_candidate_scoring.py",
+              "size": 26939,
+              "type": "file"
+            },
+            {
+              "name": "layer22_future_candidates.py",
+              "path": "layer22_future_candidates.py",
+              "size": 20212,
+              "type": "file"
+            },
+            {
+              "name": "layer22_status_snapshot.py",
+              "path": "layer22_status_snapshot.py",
+              "size": 5952,
+              "type": "file"
+            },
+            {
+              "name": "layer23_status_snapshot.py",
+              "path": "layer23_status_snapshot.py",
+              "size": 2666,
+              "type": "file"
+            },
+            {
+              "name": "layer27_status_snapshot.py",
+              "path": "layer27_status_snapshot.py",
+              "size": 5770,
+              "type": "file"
+            },
+            {
+              "name": "layer28_status_snapshot.py",
+              "path": "layer28_status_snapshot.py",
+              "size": 6035,
+              "type": "file"
+            },
+            {
+              "name": "layer29_status_snapshot.py",
+              "path": "layer29_status_snapshot.py",
+              "size": 6938,
+              "type": "file"
+            },
+            {
+              "name": "layer30_status_snapshot.py",
+              "path": "layer30_status_snapshot.py",
+              "size": 6344,
+              "type": "file"
+            },
+            {
+              "name": "layer31_status_snapshot.py",
+              "path": "layer31_status_snapshot.py",
+              "size": 9249,
+              "type": "file"
+            },
+            {
+              "name": "layer32_status_snapshot.py",
+              "path": "layer32_status_snapshot.py",
+              "size": 9428,
+              "type": "file"
+            },
+            {
+              "name": "Layer34_41_Audit_Result.txt",
+              "path": "Layer34_41_Audit_Result.txt",
+              "size": 735,
+              "type": "file"
+            },
+            {
+              "name": "learning",
+              "path": "learning",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "live_readiness_checklist.py",
+              "path": "live_readiness_checklist.py",
+              "size": 4551,
+              "type": "file"
+            },
+            {
+              "name": "logs",
+              "path": "logs",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "lux_character_core.py",
+              "path": "lux_character_core.py",
+              "size": 15693,
+              "type": "file"
+            },
+            {
+              "name": "lux_controlled_apply_engine.py",
+              "path": "lux_controlled_apply_engine.py",
+              "size": 31276,
+              "type": "file"
+            },
+            {
+              "name": "lux_debug_intelligence_core.py",
+              "path": "lux_debug_intelligence_core.py",
+              "size": 28903,
+              "type": "file"
+            },
+            {
+              "name": "lux_fault_report.py",
+              "path": "lux_fault_report.py",
+              "size": 125673,
+              "type": "file"
+            },
+            {
+              "name": "lux_safe_patch_draft_engine.py",
+              "path": "lux_safe_patch_draft_engine.py",
+              "size": 25132,
+              "type": "file"
+            },
+            {
+              "name": "lux_verification_recovery_engine.py",
+              "path": "lux_verification_recovery_engine.py",
+              "size": 28234,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_agent_runtime.py",
+              "path": "luxcode_agent_runtime.py",
+              "size": 15640,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_agent_runtime.py.backup_agent_frontend",
+              "path": "luxcode_agent_runtime.py.backup_agent_frontend",
+              "size": 5521,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_autonomy_permission_controller.py",
+              "path": "luxcode_autonomy_permission_controller.py",
+              "size": 30544,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_browser_launch_selection.py",
+              "path": "luxcode_browser_launch_selection.py",
+              "size": 32845,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_coder_operator.py",
+              "path": "luxcode_coder_operator.py",
+              "size": 56067,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_coder_session.py",
+              "path": "luxcode_coder_session.py",
+              "size": 12064,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_codewhale_task_bridge.py",
+              "path": "luxcode_codewhale_task_bridge.py",
+              "size": 24539,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_codex_task_bridge.py",
+              "path": "luxcode_codex_task_bridge.py",
+              "size": 23699,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_control_analytics.py",
+              "path": "luxcode_control_analytics.py",
+              "size": 29588,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_control_center.py",
+              "path": "luxcode_control_center.py",
+              "size": 23149,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_control_center.py.before_workspace_services_v1",
+              "path": "luxcode_control_center.py.before_workspace_services_v1",
+              "size": 19623,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_control_routes.py",
+              "path": "luxcode_control_routes.py",
+              "size": 9084,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_control_routes.py.before_persistent_runtime_v1",
+              "path": "luxcode_control_routes.py.before_persistent_runtime_v1",
+              "size": 7420,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_control_routes.py.before_workspace_services_v1",
+              "path": "luxcode_control_routes.py.before_workspace_services_v1",
+              "size": 7614,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_core_status_snapshot.py",
+              "path": "luxcode_core_status_snapshot.py",
+              "size": 12010,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_deployment_execution_url_verification.py",
+              "path": "luxcode_deployment_execution_url_verification.py",
+              "size": 51787,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_desktop",
+              "path": "luxcode_desktop",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "luxcode_direct_deepseek_task_bridge.py",
+              "path": "luxcode_direct_deepseek_task_bridge.py",
+              "size": 18511,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_direct_deepseek_transport.py",
+              "path": "luxcode_direct_deepseek_transport.py",
+              "size": 38506,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_direct_deepseek_transport.py.before_deepseek_task_bridge",
+              "path": "luxcode_direct_deepseek_transport.py.before_deepseek_task_bridge",
+              "size": 33916,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_engineering_brain_core_preview.py",
+              "path": "luxcode_engineering_brain_core_preview.py",
+              "size": 23920,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_evidence_board.py",
+              "path": "luxcode_evidence_board.py",
+              "size": 8828,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_first_usable_registry.py",
+              "path": "luxcode_first_usable_registry.py",
+              "size": 13483,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_first_usable_session_flow.py",
+              "path": "luxcode_first_usable_session_flow.py",
+              "size": 33402,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_first_usable_session_flow.py.before_gemini_bridge",
+              "path": "luxcode_first_usable_session_flow.py.before_gemini_bridge",
+              "size": 32347,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_free_cloud_task_bridge.py",
+              "path": "luxcode_free_cloud_task_bridge.py",
+              "size": 20195,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_free_cloud_worker.py",
+              "path": "luxcode_free_cloud_worker.py",
+              "size": 71801,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_free_cloud_worker.py.before_openrouter_bridge",
+              "path": "luxcode_free_cloud_worker.py.before_openrouter_bridge",
+              "size": 67912,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_free_gemini_worker.py",
+              "path": "luxcode_free_gemini_worker.py",
+              "size": 37594,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_free_gemini_worker.py.before_gemini_bridge",
+              "path": "luxcode_free_gemini_worker.py.before_gemini_bridge",
+              "size": 33113,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_free_gemini_worker.py.before_gemini_resilience",
+              "path": "luxcode_free_gemini_worker.py.before_gemini_resilience",
+              "size": 35222,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_free_gemini_worker.py.before_timeout_fix",
+              "path": "luxcode_free_gemini_worker.py.before_timeout_fix",
+              "size": 35222,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_gemini_task_bridge.py",
+              "path": "luxcode_gemini_task_bridge.py",
+              "size": 12795,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_integration_service.py",
+              "path": "luxcode_integration_service.py",
+              "size": 12046,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_live_app_interaction_testing.py",
+              "path": "luxcode_live_app_interaction_testing.py",
+              "size": 50230,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_local_network_access_intelligence.py",
+              "path": "luxcode_local_network_access_intelligence.py",
+              "size": 31827,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_low_cost_worker.py",
+              "path": "luxcode_low_cost_worker.py",
+              "size": 10103,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_low_cost_worker_contracts.py",
+              "path": "luxcode_low_cost_worker_contracts.py",
+              "size": 19618,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_low_cost_worker_contracts.py.before_ollama_bridge_v1",
+              "path": "luxcode_low_cost_worker_contracts.py.before_ollama_bridge_v1",
+              "size": 18918,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_master_router_preview.py",
+              "path": "luxcode_master_router_preview.py",
+              "size": 8893,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_minimum_context_builder.py",
+              "path": "luxcode_minimum_context_builder.py",
+              "size": 10793,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_multi_agent_handoff.py",
+              "path": "luxcode_multi_agent_handoff.py",
+              "size": 79315,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_practical_coder_runtime.py",
+              "path": "luxcode_practical_coder_runtime.py",
+              "size": 18732,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_render_credential_readiness_broker.py",
+              "path": "luxcode_render_credential_readiness_broker.py",
+              "size": 44893,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_render_execution_gateway.py",
+              "path": "luxcode_render_execution_gateway.py",
+              "size": 39451,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_render_provider_adapter.py",
+              "path": "luxcode_render_provider_adapter.py",
+              "size": 48331,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_runtime_settings.py",
+              "path": "luxcode_runtime_settings.py",
+              "size": 24896,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_safe_patch_runtime.py",
+              "path": "luxcode_safe_patch_runtime.py",
+              "size": 26159,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_sandbox_service.py",
+              "path": "luxcode_sandbox_service.py",
+              "size": 7300,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_swarm",
+              "path": "luxcode_swarm",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "luxcode_task_orchestrator.py",
+              "path": "luxcode_task_orchestrator.py",
+              "size": 164866,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_task_orchestrator.py.backup_state_machine_safe_create",
+              "path": "luxcode_task_orchestrator.py.backup_state_machine_safe_create",
+              "size": 155224,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_task_orchestrator.py.before_codewhale_bridge",
+              "path": "luxcode_task_orchestrator.py.before_codewhale_bridge",
+              "size": 132093,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_task_orchestrator.py.before_codex_bridge",
+              "path": "luxcode_task_orchestrator.py.before_codex_bridge",
+              "size": 143604,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_task_orchestrator.py.before_deepseek_task_bridge",
+              "path": "luxcode_task_orchestrator.py.before_deepseek_task_bridge",
+              "size": 119042,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_task_orchestrator.py.before_gemini_bridge",
+              "path": "luxcode_task_orchestrator.py.before_gemini_bridge",
+              "size": 108735,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_task_orchestrator.py.before_ollama_bridge_v1",
+              "path": "luxcode_task_orchestrator.py.before_ollama_bridge_v1",
+              "size": 100413,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_task_orchestrator.py.before_openrouter_bridge",
+              "path": "luxcode_task_orchestrator.py.before_openrouter_bridge",
+              "size": 111669,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_task_orchestrator.py.before_readonly_completion",
+              "path": "luxcode_task_orchestrator.py.before_readonly_completion",
+              "size": 99831,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_task_orchestrator.py.before_readonly_fix",
+              "path": "luxcode_task_orchestrator.py.before_readonly_fix",
+              "size": 99831,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_task_orchestrator.py.before_readonly_mode",
+              "path": "luxcode_task_orchestrator.py.before_readonly_mode",
+              "size": 99831,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_task_orchestrator.py.before_readonly_route_context",
+              "path": "luxcode_task_orchestrator.py.before_readonly_route_context",
+              "size": 100215,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_task_persistence.py",
+              "path": "luxcode_task_persistence.py",
+              "size": 48233,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_terminal_process_runtime.py",
+              "path": "luxcode_terminal_process_runtime.py",
+              "size": 27852,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_test_matrix_intelligence.py",
+              "path": "luxcode_test_matrix_intelligence.py",
+              "size": 44214,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_tier0_deterministic_executor.py",
+              "path": "luxcode_tier0_deterministic_executor.py",
+              "size": 39406,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_tier1_local_worker.py",
+              "path": "luxcode_tier1_local_worker.py",
+              "size": 35190,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_tier1_local_worker.py.before_ollama_bridge_v1",
+              "path": "luxcode_tier1_local_worker.py.before_ollama_bridge_v1",
+              "size": 24278,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_working_copy_service.py",
+              "path": "luxcode_working_copy_service.py",
+              "size": 9409,
+              "type": "file"
+            },
+            {
+              "name": "luxcode_zero_cost_execution_router.py",
+              "path": "luxcode_zero_cost_execution_router.py",
+              "size": 51309,
+              "type": "file"
+            },
+            {
+              "name": "luxdeep_health_audit.txt",
+              "path": "luxdeep_health_audit.txt",
+              "size": 6204,
+              "type": "file"
+            },
+            {
+              "name": "LUXDEEP_REPORTS",
+              "path": "LUXDEEP_REPORTS",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "luxviai.log",
+              "path": "luxviai.log",
+              "size": 5290096,
+              "type": "file"
+            },
+            {
+              "name": "luxviai_pages.py",
+              "path": "luxviai_pages.py",
+              "size": 2302,
+              "type": "file"
+            },
+            {
+              "name": "luxway_capabilities.py",
+              "path": "luxway_capabilities.py",
+              "size": 8591,
+              "type": "file"
+            },
+            {
+              "name": "luxway_data_preview.py",
+              "path": "luxway_data_preview.py",
+              "size": 6511,
+              "type": "file"
+            },
+            {
+              "name": "luxway_device_safety.py",
+              "path": "luxway_device_safety.py",
+              "size": 5356,
+              "type": "file"
+            },
+            {
+              "name": "luxway_permission_model.py",
+              "path": "luxway_permission_model.py",
+              "size": 7901,
+              "type": "file"
+            },
+            {
+              "name": "luxway_weekly_report.py",
+              "path": "luxway_weekly_report.py",
+              "size": 8555,
+              "type": "file"
+            },
+            {
+              "name": "master_status_summary.py",
+              "path": "master_status_summary.py",
+              "size": 2726,
+              "type": "file"
+            },
+            {
+              "name": "meta_intelligence_core.py",
+              "path": "meta_intelligence_core.py",
+              "size": 19656,
+              "type": "file"
+            },
+            {
+              "name": "mode_registry.py",
+              "path": "mode_registry.py",
+              "size": 7895,
+              "type": "file"
+            },
+            {
+              "name": "model_router_config.py",
+              "path": "model_router_config.py",
+              "size": 19817,
+              "type": "file"
+            },
+            {
+              "name": "multi_agent_coordinator_preview.py",
+              "path": "multi_agent_coordinator_preview.py",
+              "size": 9230,
+              "type": "file"
+            },
+            {
+              "name": "multi_project_intelligence_preview.py",
+              "path": "multi_project_intelligence_preview.py",
+              "size": 7757,
+              "type": "file"
+            },
+            {
+              "name": "multimodal_memory_scaffold.py",
+              "path": "multimodal_memory_scaffold.py",
+              "size": 12930,
+              "type": "file"
+            },
+            {
+              "name": "night_radio_voice.py",
+              "path": "night_radio_voice.py",
+              "size": 6114,
+              "type": "file"
+            },
+            {
+              "name": "operational_readiness_preview.py",
+              "path": "operational_readiness_preview.py",
+              "size": 22169,
+              "type": "file"
+            },
+            {
+              "name": "patch_accountability_preview.py",
+              "path": "patch_accountability_preview.py",
+              "size": 21584,
+              "type": "file"
+            },
+            {
+              "name": "patch_approval_engine_preview.py",
+              "path": "patch_approval_engine_preview.py",
+              "size": 19303,
+              "type": "file"
+            },
+            {
+              "name": "patch_assurance_preview.py",
+              "path": "patch_assurance_preview.py",
+              "size": 22291,
+              "type": "file"
+            },
+            {
+              "name": "patch_audit_trail_preview.py",
+              "path": "patch_audit_trail_preview.py",
+              "size": 22541,
+              "type": "file"
+            },
+            {
+              "name": "patch_compliance_preview.py",
+              "path": "patch_compliance_preview.py",
+              "size": 18204,
+              "type": "file"
+            },
+            {
+              "name": "patch_confidence_preview.py",
+              "path": "patch_confidence_preview.py",
+              "size": 21899,
+              "type": "file"
+            },
+            {
+              "name": "patch_draft_engine_preview.py",
+              "path": "patch_draft_engine_preview.py",
+              "size": 11370,
+              "type": "file"
+            },
+            {
+              "name": "patch_execution_readiness_preview.py",
+              "path": "patch_execution_readiness_preview.py",
+              "size": 19991,
+              "type": "file"
+            },
+            {
+              "name": "patch_governance_preview.py",
+              "path": "patch_governance_preview.py",
+              "size": 19368,
+              "type": "file"
+            },
+            {
+              "name": "patch_lifecycle_preview.py",
+              "path": "patch_lifecycle_preview.py",
+              "size": 17870,
+              "type": "file"
+            },
+            {
+              "name": "patch_oversight_preview.py",
+              "path": "patch_oversight_preview.py",
+              "size": 20627,
+              "type": "file"
+            },
+            {
+              "name": "patch_permission_enforcement_preview.py",
+              "path": "patch_permission_enforcement_preview.py",
+              "size": 19039,
+              "type": "file"
+            },
+            {
+              "name": "patch_policy_evaluation_preview.py",
+              "path": "patch_policy_evaluation_preview.py",
+              "size": 16911,
+              "type": "file"
+            },
+            {
+              "name": "patch_recovery_preview.py",
+              "path": "patch_recovery_preview.py",
+              "size": 16896,
+              "type": "file"
+            },
+            {
+              "name": "patch_risk_matrix_preview.py",
+              "path": "patch_risk_matrix_preview.py",
+              "size": 18023,
+              "type": "file"
+            },
+            {
+              "name": "patch_rollback_preview.py",
+              "path": "patch_rollback_preview.py",
+              "size": 16055,
+              "type": "file"
+            },
+            {
+              "name": "patch_validation_preview.py",
+              "path": "patch_validation_preview.py",
+              "size": 16774,
+              "type": "file"
+            },
+            {
+              "name": "permission_boundary.py",
+              "path": "permission_boundary.py",
+              "size": 8119,
+              "type": "file"
+            },
+            {
+              "name": "permission_manager.py",
+              "path": "permission_manager.py",
+              "size": 3108,
+              "type": "file"
+            },
+            {
+              "name": "planner_agent_preview.py",
+              "path": "planner_agent_preview.py",
+              "size": 10433,
+              "type": "file"
+            },
+            {
+              "name": "pointer_context_preview.py",
+              "path": "pointer_context_preview.py",
+              "size": 16216,
+              "type": "file"
+            },
+            {
+              "name": "probe_5901_err.log",
+              "path": "probe_5901_err.log",
+              "size": 0,
+              "type": "file"
+            },
+            {
+              "name": "probe_5901_out.log",
+              "path": "probe_5901_out.log",
+              "size": 0,
+              "type": "file"
+            },
+            {
+              "name": "production_hardening_registry.py",
+              "path": "production_hardening_registry.py",
+              "size": 8465,
+              "type": "file"
+            },
+            {
+              "name": "production_readiness_preview.py",
+              "path": "production_readiness_preview.py",
+              "size": 22220,
+              "type": "file"
+            },
+            {
+              "name": "project_intelligence_core_preview.py",
+              "path": "project_intelligence_core_preview.py",
+              "size": 8250,
+              "type": "file"
+            },
+            {
+              "name": "project_rules_loader_preview.py",
+              "path": "project_rules_loader_preview.py",
+              "size": 9239,
+              "type": "file"
+            },
+            {
+              "name": "regression_intelligence_preview.py",
+              "path": "regression_intelligence_preview.py",
+              "size": 23134,
+              "type": "file"
+            },
+            {
+              "name": "release_readiness_preview.py",
+              "path": "release_readiness_preview.py",
+              "size": 24166,
+              "type": "file"
+            },
+            {
+              "name": "render.yaml",
+              "path": "render.yaml",
+              "size": 246,
+              "type": "file"
+            },
+            {
+              "name": "render_deployment_intelligence_preview.py",
+              "path": "render_deployment_intelligence_preview.py",
+              "size": 8003,
+              "type": "file"
+            },
+            {
+              "name": "repeated_pattern_detector_preview.py",
+              "path": "repeated_pattern_detector_preview.py",
+              "size": 10236,
+              "type": "file"
+            },
+            {
+              "name": "requirements.txt",
+              "path": "requirements.txt",
+              "size": 61,
+              "type": "file"
+            },
+            {
+              "name": "root_cause_intelligence_preview.py",
+              "path": "root_cause_intelligence_preview.py",
+              "size": 27213,
+              "type": "file"
+            },
+            {
+              "name": "root_flow_auditor_preview.py",
+              "path": "root_flow_auditor_preview.py",
+              "size": 18096,
+              "type": "file"
+            },
+            {
+              "name": "router_scaffold.py",
+              "path": "router_scaffold.py",
+              "size": 6347,
+              "type": "file"
+            },
+            {
+              "name": "routing_simulation.py",
+              "path": "routing_simulation.py",
+              "size": 3930,
+              "type": "file"
+            },
+            {
+              "name": "run_desktop.py",
+              "path": "run_desktop.py",
+              "size": 78,
+              "type": "file"
+            },
+            {
+              "name": "runtime_anomaly_intelligence_preview.py",
+              "path": "runtime_anomaly_intelligence_preview.py",
+              "size": 23700,
+              "type": "file"
+            },
+            {
+              "name": "runtime_drift_intelligence_preview.py",
+              "path": "runtime_drift_intelligence_preview.py",
+              "size": 20215,
+              "type": "file"
+            },
+            {
+              "name": "runtime_recovery_intelligence_preview.py",
+              "path": "runtime_recovery_intelligence_preview.py",
+              "size": 20880,
+              "type": "file"
+            },
+            {
+              "name": "runtime_risk_intelligence_preview.py",
+              "path": "runtime_risk_intelligence_preview.py",
+              "size": 20460,
+              "type": "file"
+            },
+            {
+              "name": "runtime_stability_intelligence_preview.py",
+              "path": "runtime_stability_intelligence_preview.py",
+              "size": 20935,
+              "type": "file"
+            },
+            {
+              "name": "safe_change_boundary_preview.py",
+              "path": "safe_change_boundary_preview.py",
+              "size": 10574,
+              "type": "file"
+            },
+            {
+              "name": "safe_memory_retrieval.py",
+              "path": "safe_memory_retrieval.py",
+              "size": 6871,
+              "type": "file"
+            },
+            {
+              "name": "safe_patch_application_preview.py",
+              "path": "safe_patch_application_preview.py",
+              "size": 17600,
+              "type": "file"
+            },
+            {
+              "name": "safe_patch_planner_preview.py",
+              "path": "safe_patch_planner_preview.py",
+              "size": 10991,
+              "type": "file"
+            },
+            {
+              "name": "safe_self_check_runner_preview.py",
+              "path": "safe_self_check_runner_preview.py",
+              "size": 10261,
+              "type": "file"
+            },
+            {
+              "name": "safe_verification_planner_preview.py",
+              "path": "safe_verification_planner_preview.py",
+              "size": 11425,
+              "type": "file"
+            },
+            {
+              "name": "sandbox_repair_intelligence_preview.py",
+              "path": "sandbox_repair_intelligence_preview.py",
+              "size": 29418,
+              "type": "file"
+            },
+            {
+              "name": "scripts",
+              "path": "scripts",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "session_manager.py",
+              "path": "session_manager.py",
+              "size": 3307,
+              "type": "file"
+            },
+            {
+              "name": "sessions",
+              "path": "sessions",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "start_luxcode_desktop.bat",
+              "path": "start_luxcode_desktop.bat",
+              "size": 272,
+              "type": "file"
+            },
+            {
+              "name": "static",
+              "path": "static",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "stress_test.py",
+              "path": "stress_test.py",
+              "size": 248,
+              "type": "file"
+            },
+            {
+              "name": "stress_test.py.backup",
+              "path": "stress_test.py.backup",
+              "size": 112,
+              "type": "file"
+            },
+            {
+              "name": "system_control_audit.py",
+              "path": "system_control_audit.py",
+              "size": 3140,
+              "type": "file"
+            },
+            {
+              "name": "system_health_intelligence_preview.py",
+              "path": "system_health_intelligence_preview.py",
+              "size": 17844,
+              "type": "file"
+            },
+            {
+              "name": "system_readiness_preview.py",
+              "path": "system_readiness_preview.py",
+              "size": 21946,
+              "type": "file"
+            },
+            {
+              "name": "task_orchestration_intelligence_preview.py",
+              "path": "task_orchestration_intelligence_preview.py",
+              "size": 15991,
+              "type": "file"
+            },
+            {
+              "name": "terminal_bridge_intelligence_preview.py",
+              "path": "terminal_bridge_intelligence_preview.py",
+              "size": 18232,
+              "type": "file"
+            },
+            {
+              "name": "terminal_intelligence_preview.py",
+              "path": "terminal_intelligence_preview.py",
+              "size": 8090,
+              "type": "file"
+            },
+            {
+              "name": "test_folder",
+              "path": "test_folder",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "tmp_chat_test.log",
+              "path": "tmp_chat_test.log",
+              "size": 0,
+              "type": "file"
+            },
+            {
+              "name": "tmp_chat_test_err.log",
+              "path": "tmp_chat_test_err.log",
+              "size": 654,
+              "type": "file"
+            },
+            {
+              "name": "tool_executor.py",
+              "path": "tool_executor.py",
+              "size": 11507,
+              "type": "file"
+            },
+            {
+              "name": "validation_readiness_preview.py",
+              "path": "validation_readiness_preview.py",
+              "size": 23835,
+              "type": "file"
+            },
+            {
+              "name": "venv",
+              "path": "venv",
+              "size": 0,
+              "type": "directory"
+            },
+            {
+              "name": "verification_intelligence_preview.py",
+              "path": "verification_intelligence_preview.py",
+              "size": 28286,
+              "type": "file"
+            },
+            {
+              "name": "verifier_agent_preview.py",
+              "path": "verifier_agent_preview.py",
+              "size": 9149,
+              "type": "file"
+            },
+            {
+              "name": "visual_ambrosia_state.py",
+              "path": "visual_ambrosia_state.py",
+              "size": 5391,
+              "type": "file"
+            },
+            {
+              "name": "visual_dream_scene_state.py",
+              "path": "visual_dream_scene_state.py",
+              "size": 7001,
+              "type": "file"
+            },
+            {
+              "name": "visual_prompt_builder.py",
+              "path": "visual_prompt_builder.py",
+              "size": 12443,
+              "type": "file"
+            },
+            {
+              "name": "visual_scene_lock.py",
+              "path": "visual_scene_lock.py",
+              "size": 6184,
+              "type": "file"
+            },
+            {
+              "name": "visual_style_ratio.py",
+              "path": "visual_style_ratio.py",
+              "size": 9952,
+              "type": "file"
+            },
+            {
+              "name": "visual_style_registry.py",
+              "path": "visual_style_registry.py",
+              "size": 27453,
+              "type": "file"
+            },
+            {
+              "name": "voice_mode_registry.py",
+              "path": "voice_mode_registry.py",
+              "size": 10652,
+              "type": "file"
+            },
+            {
+              "name": "wake_sonic_preview.py",
+              "path": "wake_sonic_preview.py",
+              "size": 12040,
+              "type": "file"
+            },
+            {
+              "name": "workflow_chain_intelligence_preview.py",
+              "path": "workflow_chain_intelligence_preview.py",
+              "size": 3949,
+              "type": "file"
+            },
+            {
+              "name": "workflow_orchestration_intelligence_preview.py",
+              "path": "workflow_orchestration_intelligence_preview.py",
+              "size": 3927,
+              "type": "file"
+            },
+            {
+              "name": "Working_Tree_Dirty_State_Audit.txt",
+              "path": "Working_Tree_Dirty_State_Audit.txt",
+              "size": 11051,
+              "type": "file"
+            },
+            {
+              "name": "workspace_agent_preview.py",
+              "path": "workspace_agent_preview.py",
+              "size": 7575,
+              "type": "file"
+            },
+            {
+              "name": "workspace_builder_preview.py",
+              "path": "workspace_builder_preview.py",
+              "size": 6675,
+              "type": "file"
+            },
+            {
+              "name": "workspace_command_parser.py",
+              "path": "workspace_command_parser.py",
+              "size": 7571,
+              "type": "file"
+            },
+            {
+              "name": "workspace_context_notes.py",
+              "path": "workspace_context_notes.py",
+              "size": 5618,
+              "type": "file"
+            },
+            {
+              "name": "workspace_export_preview.py",
+              "path": "workspace_export_preview.py",
+              "size": 3824,
+              "type": "file"
+            },
+            {
+              "name": "workspace_intelligence_preview.py",
+              "path": "workspace_intelligence_preview.py",
+              "size": 16272,
+              "type": "file"
+            },
+            {
+              "name": "workspace_scaffold.py",
+              "path": "workspace_scaffold.py",
+              "size": 12658,
+              "type": "file"
+            }
+          ],
+          "success": true
+        },
+        "step": 1,
+        "tool": "list_directory"
+      },
+      "tool": "list_directory"
+    },
+    {
+      "at": "2026-06-22T14:54:43Z",
+      "payload": {
+        "params": {
+          "command": "python -c \"from pathlib import Path\\nroot = Path('.')\\nskip = {'.git', '__pycache__', '.venv', 'node_modules'}\\nfiles = []\\nsuffixes = {}\\nfor p in root.rglob('*'):\\n    if any(part in skip for part in p.parts):\\n        continue\\n    if p.is_file():\\n        files.append(p)\\n        suffixes[p.suffix or '<none>'] = suffixes.get(p.suffix or '<none>', 0) + 1\\nmain_files = [str(p.as_posix()) for p in files if p.name in {'app.py','run_desktop.py','README.md','requirements.txt'}]\\ntech = []\\nif any(p.suffix == '.py' for p in files): tech.append('Python/FastAPI')\\nif any(p.suffix in {'.js','.html','.css'} for p in files): tech.append('HTML/CSS/JavaScript')\\nprint('file_count=' + str(len(files)))\\nprint('technologies=' + ', '.join(tech))\\nprint('main_files=' + ', '.join(main_files[:30]))\\nprint('suffixes=' + str(dict(sorted(suffixes.items()))))\\nprint('summary=LUXDEEP local FastAPI backend with LuxCode web frontend and agent/coder tooling.')\\n\"",
+          "timeout": 120
+        },
+        "result": {
+          "command": "python -c \"from pathlib import Path\\nroot = Path('.')\\nskip = {'.git', '__pycache__', '.venv', 'node_modules'}\\nfiles = []\\nsuffixes = {}\\nfor p in root.rglob('*'):\\n    if any(part in skip for part in p.parts):\\n        continue\\n    if p.is_file():\\n        files.append(p)\\n        suffixes[p.suffix or '<none>'] = suffixes.get(p.suffix or '<none>', 0) + 1\\nmain_files = [str(p.as_posix()) for p in files if p.name in {'app.py','run_desktop.py','README.md','requirements.txt'}]\\ntech = []\\nif any(p.suffix == '.py' for p in files): tech.append('Python/FastAPI')\\nif any(p.suffix in {'.js','.html','.css'} for p in files): tech.append('HTML/CSS/JavaScript')\\nprint('file_count=' + str(len(files)))\\nprint('technologies=' + ', '.join(tech))\\nprint('main_files=' + ', '.join(main_files[:30]))\\nprint('suffixes=' + str(dict(sorted(suffixes.items()))))\\nprint('summary=LUXDEEP local FastAPI backend with LuxCode web frontend and agent/coder tooling.')\\n\"",
+          "error": "",
+          "result": {
+            "exit_code": 1,
+            "stderr": "  File \"<string>\", line 1\n    from pathlib import Path\\nroot = Path('.')\\nskip = {'.git', '__pycache__', '.venv', 'node_modules'}\\nfiles = []\\nsuffixes = {}\\nfor p in root.rglob('*'):\\n    if any(part in skip for part in p.parts):\\n        continue\\n    if p.is_file():\\n        files.append(p)\\n        suffixes[p.suffix or '<none>'] = suffixes.get(p.suffix or '<none>', 0) + 1\\nmain_files = [str(p.as_posix()) for p in files if p.name in {'app.py','run_desktop.py','README.md','requirements.txt'}]\\ntech = []\\nif any(p.suffix == '.py' for p in files): tech.append('Python/FastAPI')\\nif any(p.suffix in {'.js','.html','.css'} for p in files): tech.append('HTML/CSS/JavaScript')\\nprint('file_count=' + str(len(files)))\\nprint('technologies=' + ', '.join(tech))\\nprint('main_files=' + ', '.join(main_files[:30]))\\nprint('suffixes=' + str(dict(sorted(suffixes.items()))))\\nprint('summary=LUXDEEP local FastAPI backend with LuxCode web frontend and agent/coder tooling.')\\n\n                             ^\nSyntaxError: unexpected character after line continuation character\n",
+            "stdout": ""
+          },
+          "success": true
+        },
+        "step": 2,
+        "tool": "run_command"
+      },
+      "tool": "run_command"
+    }
+  ],
+  "created_at": "2026-06-22T14:54:41Z",
+  "messages": [
+    {
+      "at": "2026-06-22T14:54:42Z",
+      "content": "Tum projeyi tara. Kac dosya var, hangi teknolojiler kullanilmis, ana dosyalar hangileri, proje ne yapiyor kisaca ozetle",
+      "role": "user"
+    },
+    {
+      "at": "2026-06-22T14:54:43Z",
+      "content": "Completed 2 tool step(s).",
+      "role": "assistant"
+    }
+  ],
+  "project_scan": {
+    "count": 300,
+    "entries": [
+      {
+        "path": ".codewhale",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".codewhale/instructions.md",
+        "size": 7557,
+        "type": "file"
+      },
+      {
+        "path": ".codex_reference",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".codex_reference/luxcode_ui_v1.html",
+        "size": 98363,
+        "type": "file"
+      },
+      {
+        "path": ".env",
+        "size": 93,
+        "type": "file"
+      },
+      {
+        "path": ".gitignore",
+        "size": 83,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/desktop_instance.lock",
+        "size": 1,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/desktop_layout.json",
+        "size": 142,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/logs",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/logs/backend.log",
+        "size": 304153,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/persistent_runtime.json",
+        "size": 2510,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/reports/bridge_validations_2026-06-18_09-47-33.txt",
+        "size": 3048,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/codex_heavy_smoke_review.txt",
+        "size": 104895,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/failed_smoke_checks_source.txt",
+        "size": 24625,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/fault_report_route_sources.txt",
+        "size": 155989,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/fault_report_smoke_trace.txt",
+        "size": 804,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/fault_report_timeout_diagnostic.json",
+        "size": 305,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/final_full_smoke_2026-06-18_15-07-49.stderr.txt",
+        "size": 44562,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/final_full_smoke_2026-06-18_15-07-49.stdout.txt",
+        "size": 8198,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/final_full_smoke_2026-06-18_15-07-49.txt",
+        "size": 52901,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/full_smoke_2026-06-18_10-09-10.stderr.txt",
+        "size": 44560,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/full_smoke_2026-06-18_10-09-10.stdout.txt",
+        "size": 8222,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/full_smoke_2026-06-18_10-09-10.txt",
+        "size": 52919,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/full_smoke_2026-06-18_13-26-05.stderr.txt",
+        "size": 44562,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/full_smoke_2026-06-18_13-26-05.stdout.txt",
+        "size": 8224,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/full_smoke_2026-06-18_13-26-05.txt",
+        "size": 52921,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/lux_fault_report_timeout_sources.txt",
+        "size": 15114,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/next_smoke_batch_after_fault_report.json",
+        "size": 480,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/next_smoke_batch_after_patch_lifecycle.json",
+        "size": 693,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/next_smoke_batch_after_production_readiness.json",
+        "size": 398,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/next_smoke_batch_after_system_health.json",
+        "size": 451,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/patch_audit_trail_sources.txt",
+        "size": 10852,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/patch_recovery_builder_sources.txt",
+        "size": 14502,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/patch_recovery_smoke_source.txt",
+        "size": 3726,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/precommit_repository_review_2026-06-18_09-49-51.txt",
+        "size": 6280,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/precommit_secret_scan.txt",
+        "size": 208,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/precommit_secret_scan_refined.txt",
+        "size": 70,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/production_readiness_smoke_source.txt",
+        "size": 24893,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/remaining_readiness_smoke_sources.txt",
+        "size": 82254,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/remaining_smoke_2026-06-18_16-18-13.txt",
+        "size": 5026,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/remaining_smoke_batch_2026-06-19_07-53-55.txt",
+        "size": 891,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/staged_repository_review_2026-06-18_10-00-21.txt",
+        "size": 7222,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/secure_credentials",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/secure_credentials/gemini_api_key.dpapi",
+        "size": 330,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/secure_credentials/openrouter_api_key.dpapi",
+        "size": 346,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/approvals",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/approvals/swarm-c8629f254bdb4678947d305c463b1df7.json",
+        "size": 205,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/checkpoints",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/checkpoints/swarm-6c09dc67178d478e9e5c2099503b316f",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/checkpoints/swarm-6c09dc67178d478e9e5c2099503b316f/0001.json",
+        "size": 29542,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/tasks",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/tasks/swarm-6c09dc67178d478e9e5c2099503b316f.json",
+        "size": 36142,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/tasks/swarm-aa8ed0568d51463383d061ce44662960.json",
+        "size": 623,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/tasks/swarm-c8629f254bdb4678947d305c463b1df7.json",
+        "size": 623,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers/swarm-aa8ed0568d51463383d061ce44662960",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers/swarm-aa8ed0568d51463383d061ce44662960/0001.json",
+        "size": 337,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers/swarm-aa8ed0568d51463383d061ce44662960/0002.json",
+        "size": 367,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers/swarm-c8629f254bdb4678947d305c463b1df7",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers/swarm-c8629f254bdb4678947d305c463b1df7/0001.json",
+        "size": 367,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers/swarm-c8629f254bdb4678947d305c463b1df7/0002.json",
+        "size": 381,
+        "type": "file"
+      },
+      {
+        "path": "adaptive_interface_preview.py",
+        "size": 12656,
+        "type": "file"
+      },
+      {
+        "path": "agent_action_engine_preview.py",
+        "size": 3810,
+        "type": "file"
+      },
+      {
+        "path": "agent_collaboration_runtime_preview.py",
+        "size": 4095,
+        "type": "file"
+      },
+      {
+        "path": "agent_constitution_engine_preview.py",
+        "size": 9146,
+        "type": "file"
+      },
+      {
+        "path": "agent_continuity_runtime_preview.py",
+        "size": 4021,
+        "type": "file"
+      },
+      {
+        "path": "agent_core_preview.py",
+        "size": 7109,
+        "type": "file"
+      },
+      {
+        "path": "agent_decision_trace.py",
+        "size": 7862,
+        "type": "file"
+      },
+      {
+        "path": "agent_deployment_executor_preview.py",
+        "size": 3748,
+        "type": "file"
+      },
+      {
+        "path": "agent_execution_core_preview.py",
+        "size": 4294,
+        "type": "file"
+      },
+      {
+        "path": "agent_execution_master_status_preview.py",
+        "size": 5068,
+        "type": "file"
+      },
+      {
+        "path": "agent_execution_orchestrator_preview.py",
+        "size": 3540,
+        "type": "file"
+      },
+      {
+        "path": "agent_execution_recovery_coordinator_preview.py",
+        "size": 3751,
+        "type": "file"
+      },
+      {
+        "path": "agent_execution_supervisor_preview.py",
+        "size": 3767,
+        "type": "file"
+      },
+      {
+        "path": "agent_lifecycle_runtime_preview.py",
+        "size": 4147,
+        "type": "file"
+      },
+      {
+        "path": "agent_memory_loop_runtime_preview.py",
+        "size": 4080,
+        "type": "file"
+      },
+      {
+        "path": "agent_recovery_resilience_runtime_preview.py",
+        "size": 4216,
+        "type": "file"
+      },
+      {
+        "path": "agent_runtime_consolidation_preview.py",
+        "size": 4331,
+        "type": "file"
+      },
+      {
+        "path": "agent_runtime_core_preview.py",
+        "size": 4195,
+        "type": "file"
+      },
+      {
+        "path": "agent_runtime_master_status_preview.py",
+        "size": 5310,
+        "type": "file"
+      },
+      {
+        "path": "agent_scaffold.py",
+        "size": 30802,
+        "type": "file"
+      },
+      {
+        "path": "agent_session_runtime_preview.py",
+        "size": 4042,
+        "type": "file"
+      },
+      {
+        "path": "agent_task_executor_preview.py",
+        "size": 3770,
+        "type": "file"
+      },
+      {
+        "path": "agent_verification_executor_preview.py",
+        "size": 3767,
+        "type": "file"
+      },
+      {
+        "path": "agent_workspace_executor_preview.py",
+        "size": 3666,
+        "type": "file"
+      },
+      {
+        "path": "agent_workspace_runtime_preview.py",
+        "size": 4230,
+        "type": "file"
+      },
+      {
+        "path": "AI_STUDIO_CONTEXT",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "AI_STUDIO_CONTEXT/AI_STUDIO_START_HERE.txt",
+        "size": 896,
+        "type": "file"
+      },
+      {
+        "path": "AI_STUDIO_CONTEXT/PROJECT_FILE_INDEX.csv",
+        "size": 55122,
+        "type": "file"
+      },
+      {
+        "path": "AI_STUDIO_CONTEXT/PROJECT_TREE.txt",
+        "size": 25443,
+        "type": "file"
+      },
+      {
+        "path": "AI_STUDIO_CONTEXT/SELECTED_FILES_master_router_consolidation.txt",
+        "size": 959,
+        "type": "file"
+      },
+      {
+        "path": "AI_STUDIO_CONTEXT/TASK_FILE_SELECTION_GUIDE.txt",
+        "size": 1244,
+        "type": "file"
+      },
+      {
+        "path": "ambient_workspace_preview.py",
+        "size": 12531,
+        "type": "file"
+      },
+      {
+        "path": "app.py",
+        "size": 747931,
+        "type": "file"
+      },
+      {
+        "path": "app.py.backup_agent_tool_layer",
+        "size": 745921,
+        "type": "file"
+      },
+      {
+        "path": "app.py.backup_luxcode_swarm",
+        "size": 736568,
+        "type": "file"
+      },
+      {
+        "path": "app.py.backup_state_machine_safe_create",
+        "size": 742636,
+        "type": "file"
+      },
+      {
+        "path": "app.py.backup_swarm_legacy_bridge",
+        "size": 736666,
+        "type": "file"
+      },
+      {
+        "path": "app.py.backup_swarm_payload_fields",
+        "size": 742221,
+        "type": "file"
+      },
+      {
+        "path": "app.py.before_persistent_runtime_v1",
+        "size": 752507,
+        "type": "file"
+      },
+      {
+        "path": "app.py.before_smoke_alignment_v1",
+        "size": 735277,
+        "type": "file"
+      },
+      {
+        "path": "audio_privacy_boundary.py",
+        "size": 3711,
+        "type": "file"
+      },
+      {
+        "path": "audio_signal_schema.py",
+        "size": 7019,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_agent_operating_model_preview.py",
+        "size": 5076,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_engineering_coordinator_preview.py",
+        "size": 24144,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_execution_decision_intelligence_preview.py",
+        "size": 4196,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_execution_governance_intelligence_preview.py",
+        "size": 4118,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_execution_planning_intelligence_preview.py",
+        "size": 4053,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_execution_simulation_intelligence_preview.py",
+        "size": 4187,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_execution_strategy_intelligence_preview.py",
+        "size": 4153,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_continuity_preview.py",
+        "size": 4257,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_core_preview.py",
+        "size": 4216,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_governance_preview.py",
+        "size": 4313,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_master_status_preview.py",
+        "size": 6223,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_monitoring_preview.py",
+        "size": 4243,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_optimization_preview.py",
+        "size": 4290,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_orchestrator_preview.py",
+        "size": 4599,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_planning_preview.py",
+        "size": 4236,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_scheduling_preview.py",
+        "size": 4276,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_supervisor_preview.py",
+        "size": 4376,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_repair_intelligence_preview.py",
+        "size": 30590,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_task_network_intelligence_preview.py",
+        "size": 4006,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_workflow_intelligence_preview.py",
+        "size": 4094,
+        "type": "file"
+      },
+      {
+        "path": "autonomy_dial_preview.py",
+        "size": 14592,
+        "type": "file"
+      },
+      {
+        "path": "background_support_registry.py",
+        "size": 19812,
+        "type": "file"
+      },
+      {
+        "path": "backups",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/local_state_safety_fix_20260604_0229",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/local_state_safety_fix_20260604_0229/index.html",
+        "size": 196773,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step1_20260603_004357",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step1_20260603_004357/context_builder.py",
+        "size": 73980,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step1_20260603_004357/pipeline.py",
+        "size": 93203,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step1_20260603_004357/telemetry.py",
+        "size": 56912,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step2_20260603_013339",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step2_20260603_013339/lux_language_sense.py",
+        "size": 7705,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step2_20260603_013339/pipeline.py",
+        "size": 95354,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step2_20260603_013339/telemetry.py",
+        "size": 59198,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_20260603_020616",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step3_20260603_020616/context_builder.py",
+        "size": 74932,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_20260603_020616/lux_language_sense.py",
+        "size": 19720,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_20260603_020616/pipeline.py",
+        "size": 95989,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_20260603_020616/telemetry.py",
+        "size": 64346,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_codex_20260603",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step3_codex_20260603/context_builder.py",
+        "size": 77462,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_codex_20260603/lux_language_sense.py",
+        "size": 27513,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_codex_20260603/pipeline.py",
+        "size": 96344,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_codex_20260603/telemetry.py",
+        "size": 70562,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_confirmed_root_20260603_1300",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step3_confirmed_root_20260603_1300/context_builder.py",
+        "size": 77462,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_confirmed_root_20260603_1300/lux_language_sense.py",
+        "size": 27513,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_confirmed_root_20260603_1300/pipeline.py",
+        "size": 96344,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_confirmed_root_20260603_1300/telemetry.py",
+        "size": 70562,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step4_telemetry_regression_20260603_1308",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step4_telemetry_regression_20260603_1308/app.py",
+        "size": 203140,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step4_telemetry_regression_20260603_1308/context_builder.py",
+        "size": 77462,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step4_telemetry_regression_20260603_1308/lux_language_sense.py",
+        "size": 27513,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step4_telemetry_regression_20260603_1308/pipeline.py",
+        "size": 96344,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step4_telemetry_regression_20260603_1308/telemetry.py",
+        "size": 70562,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step5_final_hardening_20260603_1316",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step5_final_hardening_20260603_1316/app.py",
+        "size": 203140,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step5_final_hardening_20260603_1316/context_builder.py",
+        "size": 77462,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step5_final_hardening_20260603_1316/lux_language_sense.py",
+        "size": 27513,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step5_final_hardening_20260603_1316/pipeline.py",
+        "size": 96344,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step5_final_hardening_20260603_1316/telemetry.py",
+        "size": 70562,
+        "type": "file"
+      },
+      {
+        "path": "backups/stream_pause_fix_20260604_0218",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stream_pause_fix_20260604_0218/app.py",
+        "size": 203140,
+        "type": "file"
+      },
+      {
+        "path": "backups/stream_pause_fix_20260604_0218/index.html",
+        "size": 196402,
+        "type": "file"
+      },
+      {
+        "path": "bug_intake_planner.py",
+        "size": 6900,
+        "type": "file"
+      },
+      {
+        "path": "buggy.py",
+        "size": 50,
+        "type": "file"
+      },
+      {
+        "path": "buggy.py.backup",
+        "size": 45,
+        "type": "file"
+      },
+      {
+        "path": "change_memory_intelligence_preview.py",
+        "size": 29231,
+        "type": "file"
+      },
+      {
+        "path": "change_planning_intelligence_preview.py",
+        "size": 36249,
+        "type": "file"
+      },
+      {
+        "path": "change_preview_engine_preview.py",
+        "size": 11777,
+        "type": "file"
+      },
+      {
+        "path": "clone_workspace_intelligence_preview.py",
+        "size": 28044,
+        "type": "file"
+      },
+      {
+        "path": "codex_handoff_builder_preview.py",
+        "size": 9470,
+        "type": "file"
+      },
+      {
+        "path": "context_bridge_preview.py",
+        "size": 12696,
+        "type": "file"
+      },
+      {
+        "path": "cost_privacy_policy.py",
+        "size": 4848,
+        "type": "file"
+      },
+      {
+        "path": "credit_saver_engine.py",
+        "size": 14280,
+        "type": "file"
+      },
+      {
+        "path": "data",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/archive",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/archive/global",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/archive/users",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/global",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/global/analytics_runs.jsonl",
+        "size": 9835,
+        "type": "file"
+      },
+      {
+        "path": "data/global/elite_candidates.jsonl",
+        "size": 0,
+        "type": "file"
+      },
+      {
+        "path": "data/global/fine_tune_candidates.jsonl",
+        "size": 0,
+        "type": "file"
+      },
+      {
+        "path": "data/global/global_behavior_policy.json",
+        "size": 6627,
+        "type": "file"
+      },
+      {
+        "path": "data/global/global_human_patterns.json",
+        "size": 45,
+        "type": "file"
+      },
+      {
+        "path": "data/global/global_lessons.json",
+        "size": 22367,
+        "type": "file"
+      },
+      {
+        "path": "data/global/global_quality_scores.json",
+        "size": 46375,
+        "type": "file"
+      },
+      {
+        "path": "data/global/learning_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/global/pending_candidates.jsonl",
+        "size": 0,
+        "type": "file"
+      },
+      {
+        "path": "data/global/rejected_candidates.jsonl",
+        "size": 0,
+        "type": "file"
+      },
+      {
+        "path": "data/global/storage_rotation_report.json",
+        "size": 2333,
+        "type": "file"
+      },
+      {
+        "path": "data/global/telemetry.json",
+        "size": 1483,
+        "type": "file"
+      },
+      {
+        "path": "data/runtime",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/runtime/cost_logs.jsonl",
+        "size": 313082,
+        "type": "file"
+      },
+      {
+        "path": "data/users",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_code",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/behavior_policy.json",
+        "size": 4180,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/conversation_analysis.jsonl",
+        "size": 7493,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/conversations.jsonl",
+        "size": 10797,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/human_risk_healing.jsonl",
+        "size": 874,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/human_risk_summary.json",
+        "size": 332,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/hybrid_questions.json",
+        "size": 27297,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/memory_garden.json",
+        "size": 434,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/notes.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/performance.json",
+        "size": 14636,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/personal_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/personal_language_dna.json",
+        "size": 135,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/personal_lessons.json",
+        "size": 1404,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/profile.json",
+        "size": 9755,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/sessions",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/sessions/20260617_011816_eeadc2f4.json",
+        "size": 9121,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/sessions_index.json",
+        "size": 127,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/behavior_policy.json",
+        "size": 4998,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/conversation_analysis.jsonl",
+        "size": 7408,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/conversations.jsonl",
+        "size": 10097,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/human_risk_healing.jsonl",
+        "size": 874,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/human_risk_summary.json",
+        "size": 332,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/hybrid_questions.json",
+        "size": 27860,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/memory_garden.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/notes.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/performance.json",
+        "size": 14035,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/personal_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/personal_language_dna.json",
+        "size": 135,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/personal_lessons.json",
+        "size": 1546,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/profile.json",
+        "size": 9512,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/sessions",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/sessions/20260617_011815_26f4b3c0.json",
+        "size": 8084,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/sessions_index.json",
+        "size": 127,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/behavior_policy.json",
+        "size": 1623,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/human_risk_summary.json",
+        "size": 332,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/hybrid_questions.json",
+        "size": 57,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/performance.json",
+        "size": 692,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/personal_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/personal_language_dna.json",
+        "size": 50,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/personal_lessons.json",
+        "size": 57,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/sessions",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/sessions/20260617_011818_69a32ea7.json",
+        "size": 189,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/sessions_index.json",
+        "size": 127,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/behavior_policy.json",
+        "size": 4180,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/conversation_analysis.jsonl",
+        "size": 7451,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/conversations.jsonl",
+        "size": 10391,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/human_risk_healing.jsonl",
+        "size": 874,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/human_risk_summary.json",
+        "size": 332,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/hybrid_questions.json",
+        "size": 27293,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/memory_garden.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/notes.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/performance.json",
+        "size": 14549,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/personal_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/personal_language_dna.json",
+        "size": 135,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/personal_lessons.json",
+        "size": 1444,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/profile.json",
+        "size": 9678,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/sessions",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/sessions/20260617_011818_4586d7e5.json",
+        "size": 8501,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/sessions_index.json",
+        "size": 127,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/default_user/behavior_policy.json",
+        "size": 12327,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/conversation_analysis.jsonl",
+        "size": 185632,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/conversations.jsonl",
+        "size": 258740,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/human_risk_healing.jsonl",
+        "size": 21850,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/human_risk_summary.json",
+        "size": 332,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/hybrid_questions.json",
+        "size": 555099,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/memory_garden.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/notes.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/performance.json",
+        "size": 149073,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/personal_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/personal_language_dna.json",
+        "size": 135,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/personal_lessons.json",
+        "size": 30335,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/profile.json",
+        "size": 17917,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/sessions",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/default_user/sessions/20260617_053948_83fe58f9.json",
+        "size": 57487,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/sessions/20260617_054720_c3d07d37.json",
+        "size": 8066,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/sessions_index.json",
+        "size": 251,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/demo/behavior_policy.json",
+        "size": 10533,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/conversation_analysis.jsonl",
+        "size": 222644,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/conversations.jsonl",
+        "size": 307388,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/human_risk_healing.jsonl",
+        "size": 26220,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/human_risk_summary.json",
+        "size": 332,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/hybrid_questions.json",
+        "size": 751338,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/memory_garden.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/notes.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/performance.json",
+        "size": 22559,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/personal_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/personal_language_dna.json",
+        "size": 135,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/personal_lessons.json",
+        "size": 34011,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/profile.json",
+        "size": 18755,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/sessions",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/demo/sessions/20260617_052044_1b0596b4.json",
+        "size": 243929,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/sessions_index.json",
+        "size": 127,
+        "type": "file"
+      },
+      {
+        "path": "data/users/local_test_user",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/local_test_user/behavior_policy.json",
+        "size": 4998,
+        "type": "file"
+      },
+      {
+        "path": "data/users/local_test_user/conversation_analysis.jsonl",
+        "size": 7408,
+        "type": "file"
+      }
+    ],
+    "root": "C:\\Users\\Teoman\\OneDrive\\Desktop\\LUXDEEP"
+  },
+  "session_id": "stress6",
+  "summary": "",
+  "updated_at": "2026-06-22T14:54:43Z",
+  "workspace_root": "C:\\Users\\Teoman\\OneDrive\\Desktop\\LUXDEEP"
+}

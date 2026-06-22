@@ -1,0 +1,1595 @@
+{
+  "changes": [
+    {
+      "at": "2026-06-22T14:53:29Z",
+      "payload": {
+        "params": {
+          "content": "def toplam_1den_100e():\n    return sum(range(1, 101))\n\nif __name__ == \"__main__\":\n    print(toplam_1den_100e())\n",
+          "path": "stress_test.py"
+        },
+        "result": {
+          "backup": "",
+          "bytes": 112,
+          "error": "",
+          "path": "C:\\Users\\Teoman\\OneDrive\\Desktop\\LUXDEEP\\stress_test.py",
+          "result": true,
+          "success": true
+        },
+        "step": 1,
+        "tool": "write_file"
+      },
+      "tool": "write_file"
+    },
+    {
+      "at": "2026-06-22T14:53:29Z",
+      "payload": {
+        "params": {
+          "path": "stress_test.py"
+        },
+        "result": {
+          "error": "",
+          "path": "C:\\Users\\Teoman\\OneDrive\\Desktop\\LUXDEEP\\stress_test.py",
+          "result": "def toplam_1den_100e():\n    return sum(range(1, 101))\n\nif __name__ == \"__main__\":\n    print(toplam_1den_100e())\n",
+          "success": true
+        },
+        "step": 2,
+        "tool": "read_file"
+      },
+      "tool": "read_file"
+    },
+    {
+      "at": "2026-06-22T14:53:30Z",
+      "payload": {
+        "params": {
+          "command": "python stress_test.py"
+        },
+        "result": {
+          "command": "python stress_test.py",
+          "error": "",
+          "result": {
+            "exit_code": 0,
+            "stderr": "",
+            "stdout": "5050\n"
+          },
+          "success": true
+        },
+        "step": 3,
+        "tool": "run_command"
+      },
+      "tool": "run_command"
+    }
+  ],
+  "created_at": "2026-06-22T14:51:50Z",
+  "messages": [
+    {
+      "at": "2026-06-22T14:51:51Z",
+      "content": "stress_test.py dosyasi olustur. Icine 1den 100e kadar sayilarin toplamini hesaplayan bir fonksiyon yaz. Fonksiyonu calistir ve sonucu yazdir.",
+      "role": "user"
+    },
+    {
+      "at": "2026-06-22T14:51:51Z",
+      "content": "No executable tool call was found. Send JSON tool format or a supported file command.",
+      "role": "assistant"
+    },
+    {
+      "at": "2026-06-22T14:53:29Z",
+      "content": "stress_test.py dosyasi olustur. Icine 1den 100e kadar sayilarin toplamini hesaplayan bir fonksiyon yaz. Fonksiyonu calistir ve sonucu yazdir.",
+      "role": "user"
+    },
+    {
+      "at": "2026-06-22T14:53:30Z",
+      "content": "Completed 3 tool step(s).",
+      "role": "assistant"
+    }
+  ],
+  "project_scan": {
+    "count": 300,
+    "entries": [
+      {
+        "path": ".codewhale",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".codewhale/instructions.md",
+        "size": 7557,
+        "type": "file"
+      },
+      {
+        "path": ".codex_reference",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".codex_reference/luxcode_ui_v1.html",
+        "size": 98363,
+        "type": "file"
+      },
+      {
+        "path": ".env",
+        "size": 93,
+        "type": "file"
+      },
+      {
+        "path": ".gitignore",
+        "size": 83,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/desktop_instance.lock",
+        "size": 1,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/desktop_layout.json",
+        "size": 142,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/logs",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/logs/backend.log",
+        "size": 304153,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/persistent_runtime.json",
+        "size": 2510,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/reports/bridge_validations_2026-06-18_09-47-33.txt",
+        "size": 3048,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/codex_heavy_smoke_review.txt",
+        "size": 104895,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/failed_smoke_checks_source.txt",
+        "size": 24625,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/fault_report_route_sources.txt",
+        "size": 155989,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/fault_report_smoke_trace.txt",
+        "size": 804,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/fault_report_timeout_diagnostic.json",
+        "size": 305,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/final_full_smoke_2026-06-18_15-07-49.stderr.txt",
+        "size": 44562,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/final_full_smoke_2026-06-18_15-07-49.stdout.txt",
+        "size": 8198,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/final_full_smoke_2026-06-18_15-07-49.txt",
+        "size": 52901,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/full_smoke_2026-06-18_10-09-10.stderr.txt",
+        "size": 44560,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/full_smoke_2026-06-18_10-09-10.stdout.txt",
+        "size": 8222,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/full_smoke_2026-06-18_10-09-10.txt",
+        "size": 52919,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/full_smoke_2026-06-18_13-26-05.stderr.txt",
+        "size": 44562,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/full_smoke_2026-06-18_13-26-05.stdout.txt",
+        "size": 8224,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/full_smoke_2026-06-18_13-26-05.txt",
+        "size": 52921,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/lux_fault_report_timeout_sources.txt",
+        "size": 15114,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/next_smoke_batch_after_fault_report.json",
+        "size": 480,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/next_smoke_batch_after_patch_lifecycle.json",
+        "size": 693,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/next_smoke_batch_after_production_readiness.json",
+        "size": 398,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/next_smoke_batch_after_system_health.json",
+        "size": 451,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/patch_audit_trail_sources.txt",
+        "size": 10852,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/patch_recovery_builder_sources.txt",
+        "size": 14502,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/patch_recovery_smoke_source.txt",
+        "size": 3726,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/precommit_repository_review_2026-06-18_09-49-51.txt",
+        "size": 6280,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/precommit_secret_scan.txt",
+        "size": 208,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/precommit_secret_scan_refined.txt",
+        "size": 70,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/production_readiness_smoke_source.txt",
+        "size": 24893,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/remaining_readiness_smoke_sources.txt",
+        "size": 82254,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/remaining_smoke_2026-06-18_16-18-13.txt",
+        "size": 5026,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/remaining_smoke_batch_2026-06-19_07-53-55.txt",
+        "size": 891,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/reports/staged_repository_review_2026-06-18_10-00-21.txt",
+        "size": 7222,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/secure_credentials",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/secure_credentials/gemini_api_key.dpapi",
+        "size": 330,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/secure_credentials/openrouter_api_key.dpapi",
+        "size": 346,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/approvals",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/approvals/swarm-c8629f254bdb4678947d305c463b1df7.json",
+        "size": 205,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/checkpoints",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/checkpoints/swarm-6c09dc67178d478e9e5c2099503b316f",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/checkpoints/swarm-6c09dc67178d478e9e5c2099503b316f/0001.json",
+        "size": 29542,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/tasks",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/tasks/swarm-6c09dc67178d478e9e5c2099503b316f.json",
+        "size": 36142,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/tasks/swarm-aa8ed0568d51463383d061ce44662960.json",
+        "size": 623,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/tasks/swarm-c8629f254bdb4678947d305c463b1df7.json",
+        "size": 623,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers/swarm-aa8ed0568d51463383d061ce44662960",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers/swarm-aa8ed0568d51463383d061ce44662960/0001.json",
+        "size": 337,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers/swarm-aa8ed0568d51463383d061ce44662960/0002.json",
+        "size": 367,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers/swarm-c8629f254bdb4678947d305c463b1df7",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers/swarm-c8629f254bdb4678947d305c463b1df7/0001.json",
+        "size": 367,
+        "type": "file"
+      },
+      {
+        "path": ".luxcode_runtime/swarm_state/transfers/swarm-c8629f254bdb4678947d305c463b1df7/0002.json",
+        "size": 381,
+        "type": "file"
+      },
+      {
+        "path": "adaptive_interface_preview.py",
+        "size": 12656,
+        "type": "file"
+      },
+      {
+        "path": "agent_action_engine_preview.py",
+        "size": 3810,
+        "type": "file"
+      },
+      {
+        "path": "agent_collaboration_runtime_preview.py",
+        "size": 4095,
+        "type": "file"
+      },
+      {
+        "path": "agent_constitution_engine_preview.py",
+        "size": 9146,
+        "type": "file"
+      },
+      {
+        "path": "agent_continuity_runtime_preview.py",
+        "size": 4021,
+        "type": "file"
+      },
+      {
+        "path": "agent_core_preview.py",
+        "size": 7109,
+        "type": "file"
+      },
+      {
+        "path": "agent_decision_trace.py",
+        "size": 7862,
+        "type": "file"
+      },
+      {
+        "path": "agent_deployment_executor_preview.py",
+        "size": 3748,
+        "type": "file"
+      },
+      {
+        "path": "agent_execution_core_preview.py",
+        "size": 4294,
+        "type": "file"
+      },
+      {
+        "path": "agent_execution_master_status_preview.py",
+        "size": 5068,
+        "type": "file"
+      },
+      {
+        "path": "agent_execution_orchestrator_preview.py",
+        "size": 3540,
+        "type": "file"
+      },
+      {
+        "path": "agent_execution_recovery_coordinator_preview.py",
+        "size": 3751,
+        "type": "file"
+      },
+      {
+        "path": "agent_execution_supervisor_preview.py",
+        "size": 3767,
+        "type": "file"
+      },
+      {
+        "path": "agent_lifecycle_runtime_preview.py",
+        "size": 4147,
+        "type": "file"
+      },
+      {
+        "path": "agent_memory_loop_runtime_preview.py",
+        "size": 4080,
+        "type": "file"
+      },
+      {
+        "path": "agent_recovery_resilience_runtime_preview.py",
+        "size": 4216,
+        "type": "file"
+      },
+      {
+        "path": "agent_runtime_consolidation_preview.py",
+        "size": 4331,
+        "type": "file"
+      },
+      {
+        "path": "agent_runtime_core_preview.py",
+        "size": 4195,
+        "type": "file"
+      },
+      {
+        "path": "agent_runtime_master_status_preview.py",
+        "size": 5310,
+        "type": "file"
+      },
+      {
+        "path": "agent_scaffold.py",
+        "size": 30802,
+        "type": "file"
+      },
+      {
+        "path": "agent_session_runtime_preview.py",
+        "size": 4042,
+        "type": "file"
+      },
+      {
+        "path": "agent_task_executor_preview.py",
+        "size": 3770,
+        "type": "file"
+      },
+      {
+        "path": "agent_verification_executor_preview.py",
+        "size": 3767,
+        "type": "file"
+      },
+      {
+        "path": "agent_workspace_executor_preview.py",
+        "size": 3666,
+        "type": "file"
+      },
+      {
+        "path": "agent_workspace_runtime_preview.py",
+        "size": 4230,
+        "type": "file"
+      },
+      {
+        "path": "AI_STUDIO_CONTEXT",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "AI_STUDIO_CONTEXT/AI_STUDIO_START_HERE.txt",
+        "size": 896,
+        "type": "file"
+      },
+      {
+        "path": "AI_STUDIO_CONTEXT/PROJECT_FILE_INDEX.csv",
+        "size": 55122,
+        "type": "file"
+      },
+      {
+        "path": "AI_STUDIO_CONTEXT/PROJECT_TREE.txt",
+        "size": 25443,
+        "type": "file"
+      },
+      {
+        "path": "AI_STUDIO_CONTEXT/SELECTED_FILES_master_router_consolidation.txt",
+        "size": 959,
+        "type": "file"
+      },
+      {
+        "path": "AI_STUDIO_CONTEXT/TASK_FILE_SELECTION_GUIDE.txt",
+        "size": 1244,
+        "type": "file"
+      },
+      {
+        "path": "ambient_workspace_preview.py",
+        "size": 12531,
+        "type": "file"
+      },
+      {
+        "path": "app.py",
+        "size": 747931,
+        "type": "file"
+      },
+      {
+        "path": "app.py.backup_agent_tool_layer",
+        "size": 745921,
+        "type": "file"
+      },
+      {
+        "path": "app.py.backup_luxcode_swarm",
+        "size": 736568,
+        "type": "file"
+      },
+      {
+        "path": "app.py.backup_state_machine_safe_create",
+        "size": 742636,
+        "type": "file"
+      },
+      {
+        "path": "app.py.backup_swarm_legacy_bridge",
+        "size": 736666,
+        "type": "file"
+      },
+      {
+        "path": "app.py.backup_swarm_payload_fields",
+        "size": 742221,
+        "type": "file"
+      },
+      {
+        "path": "app.py.before_persistent_runtime_v1",
+        "size": 752507,
+        "type": "file"
+      },
+      {
+        "path": "app.py.before_smoke_alignment_v1",
+        "size": 735277,
+        "type": "file"
+      },
+      {
+        "path": "audio_privacy_boundary.py",
+        "size": 3711,
+        "type": "file"
+      },
+      {
+        "path": "audio_signal_schema.py",
+        "size": 7019,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_agent_operating_model_preview.py",
+        "size": 5076,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_engineering_coordinator_preview.py",
+        "size": 24144,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_execution_decision_intelligence_preview.py",
+        "size": 4196,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_execution_governance_intelligence_preview.py",
+        "size": 4118,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_execution_planning_intelligence_preview.py",
+        "size": 4053,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_execution_simulation_intelligence_preview.py",
+        "size": 4187,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_execution_strategy_intelligence_preview.py",
+        "size": 4153,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_continuity_preview.py",
+        "size": 4257,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_core_preview.py",
+        "size": 4216,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_governance_preview.py",
+        "size": 4313,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_master_status_preview.py",
+        "size": 6223,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_monitoring_preview.py",
+        "size": 4243,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_optimization_preview.py",
+        "size": 4290,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_orchestrator_preview.py",
+        "size": 4599,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_planning_preview.py",
+        "size": 4236,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_scheduling_preview.py",
+        "size": 4276,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_operations_supervisor_preview.py",
+        "size": 4376,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_repair_intelligence_preview.py",
+        "size": 30590,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_task_network_intelligence_preview.py",
+        "size": 4006,
+        "type": "file"
+      },
+      {
+        "path": "autonomous_workflow_intelligence_preview.py",
+        "size": 4094,
+        "type": "file"
+      },
+      {
+        "path": "autonomy_dial_preview.py",
+        "size": 14592,
+        "type": "file"
+      },
+      {
+        "path": "background_support_registry.py",
+        "size": 19812,
+        "type": "file"
+      },
+      {
+        "path": "backups",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/local_state_safety_fix_20260604_0229",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/local_state_safety_fix_20260604_0229/index.html",
+        "size": 196773,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step1_20260603_004357",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step1_20260603_004357/context_builder.py",
+        "size": 73980,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step1_20260603_004357/pipeline.py",
+        "size": 93203,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step1_20260603_004357/telemetry.py",
+        "size": 56912,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step2_20260603_013339",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step2_20260603_013339/lux_language_sense.py",
+        "size": 7705,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step2_20260603_013339/pipeline.py",
+        "size": 95354,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step2_20260603_013339/telemetry.py",
+        "size": 59198,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_20260603_020616",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step3_20260603_020616/context_builder.py",
+        "size": 74932,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_20260603_020616/lux_language_sense.py",
+        "size": 19720,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_20260603_020616/pipeline.py",
+        "size": 95989,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_20260603_020616/telemetry.py",
+        "size": 64346,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_codex_20260603",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step3_codex_20260603/context_builder.py",
+        "size": 77462,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_codex_20260603/lux_language_sense.py",
+        "size": 27513,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_codex_20260603/pipeline.py",
+        "size": 96344,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_codex_20260603/telemetry.py",
+        "size": 70562,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_confirmed_root_20260603_1300",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step3_confirmed_root_20260603_1300/context_builder.py",
+        "size": 77462,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_confirmed_root_20260603_1300/lux_language_sense.py",
+        "size": 27513,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_confirmed_root_20260603_1300/pipeline.py",
+        "size": 96344,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step3_confirmed_root_20260603_1300/telemetry.py",
+        "size": 70562,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step4_telemetry_regression_20260603_1308",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step4_telemetry_regression_20260603_1308/app.py",
+        "size": 203140,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step4_telemetry_regression_20260603_1308/context_builder.py",
+        "size": 77462,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step4_telemetry_regression_20260603_1308/lux_language_sense.py",
+        "size": 27513,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step4_telemetry_regression_20260603_1308/pipeline.py",
+        "size": 96344,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step4_telemetry_regression_20260603_1308/telemetry.py",
+        "size": 70562,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step5_final_hardening_20260603_1316",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stage13_step5_final_hardening_20260603_1316/app.py",
+        "size": 203140,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step5_final_hardening_20260603_1316/context_builder.py",
+        "size": 77462,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step5_final_hardening_20260603_1316/lux_language_sense.py",
+        "size": 27513,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step5_final_hardening_20260603_1316/pipeline.py",
+        "size": 96344,
+        "type": "file"
+      },
+      {
+        "path": "backups/stage13_step5_final_hardening_20260603_1316/telemetry.py",
+        "size": 70562,
+        "type": "file"
+      },
+      {
+        "path": "backups/stream_pause_fix_20260604_0218",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "backups/stream_pause_fix_20260604_0218/app.py",
+        "size": 203140,
+        "type": "file"
+      },
+      {
+        "path": "backups/stream_pause_fix_20260604_0218/index.html",
+        "size": 196402,
+        "type": "file"
+      },
+      {
+        "path": "bug_intake_planner.py",
+        "size": 6900,
+        "type": "file"
+      },
+      {
+        "path": "change_memory_intelligence_preview.py",
+        "size": 29231,
+        "type": "file"
+      },
+      {
+        "path": "change_planning_intelligence_preview.py",
+        "size": 36249,
+        "type": "file"
+      },
+      {
+        "path": "change_preview_engine_preview.py",
+        "size": 11777,
+        "type": "file"
+      },
+      {
+        "path": "clone_workspace_intelligence_preview.py",
+        "size": 28044,
+        "type": "file"
+      },
+      {
+        "path": "codex_handoff_builder_preview.py",
+        "size": 9470,
+        "type": "file"
+      },
+      {
+        "path": "context_bridge_preview.py",
+        "size": 12696,
+        "type": "file"
+      },
+      {
+        "path": "cost_privacy_policy.py",
+        "size": 4848,
+        "type": "file"
+      },
+      {
+        "path": "credit_saver_engine.py",
+        "size": 14280,
+        "type": "file"
+      },
+      {
+        "path": "data",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/archive",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/archive/global",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/archive/users",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/global",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/global/analytics_runs.jsonl",
+        "size": 9835,
+        "type": "file"
+      },
+      {
+        "path": "data/global/elite_candidates.jsonl",
+        "size": 0,
+        "type": "file"
+      },
+      {
+        "path": "data/global/fine_tune_candidates.jsonl",
+        "size": 0,
+        "type": "file"
+      },
+      {
+        "path": "data/global/global_behavior_policy.json",
+        "size": 6627,
+        "type": "file"
+      },
+      {
+        "path": "data/global/global_human_patterns.json",
+        "size": 45,
+        "type": "file"
+      },
+      {
+        "path": "data/global/global_lessons.json",
+        "size": 22367,
+        "type": "file"
+      },
+      {
+        "path": "data/global/global_quality_scores.json",
+        "size": 46375,
+        "type": "file"
+      },
+      {
+        "path": "data/global/learning_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/global/pending_candidates.jsonl",
+        "size": 0,
+        "type": "file"
+      },
+      {
+        "path": "data/global/rejected_candidates.jsonl",
+        "size": 0,
+        "type": "file"
+      },
+      {
+        "path": "data/global/storage_rotation_report.json",
+        "size": 2333,
+        "type": "file"
+      },
+      {
+        "path": "data/global/telemetry.json",
+        "size": 1483,
+        "type": "file"
+      },
+      {
+        "path": "data/runtime",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/runtime/cost_logs.jsonl",
+        "size": 313082,
+        "type": "file"
+      },
+      {
+        "path": "data/users",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_code",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/behavior_policy.json",
+        "size": 4180,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/conversation_analysis.jsonl",
+        "size": 7493,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/conversations.jsonl",
+        "size": 10797,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/human_risk_healing.jsonl",
+        "size": 874,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/human_risk_summary.json",
+        "size": 332,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/hybrid_questions.json",
+        "size": 27297,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/memory_garden.json",
+        "size": 434,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/notes.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/performance.json",
+        "size": 14636,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/personal_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/personal_language_dna.json",
+        "size": 135,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/personal_lessons.json",
+        "size": 1404,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/profile.json",
+        "size": 9755,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/sessions",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/sessions/20260617_011816_eeadc2f4.json",
+        "size": 9121,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_code/sessions_index.json",
+        "size": 127,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/behavior_policy.json",
+        "size": 4998,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/conversation_analysis.jsonl",
+        "size": 7408,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/conversations.jsonl",
+        "size": 10097,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/human_risk_healing.jsonl",
+        "size": 874,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/human_risk_summary.json",
+        "size": 332,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/hybrid_questions.json",
+        "size": 27860,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/memory_garden.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/notes.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/performance.json",
+        "size": 14035,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/personal_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/personal_language_dna.json",
+        "size": 135,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/personal_lessons.json",
+        "size": 1546,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/profile.json",
+        "size": 9512,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/sessions",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/sessions/20260617_011815_26f4b3c0.json",
+        "size": 8084,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_hello/sessions_index.json",
+        "size": 127,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/behavior_policy.json",
+        "size": 1623,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/human_risk_summary.json",
+        "size": 332,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/hybrid_questions.json",
+        "size": 57,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/performance.json",
+        "size": 692,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/personal_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/personal_language_dna.json",
+        "size": 50,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/personal_lessons.json",
+        "size": 57,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/sessions",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/sessions/20260617_011818_69a32ea7.json",
+        "size": 189,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_plan/sessions_index.json",
+        "size": 127,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/behavior_policy.json",
+        "size": 4180,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/conversation_analysis.jsonl",
+        "size": 7451,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/conversations.jsonl",
+        "size": 10391,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/human_risk_healing.jsonl",
+        "size": 874,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/human_risk_summary.json",
+        "size": 332,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/hybrid_questions.json",
+        "size": 27293,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/memory_garden.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/notes.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/performance.json",
+        "size": 14549,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/personal_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/personal_language_dna.json",
+        "size": 135,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/personal_lessons.json",
+        "size": 1444,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/profile.json",
+        "size": 9678,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/sessions",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/sessions/20260617_011818_4586d7e5.json",
+        "size": 8501,
+        "type": "file"
+      },
+      {
+        "path": "data/users/chat_route_validator_secret/sessions_index.json",
+        "size": 127,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/default_user/behavior_policy.json",
+        "size": 12327,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/conversation_analysis.jsonl",
+        "size": 185632,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/conversations.jsonl",
+        "size": 258740,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/human_risk_healing.jsonl",
+        "size": 21850,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/human_risk_summary.json",
+        "size": 332,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/hybrid_questions.json",
+        "size": 555099,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/memory_garden.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/notes.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/performance.json",
+        "size": 149073,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/personal_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/personal_language_dna.json",
+        "size": 135,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/personal_lessons.json",
+        "size": 30335,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/profile.json",
+        "size": 17917,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/sessions",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/default_user/sessions/20260617_053948_83fe58f9.json",
+        "size": 57487,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/sessions/20260617_054720_c3d07d37.json",
+        "size": 8066,
+        "type": "file"
+      },
+      {
+        "path": "data/users/default_user/sessions_index.json",
+        "size": 251,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/demo/behavior_policy.json",
+        "size": 10533,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/conversation_analysis.jsonl",
+        "size": 222644,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/conversations.jsonl",
+        "size": 307388,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/human_risk_healing.jsonl",
+        "size": 26220,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/human_risk_summary.json",
+        "size": 332,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/hybrid_questions.json",
+        "size": 751338,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/memory_garden.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/notes.json",
+        "size": 2,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/performance.json",
+        "size": 22559,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/personal_dashboard.json",
+        "size": 46,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/personal_language_dna.json",
+        "size": 135,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/personal_lessons.json",
+        "size": 34011,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/profile.json",
+        "size": 18755,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/sessions",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/demo/sessions/20260617_052044_1b0596b4.json",
+        "size": 243929,
+        "type": "file"
+      },
+      {
+        "path": "data/users/demo/sessions_index.json",
+        "size": 127,
+        "type": "file"
+      },
+      {
+        "path": "data/users/local_test_user",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "data/users/local_test_user/behavior_policy.json",
+        "size": 4998,
+        "type": "file"
+      },
+      {
+        "path": "data/users/local_test_user/conversation_analysis.jsonl",
+        "size": 7408,
+        "type": "file"
+      },
+      {
+        "path": "data/users/local_test_user/conversations.jsonl",
+        "size": 10092,
+        "type": "file"
+      },
+      {
+        "path": "data/users/local_test_user/human_risk_healing.jsonl",
+        "size": 874,
+        "type": "file"
+      }
+    ],
+    "root": "C:\\Users\\Teoman\\OneDrive\\Desktop\\LUXDEEP"
+  },
+  "session_id": "stress1",
+  "summary": "",
+  "updated_at": "2026-06-22T14:53:30Z",
+  "workspace_root": "C:\\Users\\Teoman\\OneDrive\\Desktop\\LUXDEEP"
+}
