@@ -7,6 +7,7 @@ import queue
 import logging
 import os
 import threading
+import time
 import random
 import re
 import uuid
@@ -13647,6 +13648,31 @@ def _legacy_state_machine_create_payload(payload: Dict[str, Any]) -> Dict[str, A
 
 
 LUXCODE_SELECTED_WORKSPACE_FOLDERS: Dict[str, Dict[str, Any]] = {}
+LUXCODE_CONVERSATION_SESSIONS: Dict[str, Dict[str, Any]] = {}
+LUXCODE_CONVERSATION_ARTIFACTS: Dict[str, Dict[str, Any]] = {}
+LUXCODE_CONVERSATION_ATTACHMENTS: Dict[str, Dict[str, Any]] = {}
+
+
+def _luxcode_public_session(session_id: str) -> Dict[str, Any]:
+    session = LUXCODE_CONVERSATION_SESSIONS.setdefault(session_id, {
+        "session_id": session_id,
+        "message_history": [],
+        "active_task_id": "",
+        "active_task_state": None,
+        "selected_project": {},
+    })
+    return session
+
+
+def _luxcode_add_message(session: Dict[str, Any], role: str, content: str, meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    message = {
+        "id": f"{role}-{int(time.time() * 1000)}-{len(session.get('message_history', []))}",
+        "role": role,
+        "content": str(content or ""),
+        "meta": meta or {},
+    }
+    session.setdefault("message_history", []).append(message)
+    return message
 
 
 @app.post("/luxcode-workspace/select-folder")
@@ -13654,19 +13680,65 @@ async def luxcode_workspace_select_folder(payload: Dict[str, Any]):
     initial_dir = _first_text(payload.get("initial_dir") or payload.get("repository_root") or payload.get("workspace_root"))
     title = _first_text(payload.get("title") or payload.get("name") or payload.get("folder"))
     if not initial_dir:
-        return {"ok": False, "error": "missing_initial_dir", "blocked_reasons": ["missing_initial_dir"]}
+        dialog_title = title or "LuxCode proje klasörü seç"
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+
+            root_window = tk.Tk()
+            root_window.withdraw()
+            root_window.attributes("-topmost", True)
+            chosen = filedialog.askdirectory(title=dialog_title, mustexist=True)
+            root_window.destroy()
+        except Exception as exc:
+            logging.exception("LUXCODE_WORKSPACE_SELECT_FOLDER dialog failed")
+            return {
+                "ok": False,
+                "error": "folder_dialog_failed",
+                "message": str(exc),
+                "blocked_reasons": ["folder_dialog_failed"],
+            }
+        if not chosen:
+            return {"ok": False, "error": "folder_selection_cancelled", "blocked_reasons": ["folder_selection_cancelled"]}
+        selected = Path(chosen).expanduser().resolve()
+        folder_id = selected.name
+        info = {
+            "ok": True,
+            "selected": True,
+            "folder_id": folder_id,
+            "title": folder_id,
+            "name": folder_id,
+            "path": str(selected),
+            "repository_root": str(selected),
+            "workspace_root": str(selected),
+            "selected_folder": folder_id,
+            "selected_folder_path": str(selected),
+            "selected_folders": [folder_id],
+        }
+        LUXCODE_SELECTED_WORKSPACE_FOLDERS[folder_id] = info
+        return info
     root = Path(initial_dir).expanduser().resolve()
-    selected = (root / title).resolve() if title else root
+    normalized_title = (title or "").lower()
+    title_is_dialog_label = bool(
+        re.search(r"(seç|sec|folder|klasör|klasor)", normalized_title, re.IGNORECASE)
+        or "luxcode proje" in normalized_title
+        or "?" in normalized_title
+    )
+    selected = root if not title or title_is_dialog_label else (root / title).resolve()
     try:
         selected.relative_to(root)
     except ValueError:
         return {"ok": False, "error": "selected_folder_outside_initial_dir", "blocked_reasons": ["selected_folder_outside_initial_dir"]}
     selected.mkdir(parents=True, exist_ok=True)
-    folder_id = title or selected.name
+    folder_id = selected.name
     info = {
         "ok": True,
+        "selected": True,
         "folder_id": folder_id,
-        "title": title,
+        "title": folder_id,
+        "name": folder_id,
+        "path": str(selected),
+        "workspace_root": str(selected),
         "repository_root": str(root),
         "selected_folder": folder_id,
         "selected_folder_path": str(selected),
@@ -13674,6 +13746,289 @@ async def luxcode_workspace_select_folder(payload: Dict[str, Any]):
     }
     LUXCODE_SELECTED_WORKSPACE_FOLDERS[folder_id] = info
     return info
+
+
+def _luxcode_workspace_root_from_payload(payload: Dict[str, Any]) -> Path:
+    text = _first_text(
+        payload.get("repository_root")
+        or payload.get("workspace_root")
+        or payload.get("root")
+        or payload.get("path")
+        or payload.get("selected_folder_path")
+    )
+    if not text:
+        raise ValueError("missing_repository_root")
+    root = Path(text).expanduser().resolve()
+    if not root.exists() or not root.is_dir():
+        raise ValueError("workspace_not_found")
+    return root
+
+
+def _workspace_git_summary(root: Path) -> Dict[str, Any]:
+    import subprocess
+
+    def _git(args: List[str]) -> str:
+        try:
+            completed = subprocess.run(
+                ["git", *args],
+                cwd=str(root),
+                shell=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=8,
+            )
+            return completed.stdout.strip() if completed.returncode == 0 else ""
+        except Exception:
+            return ""
+
+    status = _git(["status", "--short"])
+    return {
+        "branch": _git(["branch", "--show-current"]) or "-",
+        "head": _git(["rev-parse", "--short", "HEAD"]) or "-",
+        "dirty": bool(status),
+        "status_short": status,
+    }
+
+
+def _workspace_file_summary(root: Path, limit: int = 160) -> List[Dict[str, Any]]:
+    files: List[Dict[str, Any]] = []
+    ignored = {".git", "__pycache__", ".venv", "venv", "node_modules"}
+    for path in root.rglob("*"):
+        if len(files) >= limit:
+            break
+        if any(part in ignored for part in path.parts):
+            continue
+        if not path.is_file():
+            continue
+        try:
+            rel = path.relative_to(root).as_posix()
+            files.append({"path": rel, "name": path.name, "size_bytes": path.stat().st_size})
+        except Exception:
+            continue
+    return files
+
+
+def _workspace_suggested_tests(root: Path) -> List[Dict[str, Any]]:
+    suggestions: List[Dict[str, Any]] = []
+    if (root / "package.json").exists():
+        suggestions.append({"label": "npm test", "command": ["npm", "test"]})
+    if (root / "pytest.ini").exists() or (root / "pyproject.toml").exists() or any(root.glob("test_*.py")):
+        suggestions.append({"label": "pytest", "command": ["python", "-m", "pytest"]})
+    if (root / "app.py").exists():
+        suggestions.append({"label": "py_compile app.py", "command": ["python", "-m", "py_compile", "app.py"]})
+    return suggestions
+
+
+@app.post("/luxcode-workspace/inspect")
+async def luxcode_workspace_inspect(payload: Dict[str, Any]):
+    try:
+        root = _luxcode_workspace_root_from_payload(payload)
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc), "blocked_reasons": [str(exc)]}
+    project_name = _first_text(payload.get("project_name") or payload.get("name")) or root.name
+    return {
+        "ok": True,
+        "project": {"name": project_name, "path": str(root)},
+        "git": _workspace_git_summary(root),
+        "files": _workspace_file_summary(root),
+        "tests": {"suggested": _workspace_suggested_tests(root)},
+        "providers": {
+            "ollama": {"label": "Ollama", "status": "pending"},
+            "cloud-models": {"label": "Cloud Models", "status": "pending"},
+            "gemini": {"label": "Gemini", "status": "pending"},
+            "deepseek": {"label": "DeepSeek", "status": "pending"},
+            "whale": {"label": "Whale", "status": "pending"},
+            "codex": {"label": "Codex", "status": "pending"},
+        },
+        "runtime": {"persistent_runtime": {"status": "Hazır"}, "sandbox": "Yerel", "terminal": "Hazır"},
+    }
+
+
+@app.post("/luxcode-workspace/run-command")
+async def luxcode_workspace_run_command(payload: Dict[str, Any]):
+    import subprocess
+
+    try:
+        root = _luxcode_workspace_root_from_payload(payload)
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc), "blocked_reasons": [str(exc)]}
+    command = payload.get("command")
+    if isinstance(command, str):
+        command_args = command.split()
+    elif isinstance(command, list):
+        command_args = [str(part) for part in command if str(part)]
+    else:
+        return {"ok": False, "error": "missing_command", "blocked_reasons": ["missing_command"]}
+    if not command_args:
+        return {"ok": False, "error": "missing_command", "blocked_reasons": ["missing_command"]}
+    denied = {"del", "erase", "format", "shutdown", "restart-computer", "remove-item", "rm"}
+    if command_args[0].lower() in denied:
+        return {"ok": False, "error": "dangerous_command_blocked", "blocked_reasons": ["dangerous_command_blocked"]}
+    try:
+        completed = subprocess.run(
+            command_args,
+            cwd=str(root),
+            shell=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=max(1, min(int(payload.get("timeout") or 120), 300)),
+        )
+        return {
+            "ok": completed.returncode == 0,
+            "exit_code": completed.returncode,
+            "stdout": completed.stdout,
+            "stderr": completed.stderr,
+            "command": command_args,
+        }
+    except subprocess.TimeoutExpired as exc:
+        return {"ok": False, "error": "command_timeout", "timeout": exc.timeout}
+
+
+@app.post("/luxcode-workspace/commit")
+async def luxcode_workspace_commit(payload: Dict[str, Any]):
+    try:
+        root = _luxcode_workspace_root_from_payload(payload)
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc), "blocked_reasons": [str(exc)]}
+    return {
+        "ok": False,
+        "status": "awaiting_explicit_git_commit",
+        "message": "Commit otomatik yapılmadı. Git commit için ayrı açık onay gerekir.",
+        "project": {"path": str(root)},
+        "git": _workspace_git_summary(root),
+    }
+
+
+@app.get("/luxcode-conversation/{session_id}")
+async def luxcode_conversation_state_endpoint(session_id: str):
+    return {"ok": True, "session": _luxcode_public_session(session_id)}
+
+
+@app.get("/luxcode-conversation/{session_id}/artifacts")
+async def luxcode_conversation_artifacts_endpoint(session_id: str):
+    artifacts = [
+        artifact for artifact in LUXCODE_CONVERSATION_ARTIFACTS.values()
+        if artifact.get("session_id") == session_id
+    ]
+    return {"ok": True, "artifacts": artifacts}
+
+
+@app.post("/luxcode-artifacts")
+async def luxcode_artifact_create_endpoint(payload: Dict[str, Any]):
+    artifact_id = f"art-{uuid.uuid4().hex[:16]}"
+    artifact = {
+        "artifact_id": artifact_id,
+        "session_id": _first_text(payload.get("session_id")) or "default",
+        "filename": _first_text(payload.get("filename")) or f"{artifact_id}.txt",
+        "mime_type": _first_text(payload.get("mime_type")) or "text/plain",
+        "content": str(payload.get("content") or ""),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    LUXCODE_CONVERSATION_ARTIFACTS[artifact_id] = artifact
+    return {"ok": True, "artifact": artifact}
+
+
+@app.get("/luxcode-artifacts/{artifact_id}")
+async def luxcode_artifact_get_endpoint(artifact_id: str):
+    artifact = LUXCODE_CONVERSATION_ARTIFACTS.get(artifact_id)
+    if not artifact:
+        raise HTTPException(status_code=404, detail="artifact not found")
+    return {"ok": True, "artifact": artifact}
+
+
+@app.get("/luxcode-artifacts/{artifact_id}/content")
+async def luxcode_artifact_content_endpoint(artifact_id: str):
+    artifact = LUXCODE_CONVERSATION_ARTIFACTS.get(artifact_id)
+    if not artifact:
+        raise HTTPException(status_code=404, detail="artifact not found")
+    return Response(str(artifact.get("content") or ""), media_type=artifact.get("mime_type") or "text/plain")
+
+
+@app.post("/luxcode-attachments")
+async def luxcode_attachment_create_endpoint(payload: Dict[str, Any]):
+    attachment_id = f"att-{uuid.uuid4().hex[:16]}"
+    attachment = {
+        "attachment_id": attachment_id,
+        "session_id": _first_text(payload.get("session_id")) or "default",
+        "filename": _first_text(payload.get("filename")) or f"{attachment_id}.txt",
+        "mime_type": _first_text(payload.get("mime_type")) or "application/octet-stream",
+        "content": str(payload.get("content") or payload.get("text") or ""),
+        "size_bytes": len(str(payload.get("content") or payload.get("text") or "").encode("utf-8")),
+        "status": "hazır",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    LUXCODE_CONVERSATION_ATTACHMENTS[attachment_id] = attachment
+    return {"ok": True, "attachment": attachment}
+
+
+@app.get("/luxcode-attachments/{attachment_id}")
+async def luxcode_attachment_get_endpoint(attachment_id: str):
+    attachment = LUXCODE_CONVERSATION_ATTACHMENTS.get(attachment_id)
+    if not attachment:
+        raise HTTPException(status_code=404, detail="attachment not found")
+    return {"ok": True, "attachment": attachment}
+
+
+@app.get("/luxcode-attachments/{attachment_id}/content")
+async def luxcode_attachment_content_endpoint(attachment_id: str):
+    attachment = LUXCODE_CONVERSATION_ATTACHMENTS.get(attachment_id)
+    if not attachment:
+        raise HTTPException(status_code=404, detail="attachment not found")
+    return Response(str(attachment.get("content") or ""), media_type=attachment.get("mime_type") or "application/octet-stream")
+
+
+@app.delete("/luxcode-attachments/{attachment_id}")
+async def luxcode_attachment_delete_endpoint(attachment_id: str):
+    return {"ok": bool(LUXCODE_CONVERSATION_ATTACHMENTS.pop(attachment_id, None))}
+
+
+@app.post("/luxcode-conversation/message")
+async def luxcode_conversation_message_endpoint(payload: Dict[str, Any]):
+    session_id = _first_text(payload.get("session_id")) or "default"
+    message = _first_text(payload.get("message") or payload.get("prompt"))
+    session = _luxcode_public_session(session_id)
+    if not message:
+        return {"ok": False, "error": {"code": "empty_message", "message": "Boş mesaj alamam."}, "session": session}
+    project_path = _first_text(payload.get("repository_root") or payload.get("project_path"))
+    if project_path:
+        session["selected_project"] = {
+            "name": _first_text(payload.get("project_name")) or Path(project_path).name,
+            "path": project_path,
+            "repository_root": project_path,
+        }
+    _luxcode_add_message(session, "user", message, {"status": "sent"})
+    code_markers = ("dosya", "klasör", "klasor", "oku", "yaz", "oluştur", "olustur", "create", "read", "write", "test", "kod", "patch")
+    if project_path and any(marker in message.lower() for marker in code_markers):
+        result = run_agent(message, workspace_root=project_path, session_id=session_id, max_steps=12)
+        response = result.get("response") or result.get("message") or "Coder görevi tamamlandı."
+        _luxcode_add_message(session, "assistant", response, {"route": "coder", "ok": bool(result.get("ok")), "tool_calls": result.get("tool_calls", [])})
+        return {"ok": bool(result.get("ok")), "route": "coder", "response": response, "agent": result, "session": session}
+    response = "Luxcode hazır. Coder işlemi için sol menüden proje klasörünü seçip isteğini yazabilirsin."
+    _luxcode_add_message(session, "assistant", response, {"route": "chat", "ok": True})
+    return {"ok": True, "route": "chat", "response": response, "session": session}
+
+
+@app.post("/luxcode-conversation/action")
+async def luxcode_conversation_action_endpoint(payload: Dict[str, Any]):
+    session_id = _first_text(payload.get("session_id")) or "default"
+    session = _luxcode_public_session(session_id)
+    action = _first_text(payload.get("action")).lower()
+    task_id = _first_text(payload.get("task_id") or session.get("active_task_id"))
+    if action in {"cancel", "reject"} and task_id:
+        task = cancel_luxcode_task(task_id=task_id, reason=f"{action}_from_conversation")
+        session["active_task_state"] = task
+        _luxcode_add_message(session, "assistant", "Görev iptal edildi.", {"route": action, "task_id": task_id})
+        return {"ok": True, "action": action, "task": task, "session": session}
+    if action == "approve" and task_id:
+        task = approve_luxcode_task_step(task_id=task_id)
+        session["active_task_state"] = task
+        _luxcode_add_message(session, "assistant", "Onay alındı.", {"route": "approval", "task_id": task_id})
+        return {"ok": True, "action": action, "task": task, "session": session}
+    return {"ok": False, "error": {"code": "unsupported_or_missing_task", "message": "Aktif görev bulunamadı."}, "session": session}
 
 
 @app.post("/luxcode-task/create")
