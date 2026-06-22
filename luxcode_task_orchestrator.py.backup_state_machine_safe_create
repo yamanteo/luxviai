@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import re
 import uuid
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -317,74 +316,6 @@ def _file_hashes(repository_root: str, files: List[str]) -> Dict[str, str]:
         if path.exists() and path.is_file():
             hashes[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
     return hashes
-
-
-def _selected_folder_relative_path(repository_root: str, folder: str) -> Tuple[str, str]:
-    raw = str(folder or "").strip().strip("\"'")
-    if not raw:
-        return "", "selected folder is empty"
-    if "\x00" in raw or "*" in raw or "?" in raw:
-        return "", f"selected folder contains invalid characters: {raw}"
-    candidate = Path(raw)
-    if any(part == ".." for part in candidate.parts):
-        return "", f"selected folder traversal rejected: {raw}"
-    root = Path(repository_root).expanduser().resolve()
-    try:
-        resolved = candidate.expanduser().resolve() if candidate.is_absolute() else (root / candidate).resolve()
-        resolved.relative_to(root)
-    except (OSError, ValueError):
-        return "", f"selected folder is outside repository root: {raw}"
-    return resolved.relative_to(root).as_posix(), ""
-
-
-def _parse_selected_folder_create_request(task: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[str], str]:
-    text = str(task.get("original_request") or "")
-    match = re.search(
-        r"\bcreate\s+(?P<target>[^\s\"']+)\s+with\s+content\s+(?P<quote>['\"])(?P<content>.*?)(?P=quote)",
-        text,
-        flags=re.IGNORECASE | re.DOTALL,
-    )
-    if not match:
-        return [], [], ""
-    target_name = match.group("target").strip().strip("\"'")
-    if not target_name or "\x00" in target_name or "*" in target_name or "?" in target_name:
-        return [], [], "target file name is invalid"
-    target_path = Path(target_name)
-    if target_path.is_absolute() or any(part == ".." for part in target_path.parts):
-        return [], [], "target file must be a relative path inside the selected folder"
-    selected_folders = [str(item) for item in task.get("selected_folders", []) if str(item).strip()]
-    if not selected_folders:
-        return [], [], "selected_folders is required for safe file creation"
-    folder_rel, folder_error = _selected_folder_relative_path(task.get("repository_root", ""), selected_folders[0])
-    if folder_error:
-        return [], [], folder_error
-    target_rel = (Path(folder_rel) / target_path).as_posix() if folder_rel else target_path.as_posix()
-    content = match.group("content")
-    step = {
-        "target_file": target_rel,
-        "change_type": "create_new_text_file",
-        "replacement_text": content,
-        "purpose": "Create a new user-requested text file inside the selected folder.",
-        "validation_after_change": "Read the file and verify the exact requested content.",
-    }
-    return [step], [target_rel], ""
-
-
-def _safe_selected_folder_create_draft(task: Dict[str, Any]) -> bool:
-    return str(task.get("patch_draft_result", {}).get("source") or "") == "deterministic_selected_folder_create"
-
-
-def _pending_approval_gate(task: Dict[str, Any]) -> str:
-    state = task.get("current_state", "")
-    if state == "awaiting_approval":
-        return "approve_patch"
-    if state == "apply_prepared":
-        return "approve_apply_execution"
-    if state == "verification_prepared":
-        return "approve_verification_execution"
-    if task.get("scope_expansion_request"):
-        return "scope_expansion"
-    return ""
 
 
 def _redact(value: Any) -> Any:
@@ -755,20 +686,15 @@ def _summary(task: Dict[str, Any]) -> Dict[str, Any]:
         "diagnosis_summary": _redact(task.get("diagnosis_result", {})),
         "patch_summary": _redact(task.get("patch_draft_result", {})),
         "approval_state": _redact(task.get("approval_state", {})),
-        "approval_state_approved": bool(task.get("approval_state", {}).get("approved")),
-        "approval_events_count": len(task.get("approval_state", {}).get("approval_events", [])),
-        "last_approval_action": _redact((task.get("approval_state", {}).get("approval_events") or [{}])[-1]),
         "apply_summary": _redact(task.get("apply_result", {})),
         "verification_summary": _redact(task.get("verification_result", {})),
         "recovery_summary": _redact(task.get("recovery_result", {})),
         "selected_files": list(task.get("selected_files", [])),
-        "selected_folders": list(task.get("selected_folders", [])),
         "changed_files": list(task.get("changed_files", [])),
         "forbidden_files": list(task.get("forbidden_files", [])),
         "adjacent_findings": _redact(task.get("adjacent_findings", [])),
         "completed_steps": list(task.get("completed_steps", [])),
         "pending_steps": _pending_for_state(state),
-        "pending_approval_gate": _pending_approval_gate(task),
         "blocked_reasons": list(task.get("blocked_reasons", [])),
         "next_safe_action": task.get("next_safe_action", ""),
         "persistence_status": dict(task.get("persistence_status", {})),
@@ -884,51 +810,6 @@ def _permission_check(task: Dict[str, Any], action: str) -> Tuple[bool, Dict[str
         return True, {}
     operation = _operation_for_action(action, task.get("current_state", "created"))
     target = _target_for_operation(task, operation)
-    if operation == "read":
-        safe_create_steps, _safe_create_files, safe_create_error = _parse_selected_folder_create_request(task)
-        if safe_create_steps and not safe_create_error:
-            result = {
-                "ok": True,
-                "allowed": True,
-                "operation": operation,
-                "target_path": target,
-                "reason": "safe selected-folder create draft does not require reading unrelated diagnostic targets",
-                "requires_approval": False,
-                **SAFE_INVARIANTS,
-            }
-            task.setdefault("permission_audit", []).append(result)
-            task["last_permission_evaluation"] = result
-            return True, result
-    if operation in {"inspect", "read"} and not target:
-        result = {
-            "ok": True,
-            "allowed": True,
-            "operation": operation,
-            "target_path": "",
-            "reason": "planning transition has no concrete file target yet",
-            "requires_approval": False,
-            **SAFE_INVARIANTS,
-        }
-        task.setdefault("permission_audit", []).append(result)
-        task["last_permission_evaluation"] = result
-        return True, result
-    if operation == "edit_file" and _safe_selected_folder_create_draft(task):
-        operation = "create_file"
-        approval_ok, _approval_reason = _approval_valid(task)
-        if approval_ok:
-            result = {
-                "ok": True,
-                "allowed": True,
-                "operation": operation,
-                "target_path": target,
-                "reason": "safe selected-folder create is covered by the reviewed patch approval",
-                "requires_approval": False,
-                "matched_scope": {"type": "folder", "path": (task.get("selected_folders") or [""])[0], "recursive": True},
-                **SAFE_INVARIANTS,
-            }
-            task.setdefault("permission_audit", []).append(result)
-            task["last_permission_evaluation"] = result
-            return True, result
     result = evaluate_requested_action(
         profile=profile,
         task_id=task.get("task_id", ""),
@@ -1218,7 +1099,6 @@ def create_luxcode_task(
             "approved_at": "",
         },
         "selected_files": files,
-        "selected_folders": _unique(selected_folders or []),
         "changed_files": _unique(changed_files or []),
         "requested_files": _unique(requested_files or files),
         "forbidden_files": _unique((forbidden_files or []) + DEFAULT_FORBIDDEN_FILES),
@@ -1711,36 +1591,6 @@ def _advance_patch(task: Dict[str, Any]) -> None:
         return
     _touch(task, "patch_drafting")
     diagnosis = task.get("diagnosis_result", {})
-    safe_create_steps, safe_create_files, safe_create_error = _parse_selected_folder_create_request(task)
-    if safe_create_error:
-        _block(task, safe_create_error, "blocked")
-        return
-    if safe_create_steps:
-        task["active_engine"] = "deterministic_selected_folder_create"
-        task["active_model"] = "local_policy"
-        task["provider_cost"] = "0.0 deterministic"
-        task["selected_files"] = _unique(task.get("selected_files", []) + safe_create_files)
-        task["patch_draft_result"] = {
-            "request_id": _digest([task["task_id"], "deterministic_selected_folder_create", safe_create_steps]),
-            "mode": "preview",
-            "source": "deterministic_selected_folder_create",
-            "repository_root": task.get("repository_root", ""),
-            "selected_folders": list(task.get("selected_folders", [])),
-            "issue_summary": diagnosis.get("normalized_issue") or task["original_request"],
-            "analysis_summary": "Prepared a safe create_new_text_file patch inside the selected folder.",
-            "patch_steps": safe_create_steps,
-            "expected_file_hashes": {rel: "" for rel in safe_create_files},
-            "files_to_modify": safe_create_files,
-            "approval_required": True,
-            "can_apply_now": False,
-            "file_write_blocked": True,
-            "real_execution_blocked": True,
-            "external_api_used": False,
-            "local_first": True,
-        }
-        task["next_safe_action"] = "Review and approve the selected-folder file creation patch."
-        _touch(task, "awaiting_approval", "draft_patch")
-        return
     targets, minimum_context = _tier1_targets_and_context(task)
     local_result: Dict[str, Any] = {}
     gemini_result: Dict[str, Any] = {}
@@ -2459,12 +2309,7 @@ def _prepare_apply(task: Dict[str, Any]) -> None:
         require_clean_tree=False,
     )
     task["apply_result"] = result
-    if _safe_selected_folder_create_draft(task) and result.get("transaction_state") != "blocked":
-        task["approval_state"]["apply_execution_approved"] = True
-        task["approval_state"]["controlled_apply_approval_token"] = result.get("approval_digest")
-        task["next_safe_action"] = "Safe selected-folder create is prepared and may be applied."
-    else:
-        task["next_safe_action"] = "Apply requires explicit apply_execution approval; no automatic apply occurs."
+    task["next_safe_action"] = "Apply requires explicit apply_execution approval; no automatic apply occurs."
     _touch(task, "apply_prepared", "prepare_apply")
 
 
@@ -2980,8 +2825,6 @@ def advance_luxcode_task(
         _advance_patch(task)
     elif action == "prepare_apply" or (action == "next" and state == "approval_verified"):
         _prepare_apply(task)
-        if action == "next" and _safe_selected_folder_create_draft(task) and task.get("current_state") == "apply_prepared":
-            _execute_apply(task)
     elif action == "apply" or (action == "next" and state == "apply_prepared"):
         _execute_apply(task)
     elif action == "prepare_verification" or (action == "next" and state == "applied"):
@@ -3012,28 +2855,6 @@ def approve_luxcode_task_step(
     if task["current_state"] in EXECUTION_BLOCKED_STATES:
         return _summary(task)
     previous_state = task["current_state"]
-    if task["current_state"] == "apply_prepared":
-        ok, reason = _approval_valid(task)
-        if not ok:
-            _block(task, reason, "awaiting_approval")
-            return _persist_and_summarize(task, event_type="approval_blocked", previous_state=previous_state)
-        apply_digest = controlled_apply_approval_token or task.get("apply_result", {}).get("approval_digest") or ""
-        task["approval_state"]["apply_execution_approved"] = True
-        task["approval_state"]["controlled_apply_approval_token"] = apply_digest
-        task["approval_state"].setdefault("approval_events", []).append(
-            {"approved_at": _now(), "approval_gate": "approve_apply_execution", "approval_digest": apply_digest}
-        )
-        task["next_safe_action"] = "Advance to apply the already prepared patch."
-        return _persist_and_summarize(task, event_type="approve_apply_execution", previous_state=previous_state)
-    if task["current_state"] == "verification_prepared":
-        verification_digest = verification_approval_token or task.get("verification_result", {}).get("approval_digest") or ""
-        task["approval_state"]["verification_execution_approved"] = True
-        task["approval_state"]["verification_approval_token"] = verification_digest
-        task["approval_state"].setdefault("approval_events", []).append(
-            {"approved_at": _now(), "approval_gate": "approve_verification_execution", "approval_digest": verification_digest}
-        )
-        task["next_safe_action"] = "Advance to execute the prepared verification."
-        return _persist_and_summarize(task, event_type="approve_verification_execution", previous_state=previous_state)
     steps = _patch_steps(task, patch_steps)
     files = _unique(approved_files or [step.get("target_file") for step in steps if isinstance(step, dict)])
     hashes = dict(expected_file_hashes or _file_hashes(task["repository_root"], files))
@@ -3054,15 +2875,13 @@ def approve_luxcode_task_step(
             "approved_files": files,
             "expected_file_hashes": hashes,
             "patch_steps": steps,
-            "apply_execution_approved": bool(approve_apply_execution or _safe_selected_folder_create_draft(task)),
+            "apply_execution_approved": bool(approve_apply_execution),
             "controlled_apply_approval_token": controlled_apply_approval_token,
             "verification_execution_approved": bool(approve_verification_execution),
             "verification_approval_token": verification_approval_token,
         }
     )
-    task["approval_state"].setdefault("approval_events", []).append(
-        {"approved_at": _now(), "approval_gate": "approve_patch", "patch_digest": snapshot["patch_digest"]}
-    )
+    task["approval_state"].setdefault("approval_events", []).append({"approved_at": _now(), "patch_digest": snapshot["patch_digest"]})
     task["next_safe_action"] = "Advance to prepare controlled apply."
     _touch(task, "approval_verified", "approve_patch")
     return _persist_and_summarize(task, event_type="approve", previous_state=previous_state)

@@ -1,0 +1,81 @@
+from __future__ import annotations
+
+import json
+import re
+from typing import Any, Dict
+from urllib.error import URLError
+from urllib.request import Request, urlopen
+
+from .schemas import TaskClassification
+
+
+class ComplexityClassifier:
+    def __init__(self, ollama_url: str = "http://127.0.0.1:11434", model: str = "llama3.1:8b", timeout: int = 5) -> None:
+        self.ollama_url = ollama_url.rstrip("/")
+        self.model = model
+        self.timeout = timeout
+
+    def classify(self, prompt: str) -> TaskClassification:
+        prompt = str(prompt or "").strip()
+        if not prompt:
+            return TaskClassification(1, 1, False, False, "empty prompt").normalized()
+        remote = self._classify_with_ollama(prompt)
+        if remote:
+            return remote.normalized()
+        return self._heuristic(prompt).normalized()
+
+    def _classify_with_ollama(self, prompt: str) -> TaskClassification | None:
+        system_prompt = (
+            "Return only JSON with keys complexity 1-10, estimated_tokens int, "
+            "requires_filesystem bool, requires_web bool, reason string. User task: "
+            + prompt
+        )
+        payload = json.dumps({"model": self.model, "prompt": system_prompt, "stream": False}).encode("utf-8")
+        try:
+            request = Request(self.ollama_url + "/api/generate", data=payload, headers={"Content-Type": "application/json"})
+            with urlopen(request, timeout=self.timeout) as response:
+                data = json.loads(response.read().decode("utf-8", errors="replace"))
+            raw = str(data.get("response") or "").strip()
+            match = re.search(r"\{.*\}", raw, re.DOTALL)
+            if not match:
+                return None
+            item: Dict[str, Any] = json.loads(match.group(0))
+            return TaskClassification(
+                complexity=int(item.get("complexity", 5)),
+                estimated_tokens=int(item.get("estimated_tokens", max(64, len(prompt) // 3))),
+                requires_filesystem=bool(item.get("requires_filesystem", False)),
+                requires_web=bool(item.get("requires_web", False)),
+                reason=str(item.get("reason") or "ollama classifier"),
+            )
+        except (OSError, URLError, ValueError, json.JSONDecodeError):
+            return None
+
+    def _heuristic(self, prompt: str) -> TaskClassification:
+        lower = prompt.lower()
+        simple_filesystem = (
+            "list files",
+            "list directory",
+            "show files",
+            "read readme",
+            "read file",
+            "touch ",
+            "create ",
+            "dosya listele",
+            "dosyalari listele",
+        )
+        if any(phrase in lower for phrase in simple_filesystem) and not any(
+            word in lower for word in ("deploy", "docker", "database", "redis", "postgres", "multi-agent", "orchestrator")
+        ):
+            return TaskClassification(3, max(64, len(prompt) // 3), True, False, "simple filesystem command")
+        score = 2
+        if any(word in lower for word in ("dosya", "file", "klasor", "folder", "readme", "patch", "test", "kod", "code")):
+            score += 2
+        if any(word in lower for word in ("deploy", "docker", "database", "redis", "postgres", "api", "websocket")):
+            score += 2
+        if any(word in lower for word in ("production", "enterprise", "multi-agent", "orchestrator", "sandbox", "security")):
+            score += 2
+        if len(prompt) > 1200:
+            score += 1
+        requires_filesystem = any(word in lower for word in ("dosya", "file", "klasor", "folder", "write", "read", "patch", "kod", "code"))
+        requires_web = any(word in lower for word in ("web", "url", "site", "internet", "search", "deploy"))
+        return TaskClassification(score, max(64, len(prompt) // 3), requires_filesystem, requires_web, "heuristic classifier")

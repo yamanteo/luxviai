@@ -38,7 +38,6 @@ from luxcode_control_routes import build_luxcode_control_router
 from luxcode_swarm.api import build_swarm_router
 from luxcode_swarm.router import SwarmOrchestrator
 from luxcode_swarm.schemas import SwarmConfig
-from luxcode_agent_runtime import CODER_SYSTEM_PROMPT, run_agent, run_tool_json
 from luxviai_pages import build_page_router
 from adaptive_interface_preview import adaptive_interface_schema, adaptive_interface_status, preview_adaptive_interface
 from ambient_workspace_preview import ambient_workspace_schema, ambient_workspace_status, preview_ambient_workspace
@@ -2319,13 +2318,7 @@ class LuxZeroCostValidateDecisionRequest(BaseModel):
 
 class LuxCodeTaskCreateRequest(BaseModel):
     original_request: str = Field(default="", max_length=8000)
-    workspace_root: Optional[str] = Field(default=None, max_length=1000)
-    selectedFolder: Optional[str] = Field(default=None, max_length=1000)
-    folderPath: Optional[str] = Field(default=None, max_length=1000)
-    selectedFolders: List[str] = Field(default_factory=list)
     repository_root: Optional[str] = Field(default=None, max_length=600)
-    repositoryRoot: Optional[str] = Field(default=None, max_length=1000)
-    rootDir: Optional[str] = Field(default=None, max_length=1000)
     suspected_files: List[str] = Field(default_factory=list)
     changed_files: List[str] = Field(default_factory=list)
     mode: Optional[str] = Field(default=None, max_length=80)
@@ -2363,19 +2356,6 @@ class LuxCodeTaskApprovalRequest(BaseModel):
 class LuxCodeTaskStateRequest(BaseModel):
     task_id: str = Field(default="", max_length=120)
     reason: str = Field(default="", max_length=1000)
-
-
-class LuxCodeAgentRunRequest(BaseModel):
-    prompt: str = Field(default="", max_length=12000)
-    workspace_root: Optional[str] = Field(default=None, max_length=1000)
-    session_id: str = Field(default="default", max_length=160)
-    max_steps: int = Field(default=12, ge=1, le=50)
-
-
-class LuxCodeAgentToolRequest(BaseModel):
-    tool: str = Field(default="", max_length=120)
-    params: Dict[str, Any] = Field(default_factory=dict)
-    workspace_root: Optional[str] = Field(default=None, max_length=1000)
 
 
 class LuxCodeTaskPersistenceInitializeRequest(BaseModel):
@@ -13330,13 +13310,6 @@ def _first_text(value: Any) -> str:
     return ""
 
 
-def _resolve_agent_workspace_root(value: Optional[str]) -> str:
-    text = _first_text(value)
-    if not text or text == ".":
-        return str(BASE_DIR)
-    return str(Path(text).expanduser().resolve())
-
-
 def _resolve_legacy_swarm_workspace(payload: Dict[str, Any]) -> str:
     candidates = [
         payload.get("workspace_root"),
@@ -13438,84 +13411,9 @@ def _run_legacy_swarm_bridge(payload: Dict[str, Any]) -> Dict[str, Any]:
     return legacy
 
 
-def _as_list(value: Any) -> List[Any]:
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return value
-    return [value]
-
-
-def _legacy_state_machine_create_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
-    selected_folders: List[str] = []
-    for key in ("selected_folders", "selectedFolders"):
-        for item in _as_list(payload.get(key)):
-            text = _first_text(item)
-            if text and text not in selected_folders:
-                selected_folders.append(text)
-    for key in ("selectedFolder", "folderPath"):
-        text = _first_text(payload.get(key))
-        if text and text not in selected_folders:
-            selected_folders.append(text)
-    repository_root = (
-        _first_text(payload.get("repository_root"))
-        or _first_text(payload.get("repositoryRoot"))
-        or _first_text(payload.get("workspace_root"))
-        or _first_text(payload.get("rootDir"))
-    )
-    return {
-        "original_request": str(payload.get("original_request") or payload.get("prompt") or payload.get("command") or ""),
-        "repository_root": repository_root or None,
-        "suspected_files": list(payload.get("suspected_files") or []),
-        "changed_files": list(payload.get("changed_files") or []),
-        "mode": payload.get("mode"),
-        "traceback_text": str(payload.get("traceback_text") or ""),
-        "selected_files": list(payload.get("selected_files") or []),
-        "requested_files": list(payload.get("requested_files") or []),
-        "forbidden_files": list(payload.get("forbidden_files") or []),
-        "permission_mode": str(payload.get("permission_mode") or "approval_required"),
-        "scope_items": list(payload.get("scope_items") or []),
-        "selected_folders": selected_folders,
-        "autonomy_budgets": dict(payload.get("autonomy_budgets") or {}),
-    }
-
-
-LUXCODE_SELECTED_WORKSPACE_FOLDERS: Dict[str, Dict[str, Any]] = {}
-
-
-@app.post("/luxcode-workspace/select-folder")
-async def luxcode_workspace_select_folder(payload: Dict[str, Any]):
-    initial_dir = _first_text(payload.get("initial_dir") or payload.get("repository_root") or payload.get("workspace_root"))
-    title = _first_text(payload.get("title") or payload.get("name") or payload.get("folder"))
-    if not initial_dir:
-        return {"ok": False, "error": "missing_initial_dir", "blocked_reasons": ["missing_initial_dir"]}
-    root = Path(initial_dir).expanduser().resolve()
-    selected = (root / title).resolve() if title else root
-    try:
-        selected.relative_to(root)
-    except ValueError:
-        return {"ok": False, "error": "selected_folder_outside_initial_dir", "blocked_reasons": ["selected_folder_outside_initial_dir"]}
-    selected.mkdir(parents=True, exist_ok=True)
-    folder_id = title or selected.name
-    info = {
-        "ok": True,
-        "folder_id": folder_id,
-        "title": title,
-        "repository_root": str(root),
-        "selected_folder": folder_id,
-        "selected_folder_path": str(selected),
-        "selected_folders": [folder_id],
-    }
-    LUXCODE_SELECTED_WORKSPACE_FOLDERS[folder_id] = info
-    return info
-
-
 @app.post("/luxcode-task/create")
 async def luxcode_task_create_endpoint(payload: LuxCodeTaskCreateRequest):
-    data = payload.dict()
-    if str(data.get("mode") or "").strip().lower() == "swarm":
-        return _run_legacy_swarm_bridge(data)
-    return create_luxcode_task(**_legacy_state_machine_create_payload(data))
+    return _run_legacy_swarm_bridge(payload.dict())
 
 
 @app.post("/luxcode-task/advance")
@@ -13598,46 +13496,6 @@ async def luxcode_task_status_endpoint(task_id: str):
     if task_id in LEGACY_SWARM_TASKS:
         return LEGACY_SWARM_TASKS[task_id]
     return get_luxcode_task_status(task_id)
-
-
-@app.get("/luxcode-agent/system-prompt")
-async def luxcode_agent_system_prompt_endpoint():
-    return {
-        "ok": True,
-        "system_prompt": CODER_SYSTEM_PROMPT,
-        "tools": [
-            "read_file",
-            "write_file",
-            "edit_file",
-            "append_file",
-            "delete_file",
-            "create_directory",
-            "list_directory",
-            "search_in_files",
-            "get_file_info",
-            "backup_file",
-            "run_command",
-            "run_python",
-        ],
-    }
-
-
-@app.post("/luxcode-agent/tool")
-async def luxcode_agent_tool_endpoint(payload: LuxCodeAgentToolRequest):
-    workspace_root = _resolve_agent_workspace_root(payload.workspace_root)
-    ok, output = run_tool_json({"tool": payload.tool, "params": payload.params}, workspace_root=workspace_root)
-    return {"ok": ok, **output}
-
-
-@app.post("/luxcode-agent/run")
-async def luxcode_agent_run_endpoint(payload: LuxCodeAgentRunRequest):
-    workspace_root = _resolve_agent_workspace_root(payload.workspace_root)
-    return run_agent(
-        payload.prompt,
-        workspace_root=workspace_root,
-        session_id=payload.session_id,
-        max_steps=payload.max_steps,
-    )
 
 
 @app.get("/debug/luxcode-task-orchestrator-status")

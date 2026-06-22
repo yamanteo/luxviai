@@ -585,37 +585,6 @@
             border-color: var(--lux-yellow);
         }
 
-        .control-group-left .badge-pill-flat.active {
-            background-color: rgba(171, 107, 12, 0.12);
-            border-color: var(--lux-yellow);
-            color: var(--lux-yellow);
-        }
-
-        .agent-tool-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 10px;
-            font-size: 12px;
-            color: var(--text-muted);
-            white-space: pre-wrap;
-        }
-
-        .agent-tool-item {
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.025);
-            border-radius: 8px;
-            padding: 8px 10px;
-        }
-
-        .agent-tool-item.success {
-            border-color: rgba(63, 185, 116, 0.35);
-        }
-
-        .agent-tool-item.failed {
-            border-color: rgba(255, 92, 92, 0.45);
-        }
-
         .btn-submit {
             background-color: var(--text-main);
             color: var(--bg-main);
@@ -1397,8 +1366,6 @@
                         <!-- SOL ALTA SIRAYLA YAN YANA YERLEŞTİRİLEN LUX SARISI İKONLU BUTONLAR -->
                         <div class="control-group-left">
                             <button id="btnLandingAttach" class="badge-pill-flat" style="color: var(--lux-yellow); font-weight: bold; font-size: 15px;">+</button>
-                            <button id="btnChatMode" class="badge-pill-flat active" type="button" onclick="setLuxCodeMode('chat')">Chat</button>
-                            <button id="btnAgentMode" class="badge-pill-flat" type="button" onclick="setLuxCodeMode('agent')">Coder</button>
                             <!-- Kalkan İçinde Ünlem İkonu (Birebir Çizim) -->
                             <button class="badge-pill-flat">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--lux-yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1870,20 +1837,6 @@
             repositoryRoot: "",
             requestedFiles: [],
         };
-        let luxCodeMode = localStorage.getItem("luxcode_mode_v1") || "agent";
-        let luxCodeAgentSessionId = localStorage.getItem("luxcode_agent_session_id");
-        if (!luxCodeAgentSessionId) {
-            luxCodeAgentSessionId = "lux-agent-" + Date.now().toString(36) + "-" + Math.random().toString(16).slice(2);
-            localStorage.setItem("luxcode_agent_session_id", luxCodeAgentSessionId);
-        }
-
-        function setLuxCodeMode(mode, silent = false) {
-            luxCodeMode = mode === "chat" ? "chat" : "agent";
-            localStorage.setItem("luxcode_mode_v1", luxCodeMode);
-            document.getElementById("btnChatMode")?.classList.toggle("active", luxCodeMode === "chat");
-            document.getElementById("btnAgentMode")?.classList.toggle("active", luxCodeMode === "agent");
-            if (!silent) showToast(luxCodeMode === "agent" ? "Coder modu aktif" : "Chat modu aktif");
-        }
 
         function renderSelectedWorkspaceTool(toolId) {
             const iconHost = document.getElementById("connectionLauncherSelectedIcon");
@@ -2248,86 +2201,6 @@
             };
         }
 
-        function buildAgentPayload(taskText) {
-            const resolvedWorkspace = resolveWorkspacePayload();
-            return {
-                prompt: taskText,
-                workspace_root: resolvedWorkspace.repository_root || ".",
-                session_id: luxCodeAgentSessionId,
-                max_steps: 12
-            };
-        }
-
-        function escapeAgentHtml(value) {
-            return String(value ?? "")
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#39;");
-        }
-
-        function formatAgentToolItem(item) {
-            const tool = item?.tool || item?.tool_call?.function?.name || "tool";
-            const params = item?.params || item?.tool_call?.function?.arguments || {};
-            const output = item?.result || {};
-            const success = Boolean(output.success || output.ok);
-            const result = output.result || {};
-            const shortResult = typeof result === "string"
-                ? result.slice(0, 800)
-                : JSON.stringify(result, null, 2).slice(0, 800);
-            const target = params.path || params.directory || params.command || params.code || "";
-            return {
-                tool: escapeAgentHtml(tool),
-                target: escapeAgentHtml(target),
-                success,
-                text: escapeAgentHtml(shortResult || output.error || "")
-            };
-        }
-
-        function renderAgentResult(agentResult, originalText) {
-            const calls = Array.isArray(agentResult?.tool_calls) ? agentResult.tool_calls : (Array.isArray(agentResult?.results) ? agentResult.results : []);
-            const completed = calls.filter(item => (item.result || {}).success || (item.result || {}).ok).length;
-            const failed = calls.length - completed;
-            document.getElementById("userTaskText").textContent = originalText;
-            document.getElementById("taskStatusTitle").textContent = agentResult?.ok ? "Coder tamamlandi" : "Coder hata verdi";
-            document.getElementById("lblPipelineStep3").textContent = agentResult?.ok ? "Coder tamamlandi" : "Coder hata verdi";
-            document.getElementById("pipelineStep3").className = agentResult?.ok ? "pipeline-step completed" : "pipeline-step";
-            document.getElementById("taskStatusDetails").textContent = `${agentResult?.response || agentResult?.message || "Agent yaniti alindi"} · Workspace: ${agentResult?.workspace_root || "."}`;
-            const toolHtml = calls.map(item => {
-                const view = formatAgentToolItem(item);
-                const klass = view.success ? "success" : "failed";
-                const state = view.success ? "OK" : "HATA";
-                return `<div class="agent-tool-item ${klass}"><strong>${state} ${view.tool}</strong>${view.target ? ` · ${view.target}` : ""}<br>${view.text}</div>`;
-            }).join("");
-            document.getElementById("taskStatusMeta").innerHTML = `<div>Tool adimi: ${calls.length} · Basarili: ${completed} · Hatali: ${failed}</div><div class="agent-tool-list">${toolHtml}</div>`;
-            document.getElementById("metricProgress").textContent = agentResult?.ok ? "%100" : "%0";
-            document.getElementById("metricDone").textContent = String(completed);
-            document.getElementById("metricRemaining").textContent = String(failed);
-            document.getElementById("metricCost").textContent = "0.0 local";
-            document.getElementById("metricTokens").textContent = "tool";
-            setTaskState(agentResult?.ok ? "completed" : "error");
-            if (agentResult?.ok) {
-                document.getElementById("finalReportTitle").textContent = "Coder görevi tamamlandı";
-                document.getElementById("finalReportBody").innerHTML = `<div class="agent-tool-list">${toolHtml}</div>`;
-                setReportItem("finalFilesItem", "finalFiles", String(completed));
-                setReportItem("finalTestsItem", "finalTests", "Agent tool doğrulaması");
-                setReportItem("finalGitItem", "finalGit", "Yerel çalışma");
-                setReportItem("finalRollbackItem", "finalRollback", "Backup/log aktif");
-            } else {
-                renderTaskError({ normalized: true, message: agentResult?.response || agentResult?.message || "Agent gorevi basarisiz", code: agentResult?.status || "agent_failed", detail: agentResult });
-            }
-        }
-
-        async function runAgentFromInput(task) {
-            document.getElementById("taskStatusDetails").textContent = "Coder agent backend'e baglaniyor.";
-            document.getElementById("taskStatusMeta").textContent = "";
-            setTaskState("working");
-            const agentResult = await window.LuxCodeApi.runLuxCodeAgent(buildAgentPayload(task), { timeoutMs: 90000 });
-            renderAgentResult(agentResult, task);
-            showToast(agentResult?.ok ? "Coder görevi tamamlandı" : "Coder hata verdi");
-        }
-
         async function simulateSend() {
             const input = document.getElementById("txtLandingInput");
             const task = input.value.trim();
@@ -2346,10 +2219,6 @@
             setTaskState("working");
 
             try {
-                if (luxCodeMode === "agent") {
-                    await runAgentFromInput(task);
-                    return;
-                }
                 const createdTask = await window.LuxCodeApi.createLuxCodeTask(buildCreatePayload(task), { timeoutMs: 20000 });
                 const taskId = createdTask?.task_id || createdTask?.id;
                 if (!taskId) throw { normalized: true, message: "Backend gorev kimligi dondurmedi", code: "missing_task_id", detail: createdTask };
@@ -2669,7 +2538,6 @@
 
         ensureFreshLandingSession();
         renderSelectedWorkspaceTool(selectedWorkspaceTool);
-        setLuxCodeMode(luxCodeMode, true);
         renderWorkspaceContext();
         loadCustomModels();
         setTaskState("home");

@@ -117,21 +117,10 @@
         });
     }
 
-    function runLuxCodeAgent(payload, options = {}) {
-        return requestJson("/luxcode-agent/run", {
-            method: "POST",
-            body: JSON.stringify(payload),
-            headers: { "Content-Type": "application/json" },
-            timeoutMs: options.timeoutMs || 60000,
-            controller: options.controller,
-        });
-    }
-
     window.LuxCodeApi = {
         createLuxCodeTask,
         getLuxCodeTask,
         advanceLuxCodeTask,
-        runLuxCodeAgent,
         normalizeApiError,
     };
 })();

@@ -69,6 +69,13 @@ class LuxCodeWebViewTaskFlowContractTests(unittest.TestCase):
         self.assertNotIn("services/fault_report.py", combined)
         self.assertNotIn("7 PASS", combined)
         self.assertNotIn("alert(", combined)
+        self.assertNotIn("/luxcode-conversation/", combined)
+
+    def test_legacy_eventsource_reconnect_is_stopped(self) -> None:
+        app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+        self.assertIn('"text/event-stream" in accept.lower()', app_source)
+        self.assertIn("status_code=204", app_source)
+        self.assertIn("legacy_endpoint_removed", app_source)
 
     def test_empty_task_is_blocked_before_create(self) -> None:
         source = self.source()

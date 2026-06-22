@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict
 
 from fastapi import APIRouter
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 
 def _no_cache_file_response(path: Path, now_iso: Callable[[], str]) -> FileResponse:
@@ -19,15 +19,15 @@ def _no_cache_file_response(path: Path, now_iso: Callable[[], str]) -> FileRespo
 def build_page_router(base_dir: Path, static_dir: Path, now_iso: Callable[[], str]) -> APIRouter:
     router = APIRouter()
 
-    @router.get("/")
+    @router.api_route("/", methods=["GET", "HEAD"])
     async def index():
-        return _no_cache_file_response(static_dir / "index.html", now_iso)
+        return RedirectResponse(url="/luxcode-v1/")
 
-    @router.get("/luxcode")
+    @router.api_route("/luxcode", methods=["GET", "HEAD"])
     async def luxcode_index():
-        return _no_cache_file_response(static_dir / "luxcode" / "index.html", now_iso)
+        return RedirectResponse(url="/luxcode-v1/")
 
-    @router.get("/luxcode-v1/")
+    @router.api_route("/luxcode-v1/", methods=["GET", "HEAD"])
     async def luxcode_v1_index():
         return _no_cache_file_response(static_dir / "luxcode_v1" / "index.html", now_iso)
 

@@ -1,0 +1,117 @@
+{
+  "changes": [
+    {
+      "at": "2026-06-22T14:30:01Z",
+      "payload": {
+        "params": {
+          "path": "."
+        },
+        "result": {
+          "error": "",
+          "path": "C:\\Users\\Teoman\\AppData\\Local\\Temp\\luxcode_agent_tools_upfv7npo",
+          "result": [
+            {
+              "name": "test.py",
+              "path": "test.py",
+              "size": 21,
+              "type": "file"
+            },
+            {
+              "name": "tools",
+              "path": "tools",
+              "size": 0,
+              "type": "directory"
+            }
+          ],
+          "success": true
+        },
+        "step": 1,
+        "tool": "list_directory"
+      },
+      "tool": "list_directory"
+    },
+    {
+      "at": "2026-06-22T14:39:15Z",
+      "payload": {
+        "params": {
+          "path": "."
+        },
+        "result": {
+          "error": "",
+          "path": "C:\\Users\\Teoman\\AppData\\Local\\Temp\\luxcode_agent_tools_6ods5ix_",
+          "result": [
+            {
+              "name": "test.py",
+              "path": "test.py",
+              "size": 21,
+              "type": "file"
+            },
+            {
+              "name": "tools",
+              "path": "tools",
+              "size": 0,
+              "type": "directory"
+            }
+          ],
+          "success": true
+        },
+        "step": 1,
+        "tool": "list_directory"
+      },
+      "tool": "list_directory"
+    }
+  ],
+  "created_at": "2026-06-22T14:30:01Z",
+  "messages": [
+    {
+      "at": "2026-06-22T14:30:01Z",
+      "content": "mevcut projeyi tara ve bana rapor ver",
+      "role": "user"
+    },
+    {
+      "at": "2026-06-22T14:30:01Z",
+      "content": "Completed 1 tool step(s).",
+      "role": "assistant"
+    },
+    {
+      "at": "2026-06-22T14:39:15Z",
+      "content": "mevcut projeyi tara ve bana rapor ver",
+      "role": "user"
+    },
+    {
+      "at": "2026-06-22T14:39:15Z",
+      "content": "Completed 1 tool step(s).",
+      "role": "assistant"
+    }
+  ],
+  "project_scan": {
+    "count": 4,
+    "entries": [
+      {
+        "path": "test.py",
+        "size": 21,
+        "type": "file"
+      },
+      {
+        "path": "tools",
+        "size": 0,
+        "type": "directory"
+      },
+      {
+        "path": "tools/test_tool.txt.backup",
+        "size": 5,
+        "type": "file"
+      },
+      {
+        "path": "tools/test_tool.txt.backup.1",
+        "size": 11,
+        "type": "file"
+      }
+    ],
+    "root": "C:\\Users\\Teoman\\AppData\\Local\\Temp\\luxcode_agent_tools_upfv7npo"
+  },
+  "session_id": "api-validator",
+  "summary": "",
+  "updated_at": "2026-06-22T14:39:15Z",
+  "workspace_root": "C:\\Users\\Teoman\\AppData\\Local\\Temp\\luxcode_agent_tools_upfv7npo"
+}

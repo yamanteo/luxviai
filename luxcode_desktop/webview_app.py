@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import secrets
 from pathlib import Path
 from typing import Any
 
@@ -56,9 +57,11 @@ def run_webview_app(
         if readiness.get("Backend") not in {"connected", "starting"}:
             raise WebViewLaunchError(f"backend could not start: {readiness}")
         wait_for_backend(client)
+        boot_token = f"{int(time.time() * 1000)}-{secrets.token_hex(3)}"
+        webview_url = f"{url}"+( "&" if "?" in url else "?") + f"boot={boot_token}"
         webview.create_window(
             WEBVIEW_TITLE,
-            url,
+            webview_url,
             width=WEBVIEW_WIDTH,
             height=WEBVIEW_HEIGHT,
             min_size=WEBVIEW_MIN_SIZE,

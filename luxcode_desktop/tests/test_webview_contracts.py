@@ -45,9 +45,15 @@ class LuxCodeWebViewContractTests(unittest.TestCase):
 
     def test_luxcode_v1_route_is_declared(self) -> None:
         source = (ROOT / "luxviai_pages.py").read_text(encoding="utf-8")
-        self.assertIn('@router.get("/luxcode-v1/")', source)
+        self.assertTrue(
+            '@router.get("/luxcode-v1/")' in source
+            or '@router.api_route("/luxcode-v1/", methods=["GET", "HEAD"])' in source
+        )
         self.assertIn('static_dir / "luxcode_v1" / "index.html"', source)
-        self.assertIn('@router.get("/luxcode")', source)
+        self.assertTrue(
+            '@router.get("/luxcode")' in source
+            or '@router.api_route("/luxcode", methods=["GET", "HEAD"])' in source
+        )
 
     def test_feature_flag_defaults_to_tkinter(self) -> None:
         self.assertEqual(requested_ui_mode({}), "tkinter")

@@ -38,7 +38,6 @@ from luxcode_control_routes import build_luxcode_control_router
 from luxcode_swarm.api import build_swarm_router
 from luxcode_swarm.router import SwarmOrchestrator
 from luxcode_swarm.schemas import SwarmConfig
-from luxcode_agent_runtime import CODER_SYSTEM_PROMPT, run_agent, run_tool_json
 from luxviai_pages import build_page_router
 from adaptive_interface_preview import adaptive_interface_schema, adaptive_interface_status, preview_adaptive_interface
 from ambient_workspace_preview import ambient_workspace_schema, ambient_workspace_status, preview_ambient_workspace
@@ -2363,19 +2362,6 @@ class LuxCodeTaskApprovalRequest(BaseModel):
 class LuxCodeTaskStateRequest(BaseModel):
     task_id: str = Field(default="", max_length=120)
     reason: str = Field(default="", max_length=1000)
-
-
-class LuxCodeAgentRunRequest(BaseModel):
-    prompt: str = Field(default="", max_length=12000)
-    workspace_root: Optional[str] = Field(default=None, max_length=1000)
-    session_id: str = Field(default="default", max_length=160)
-    max_steps: int = Field(default=12, ge=1, le=50)
-
-
-class LuxCodeAgentToolRequest(BaseModel):
-    tool: str = Field(default="", max_length=120)
-    params: Dict[str, Any] = Field(default_factory=dict)
-    workspace_root: Optional[str] = Field(default=None, max_length=1000)
 
 
 class LuxCodeTaskPersistenceInitializeRequest(BaseModel):
@@ -13330,13 +13316,6 @@ def _first_text(value: Any) -> str:
     return ""
 
 
-def _resolve_agent_workspace_root(value: Optional[str]) -> str:
-    text = _first_text(value)
-    if not text or text == ".":
-        return str(BASE_DIR)
-    return str(Path(text).expanduser().resolve())
-
-
 def _resolve_legacy_swarm_workspace(payload: Dict[str, Any]) -> str:
     candidates = [
         payload.get("workspace_root"),
@@ -13598,46 +13577,6 @@ async def luxcode_task_status_endpoint(task_id: str):
     if task_id in LEGACY_SWARM_TASKS:
         return LEGACY_SWARM_TASKS[task_id]
     return get_luxcode_task_status(task_id)
-
-
-@app.get("/luxcode-agent/system-prompt")
-async def luxcode_agent_system_prompt_endpoint():
-    return {
-        "ok": True,
-        "system_prompt": CODER_SYSTEM_PROMPT,
-        "tools": [
-            "read_file",
-            "write_file",
-            "edit_file",
-            "append_file",
-            "delete_file",
-            "create_directory",
-            "list_directory",
-            "search_in_files",
-            "get_file_info",
-            "backup_file",
-            "run_command",
-            "run_python",
-        ],
-    }
-
-
-@app.post("/luxcode-agent/tool")
-async def luxcode_agent_tool_endpoint(payload: LuxCodeAgentToolRequest):
-    workspace_root = _resolve_agent_workspace_root(payload.workspace_root)
-    ok, output = run_tool_json({"tool": payload.tool, "params": payload.params}, workspace_root=workspace_root)
-    return {"ok": ok, **output}
-
-
-@app.post("/luxcode-agent/run")
-async def luxcode_agent_run_endpoint(payload: LuxCodeAgentRunRequest):
-    workspace_root = _resolve_agent_workspace_root(payload.workspace_root)
-    return run_agent(
-        payload.prompt,
-        workspace_root=workspace_root,
-        session_id=payload.session_id,
-        max_steps=payload.max_steps,
-    )
 
 
 @app.get("/debug/luxcode-task-orchestrator-status")
