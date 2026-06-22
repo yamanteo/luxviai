@@ -2319,11 +2319,56 @@
             }
         }
 
+        function renderAgentStreamEvent(events, originalText) {
+            const calls = Array.isArray(events) ? events : [];
+            const completed = calls.filter((item) => item?.status === "done" || (item.result || {}).success || (item.result || {}).ok).length;
+            const failed = calls.filter((item) => item?.status === "failed" || ((item.result || {}).success === false && !(item.result || {}).ok)).length;
+            document.getElementById("userTaskText").textContent = originalText;
+            document.getElementById("taskStatusTitle").textContent = calls.length ? "Coder çalışıyor..." : "Coder hazır";
+            document.getElementById("lblPipelineStep3").textContent = "Coder adımı";
+            document.getElementById("pipelineStep3").className = "pipeline-step active";
+            document.getElementById("taskStatusDetails").textContent = "Coder tool akışı izleniyor.";
+            const toolHtml = calls.map((item) => {
+                const view = formatAgentToolItem({
+                    tool: item?.tool || "tool",
+                    params: item?.params || {},
+                    result: item?.result || (item?.status === "done" || item?.status === "failed" ? { success: item.status === "done" } : {}),
+                });
+                const klass = item?.status === "running" ? "running" : (item?.status === "failed" ? "failed" : "success");
+                const state = item?.status === "running" ? "ÇALIŞIYOR" : (item?.status === "failed" ? "HATA" : "OK");
+                return `<div class="agent-tool-item ${klass}"><strong>${state} ${view.tool}</strong>${view.target ? ` · ${view.target}` : ""}<br>${view.text}</div>`;
+            }).join("");
+            document.getElementById("taskStatusMeta").innerHTML = `<div>Tool adimi: ${calls.length} · Basarili: ${completed} · Hatali: ${failed}</div><div class="agent-tool-list">${toolHtml}</div>`;
+            document.getElementById("metricProgress").textContent = `${calls.length ? Math.max(1, Math.round((completed / Math.max(calls.length, 1)) * 100)) : 0}%`;
+            document.getElementById("metricDone").textContent = String(completed);
+            document.getElementById("metricRemaining").textContent = String(failed);
+        }
+
         async function runAgentFromInput(task) {
             document.getElementById("taskStatusDetails").textContent = "Coder agent backend'e baglaniyor.";
             document.getElementById("taskStatusMeta").textContent = "";
             setTaskState("working");
-            const agentResult = await window.LuxCodeApi.runLuxCodeAgent(buildAgentPayload(task), { timeoutMs: 90000 });
+            const events = [];
+            const eventByTool = new Map();
+            const agentResult = await window.LuxCodeApi.runLuxCodeAgent(
+                buildAgentPayload(task),
+                {
+                    timeoutMs: 90000,
+                    stream: true,
+                    onEvent(event) {
+                        if (event?.type !== "tool") {
+                            return;
+                        }
+                        const step = event?.step != null ? Number(event.step) : (events.length + 1);
+                        const current = eventByTool.get(step) || {};
+                        eventByTool.set(step, { ...current, ...event });
+                        const ordered = [...eventByTool.values()].sort((a, b) => Number(a.step || 0) - Number(b.step || 0));
+                        events.length = 0;
+                        events.push(...ordered);
+                        renderAgentStreamEvent(events, task);
+                    },
+                },
+            );
             renderAgentResult(agentResult, task);
             showToast(agentResult?.ok ? "Coder görevi tamamlandı" : "Coder hata verdi");
         }

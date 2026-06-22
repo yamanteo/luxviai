@@ -118,6 +118,9 @@
     }
 
     function runLuxCodeAgent(payload, options = {}) {
+        if (options.stream) {
+            return requestLuxCodeAgentStream(payload, options);
+        }
         return requestJson("/luxcode-agent/run", {
             method: "POST",
             body: JSON.stringify(payload),
@@ -125,6 +128,73 @@
             timeoutMs: options.timeoutMs || 60000,
             controller: options.controller,
         });
+    }
+
+    async function requestLuxCodeAgentStream(payload, options = {}) {
+        const controller = options.controller || new AbortController();
+        const timeoutMs = Number(options.timeoutMs || 90000);
+        const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+        let response;
+        try {
+            const finalPayload = { ...payload, stream: true };
+            response = await fetch(`${backendBaseUrl()}/luxcode-agent/run`, {
+                method: "POST",
+                body: JSON.stringify(finalPayload),
+                headers: {
+                    Accept: "text/event-stream",
+                    "Content-Type": "application/json",
+                },
+                signal: controller.signal,
+            });
+            if (!response.ok) {
+                throw { normalized: true, message: `HTTP ${response.status}`, status: response.status };
+            }
+            if (!response.body) {
+                throw { normalized: true, message: "Sunucu response body bulunamadi", code: "missing_response_body" };
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            let result = null;
+            const onEvent = typeof options.onEvent === "function" ? options.onEvent : null;
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop();
+                for (const line of lines) {
+                    const trimmed = String(line || "").trim();
+                    if (!trimmed.startsWith("data:")) {
+                        continue;
+                    }
+                    const raw = trimmed.replace(/^data:\s*/, "");
+                    if (!raw) {
+                        continue;
+                    }
+                    let event;
+                    try {
+                        event = JSON.parse(raw);
+                    } catch (error) {
+                        continue;
+                    }
+                    if (onEvent) onEvent(event);
+                    if (event.type === "done" && event.result) {
+                        result = event.result;
+                    }
+                }
+            }
+            if (!result) {
+                throw { normalized: true, message: "Akış tamamlanamadi", code: "agent_stream_incomplete" };
+            }
+            return result;
+        } catch (error) {
+            throw normalizeApiError(error);
+        } finally {
+            window.clearTimeout(timeoutId);
+        }
     }
 
     window.LuxCodeApi = {

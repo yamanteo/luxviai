@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 import session_manager
 from tool_executor import execute_tool
@@ -197,6 +197,65 @@ def _natural_folder_ops(prompt: str) -> List[Dict[str, Any]]:
     ]
 
 
+def _natural_list_directory(prompt: str) -> List[Dict[str, Any]]:
+    lowered = prompt.lower()
+    if not any(token in lowered for token in ("listele", "liste", "list")):
+        return []
+    path_match = re.search(r"([A-Za-z]:[\\/][^\s'\",.?!]+|/[^\\s'\",.!?]+)", prompt)
+    if not path_match:
+        return []
+    return [{"tool": "list_directory", "params": {"path": path_match.group(1)}}]
+
+
+def _natural_multi_read(prompt: str) -> List[Dict[str, Any]]:
+    lowered = prompt.lower()
+    if "oku" not in lowered:
+        return []
+    files = sorted(set(re.findall(r"\b([A-Za-z0-9_./-]+\.(?:py|js|html|css|md|txt|json|yaml|yml|toml|ini|cfg))\b", prompt, flags=re.IGNORECASE)))
+    if len(files) < 2:
+        return []
+    return [{"tool": "read_file", "params": {"path": path}} for path in files]
+
+
+def _extract_agent_memory_updates(prompt: str) -> Dict[str, str]:
+    updates: Dict[str, str] = {}
+    text = str(prompt or "").strip()
+    if not text:
+        return updates
+    lower = text.lower()
+    if "benim adim" in lower and ("kaydet" in lower or "olarak" in lower or "ad olarak" in lower):
+        m = re.search(
+            r"benim\s+adim(?:\si|ı|i|y)?\s+(.+?)(?:\s+(?:olarak|gibi)\s+kaydet)?\s*$",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if m:
+            value = m.group(1).strip().strip(".'\"")
+            value = re.sub(r"\s+olarak\s+kaydet$", "", value, flags=re.IGNORECASE).strip()
+            if value:
+                updates["name"] = value
+    return updates
+
+
+def _resolve_agent_memory_response(prompt: str, session: Dict[str, Any]) -> Dict[str, Any] | None:
+    question = str(prompt or "").strip().lower()
+    memory = session.get("memory") or {}
+    if not isinstance(memory, dict):
+        memory = {}
+    if "adım" in question or "adim" in question:
+        if "benim adim" in question:
+            return {
+                "ok": True,
+                "status": "memory_response",
+                "mode": "agent",
+                "response": f"Adin: {memory.get('name', 'bilinmiyor')}.",
+                "message": f"Adin: {memory.get('name', 'bilinmiyor')}.",
+                "tool_calls": [],
+                "system_prompt": CODER_SYSTEM_PROMPT,
+            }
+    return None
+
+
 def _natural_bug_fix(prompt: str) -> List[Dict[str, Any]]:
     lowered = prompt.lower()
     if "buggy.py" not in lowered or not any(token in lowered for token in ("duzelt", "düzelt", "fix")):
@@ -276,6 +335,8 @@ def planned_tool_calls(prompt: str) -> List[Dict[str, Any]]:
     if calls:
         return calls
     for planner in (
+        _natural_list_directory,
+        _natural_multi_read,
         _natural_stress_product_edit,
         _natural_stress_sum,
         _natural_app_analysis,
@@ -298,11 +359,28 @@ def planned_tool_calls(prompt: str) -> List[Dict[str, Any]]:
     return []
 
 
-def run_agent(prompt: str, workspace_root: str | Path | None = None, session_id: str = "default", max_steps: int = 12) -> Dict[str, Any]:
+def run_agent(
+    prompt: str,
+    workspace_root: str | Path | None = None,
+    session_id: str = "default",
+    max_steps: int = 12,
+    on_step: Callable[[Dict[str, Any]], None] | None = None,
+) -> Dict[str, Any]:
     workspace = str(Path(workspace_root).expanduser().resolve()) if workspace_root else str(Path(__file__).resolve().parent)
     session_result = session_manager.start_session(session_id=session_id, workspace_root=workspace)
     session = dict(session_result.get("result") or {})
     session_manager.append_message(session, "user", prompt)
+    memory_updates = _extract_agent_memory_updates(prompt)
+    if memory_updates:
+        current_memory = dict(session.get("memory") or {})
+        current_memory.update(memory_updates)
+        session["memory"] = current_memory
+        session_manager.append_message(session, "assistant", f"memory_updated:{json.dumps(memory_updates, ensure_ascii=False)}")
+        session_manager.save_session(session)
+
+    memory_reply = _resolve_agent_memory_response(prompt, session)
+    if memory_reply:
+        return memory_reply
     calls = planned_tool_calls(prompt)
     if not calls:
         response = {
@@ -319,13 +397,38 @@ def run_agent(prompt: str, workspace_root: str | Path | None = None, session_id:
         return response
     results: List[Dict[str, Any]] = []
     for index, call in enumerate(calls[:max_steps], start=1):
+        if on_step:
+            on_step({
+                "type": "tool",
+                "status": "running",
+                "tool": call.get("tool"),
+                "step": index,
+                "params": call.get("params", {}),
+            })
         tool_result = execute_tool(call["tool"], call.get("params", {}), workspace_root=workspace)
         item = {"step": index, "tool": call["tool"], "params": call.get("params", {}), "result": tool_result}
         results.append(item)
         session_manager.record_change(session, call["tool"], item)
+        if on_step:
+            on_step({
+                "type": "tool",
+                "status": "done" if tool_result.get("success") else "failed",
+                "tool": call["tool"],
+                "step": index,
+                "params": call.get("params", {}),
+                "result": tool_result,
+            })
         if not tool_result.get("success"):
             session_manager.append_message(session, "assistant", f"Tool failed: {call['tool']} -> {tool_result.get('error')}")
             session_manager.save_session(session)
+            if on_step:
+                on_step({
+                    "type": "response",
+                    "status": "failed",
+                    "ok": False,
+                    "response": f"Tool failed: {call['tool']} -> {tool_result.get('error')}",
+                    "result": tool_result,
+                })
             return {
                 "ok": False,
                 "mode": "agent",
@@ -339,6 +442,14 @@ def run_agent(prompt: str, workspace_root: str | Path | None = None, session_id:
     message = f"Completed {len(results)} tool step(s)."
     session_manager.append_message(session, "assistant", message)
     session_manager.save_session(session)
+    if on_step:
+        on_step({
+            "type": "response",
+            "status": "completed",
+            "ok": True,
+            "response": message,
+            "result": {"results": results},
+        })
     return {
         "ok": True,
         "mode": "agent",
