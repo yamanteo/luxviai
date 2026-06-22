@@ -130,7 +130,7 @@ class OllamaAdapter(BaseModelAdapter):
         create_match = re.search(r"(?:create|touch|olustur)\s+([A-Za-z0-9_.\\/-]+)", lower)
         if create_match:
             target_path = create_match.group(1)
-            content = self._compact_file_content(target_path, lower)
+            content = self._compact_file_content(target_path, prompt)
             return ModelResult(
                 ok=True,
                 model=self.model_name,
@@ -146,8 +146,12 @@ class OllamaAdapter(BaseModelAdapter):
             )
         return None
 
-    def _compact_file_content(self, target_path: str, lower_prompt: str) -> str:
+    def _compact_file_content(self, target_path: str, prompt: str) -> str:
         normalized = str(target_path or "").replace("\\", "/").lower()
+        prompt_text = str(prompt or "")
+        content_match = re.search(r"(?i)(?:with\s+content|icerik)\s+['\\\"](.*?)['\\\"]", prompt_text)
+        if content_match:
+            return content_match.group(1)
         if normalized.endswith("coder.html"):
             return (
                 "<!doctype html><html lang=\"tr\"><head><meta charset=\"utf-8\">"

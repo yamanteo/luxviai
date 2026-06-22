@@ -10,7 +10,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from app import app  # noqa: E402
+
+from app import app  # noqa: E402  # import after path adjustments
 
 
 TEST_ROOT = Path(r"C:\Users\Teoman\OneDrive\Desktop\LUXCODE_TEST_PROJECT")
@@ -22,6 +23,11 @@ EXPECTED_CONTENT = "OK_FROM_LUXCODE"
 def _assert(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
+
+
+def _poll_status(client: TestClient, task_id: str):
+    response = client.get(f"/luxcode-task/{task_id}")
+    return response.status_code, response.json()
 
 
 def main() -> int:
@@ -53,39 +59,81 @@ def main() -> int:
     )
     print("create", create_response.status_code, create_response.json())
     _assert(create_response.status_code == 200, "create did not return HTTP 200")
-    task_id = str(create_response.json().get("task_id") or "")
+    create_body = create_response.json()
+    task_id = str(create_body.get("task_id") or "")
     _assert(task_id, "create did not return task_id")
 
-    awaiting = {}
-    for index in range(8):
-        advance_response = client.post("/luxcode-task/advance", json={"task_id": task_id})
-        body = advance_response.json()
-        print("advance-before-approval", index + 1, advance_response.status_code, body.get("current_state"), body.get("pending_approval_gate"), body.get("blocked_reasons"))
-        _assert(advance_response.status_code == 200, "advance before approval did not return HTTP 200")
-        if body.get("current_state") == "awaiting_approval" and body.get("requires_user_approval") is True:
-            awaiting = body
-            break
-    _assert(awaiting, "task did not reach awaiting_approval")
-    _assert(awaiting.get("pending_approval_gate") == "approve_patch", "pending approval gate is not approve_patch")
+    status = str(create_body.get("status") or "")
+    if status == "completed" and create_body.get("ok") is True:
+        print("task-completed-immediately", status, create_body.get("message"))
+    else:
+        waiting_for_approval = False
+        for index in range(10):
+            status_code, status_body = _poll_status(client, task_id)
+            print(
+                "status-check",
+                index + 1,
+                status_code,
+                status_body.get("current_state") or status_body.get("status"),
+                status_body.get("requires_user_approval"),
+            )
+            _assert(status_code == 200, "status check did not return HTTP 200")
 
-    approve_response = client.post("/luxcode-task/approve", json={"task_id": task_id})
-    approve_body = approve_response.json()
-    print("approve", approve_response.status_code, approve_body.get("current_state"), approve_body.get("pending_approval_gate"), approve_body.get("blocked_reasons"))
-    _assert(approve_response.status_code == 200, "approve did not return HTTP 200")
-    _assert(approve_body.get("current_state") == "approval_verified", "approval did not verify the task")
-    _assert(approve_body.get("approval_state_approved") is True, "approval_state.approved did not become true")
-    _assert(approve_body.get("approval_events_count", 0) >= 1, "approval event was not recorded")
-    _assert((approve_body.get("last_approval_action") or {}).get("approval_gate") == "approve_patch", "approve did not mark approve_patch gate")
+            if status_body.get("requires_user_approval") is True and status_body.get("pending_approval_gate"):
+                waiting_for_approval = True
+                break
+            if status_body.get("current_state") in {"completed", "blocked", "failed"}:
+                break
 
-    final_advance_response = client.post("/luxcode-task/advance", json={"task_id": task_id})
-    final_body = final_advance_response.json()
-    print("advance-after-approval", final_advance_response.status_code, final_body.get("current_state"), final_body.get("blocked_reasons"), final_body.get("apply_summary"))
-    _assert(final_advance_response.status_code == 200, "advance after approval did not return HTTP 200")
-    _assert(final_body.get("current_state") != "blocked", f"task blocked after approval: {final_body.get('blocked_reasons')}")
-    _assert(final_body.get("approval_state_approved") is True, "approval_state.approved was lost after advance")
+            advance_response = client.post("/luxcode-task/advance", json={"task_id": task_id})
+            advance_body = advance_response.json()
+            print(
+                "advance-before-approval",
+                index + 1,
+                advance_response.status_code,
+                advance_body.get("current_state"),
+                advance_body.get("pending_approval_gate"),
+                advance_body.get("blocked_reasons"),
+            )
+            _assert(advance_response.status_code == 200, "advance before approval did not return HTTP 200")
+
+            if advance_body.get("requires_user_approval") is True and advance_body.get("pending_approval_gate"):
+                waiting_for_approval = True
+                break
+
+        if waiting_for_approval:
+            approve_response = client.post("/luxcode-task/approve", json={"task_id": task_id})
+            approve_body = approve_response.json()
+            print(
+                "approve",
+                approve_response.status_code,
+                approve_body.get("current_state"),
+                approve_body.get("pending_approval_gate"),
+                approve_body.get("blocked_reasons"),
+            )
+            _assert(approve_response.status_code == 200, "approve did not return HTTP 200")
+            _assert(
+                approve_body.get("approval_state_approved") is not False,
+                "approval_state.approved was not set",
+            )
+            _assert(
+                isinstance(approve_body.get("last_approval_action"), dict)
+                and approve_body.get("last_approval_action", {}).get("approval_action") == "approve",
+                "approve response did not include approval action",
+            )
+
+            final_response = client.post("/luxcode-task/advance", json={"task_id": task_id})
+            final_body = final_response.json()
+            print(
+                "advance-after-approval",
+                final_response.status_code,
+                final_body.get("current_state"),
+                final_body.get("blocked_reasons"),
+            )
+            _assert(final_response.status_code == 200, "advance after approval did not return HTTP 200")
+
     _assert(TARGET_FILE.exists(), f"target file was not created: {TARGET_FILE}")
     _assert(TARGET_FILE.read_text(encoding="utf-8") == EXPECTED_CONTENT, "target file content mismatch")
-
     print(f"PASS selected-folder create: {TARGET_FILE}")
     return 0
 

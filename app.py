@@ -3,8 +3,10 @@
 import asyncio
 import html
 import json
+import queue
 import logging
 import os
+import threading
 import random
 import re
 import uuid
@@ -25,7 +27,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from openai import OpenAI
 from pydantic import BaseModel, Field
@@ -2370,6 +2372,7 @@ class LuxCodeAgentRunRequest(BaseModel):
     workspace_root: Optional[str] = Field(default=None, max_length=1000)
     session_id: str = Field(default="default", max_length=160)
     max_steps: int = Field(default=12, ge=1, le=50)
+    stream: bool = False
 
 
 class LuxCodeAgentToolRequest(BaseModel):
@@ -13338,6 +13341,34 @@ def _resolve_agent_workspace_root(value: Optional[str]) -> str:
 
 
 def _resolve_legacy_swarm_workspace(payload: Dict[str, Any]) -> str:
+    repo_root = _first_text(
+        payload.get("repository_root")
+        or payload.get("repositoryRoot")
+        or payload.get("workspace_root")
+        or payload.get("rootDir")
+    )
+    if repo_root:
+        repo_root = str(Path(repo_root).expanduser().resolve())
+
+    def _to_path(candidate: Any) -> str:
+        text = _first_text(candidate)
+        if not text:
+            return ""
+        if Path(text).is_absolute():
+            return str(Path(text).expanduser().resolve())
+        if repo_root:
+            return str((Path(repo_root) / text).resolve())
+        if LUXCODE_SELECTED_WORKSPACE_FOLDERS:
+            selected_keys = next(iter(LUXCODE_SELECTED_WORKSPACE_FOLDERS.keys()), "")
+            if selected_keys:
+                return str((Path(text) / selected_keys).resolve())
+        return str((Path(BASE_DIR) / text).resolve())
+
+    for key in ("selectedFolder", "folderPath"):
+        mapped = _to_path(payload.get(key))
+        if mapped and Path(mapped).exists():
+            return mapped
+
     candidates = [
         payload.get("workspace_root"),
         payload.get("selectedFolder"),
@@ -13350,16 +13381,103 @@ def _resolve_legacy_swarm_workspace(payload: Dict[str, Any]) -> str:
     ]
     for candidate in candidates:
         text = _first_text(candidate)
-        if text:
-            return str(Path(text).expanduser().resolve())
+        mapped = _to_path(candidate)
+        if mapped:
+            return mapped
     scope_items = payload.get("scope_items") or []
     if isinstance(scope_items, list):
         for item in scope_items:
             if isinstance(item, dict) and item.get("type") == "folder":
-                text = _first_text(item.get("path"))
-                if text:
-                    return str(Path(text).expanduser().resolve())
+                mapped = _to_path(item.get("path"))
+                if mapped:
+                    return mapped
+    # Folder picker can send a folder key; prefer previously selected folder map.
+    if repo_root:
+        selected_folders = payload.get("selected_folders") or payload.get("selectedFolders") or []
+        for candidate in _as_list(selected_folders):
+            candidate = _first_text(candidate)
+            if not candidate:
+                continue
+            with_id = LUXCODE_SELECTED_WORKSPACE_FOLDERS.get(candidate)
+            if isinstance(with_id, dict):
+                selected_path = _first_text(with_id.get("selected_folder_path"))
+                if selected_path and selected_path.startswith(repo_root):
+                    return str(Path(selected_path).expanduser().resolve())
+            candidate_path = str((Path(repo_root) / candidate).resolve())
+            if Path(candidate_path).exists():
+                return candidate_path
     return ""
+
+
+def _legacy_swarm_workspace_from_payload(payload: Dict[str, Any]) -> bool:
+    return bool(
+        _first_text(payload.get("workspace_root"))
+        or _first_text(payload.get("workspaceRoot"))
+        or _first_text(payload.get("repository_root"))
+        or _first_text(payload.get("repositoryRoot"))
+        or _first_text(payload.get("rootDir"))
+        or _first_text(payload.get("selectedFolder"))
+        or _first_text(payload.get("folderPath"))
+        or _as_list(payload.get("selectedFolders"))
+        or _as_list(payload.get("selected_folders"))
+    )
+
+
+def _safe_swarm_status_to_legacy(task_id: str, workspace_root: str) -> Optional[Dict[str, Any]]:
+    orchestrator = SwarmOrchestrator(SwarmConfig(workspace_root=workspace_root))
+    try:
+        task_record = orchestrator.state.load_task(task_id).to_dict()
+    except Exception:
+        return None
+
+    approval_path = orchestrator.state.approvals_dir / f"{task_id}.json"
+    approval: Dict[str, Any] = {}
+    if approval_path.is_file():
+        try:
+            approval = json.loads(approval_path.read_text(encoding="utf-8"))
+        except Exception:
+            approval = {}
+
+    status = str(task_record.get("status") or "failed")
+    requires_cost_approval = status == "awaiting_cost_approval"
+    approval_granted = bool(task_record.get("approval_granted"))
+    blocked = bool(task_record.get("last_error")) or status in {"failed", "blocked"}
+    pending_gate = "awaiting_cost_approval" if requires_cost_approval else ""
+    if blocked or requires_cost_approval:
+        blocked_reason = str(task_record.get("last_error")).strip() or (
+            "Paid model approval required" if requires_cost_approval else "Task blocked"
+        )
+    else:
+        blocked_reason = ""
+    return {
+        "ok": (status == "completed") and not blocked,
+        "task_id": task_id,
+        "status": status,
+        "current_state": status,
+        "model": str(task_record.get("current_model") or ""),
+        "message": task_record.get("last_error") or ("completed" if status == "completed" else status),
+        "workspace_root": workspace_root,
+        "repository_root": workspace_root,
+        "swarm": {
+            "task": task_record,
+            "task_id": task_id,
+            "status": status,
+        },
+        "requires_user_approval": requires_cost_approval,
+        "can_advance": status in {"created", "running", "awaiting_cost_approval", "completed"},
+        "blocked_reasons": [blocked_reason] if (blocked or requires_cost_approval) else [],
+        "approval_state": approval,
+        "approval_state_approved": approval_granted or (str(approval.get("status") or "") == "approved"),
+        "approval_events_count": len((approval.get("events") or [])),
+        "pending_approval_gate": pending_gate,
+        "last_approval_action": {
+            "approval_gate": pending_gate,
+            "approval_status": approval.get("status") or "",
+            "approved_at": approval.get("approved_at"),
+        },
+        "next_action": "Paid model approval required" if requires_cost_approval else "No pending action",
+        "result": task_record.get("result"),
+    }
 
 
 def _legacy_swarm_task_id(result: Dict[str, Any]) -> str:
@@ -13373,17 +13491,23 @@ def _legacy_swarm_task_id(result: Dict[str, Any]) -> str:
 def _map_swarm_to_legacy_create_response(result: Dict[str, Any], workspace_root: str) -> Dict[str, Any]:
     task_id = _legacy_swarm_task_id(result)
     status = str(result.get("status") or ("completed" if result.get("ok") else "failed"))
+    requires_cost_approval = status == "awaiting_cost_approval"
+    ok = bool(result.get("ok")) and status == "completed"
     legacy = {
-        "ok": bool(result.get("ok")),
+        "ok": ok,
         "task_id": task_id,
         "status": status,
         "message": result.get("message") or result.get("error") or status,
         "model": result.get("model") or (result.get("task") or {}).get("current_model") or (result.get("model_result") or {}).get("model"),
         "workspace_root": workspace_root,
         "swarm": result,
-        "can_advance": False,
-        "requires_user_approval": status == "awaiting_cost_approval",
+        "can_advance": status in {"created", "running", "awaiting_cost_approval", "completed"},
+        "requires_user_approval": requires_cost_approval,
         "blocked_reasons": [] if result.get("ok") or status == "awaiting_cost_approval" else [str(result.get("error") or "swarm_task_failed")],
+        "approval_state_approved": bool((result.get("task") or {}).get("approval_granted")),
+        "approval_events_count": 0,
+        "pending_approval_gate": "awaiting_cost_approval" if requires_cost_approval else "",
+        "last_approval_action": {"approval_gate": "awaiting_cost_approval" if requires_cost_approval else "", "approval_status": ""},
     }
     if status == "awaiting_cost_approval":
         legacy["approval_state"] = result.get("approval") or {}
@@ -13436,6 +13560,48 @@ def _run_legacy_swarm_bridge(payload: Dict[str, Any]) -> Dict[str, Any]:
     if task_id:
         LEGACY_SWARM_TASKS[task_id] = legacy
     return legacy
+
+
+def _approve_legacy_swarm_task(payload: LuxCodeTaskApprovalRequest) -> Dict[str, Any]:
+    task_id = str(payload.task_id or "").strip()
+    if not task_id:
+        return {"ok": False, "status": "failed", "error": "missing_task_id", "message": "missing_task_id", "blocked_reasons": ["missing_task_id"]}
+    cached = LEGACY_SWARM_TASKS.get(task_id) or {}
+    workspace_root = str(cached.get("workspace_root") or BASE_DIR)
+    logging.info("LUXCODE_SWARM_LEGACY_APPROVE task_id=%s workspace_root=%s", task_id, workspace_root)
+    orchestrator = SwarmOrchestrator(SwarmConfig(workspace_root=workspace_root))
+
+    approval = {}
+    try:
+        approval = orchestrator.state.approve_cost(task_id)
+    except Exception:
+        approval = {}
+
+    refreshed = _safe_swarm_status_to_legacy(task_id, workspace_root) or cached
+    refreshed.update(
+        {
+            "task_id": task_id,
+            "approval_state": approval or refreshed.get("approval_state") or {},
+            "requires_user_approval": False,
+            "last_approval_action": {
+                "approval_gate": "awaiting_cost_approval",
+                "approval_action": "approve",
+                "task_id": task_id,
+                "payload": payload.dict(),
+            },
+            "approval_state_approved": bool(
+                approval.get("status") == "approved"
+                or bool((refreshed.get("task") or {}).get("approval_granted"))
+                or bool(refreshed.get("approval_state", {}).get("status") == "approved")
+            ),
+            "approval_events_count": len((approval.get("events") or [])),
+            "can_advance": True,
+            "message": "approval_forwarded_to_swarm",
+        }
+    )
+    if task_id:
+        LEGACY_SWARM_TASKS[task_id] = refreshed
+    return refreshed
 
 
 def _as_list(value: Any) -> List[Any]:
@@ -13513,7 +13679,8 @@ async def luxcode_workspace_select_folder(payload: Dict[str, Any]):
 @app.post("/luxcode-task/create")
 async def luxcode_task_create_endpoint(payload: LuxCodeTaskCreateRequest):
     data = payload.dict()
-    if str(data.get("mode") or "").strip().lower() == "swarm":
+    mode = str(data.get("mode") or "").strip().lower()
+    if mode == "swarm" or _legacy_swarm_workspace_from_payload(data):
         return _run_legacy_swarm_bridge(data)
     return create_luxcode_task(**_legacy_state_machine_create_payload(data))
 
@@ -13559,19 +13726,14 @@ async def luxcode_conversation_events_compat(session_id: str, accept: str = Head
 @app.post("/luxcode-task/approve")
 async def luxcode_task_approve_endpoint(payload: LuxCodeTaskApprovalRequest):
     if payload.task_id in LEGACY_SWARM_TASKS:
-        workspace_root = str(LEGACY_SWARM_TASKS[payload.task_id].get("workspace_root") or BASE_DIR)
-        approval = SwarmOrchestrator(SwarmConfig(workspace_root=workspace_root)).state.approve_cost(payload.task_id)
-        LEGACY_SWARM_TASKS[payload.task_id]["status"] = "approval_verified"
-        LEGACY_SWARM_TASKS[payload.task_id]["requires_user_approval"] = False
-        LEGACY_SWARM_TASKS[payload.task_id]["approval_state"] = approval
-        return {
-            "ok": True,
-            "task_id": payload.task_id,
-            "status": "approval_verified",
-            "message": "approval_forwarded_to_swarm",
-            "approval_state": approval,
-            "can_advance": False,
-        }
+        return _approve_legacy_swarm_task(payload)
+    current = get_luxcode_task_status(payload.task_id)
+    if not current.get("found", False) and not isinstance(current.get("task_id"), str):
+        return {"ok": False, "found": False, "task_id": payload.task_id, "safe_response": True}
+    if current.get("pending_approval_gate") == "approve_apply_execution":
+        data = payload.dict()
+        data["approve_apply_execution"] = True
+        return approve_luxcode_task_step(**data)
     data = payload.dict()
     if not data.get("patch_steps"):
         data["patch_steps"] = None
@@ -13596,6 +13758,12 @@ async def luxcode_task_cancel_endpoint(payload: LuxCodeTaskStateRequest):
 @app.get("/luxcode-task/{task_id}")
 async def luxcode_task_status_endpoint(task_id: str):
     if task_id in LEGACY_SWARM_TASKS:
+        cached = LEGACY_SWARM_TASKS[task_id]
+        workspace_root = str(cached.get("workspace_root") or BASE_DIR)
+        updated = _safe_swarm_status_to_legacy(task_id, workspace_root)
+        if updated:
+            cached.update(updated)
+            LEGACY_SWARM_TASKS[task_id] = cached
         return LEGACY_SWARM_TASKS[task_id]
     return get_luxcode_task_status(task_id)
 
@@ -13632,6 +13800,56 @@ async def luxcode_agent_tool_endpoint(payload: LuxCodeAgentToolRequest):
 @app.post("/luxcode-agent/run")
 async def luxcode_agent_run_endpoint(payload: LuxCodeAgentRunRequest):
     workspace_root = _resolve_agent_workspace_root(payload.workspace_root)
+    if payload.stream:
+        event_queue: queue.Queue = queue.Queue()
+        result_holder: Dict[str, Any] = {}
+
+        def emit(event: Dict[str, Any]) -> None:
+            event_queue.put_nowait(event)
+
+        def worker() -> None:
+            try:
+                result_holder["value"] = run_agent(
+                    payload.prompt,
+                    workspace_root=workspace_root,
+                    session_id=payload.session_id,
+                    max_steps=payload.max_steps,
+                    on_step=emit,
+                )
+            except Exception as exc:
+                emit({
+                    "type": "error",
+                    "status": "failed",
+                    "ok": False,
+                    "message": str(exc),
+                })
+            finally:
+                result = result_holder.get("value")
+                emit({
+                    "type": "done",
+                    "ok": bool(result.get("ok") if isinstance(result, dict) else False),
+                    "result": result or {"ok": False, "status": "failed", "error": "stream_execution_failed"},
+                    "message": (result or {}).get("message") or (result or {}).get("response") or "run complete",
+                })
+
+        threading.Thread(target=worker, daemon=True).start()
+
+        async def event_generator():
+            loop = asyncio.get_running_loop()
+            while True:
+                event = await loop.run_in_executor(None, event_queue.get)
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+                if str(event.get("type")) == "done":
+                    break
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-store",
+                "X-Accel-Buffering": "no",
+            },
+        )
     return run_agent(
         payload.prompt,
         workspace_root=workspace_root,
