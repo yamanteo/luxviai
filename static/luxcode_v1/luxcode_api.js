@@ -154,6 +154,27 @@
             || result.output
             || result.content
             || (result.ok === false ? "Agent yanıt üretemedi." : "İşlem tamamlandı.");
+        const history = Array.isArray(result.conversation_history) && result.conversation_history.length
+            ? result.conversation_history.map((item, index) => ({
+                id: item.id || `${item.role || "msg"}-${index}-${sessionId}`,
+                role: item.role || "assistant",
+                content: item.content || item.message || "",
+                meta: item.meta || {},
+            }))
+            : [
+                {
+                    id: payload.client_message_id || `client-${Date.now()}`,
+                    role: "user",
+                    content: prompt,
+                    meta: { status: "sent" },
+                },
+                {
+                    id: payload.assistant_message_id || `asst-${Date.now()}`,
+                    role: "assistant",
+                    content: assistantText,
+                    meta: { route: "agent", ok: result.ok !== false },
+                },
+            ];
         return {
             ok: result.ok !== false,
             route: "agent",
@@ -163,20 +184,7 @@
                 session_id: sessionId,
                 active_task_id: result.task_id || "",
                 active_task_state: result.task || null,
-                message_history: [
-                    {
-                        id: payload.client_message_id || `client-${Date.now()}`,
-                        role: "user",
-                        content: prompt,
-                        meta: { status: "sent" },
-                    },
-                    {
-                        id: payload.assistant_message_id || `asst-${Date.now()}`,
-                        role: "assistant",
-                        content: assistantText,
-                        meta: { route: "agent", ok: result.ok !== false },
-                    },
-                ],
+                message_history: history,
             },
         };
     }

@@ -66,24 +66,38 @@ def parse_tool_calls(text: str) -> List[Dict[str, Any]]:
 
 
 def _natural_create_file(prompt: str) -> List[Dict[str, Any]]:
+    def clean_content(value: str) -> str:
+        content = str(value or "").strip()
+        content = re.sub(r"\s+(?:yaz|write)\s*$", "", content, flags=re.IGNORECASE).strip()
+        if content.lower().startswith("print ") and not content.lower().startswith("print("):
+            inner = content[6:].strip()
+            content = f"print({inner!r})"
+        if content.startswith("print(") and not re.search(r"print\((['\"])", content):
+            inner = content[6:-1] if content.endswith(")") else content[6:]
+            content = f"print({inner.strip()!r})"
+        return content + ("\n" if content and not content.endswith("\n") else "")
+
     match = re.search(
         r"(?:create|oluştur|olustur)\s+(?P<path>[^\s\"']+)\s+(?:with content|içine|icine)\s+(?P<quote>['\"])(?P<content>.*?)(?P=quote)",
         prompt,
         flags=re.IGNORECASE | re.DOTALL,
     )
     if match:
-        return [{"tool": "write_file", "params": {"path": match.group("path"), "content": match.group("content")}}]
+        return [{"tool": "write_file", "params": {"path": match.group("path"), "content": clean_content(match.group("content"))}}]
+    turkish_file_first = re.search(
+        r"(?P<path>[^\s\"']+\.[A-Za-z0-9]+)\s+(?:dosyasi|dosyasini|dosyası|dosyasını)?\s*(?:create|oluştur|olustur|yarat)?\s*(?:içine|icine|with content)\s+(?P<content>.+)$",
+        prompt,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if turkish_file_first:
+        return [{"tool": "write_file", "params": {"path": turkish_file_first.group("path"), "content": clean_content(turkish_file_first.group("content"))}}]
     loose = re.search(
         r"(?:create|oluştur|olustur)(?:\s+a\s+file\s+called|\s+file\s+called|\s+dosya)?\s+(?P<path>[^\s\"']+)\s+(?:with content|içine|icine)\s+(?P<content>.+)$",
         prompt,
         flags=re.IGNORECASE | re.DOTALL,
     )
     if loose:
-        content = loose.group("content").strip()
-        if content.startswith("print(") and not re.search(r"print\((['\"])", content):
-            inner = content[6:-1] if content.endswith(")") else content[6:]
-            content = f"print({inner!r})"
-        return [{"tool": "write_file", "params": {"path": loose.group("path"), "content": content + ("\n" if not content.endswith("\n") else "")}}]
+        return [{"tool": "write_file", "params": {"path": loose.group("path"), "content": clean_content(loose.group("content"))}}]
     return []
 
 
@@ -447,6 +461,7 @@ def run_agent(
     if memory_reply:
         session_manager.append_message(session, "assistant", str(memory_reply.get("response") or memory_reply.get("message") or ""))
         session_manager.save_session(session)
+        memory_reply["conversation_history"] = session.get("conversation_history", [])
         return memory_reply
     calls = planned_tool_calls(prompt)
     if not calls:
@@ -517,6 +532,7 @@ def run_agent(
                 "results": results,
                 "tool_calls": results,
                 "failed_step": item,
+                "conversation_history": session.get("conversation_history", []),
             }
     message = f"Completed {len(results)} tool step(s)."
     session_manager.append_message(session, "assistant", message)
@@ -538,6 +554,7 @@ def run_agent(
         "response": message,
         "results": results,
         "tool_calls": results,
+        "conversation_history": session.get("conversation_history", []),
     }
 
 
