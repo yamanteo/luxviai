@@ -6,3 +6,6 @@ data/
 _check.js
 .luxcode_runtime/
 *.before_*
+bridge_test.txt
+test_hello.py
+sessions/
