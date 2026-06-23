@@ -1,20 +1,20 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LUXCODE — Geliştirici Çalışma Alanı</title>
     <style>
-        /* Google Fonts üzerinden Cormorant Garamond yazı tipinin yüklenmesi */
+        /* Google Fonts ?zerinden Cormorant Garamond yaz? tipinin y?klenmesi */
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 
         :root {
             --bg-main: #000000; /* Tam Siyah */
             --bg-sidebar: #000000; /* Tam Siyah */
-            --bg-card: #111111; /* Antrasit / Siyaha yakın */
-            --bg-input: #111111; /* Antrasit / Siyaha yakın */
-            --lux-yellow: #ab6b0c; /* Yeni Belirlenen Asil Altın Kodu */
-            --border: rgba(171, 107, 12, 0.15); /* Çok ince, hafifçe hissedilen Lux Sarısı */
+            --bg-card: #111111; /* Antrasit / Siyaha yak?n */
+            --bg-input: #111111; /* Antrasit / Siyaha yak?n */
+            --lux-yellow: #ab6b0c; /* Yeni Belirlenen Asil Alt?n Kodu */
+            --border: rgba(171, 107, 12, 0.15); /* Ã‡ok ince, hafif?e hissedilen Lux Sar?s? */
             --border-soft: rgba(171, 107, 12, 0.08);
             --text-main: #e5e7eb; /* Normal Beyaz Tonu */
             --text-muted: #8a95a5;
@@ -30,6 +30,11 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
+        html,
+        body {
+            overflow: hidden;
+        }
+
         body {
             background-color: var(--bg-main);
             color: var(--text-main);
@@ -37,10 +42,9 @@
             padding: 0;
             display: flex;
             height: 100vh;
-            overflow: hidden;
         }
 
-        /* 1. SOL MENÜ (SIDEBAR) */
+        /* 1. SOL MENÃœ (SIDEBAR) */
         .sidebar {
             width: 250px;
             background-color: var(--bg-sidebar);
@@ -72,10 +76,10 @@
             width: 100%;
         }
 
-        /* YENİ SOHBET BUTONU (DİKDÖRTGEN ÇERÇEVELER SİLİNDİ, ÖZGÜN SADELİKTE) */
+        /* YEN? SOHBET BUTONU (D?KDÃ–RTGEN Ã‡ERÃ‡EVELER S?L?ND?, Ã–ZGÃœN SADEL?KTE) */
         .btn-new-chat {
             background-color: transparent;
-            border: none; /* Çerçeve tamamen silindi */
+            border: none; /* Ã‡er?eve tamamen silindi */
             color: var(--text-main);
             display: flex;
             align-items: center;
@@ -95,13 +99,13 @@
         }
 
         .btn-new-chat .plus-sign {
-            color: var(--lux-yellow); /* Artı işareti Lux Sarısı */
+            color: var(--lux-yellow); /* Art? işareti Lux Sar?s? */
             font-weight: bold;
             font-size: 16px;
         }
 
         .btn-new-chat .chat-text {
-            color: var(--text-main); /* Yeni sohbet yazısı normal beyaz tonu */
+            color: var(--text-main); /* Yeni sohbet yaz?s? normal beyaz tonu */
         }
 
         .sidebar.collapsed .btn-new-chat {
@@ -120,6 +124,10 @@
             text-decoration: none;
             transition: background 0.2s;
             width: 100%;
+            border: 0;
+            background: transparent;
+            font: inherit;
+            text-align: left;
         }
 
         .sidebar.collapsed .menu-item {
@@ -130,6 +138,124 @@
         .menu-item:hover {
             background-color: rgba(171, 107, 12, 0.08);
         }
+        .menu-item.active {
+            background-color: rgba(171, 107, 12, 0.12);
+            color: var(--lux-yellow);
+        }
+        .sidebar-panel {
+            margin-top: 8px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: rgba(255,255,255,.025);
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+        .sidebar-panel-title {
+            color: var(--lux-yellow);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+        .sidebar-field {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: #050505;
+            color: var(--text-main);
+            padding: 7px 8px;
+            font-size: 11px;
+            outline: none;
+        }
+        .sidebar-action,
+        .sidebar-row {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: transparent;
+            color: var(--text-main);
+            padding: 7px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .sidebar-action:hover,
+        .sidebar-row:hover { border-color: var(--lux-yellow); color: var(--lux-yellow); }
+        .sidebar-muted { color: var(--text-muted); font-size: 10.5px; line-height: 1.35; }
+        .sidebar-switch { color: var(--lux-yellow); font-size: 10px; font-weight: 700; }
+        .sidebar-projects {
+            margin-top: 72px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .sidebar-project-heading {
+            color: var(--text-muted);
+            font-size: 12px;
+            padding: 0 10px 6px;
+            opacity: .74;
+        }
+        .sidebar-project-row {
+            border: 0;
+            background: transparent;
+            color: var(--text-main);
+            width: 100%;
+            border-radius: 7px;
+            padding: 7px 8px;
+            cursor: pointer;
+            display: grid;
+            grid-template-columns: 16px minmax(0, 1fr);
+            gap: 8px;
+            align-items: center;
+            text-align: left;
+            font: inherit;
+        }
+        .sidebar-project-row:hover,
+        .sidebar-project-row.active { background: rgba(255,255,255,.07); }
+        .sidebar-project-row svg { color: var(--text-muted); }
+        .sidebar-project-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 12px;
+        }
+        .sidebar-project-path {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text-muted);
+            font-size: 10px;
+            margin-top: 2px;
+        }
+        .sidebar-project-add {
+            margin-top: 4px;
+            color: var(--text-muted);
+        }
+        .sidebar-project-form {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            padding: 7px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: rgba(255,255,255,.025);
+        }
+        .sidebar-project-form.open { display: flex; }
+        .sidebar-profile-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+        .sidebar-profile-pane { display: none; }
+        .sidebar-profile-pane.active { display: block; }
 
         .section-title {
             font-size: 10.5px;
@@ -153,7 +279,7 @@
             font-weight: 500;
         }
 
-        /* AYARLAR ÜSTÜNDEKİ KISA ÇİZGİ SİLİNDİ */
+        /* AYARLAR ÃœSTÃœNDEK? KISA Ã‡?ZG? S?L?ND? */
         .sidebar-bottom {
             padding-top: 12px;
             display: flex;
@@ -183,19 +309,20 @@
             border-radius: 50%;
         }
 
-        /* 2. GENEL ÇALIŞMA ALANI */
+        /* 2. GENEL Ã‡ALI?MA ALANI */
         .workspace-container {
             flex-grow: 1;
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-rows: 46px minmax(0, 1fr) auto var(--terminal-height, 0px);
             height: 100%;
+            min-height: 0;
             position: relative;
             background-color: var(--bg-main);
         }
 
-        /* ÜST BÖLÜM (TOP BAR - 46PX DARALTILMIŞ, LOGO VE METRİKLER DİKEY ORTALANMIŞ) */
+        /* ÃœST BÃ–LÃœM (TOP BAR - 46PX DARALTILMI?, LOGO VE METR?KLER D?KEY ORTALANMI?) */
         .top-bar {
-            height: 46px; /* Yarım santim yukarı kaldırıldı */
+            height: 46px; /* Yar?m santim yukar? kald?r?ld? */
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
@@ -207,7 +334,7 @@
             flex-shrink: 0;
         }
 
-        /* Sol Hizalı Başlık Alanı (Dikey Olarak Tam Ortalanmış) */
+        /* Sol Hizal? Başl?k Alan? (Dikey Olarak Tam Ortalanm?ş) */
         .top-bar-left {
             display: flex;
             align-items: center;
@@ -221,7 +348,7 @@
             height: 100%;
         }
 
-        /* Cormorant Garamond Yazı Tipi & Büyük Boyut */
+        /* Cormorant Garamond Yaz? Tipi & B?y?k Boyut */
         .brand-logo {
             font-family: 'Cormorant Garamond', serif;
             font-size: 25px;
@@ -234,7 +361,7 @@
             height: 100%;
         }
 
-        /* Sağ Hizalı Bilgiler ve Gizlenebilir Metrik Bölümü (Dikey Olarak Tam Ortalanmış) */
+        /* Sağ Hizal? Bilgiler ve Gizlenebilir Metrik B?l?m? (Dikey Olarak Tam Ortalanm?ş) */
         .top-bar-right {
             display: flex;
             align-items: center;
@@ -244,11 +371,11 @@
             height: 100%;
         }
 
-        /* Göster/Gizle Butonu (Metrics v / Metrics ^) */
+        /* G?ster/Gizle Butonu (Metrics v / Metrics ^) */
         .toggle-metrics-btn {
             background: transparent;
             border: none;
-            color: var(--text-main); /* Metrics yazısı normal beyaz */
+            color: var(--text-main); /* Metrics yaz?s? normal beyaz */
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -266,12 +393,12 @@
         }
 
         .toggle-metrics-btn .arrow-indicator {
-            color: var(--lux-yellow); /* v veya ^ işareti Lux Sarısı */
+            color: var(--lux-yellow); /* v veya ^ işareti Lux Sar?s? */
             margin-left: 5px;
             font-weight: bold;
         }
 
-        /* Gizlenebilir Bilgi Alanı (Dikey Olarak Tam Ortalanmış) */
+        /* Gizlenebilir Bilgi Alan? (Dikey Olarak Tam Ortalanm?ş) */
         .metrics-group-wrapper {
             display: flex;
             align-items: center;
@@ -317,12 +444,12 @@
             color: var(--text-main);
         }
 
-        /* 4 KONTROL İKONU ÇİZGİNİN HEMEN ALTINDA SAĞ ÜST KÖŞEDE HAVADA ASILI */
+        /* 4 KONTROL ?KONU Ã‡?ZG?N?N HEMEN ALTINDA SA? ÃœST KÃ–?EDE HAVADA ASILI */
         .floating-controls-container {
             position: absolute;
-            top: 56px; /* Üst bar çizgisinin hemen altında */
-            right: 20px; /* Sağ üst köşede */
-            z-index: 85;
+            top: 56px; /* Ãœst bar ?izgisinin hemen alt?nda */
+            right: 20px; /* Sağ ?st k?şede */
+            z-index: 130;
         }
 
         .top-controls-group {
@@ -331,7 +458,7 @@
             gap: 10px;
         }
 
-        /* Boş Dropdown Kapsülü */
+        /* Boş Dropdown Kaps?l? */
         .empty-github-dropdown {
             background-color: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border);
@@ -350,7 +477,7 @@
             background-color: rgba(255, 255, 255, 0.06);
         }
 
-        /* BAĞLANTI BAŞLATICISI */
+        /* BA?LANTI BA?LATICISI */
         .connection-launcher {
             position: relative;
         }
@@ -488,18 +615,21 @@
             border-color: var(--border-soft);
         }
 
-        /* ANA İÇERİK ALANI */
+        /* ANA ?Ã‡ER?K ALANI */
         .content-area {
-            flex-grow: 1;
+            min-height: 0;
             overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
             width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding-bottom: 120px;
+            padding-bottom: 18px;
         }
+        .content-area::-webkit-scrollbar { width: 0; height: 0; }
 
-        /* AÇILIŞ GÖRÜNÜMÜ */
+        /* AÃ‡ILI? GÃ–RÃœNÃœMÃœ */
         .landing-view {
             width: 100%;
             max-width: 680px;
@@ -518,14 +648,14 @@
             letter-spacing: -0.025em;
         }
 
-        /* ANTRASİT GÖREV YAZMA KUTUSU (OMNIBOX - DİĞER TÜM ÇİZGİLERLE TAMAMEN AYNI İNCELİK VE RENKTE) */
+        /* ANTRAS?T GÃ–REV YAZMA KUTUSU (OMNIBOX - D??ER TÃœM Ã‡?ZG?LERLE TAMAMEN AYNI ?NCEL?K VE RENKTE) */
         .omnibox {
             width: 100%;
             max-width: 680px;
-            background-color: var(--bg-input); /* Antrasit / Siyaha yakın */
-            border: 1px solid var(--border); /* İnce bölme çizgisiyle tamamen aynı incelik ve renkte */
+            background-color: var(--bg-input); /* Antrasit / Siyaha yak?n */
+            border: 1px solid var(--border); /* ?nce b?lme ?izgisiyle tamamen ayn? incelik ve renkte */
             border-radius: 12px;
-            padding: 16px 16px 12px 16px; /* İçeriyi ferah tutmak için padding optimize edildi */
+            padding: 16px 16px 12px 16px; /* ??eriyi ferah tutmak i?in padding optimize edildi */
             display: flex;
             flex-direction: column;
             gap: 16px;
@@ -545,7 +675,7 @@
             resize: none;
             outline: none;
             width: 100%;
-            height: 60px; /* Mesaj yazma alanı genişletildi */
+            height: 60px; /* Mesaj yazma alan? genişletildi */
             line-height: 1.6;
         }
 
@@ -557,11 +687,12 @@
             padding-top: 12px;
         }
 
-        /* İÇ BUTONLARIN ÖZEL DURUMU (VARSAYILAN OLARAK ÇERÇEVESİZ, SEÇİLİNCE OVAL/KAPSÜL YAPILI) */
+        /* ?Ã‡ BUTONLARIN Ã–ZEL DURUMU (VARSAYILAN OLARAK Ã‡ERÃ‡EVES?Z, SEÃ‡?L?NCE OVAL/KAPSÃœL YAPILI) */
         .control-group-left {
             display: flex;
             align-items: center;
-            gap: 10px; /* Butonlar arası boşluk */
+            gap: 10px; /* Butonlar aras? boşluk */
+            position: relative;
         }
 
         .control-group-left .badge-pill-flat {
@@ -578,43 +709,46 @@
             transition: all 0.2s ease;
         }
 
-        /* Fareyle Üzerine Gelindiğinde veya Tıklandığında Oval Çerçeve ve Arka Plan Belirir */
+        /* Fareyle Ãœzerine Gelindiğinde veya T?kland?ğ?nda Oval Ã‡er?eve ve Arka Plan Belirir */
         .control-group-left .badge-pill-flat:hover,
         .control-group-left .badge-pill-flat:active {
             background-color: rgba(171, 107, 12, 0.06);
             border-color: var(--lux-yellow);
         }
-
-        .control-group-left .badge-pill-flat.active {
-            background-color: rgba(171, 107, 12, 0.12);
-            border-color: var(--lux-yellow);
+        .control-group-left .attachment-button {
             color: var(--lux-yellow);
+            font-weight: 700;
+            font-size: 15px;
+            min-width: 28px;
+            justify-content: center;
         }
-
-        .agent-tool-list {
-            display: flex;
+        .omnibox-menu {
+            position: absolute;
+            left: 36px;
+            bottom: 34px;
+            min-width: 176px;
+            display: none;
             flex-direction: column;
-            gap: 8px;
-            margin-top: 10px;
+            gap: 4px;
+            padding: 6px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #050505;
+            box-shadow: 0 12px 28px rgba(0,0,0,.45);
+            z-index: 180;
+        }
+        .omnibox-menu.open { display: flex; }
+        .omnibox-menu button {
+            border: 0;
+            background: transparent;
+            color: var(--text-main);
+            text-align: left;
+            border-radius: 7px;
+            padding: 7px 9px;
+            cursor: pointer;
             font-size: 12px;
-            color: var(--text-muted);
-            white-space: pre-wrap;
         }
-
-        .agent-tool-item {
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.025);
-            border-radius: 8px;
-            padding: 8px 10px;
-        }
-
-        .agent-tool-item.success {
-            border-color: rgba(63, 185, 116, 0.35);
-        }
-
-        .agent-tool-item.failed {
-            border-color: rgba(255, 92, 92, 0.45);
-        }
+        .omnibox-menu button:hover { background: rgba(171,107,12,.10); color: var(--lux-yellow); }
 
         .btn-submit {
             background-color: var(--text-main);
@@ -635,12 +769,12 @@
             background-color: var(--lux-yellow);
         }
 
-        /* GÖNDERME OKU YUKARI BAKAR */
+        /* GÃ–NDERME OKU YUKARI BAKAR */
         .btn-submit svg {
-            transform: rotate(-90deg); /* Oku yukarı çevirmek için rotasyon */
+            transform: rotate(-90deg); /* Oku yukar? ?evirmek i?in rotasyon */
         }
 
-        /* MİKROFON BUTONU */
+        /* M?KROFON BUTONU */
         .mic-btn {
             background: transparent;
             border: none;
@@ -666,9 +800,52 @@
             margin-top: 15px;
             font-size: 11.5px;
             color: var(--text-muted);
+            position: relative;
         }
+        .scope-chip {
+            border: 0;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font: inherit;
+            padding: 3px 6px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .scope-chip:hover,
+        .scope-chip.active {
+            color: var(--text-main);
+            background: rgba(255,255,255,.045);
+        }
+        .scope-branch-menu {
+            position: absolute;
+            left: 0;
+            top: 22px;
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            padding: 6px;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            background: #050505;
+            z-index: 180;
+        }
+        .scope-branch-menu.open { display: flex; }
+        .scope-branch-menu button {
+            border: 0;
+            background: transparent;
+            color: var(--text-main);
+            text-align: left;
+            padding: 6px 9px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .scope-branch-menu button:hover { color: var(--lux-yellow); background: rgba(171,107,12,.10); }
 
-        /* AKTİF SOHBET / GÖREV AKIŞI GÖRÜNÜMÜ */
+        /* AKT?F SOHBET / GÃ–REV AKI?I GÃ–RÃœNÃœMÃœ */
         .active-task-view {
             width: 100%;
             max-width: 680px;
@@ -676,7 +853,13 @@
             display: none;
             flex-direction: column;
             gap: 20px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
+        .active-task-view:has(.live-message.has-code) {
+            max-width: min(100%, 1100px);
+        }
+        .active-task-view::-webkit-scrollbar { width: 0; height: 0; }
 
         .chat-bubble {
             display: flex;
@@ -686,9 +869,9 @@
             line-height: 1.5;
         }
 
-        /* KULLANICI YAZILARI DA ANTRASİT KART ALANINA ALINDI (ÇERÇEVESİ DİĞERLERİYLE AYNI İNCELİKTE) */
+        /* KULLANICI YAZILARI DA ANTRAS?T KART ALANINA ALINDI (Ã‡ERÃ‡EVES? D??ERLER?YLE AYNI ?NCEL?KTE) */
         .chat-user {
-            background: var(--bg-card); /* Antrasit / Siyaha yakın */
+            background: var(--bg-card); /* Antrasit / Siyaha yak?n */
             border: 1px solid var(--border);
             padding: 14px 18px;
             border-radius: 8px;
@@ -698,7 +881,7 @@
             padding: 0 4px;
         }
 
-        /* GÖREV İLERLEME SÜRECİ (ÇERÇEVESİ DİĞERLERİYLE AYNI İNCELİKTE) */
+        /* GÃ–REV İLERLEME SÃœREC? (Ã‡ERÃ‡EVES? D??ERLER?YLE AYNI ?NCEL?KTE) */
         .pipeline-progress {
             background-color: rgba(255, 255, 255, 0.01);
             border: 1px solid var(--border);
@@ -708,6 +891,16 @@
             flex-direction: column;
             gap: 10px;
             font-size: 12.5px;
+        }
+
+        .active-task-view > .pipeline-progress,
+        .active-task-view > .chat-bubble.chat-user:not(.live-message),
+        .active-task-view > #analysisBlock,
+        .active-task-view > #taskStatusBlock,
+        .active-task-view > #taskErrorCard,
+        .active-task-view > #approvalCard,
+        .active-task-view > #finalReport {
+            display: none !important;
         }
 
         .pipeline-step {
@@ -754,9 +947,9 @@
             margin-top: 10px;
         }
 
-        /* ANTRASİT INLINE ONAY KARTI (ÇERÇEVESİ DİĞERLERİYLE AYNI İNCELİKTE) */
+        /* ANTRAS?T INLINE ONAY KARTI (Ã‡ERÃ‡EVES? D??ERLER?YLE AYNI ?NCEL?KTE) */
         .approval-card {
-            background-color: var(--bg-card); /* Antrasit / Siyaha yakın */
+            background-color: var(--bg-card); /* Antrasit / Siyaha yak?n */
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 20px;
@@ -804,20 +997,18 @@
         .btn-view-diff { background-color: transparent; border: 1px solid var(--border); color: var(--text-main); }
         .btn-reject { background-color: var(--accent-red); color: white; }
 
-        /* SABİT ALT GİRİŞ KUTUSU */
+        /* SAB?T ALT G?R?? KUTUSU */
         .docked-input-container {
-            position: absolute;
-            bottom: 0;
-            left: 0;
+            position: relative;
             width: 100%;
             background: linear-gradient(to top, var(--bg-main) 70%, transparent);
-            padding: 20px 40px 30px 40px;
+            padding: 12px 40px 18px 40px;
             display: none;
             justify-content: center;
             z-index: 99;
         }
 
-        /* SAĞ BOŞ PANEL */
+        /* SA? BO? PANEL */
         .right-panel {
             width: 380px;
             background-color: var(--bg-sidebar);
@@ -844,30 +1035,31 @@
             background-color: var(--lux-yellow);
         }
 
-        /* Panel boyutlandırılırken tarayıcının metin seçmesini engeller. */
+        /* Panel boyutland?r?l?rken taray?c?n?n metin se?mesini engeller. */
         body.is-resizing,
         body.is-resizing * {
             -webkit-user-select: none !important;
             user-select: none !important;
         }
 
-        /* ALT PANEL TERMINAL TRAY (YÜKSEKLİĞİ AYARLANABİLİR SÜRÜKLENEBİLİR YAPI) */
+        /* ALT PANEL TERMINAL TRAY (YÃœKSEKL↗ AYARLANAB?L?R SÃœRÃœKLENEB?L?R YAPI) */
         #dockedTerminalTray {
-            position: absolute;
-            bottom: 0;
-            left: 250px;
-            right: 0;
-            height: 180px; /* Varsayılan başlangıç yüksekliği */
+            position: relative;
+            left: auto;
+            right: auto;
+            width: 100%;
+            min-height: 180px;
+            height: 180px; /* Varsay?lan başlang?? y?ksekliği */
             background-color: #030303;
             border-top: 1px solid var(--border);
             display: none;
             z-index: 80;
-            padding: 18px 15px 15px 15px; /* Resize çubuğu için üst padding genişletildi */
+            padding: 18px 15px 15px 15px; /* Resize ?ubuğu i?in ?st padding genişletildi */
             font-family: monospace;
             transition: left 0.3s ease;
         }
 
-        /* Alt Panel Dikey Boyutlandırma Çubuğu (Üst Sınırda) */
+        /* Alt Panel Dikey Boyutland?rma Ã‡ubuğu (Ãœst S?n?rda) */
         .terminal-resizer {
             height: 4px;
             background-color: transparent;
@@ -875,7 +1067,7 @@
             top: 0;
             left: 0;
             right: 0;
-            cursor: row-resize;
+            cursor: ns-resize;
             z-index: 220;
         }
 
@@ -884,7 +1076,7 @@
         }
 
 
-        /* V1: SAĞ PANEL, RAPOR VE DURUM BİLEŞENLERİ */
+        /* V1: SA? PANEL, RAPOR VE DURUM B?LE?ENLER? */
         .right-panel-head {
             min-height: 58px;
             padding: 14px 16px 12px 18px;
@@ -938,8 +1130,11 @@
             display: none;
             height: 100%;
             overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
             padding: 14px;
         }
+        .panel-view::-webkit-scrollbar { width: 0; height: 0; }
         .panel-view.active { display: block; }
         .panel-summary-row {
             display: flex;
@@ -1156,13 +1351,13 @@
             .omnibox { border-radius: 10px; }
             .scope-bar { flex-wrap: wrap; justify-content: center; }
             .docked-input-container { padding: 16px 12px 18px 70px; }
-            #dockedTerminalTray { left: 56px !important; }
+            #dockedTerminalTray { left: auto !important; }
             .final-report-grid { grid-template-columns: 1fr; }
         }
 
     
 
-        /* Seçili çalışma aracı ve sağ panel işlevsel içerikleri */
+        /* Se?ili ?al?şma arac? ve sağ panel işlevsel i?erikleri */
         .launcher-selected-icon {
             width: 18px;
             height: 18px;
@@ -1245,13 +1440,173 @@
         .evidence-item span { color:var(--text-muted); line-height:1.45; }
         .environment-group-title { color:var(--lux-yellow); font-size:9px; font-weight:700; letter-spacing:.08em; margin:13px 0 5px; }
         .status-neutral { color:var(--text-muted); }
+        .conversation-stream { display:flex; flex-direction:column; gap:12px; width:100%; }
+        .live-message { max-width:min(680px,82%); width:max-content; white-space:pre-wrap; line-height:1.5; }
+        .live-message.chat-user {
+            align-self: flex-end;
+            width: fit-content;
+            max-width: min(680px, 82%);
+            border-radius: 999px;
+            padding: 10px 16px;
+        }
+        .live-message.chat-lux { align-self:flex-start; }
+        .live-message.chat-lux.has-code {
+            align-self: stretch;
+            width: 100%;
+            max-width: none;
+            box-sizing: border-box;
+        }
+        .active-task-view > .chat-bubble.chat-user:first-of-type { display:none; }
+        .live-message.chat-lux { white-space: normal; }
+        .live-message p { margin: 0 0 10px; }
+        .live-message p:last-child { margin-bottom: 0; }
+        .live-message h1, .live-message h2, .live-message h3 { margin: 10px 0 8px; font-size: 15px; font-weight: 650; }
+        .live-message ul, .live-message ol { margin: 8px 0 10px 20px; padding: 0; }
+        .inline-code {
+            display: inline-block;
+            padding: 1px 5px;
+            border-radius: 5px;
+            background: rgba(255,255,255,.06);
+            border: 1px solid var(--border-soft);
+            font-family: Consolas, "SFMono-Regular", monospace;
+            font-size: .92em;
+        }
+        .code-block, .code-card {
+            width: min(100%, 1100px);
+            max-width: 100%;
+            margin: 14px 0;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #050505;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        .code-block-header, .code-card-header {
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 7px 9px 7px 11px;
+            border-bottom: 1px solid var(--border-soft);
+            background: rgba(255,255,255,.025);
+        }
+        .code-title { display: flex; align-items: center; gap: 4px; min-width: 0; color: var(--text-muted); font-size: 10px; font-weight: 700; }
+        .code-title strong { color: var(--lux-yellow); letter-spacing: .05em; }
+        .code-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .code-language { color: var(--lux-yellow); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .code-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+        .copy-code-button, .save-code-button {
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        .copy-code-button:hover, .save-code-button:hover { color: var(--text-main); border-color: var(--lux-yellow); }
+        .code-block pre, .code-card pre {
+            margin: 0;
+            padding: 12px;
+            overflow: auto;
+            white-space: pre;
+            max-height: none;
+            background: #050505;
+            scrollbar-color: #3a414d transparent;
+            scrollbar-width: thin;
+        }
+        .code-block.collapsed pre, .code-card.collapsed pre { display: none; }
+        .code-block pre::-webkit-scrollbar, .code-card pre::-webkit-scrollbar,
+        #dockedTerminalLog::-webkit-scrollbar, textarea::-webkit-scrollbar,
+        .panel-view::-webkit-scrollbar { width: 6px; height: 6px; }
+        .code-block pre::-webkit-scrollbar-track, .code-card pre::-webkit-scrollbar-track,
+        #dockedTerminalLog::-webkit-scrollbar-track, textarea::-webkit-scrollbar-track,
+        .panel-view::-webkit-scrollbar-track { background: transparent; }
+        .code-block pre::-webkit-scrollbar-thumb, .code-card pre::-webkit-scrollbar-thumb,
+        #dockedTerminalLog::-webkit-scrollbar-thumb, textarea::-webkit-scrollbar-thumb,
+        .panel-view::-webkit-scrollbar-thumb { background: #3a414d; border-radius: 999px; }
+        .code-block code, .code-card code { font-family: Consolas, "SFMono-Regular", monospace; font-size: 12px; line-height: 1.55; color: #d7dde8; }
+        .tok-keyword { color: #c792ea; }
+        .tok-string { color: #ffcb6b; }
+        .tok-number { color: #f78c6c; }
+        .tok-comment { color: #6a9955; font-style: italic; }
+        .tok-command { color: #82aaff; }
+        .tok-boolean, .tok-null { color: #c792ea; }
+        .tok-function { color: #82aaff; }
+        .tok-class { color: #89ddff; }
+        .tok-variable, .tok-parameter { color: #d7dde8; }
+        .tok-property { color: #89ddff; }
+        .tok-tag { color: #82aaff; }
+        .tok-attribute { color: #ffcb6b; }
+        .tok-selector { color: #ffcb6b; }
+        .tok-value { color: #f78c6c; }
+        .tok-operator, .tok-punctuation { color: #89ddff; }
+        .tok-flag { color: #f78c6c; }
+        .tok-env { color: #c792ea; }
+        .message-status { margin-top: 6px; color: var(--text-muted); font-size: 10px; }
+        .message-status.error { color: #f07178; }
+        .assistant-thinking { color: var(--text-muted); font-style: italic; }
+        .attachment-tray { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 2px 8px; }
+        .attachment-chip { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,.035); padding: 6px 8px; max-width: 230px; }
+        .attachment-chip img { width: 34px; height: 34px; object-fit: cover; border-radius: 5px; border: 1px solid var(--border-soft); }
+        .attachment-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: var(--text-muted); }
+        .attachment-chip button { border: none; background: transparent; color: var(--text-muted); cursor: pointer; }
+        .attachment-button { border: 1px solid var(--border); border-radius: 7px; background: rgba(255,255,255,.04); color: var(--text-muted); cursor: pointer; width: 28px; height: 28px; }
+        textarea { scrollbar-color: #3a414d transparent; scrollbar-width: thin; }
+        .task-compact-indicator {
+            position: fixed;
+            right: 18px;
+            bottom: 20px;
+            z-index: 140;
+            display: none;
+            border: 1px solid var(--border);
+            background: #050505;
+            color: var(--text-main);
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .active-task-card { display: none; margin-bottom: 12px; }
+        .active-task-card.open { display: block; }
+        .active-task-card .panel-card { margin-bottom: 0; }
+        .active-task-card h4 { margin: 0 0 8px; font-size: 11px; color: var(--lux-yellow); letter-spacing: .08em; }
+        .active-task-card .task-field { margin-top: 10px; }
+        .active-task-card .task-field span { display: block; color: var(--text-muted); font-size: 9px; font-weight: 700; margin-bottom: 4px; }
+        .active-task-card .task-field strong, .active-task-card .task-field div { color: var(--text-main); font-size: 11.5px; line-height: 1.45; }
+        .task-collapse-btn { float: right; border: none; background: transparent; color: var(--text-muted); cursor: pointer; }
+        .lux-scroll-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 6px;
+            height: 19px;
+            border-radius: 999px;
+            background: #3b3f46;
+            opacity: 0;
+            pointer-events: auto;
+            cursor: grab;
+            z-index: 160;
+            transition: opacity .12s ease;
+        }
+        .lux-scroll-indicator::before {
+            content: "";
+            position: absolute;
+            left: -5px;
+            top: -4px;
+            width: 16px;
+            height: 27px;
+        }
+        .lux-scroll-indicator.dragging { cursor: grabbing; }
 
 </style>
 </head>
 <body>
     <div class="ui-toast" id="uiToast" role="status" aria-live="polite"></div>
+    <button class="task-compact-indicator" id="taskCompactIndicator" type="button"></button>
 
-    <!-- 1. SOL MENÜ (SIDEBAR) -->
+    <!-- 1. SOL MENÃœ (SIDEBAR) -->
     <div class="sidebar" id="leftSidebar">
         <div class="sidebar-top">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
@@ -1261,39 +1616,55 @@
                 </button>
             </div>
 
-            <!-- YENİ SOHBET BUTONU (DİKDÖRTGEN ÇERÇEVELER SİLİNDİ, ÖZGÜN SADELİKTE) -->
+            <!-- YEN? SOHBET BUTONU (D?KDÃ–RTGEN Ã‡ERÃ‡EVELER S?L?ND?, Ã–ZGÃœN SADEL?KTE) -->
             <button class="btn-new-chat" onclick="resetToHome()">
                 <span class="plus-sign">+</span>
                 <span class="chat-text sidebar-hide-on-collapse">Yeni sohbet</span>
             </button>
             
-            <div class="menu-item">
+            <button class="menu-item" type="button" data-sidebar-tool="search">
                 <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
                 <span class="sidebar-hide-on-collapse">Arama</span>
-            </div>
-            <div class="menu-item">
+            </button>
+            <button class="menu-item" type="button" data-sidebar-tool="plugins">
                 <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M1 11a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3zm5-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm5-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-2a1 1-0 0 1-1-1V2z"/></svg>
                 <span class="sidebar-hide-on-collapse">Eklentiler</span>
-            </div>
-            <div class="menu-item">
+            </button>
+            <button class="menu-item" type="button" data-sidebar-tool="automations">
                 <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/></svg>
                 <span class="sidebar-hide-on-collapse">Otomasyonlar</span>
-            </div>
+            </button>
 
-            <!-- Gerçek sabitlenenler, projeler ve sohbetler backend bağlandığında
-                 bu alana dinamik olarak yüklenecek. Ekran görüntüsünden kalan
-                 örnek içerikler özellikle kaldırıldı. -->
+            <!-- Ger?ek sabitlenenler, projeler ve sohbetler backend bağland?ğ?nda
+                 bu alana dinamik olarak y?klenecek. Ekran g?r?nt?s?nden kalan
+                 ?rnek i?erikler ?zellikle kald?r?ld?. -->
             <div id="sidebarDynamicContent" class="sidebar-hide-on-collapse"></div>
+            <div class="sidebar-projects sidebar-hide-on-collapse" aria-label="Projeler">
+                <div class="sidebar-project-heading">Projeler</div>
+                <div id="sidebarProjectList"></div>
+                <button class="sidebar-project-row sidebar-project-add" type="button" id="btnSidebarProjectAdd">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                    <span class="sidebar-project-name">Proje ekle</span>
+                </button>
+                <div class="sidebar-project-form" id="sidebarProjectForm">
+                    <input class="sidebar-field" id="sidebarProjectName" type="text" placeholder="Klasör adı / proje adı">
+                    <input class="sidebar-field" id="sidebarProjectPath" type="text" placeholder="Klasör seçilmedi" readonly>
+                    <input id="sidebarProjectFolderInput" type="file" webkitdirectory directory multiple style="display:none">
+                    <button class="sidebar-action" type="button" id="btnSidebarProjectBrowse"><span>Klasör seç</span><span>...</span></button>
+                    <button class="sidebar-action" type="button" id="btnSidebarProjectSave"><span>Ekle</span><span>↵</span></button>
+                </div>
+            </div>
         </div>
 
         <div class="sidebar-bottom">
-            <!-- AYARLAR SEKMESİ -->
-            <div class="menu-item">
+            <div id="sidebarBottomDynamicContent" class="sidebar-hide-on-collapse"></div>
+            <!-- AYARLAR SEKMES? -->
+            <button class="menu-item" type="button" data-sidebar-tool="settings">
                 <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/></svg>
                 <span class="sidebar-hide-on-collapse">Ayarlar</span>
-            </div>
+            </button>
 
-            <!-- ÇEVRİMİÇİ STATÜ PANELİ (SOL EN ALTTA) -->
+            <!-- Ã‡EVR?M?Ã‡? STATÃœ PANEL? (SOL EN ALTTA) -->
             <div class="online-indicator-sidebar">
                 <div class="online-dot"></div>
                 <span class="sidebar-hide-on-collapse" style="font-weight: 500;">Çevrimiçi</span>
@@ -1301,11 +1672,11 @@
         </div>
     </div>
 
-    <!-- 2. GENEL ÇALIŞMA ALANI -->
+    <!-- 2. GENEL Ã‡ALI?MA ALANI -->
     <div class="workspace-container">
-        <!-- TOP STATUS BAR (HASSAS HİZALANMIŞ VE DARALTILMIŞ YENİ DÜZEN) -->
+        <!-- TOP STATUS BAR (HASSAS H?ZALANMI? VE DARALTILMI? YEN? DÃœZEN) -->
         <div class="top-bar">
-            <!-- Sol Hizalı Başlık: Sadece "Cormorant Garamond" Yazı Tipiyle LuxCode -->
+            <!-- Sol Hizal? Başl?k: Sadece "Cormorant Garamond" Yaz? Tipiyle LuxCode -->
             <div class="top-bar-left">
                 <div class="brand-logo-container">
                     <div class="brand-logo">LuxCode</div>
@@ -1315,14 +1686,14 @@
             <!-- Merkez Boş -->
             <div class="top-bar-center"></div>
 
-            <!-- Sağ Hizalı Göstergeler ve Gizlenebilir Metrik Bölümü -->
+            <!-- Sağ Hizal? G?stergeler ve Gizlenebilir Metrik B?l?m? -->
             <div class="top-bar-right">
-                <!-- Göster / Gizle Butonu (Metrics v / Metrics ^) -->
+                <!-- G?ster / Gizle Butonu (Metrics v / Metrics ^) -->
                 <button class="toggle-metrics-btn" id="btnToggleMetrics" onclick="toggleMetricsGroup()" title="Bilgilendirmeleri Göster/Gizle">
                     Metrics<span class="arrow-indicator" id="metricsArrow">v</span>
                 </button>
 
-                <!-- Gizlenebilir Bölüm -->
+                <!-- Gizlenebilir B?l?m -->
                 <div class="metrics-group-wrapper hidden" id="metricsGroup">
                     <!-- Proje & Branch -->
                     <div class="project-branch-info">
@@ -1343,10 +1714,10 @@
             </div>
         </div>
 
-        <!-- 4 KONTROL İKONU ÇİZGİNİN HEMEN ALTINDA SAĞ ÜST KÖŞEDE HAVADA ASILI -->
+        <!-- 4 KONTROL ?KONU Ã‡?ZG?N?N HEMEN ALTINDA SA? ÃœST KÃ–?EDE HAVADA ASILI -->
         <div class="floating-controls-container">
             <div class="top-controls-group">
-                <!-- Hızlı çalışma araçları seçici -->
+                <!-- H?zl? ?al?şma ara?lar? se?ici -->
                 <div class="connection-launcher" id="connectionLauncher">
                     <button class="empty-github-dropdown connection-launcher-btn" id="connectionLauncherBtn" type="button" title="Araçları Aç" aria-expanded="false" onclick="toggleConnectionMenu(event)">
                         <span class="launcher-selected-icon" id="connectionLauncherSelectedIcon"></span>
@@ -1357,7 +1728,7 @@
                         <button class="connection-option" type="button" onclick="launchWorkspaceTool('vscode')"><span class="connection-option-icon tool-vscode">&lt;/&gt;</span><span class="connection-option-copy"><span>VS Code</span><small>Kod düzenleyici</small></span></button>
                         <button class="connection-option" type="button" onclick="launchWorkspaceTool('github')"><span class="connection-option-icon tool-github">GH</span><span class="connection-option-copy"><span>GitHub</span><small>Depo ve uzak bağlantı</small></span></button>
                         <button class="connection-option" type="button" onclick="launchWorkspaceTool('github-desktop')"><span class="connection-option-icon tool-github-desktop">GD</span><span class="connection-option-copy"><span>GitHub Desktop</span><small>Masaüstü Git istemcisi</small></span></button>
-                        <button class="connection-option" type="button" onclick="launchWorkspaceTool('file-explorer')"><span class="connection-option-icon tool-file-explorer">▰</span><span class="connection-option-copy"><span>File Explorer</span><small>Proje klasörünü aç</small></span></button>
+                        <button class="connection-option" type="button" onclick="launchWorkspaceTool('file-explorer')"><span class="connection-option-icon tool-file-explorer">□</span><span class="connection-option-copy"><span>File Explorer</span><small>Proje klasörünü aç</small></span></button>
                         <button class="connection-option" type="button" onclick="launchWorkspaceTool('terminal')"><span class="connection-option-icon tool-terminal">&gt;_</span><span class="connection-option-copy"><span>Terminal</span><small>Yerel komut satırı</small></span></button>
                         <button class="connection-option" type="button" onclick="launchWorkspaceTool('git-bash')"><span class="connection-option-icon tool-git-bash">GB</span><span class="connection-option-copy"><span>Git Bash</span><small>Git kabuğu</small></span></button>
                         <button class="connection-option" type="button" onclick="launchWorkspaceTool('wsl')"><span class="connection-option-icon tool-wsl">WS</span><span class="connection-option-copy"><span>WSL</span><small>Linux çalışma ortamı</small></span></button>
@@ -1370,82 +1741,97 @@
                 </button>
 
                 <!-- Alt Panel Tray Toggle -->
-                <button class="utility-icon-btn" id="btnTerminalToggle" onclick="toggleTerminalDock()" title="Terminal Paneli">
+                <button class="utility-icon-btn" id="btnTerminalToggle" title="Terminal Paneli">
                     <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
                 </button>
 
                 <!-- Sağ Panel Toggle -->
-                <button class="utility-icon-btn" id="btnRightPanelToggle" onclick="toggleRightPanel()" title="Sağ Paneli Göster">
+                <button class="utility-icon-btn" id="btnRightPanelToggle" onclick="toggleRightPanel()" title="Sağ Paneli G?ster">
                     <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
                 </button>
             </div>
         </div>
 
-        <!-- ANA İÇERİK ALANI -->
+        <!-- ANA ?Ã‡ER?K ALANI -->
         <div class="content-area" id="contentArea">
             
-            <!-- LANDING GÖRÜNÜMÜ (AÇILIŞ) -->
+            <!-- LANDING GÃ–RÃœNÃœMÃœ (AÃ‡ILI?) -->
             <div class="landing-view" id="landingView">
                 <div class="greeting">LuxCode ile ne geliştirmek istersiniz?</div>
                 
-                <!-- BÜYÜK GİRİŞ KUTUSU -->
+                <!-- BÃœYÃœK G?R?? KUTUSU -->
                 <div class="omnibox">
                     <textarea placeholder="Geliştirilecek görevi veya hata açıklamasını buraya yazın..." id="txtLandingInput"></textarea>
-                    <input type="file" id="landingFileInput" multiple style="display:none;">
-                    <input type="file" id="landingFolderInput" multiple webkitdirectory style="display:none;">
                     <div class="omnibox-controls">
-                        <!-- SOL ALTA SIRAYLA YAN YANA YERLEŞTİRİLEN LUX SARISI İKONLU BUTONLAR -->
+                        <!-- SOL ALTA SIRAYLA YAN YANA YERLE?T?R?LEN LUX SARISI ?KONLU BUTONLAR -->
                         <div class="control-group-left">
-                            <button id="btnLandingAttach" class="badge-pill-flat" style="color: var(--lux-yellow); font-weight: bold; font-size: 15px;">+</button>
-                            <button id="btnChatMode" class="badge-pill-flat active" type="button" onclick="setLuxCodeMode('chat')">Chat</button>
-                            <button id="btnAgentMode" class="badge-pill-flat" type="button" onclick="setLuxCodeMode('agent')">Coder</button>
-                            <!-- Kalkan İçinde Ünlem İkonu (Birebir Çizim) -->
-                            <button class="badge-pill-flat">
+                            <button class="badge-pill-flat attachment-button" type="button" title="Dosya ekle">+</button>
+                            <!-- Kalkan ??inde Ãœnlem ?konu (Birebir Ã‡izim) -->
+                            <button class="badge-pill-flat" type="button" data-omnibox-menu-trigger="access">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--lux-yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                                     <line x1="12" y1="8" x2="12" y2="12"/>
                                     <line x1="12" y1="16" x2="12.01" y2="16"/>
                                 </svg>
-                                <span style="color: var(--text-main);">Tam erişim</span>
+                                <span style="color: var(--text-main);" data-control-label="access">Tam erişim</span>
                             </button>
-                            <!-- Şimşek İkonu -->
-                            <button class="badge-pill-flat">
+                            <!-- ?imşek ?konu -->
+                            <button class="badge-pill-flat" type="button" data-omnibox-menu-trigger="model">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--lux-yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                                 </svg>
-                                <span style="color: var(--text-main);">5.5 Orta</span>
+                                <span style="color: var(--text-main);" data-control-label="model"></span>
                             </button>
+                            <div class="omnibox-menu" data-omnibox-menu="access">
+                                <button type="button" data-omnibox-choice="access" data-value="Onay iste">Onay iste</button>
+                                <button type="button" data-omnibox-choice="access" data-value="Sınırlı erişim">Sınırlı erişim</button>
+                                <button type="button" data-omnibox-choice="access" data-value="Tam erişim">Tam erişim</button>
+                            </div>
+                            <div class="omnibox-menu" data-omnibox-menu="model">
+                                <button type="button" data-omnibox-choice="model" data-value="Ollama">Ollama</button>
+                                <button type="button" data-omnibox-choice="model" data-value="Cloud Models">Cloud Models</button>
+                                <button type="button" data-omnibox-choice="model" data-value="Gemini 3.5 Flash">Gemini 3.5 Flash</button>
+                                <button type="button" data-omnibox-choice="model" data-value="DeepSeek Direct">DeepSeek Direct</button>
+                                <button type="button" data-omnibox-choice="model" data-value="Whale">Whale</button>
+                                <button type="button" data-omnibox-choice="model" data-value="Codex">Codex</button>
+                            </div>
                         </div>
-                        <!-- SAĞ ALTA SIRAYLA YAN YANA YERLEŞTİRİLEN MİKROFON VE GÖNDERME BUTONLARI -->
+                        <!-- SA? ALTA SIRAYLA YAN YANA YERLE?T?R?LEN M?KROFON VE GÃ–NDERME BUTONLARI -->
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <!-- Sesli Komut Mikrofon Simgesi -->
                             <button class="mic-btn" title="Sesli Komut">
                                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
                             </button>
-                            <!-- Gönderme Oku Yukarı Bakan Buton -->
-                            <button class="btn-submit" id="btnSubmitTask" onclick="simulateSend()">
+                            <!-- G?nderme Oku Yukar? Bakan Buton -->
+                            <button class="btn-submit" id="btnSubmitTask">
                                 <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.08l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/></svg>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div class="scope-bar" id="scopeBar">
-                    <span>📂 LUXDEEP</span>
-                    <span>💻 Yerel çalışma</span>
-                    <span>🌱 main</span>
+                <div class="scope-bar">
+                    <button class="scope-chip" type="button" id="scopeProjectChip" title="Seçili proje klasörü"><span>📁</span><span id="scopeProjectName"></span></button>
+                    <button class="scope-chip active" type="button" id="scopeRuntimeChip">Yerel çalışma</button>
+                    <button class="scope-chip" type="button" id="scopeBranchChip"><span id="scopeBranchName">main</span></button>
+                    <div class="scope-branch-menu" id="scopeBranchMenu">
+                        <button type="button" data-scope-branch="main">main</button>
+                        <button type="button" data-scope-branch="dev">dev</button>
+                        <button type="button" data-scope-branch="feature">feature</button>
+                    </div>
                 </div>
             </div>
 
-            <!-- SOHBET VE ÇALIŞMA GEÇMİŞİ AKIŞI -->
+            <!-- SOHBET VE Ã‡ALI?MA GEÃ‡M↗ AKI?I -->
             <div class="active-task-view" id="activeTaskView">
-                <!-- Antrasit Kart Alanına Alınmış Kullanıcı Mesajı -->
-                <div class="chat-bubble chat-user">
+                <div id="conversationStream" class="conversation-stream"></div>
+                <!-- Antrasit Kart Alan?na Al?nm?ş Kullan?c? Mesaj? -->
+                <div class="chat-bubble chat-user" style="display:none;">
                     <strong style="font-size: 11px; text-transform: uppercase; color: var(--accent-blue);">Kullanıcı Talebi</strong>
-                    <span id="userTaskText">Gorev bekleniyor</span>
+                    <span id="userTaskText">Görev bekleniyor</span>
                 </div>
 
-                <div class="pipeline-progress">
+                <div class="pipeline-progress" style="display:none;">
                     <div class="pipeline-step completed">
                         <div class="step-icon">✓</div>
                         <span>Görev hazırlanıyor</span>
@@ -1455,29 +1841,29 @@
                         <span>Proje inceleniyor</span>
                     </div>
                     <div class="pipeline-step" id="pipelineStep3">
-                        <div class="step-icon">●</div>
+                        <div class="step-icon">â—</div>
                         <span id="lblPipelineStep3">Çözüm hazırlanıyor...</span>
                     </div>
                 </div>
 
                 <div class="chat-bubble chat-lux" id="analysisBlock" style="display:none;">
                     <strong style="font-size: 11px; text-transform: uppercase; color: var(--accent-purple);">LUXCODE Analiz</strong>
-                    <p style="margin: 6px 0 12px 0;">Gercek gorev detaylari backend yaniti ile doldurulur.</p>
+                    <p style="margin: 6px 0 12px 0;">Gerçek görev detayları backend yanıtı ile doldurulur.</p>
                 </div>
 
-                <!-- ANTRASİT INLINE ONAY KARTI (ÇERÇEVESİ DİĞERLERİYLE AYNI İNCELİKTE) -->
-                <div class="chat-bubble chat-lux" id="taskStatusBlock">
-                    <strong style="font-size: 11px; text-transform: uppercase; color: var(--accent-purple);" id="taskStatusTitle">LUXCODE gorev durumu</strong>
-                    <p style="margin: 6px 0 12px 0;" id="taskStatusDetails">Gorev olusturuluyor. Gercek backend durumu alindiginda bu alan guncellenecek.</p>
+                <!-- ANTRAS?T INLINE ONAY KARTI (Ã‡ERÃ‡EVES? D??ERLER?YLE AYNI ?NCEL?KTE) -->
+                <div class="chat-bubble chat-lux" id="taskStatusBlock" style="display:none;">
+                    <strong style="font-size: 11px; text-transform: uppercase; color: var(--accent-purple);" id="taskStatusTitle">LUXCODE görev durumu</strong>
+                    <p style="margin: 6px 0 12px 0;" id="taskStatusDetails">Görev oluşturuluyor. Gerçek backend durumu alındığında bu alan güncellenecek.</p>
                     <div class="code-snippet" id="taskStatusMeta"></div>
                 </div>
 
                 <div class="chat-bubble chat-lux" id="taskErrorCard" style="display:none;">
-                    <strong style="font-size: 11px; text-transform: uppercase; color: var(--accent-red);">Baglanti sorunu</strong>
-                    <p style="margin: 6px 0 12px 0;" id="taskErrorText">Backend yaniti alinamadi.</p>
+                    <strong style="font-size: 11px; text-transform: uppercase; color: var(--accent-red);">Bağlantı sorunu</strong>
+                    <p style="margin: 6px 0 12px 0;" id="taskErrorText">Backend yanıtı alınamadı.</p>
                     <div class="approval-actions">
                         <button class="action-btn btn-view-diff" type="button" onclick="retryCurrentTask()">Tekrar dene</button>
-                        <button class="action-btn btn-reject" type="button" onclick="resetToHome()">Ana ekrana don</button>
+                        <button class="action-btn btn-reject" type="button" onclick="resetToHome()">Ana ekrana dön</button>
                     </div>
                 </div>
 
@@ -1487,7 +1873,7 @@
                         Onayınız Bekleniyor
                     </div>
                     <div class="approval-summary">
-                        <span id="approvalSummaryText">Gorev guvenli inceleme icin onay bekliyor.</span>
+                        <span id="approvalSummaryText">Görev güvenli inceleme için onay bekliyor.</span>
                     </div>
                     <div class="approval-actions">
                         <button class="action-btn btn-view-diff" onclick="openRightPanel('review')">Değişiklikleri Gör (Sağ Panel)</button>
@@ -1505,13 +1891,13 @@
                         <span class="final-status success" id="finalStatus">BAŞARILI</span>
                     </div>
                     <div class="final-report-grid">
-                        <div class="report-item" id="finalFilesItem"><span>Degisen dosya</span><strong id="finalFiles">—</strong></div>
-                        <div class="report-item" id="finalTestsItem"><span>Dogrulama</span><strong id="finalTests">—</strong></div>
+                        <div class="report-item" id="finalFilesItem"><span>Değişen dosya</span><strong id="finalFiles">—</strong></div>
+                        <div class="report-item" id="finalTestsItem"><span>Doğrulama</span><strong id="finalTests">—</strong></div>
                         <div class="report-item" id="finalGitItem"><span>Durum</span><strong id="finalGit">—</strong></div>
-                        <div class="report-item" id="finalRollbackItem"><span>Sonraki guvenli adim</span><strong id="finalRollback">—</strong></div>
+                        <div class="report-item" id="finalRollbackItem"><span>Sonraki güvenli adım</span><strong id="finalRollback">—</strong></div>
                     </div>
                     <div class="final-report-body" id="finalReportBody">
-                        Gorev sonucu backend yaniti ile doldurulacak.
+                        Görev sonucu backend yanıtı ile doldurulacak.
                     </div>
                     <div class="final-report-actions">
                         <button class="action-btn btn-view-diff" onclick="openRightPanel('review')">Değişiklikleri incele</button>
@@ -1522,35 +1908,48 @@
             </div>
         </div>
 
-        <!-- SIKISTIRILMIS ALT GİRİŞ ALANI (DİGER ÇİZGİLERLE AYNI RENK VE İNCELİKTE) -->
+        <!-- SIKISTIRILMIS ALT G?R?? ALANI (D?GER Ã‡?ZG?LERLE AYNI RENK VE ?NCEL?KTE) -->
         <div class="docked-input-container" id="dockedInputContainer">
             <div class="omnibox">
                 <textarea placeholder="Görevi devam ettirmek için buraya yazın..." id="txtDockedInput"></textarea>
                 <div class="omnibox-controls">
-                    <!-- ALT BÖLÜMDE AYNI HİZAYLA YAN YANA YERLEŞEN SOL GRUP -->
+                    <!-- ALT BÃ–LÃœMDE AYNI H?ZAYLA YAN YANA YERLE?EN SOL GRUP -->
                     <div class="control-group-left">
-                        <button id="btnDockedAttach" class="badge-pill-flat" style="color: var(--lux-yellow); font-weight: bold; font-size: 15px;">+</button>
-                        <button class="badge-pill-flat">
+                        <button class="badge-pill-flat attachment-button" type="button" title="Dosya ekle">+</button>
+                        <button class="badge-pill-flat" type="button" data-omnibox-menu-trigger="access">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--lux-yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                                 <line x1="12" y1="8" x2="12" y2="12"/>
                                 <line x1="12" y1="16" x2="12.01" y2="16"/>
                             </svg>
-                            <span style="color: var(--text-main);">Tam erişim</span>
+                            <span style="color: var(--text-main);" data-control-label="access">Tam erişim</span>
                         </button>
-                        <button class="badge-pill-flat">
+                        <button class="badge-pill-flat" type="button" data-omnibox-menu-trigger="model">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--lux-yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                             </svg>
-                            <span style="color: var(--text-main);">5.5 Orta</span>
+                            <span style="color: var(--text-main);" data-control-label="model"></span>
                         </button>
+                        <div class="omnibox-menu" data-omnibox-menu="access">
+                            <button type="button" data-omnibox-choice="access" data-value="Onay iste">Onay iste</button>
+                            <button type="button" data-omnibox-choice="access" data-value="Sınırlı erişim">Sınırlı erişim</button>
+                            <button type="button" data-omnibox-choice="access" data-value="Tam erişim">Tam erişim</button>
+                        </div>
+                        <div class="omnibox-menu" data-omnibox-menu="model">
+                            <button type="button" data-omnibox-choice="model" data-value="Ollama">Ollama</button>
+                            <button type="button" data-omnibox-choice="model" data-value="Cloud Models">Cloud Models</button>
+                            <button type="button" data-omnibox-choice="model" data-value="Gemini 3.5 Flash">Gemini 3.5 Flash</button>
+                            <button type="button" data-omnibox-choice="model" data-value="DeepSeek Direct">DeepSeek Direct</button>
+                            <button type="button" data-omnibox-choice="model" data-value="Whale">Whale</button>
+                            <button type="button" data-omnibox-choice="model" data-value="Codex">Codex</button>
+                        </div>
                     </div>
-                    <!-- ALT BÖLÜMDE AYNI HİZAYLA YAN YANA YERLEŞEN SAĞ GRUP -->
+                    <!-- ALT BÃ–LÃœMDE AYNI H?ZAYLA YAN YANA YERLE?EN SA? GRUP -->
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <button class="mic-btn" title="Sesli Komut">
                             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
                         </button>
-                        <button class="btn-submit" onclick="submitDockedText()">
+                        <button class="btn-submit">
                             <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.08l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/></svg>
                         </button>
                     </div>
@@ -1559,7 +1958,7 @@
         </div>
     </div>
 
-    <!-- 3. SAĞ PANEL (SEKMELİ VE SÜRÜKLENEBİLİR) -->
+    <!-- 3. SA? PANEL (SEKMEL? VE SÃœRÃœKLENEB?L?R) -->
     <aside class="right-panel" id="rightPanel" aria-label="LUXCODE araç paneli">
         <div class="panel-resizer" id="resizer"></div>
         <div class="right-panel-head">
@@ -1584,12 +1983,12 @@
                     <div id="integrationList">
                         <button class="integration-row connection-row" type="button" data-connection-id="ollama" onclick="selectConnection('ollama')"><span class="integration-name"><span class="integration-mini-icon">OL</span>Ollama</span><strong class="status-pending">Durum bekleniyor</strong></button>
                         <button class="integration-row connection-row" type="button" data-connection-id="gemini" onclick="selectConnection('gemini')"><span class="integration-name"><span class="integration-mini-icon">GE</span>Gemini</span><strong class="status-pending">Durum bekleniyor</strong></button>
-                        <button class="integration-row connection-row" type="button" data-connection-id="claude" onclick="selectConnection('claude')"><span class="integration-name"><span class="integration-mini-icon">CL</span>Claude</span><strong class="status-pending">Durum bekleniyor</strong></button>
+                        <button class="integration-row connection-row" type="button" data-connection-id="cloud-models" onclick="selectConnection('cloud-models')"><span class="integration-name"><span class="integration-mini-icon">CM</span>Cloud Models</span><strong class="status-pending">Durum bekleniyor</strong></button>
                         <button class="integration-row connection-row" type="button" data-connection-id="deepseek" onclick="selectConnection('deepseek')"><span class="integration-name"><span class="integration-mini-icon">DS</span>DeepSeek</span><strong class="status-pending">Durum bekleniyor</strong></button>
                         <button class="integration-row connection-row" type="button" data-connection-id="whale" onclick="selectConnection('whale')"><span class="integration-name"><span class="integration-mini-icon">WH</span>Whale</span><strong class="status-pending">Durum bekleniyor</strong></button>
                         <button class="integration-row connection-row" type="button" data-connection-id="codex" onclick="selectConnection('codex')"><span class="integration-name"><span class="integration-mini-icon">CX</span>Codex</span><strong class="status-pending">Durum bekleniyor</strong></button>
                     </div>
-                    <button class="panel-primary-action" type="button" style="margin-top:12px;" onclick="openModelAddForm()">＋ Model ekle</button>
+                    <button class="panel-primary-action" type="button" style="margin-top:12px;" onclick="openModelAddForm()">+ Model ekle</button>
                     <div class="model-add-form" id="modelAddForm">
                         <label for="modelNameInput">Model veya sağlayıcı adı</label>
                         <input id="modelNameInput" type="text" maxlength="50" placeholder="Örn. Qwen, Mistral, OpenRouter">
@@ -1607,6 +2006,24 @@
                 </section>
 
                 <section class="panel-view" data-panel-view="review">
+                <div class="active-task-card" id="activeTaskPanelCard">
+                    <div class="panel-card">
+                        <button class="task-collapse-btn" type="button" id="btnCollapseTaskCard">Daralt</button>
+                        <h4>AKTİF GÖREV</h4>
+                        <div class="task-field">
+                            <span>KOMUT</span>
+                            <div id="activeTaskCommand">—</div>
+                        </div>
+                        <div class="task-field">
+                            <span>DURUM</span>
+                            <strong id="activeTaskStatus">—</strong>
+                        </div>
+                        <div class="task-field">
+                            <span>İLERLEME</span>
+                            <div id="activeTaskProgress">—</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="panel-toolbar">
                     <div class="panel-toolbar-group">
                         <button class="panel-chip active" type="button" data-review-filter="all">Tümü</button>
@@ -1625,8 +2042,8 @@
                     <span>Görev bir dosya değişikliği önerdiğinde fark, dosya listesi ve geri alma seçenekleri burada gösterilecek.</span>
                 </div>
                 <div class="panel-two-actions">
-                    <button class="panel-secondary-action" type="button" disabled>Geri al</button>
-                    <button class="panel-primary-action" type="button" disabled>Tam farkı aç</button>
+                    <button class="panel-secondary-action" type="button" data-workspace-refresh>Yenile</button>
+                    <button class="panel-primary-action" type="button" data-workspace-commit>Commit hazırla</button>
                 </div>
             </section>
 
@@ -1693,7 +2110,7 @@
                     <button class="panel-chip" type="button">Ekran görüntüleri</button>
                 </div></div>
                 <div class="evidence-timeline" id="evidenceTimeline">
-                    <div class="evidence-item"><strong>Kanıt bekleniyor</strong><span>Görev başladığında komutlar, doğrulamalar, raporlar ve dosya hash’leri kronolojik olarak burada tutulacak.</span></div>
+                    <div class="evidence-item"><strong>Kanıt bekleniyor</strong><span>Görev başladığında komutlar, doğrulamalar, raporlar ve dosya hashleri kronolojik olarak burada tutulacak.</span></div>
                 </div>
                 <div class="panel-two-actions">
                     <button class="panel-secondary-action" type="button" onclick="panelAction('Kanıt paketi henüz oluşmadı')">Paketi dışa aktar</button>
@@ -1724,13 +2141,13 @@
             </div>
         </aside>
 
-    <!-- ALT PANEL TERMINAL TRAY (YÜKSEKLİĞİ SÜRÜKLENEREK DEĞİŞTİRİLEBİLİR) -->
+    <!-- ALT PANEL TERMINAL TRAY (YÃœKSEKL↗ SÃœRÃœKLENEREK DE↗T?R?LEB?L?R) -->
     <div id="dockedTerminalTray">
-        <!-- Üst Sürükleme Tutamacı -->
+        <!-- Ãœst S?r?kleme Tutamac? -->
         <div class="terminal-resizer" id="terminalResizer"></div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <span style="color: var(--lux-yellow); font-size: 12px; font-weight: bold;">Terminal Ekranı</span>
-            <button class="terminal-close-btn" onclick="toggleTerminalDock()">Kapat</button>
+            <button class="terminal-close-btn">Kapat</button>
         </div>
         <div style="color: var(--accent-green); font-size: 12px; height: calc(100% - 30px); overflow-y: auto;" id="dockedTerminalLog">
             $ luxcode task --status<br>
@@ -1739,68 +2156,16 @@
         </div>
     </div>
 
-    <script src="/static/luxcode_v1/luxcode_api.js"></script>
-    <script src="/static/luxcode_v1/luxcode_state.js"></script>
+    <script src="/static/luxcode_v1/luxcode_api.js?v=restored-ui-20260622-2000"></script>
+    <script src="/static/luxcode_v1/luxcode_state.js?v=restored-ui-20260622-2000"></script>
     <script>
         const terminalTray = document.getElementById("dockedTerminalTray");
         const terminalResizer = document.getElementById("terminalResizer");
         const rightPanel = document.getElementById("rightPanel");
         const resizer = document.getElementById("resizer");
         const uiToast = document.getElementById("uiToast");
-        const BOOT_SESSION_KEY = "luxcode_v1_boot_session";
-        const BOOT_TOOLING_KEY = "luxcode_selected_workspace_tool";
-        const BOOT_CONTEXT_KEYS = [
-            "luxcode_last_task_id",
-            "luxcode_task_snapshot",
-            "luxcode_session_id",
-            "luxcode_last_active_task",
-            "luxcode_pending_workspace",
-            "luxcode_last_active_input",
-            "luxcode_last_approval_state",
-        ];
         let isResizingTerminal = false;
         let isResizing = false;
-
-        function clearLegacyFrontendState() {
-            try {
-                sessionStorage.clear();
-            } catch (_) {}
-
-            const seenTool = localStorage.getItem(BOOT_TOOLING_KEY);
-            localStorage.removeItem(BOOT_SESSION_KEY);
-            localStorage.removeItem("luxcode_task_cache");
-            localStorage.removeItem("luxcode_active_task_id");
-            localStorage.removeItem("luxcode_workspace_context");
-            localStorage.removeItem("luxcode_last_chat_snapshot");
-            BOOT_CONTEXT_KEYS.forEach((key) => localStorage.removeItem(key));
-
-            if (seenTool) {
-                localStorage.setItem(BOOT_TOOLING_KEY, seenTool);
-            }
-        }
-
-        function ensureFreshLandingSession() {
-            const params = new URLSearchParams(window.location.search || "");
-            const hasSession = params.has("session_id") && params.get("session_id");
-            const isExplicitBoot = params.has("boot") || params.has("v");
-
-            if (!hasSession && !isExplicitBoot) {
-                clearLegacyFrontendState();
-                const activePanel = document.getElementById("rightPanel");
-                if (activePanel) {
-                    activePanel.style.display = "none";
-                    document.getElementById("btnRightPanelToggle")?.classList.remove("active");
-                }
-                clearWorkspaceContext();
-            }
-            if (params.has("clear") && params.get("clear") === "1") {
-                clearLegacyFrontendState();
-            }
-
-            const now = new Date().toISOString();
-            localStorage.setItem(BOOT_SESSION_KEY, now);
-            window.history.replaceState({}, document.title, `${window.location.pathname}?boot=${encodeURIComponent(now)}`);
-        }
 
         const panelTitles = {
             review: "Değişiklikler",
@@ -1811,6 +2176,7 @@
             environment: "Ortam",
             integrations: "Modeller"
         };
+        window.LuxCodePanelTitles = panelTitles;
 
         function showToast(message) {
             uiToast.textContent = message;
@@ -1821,6 +2187,15 @@
 
         function panelAction(message) {
             showToast(message);
+        }
+
+        function escapePanelHtml(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
         }
 
         function openBrowserPreview() {
@@ -1837,7 +2212,7 @@
         const builtInConnections = {
             ollama: "Ollama",
             gemini: "Gemini",
-            claude: "Claude",
+            "cloud-models": "Cloud Models",
             deepseek: "DeepSeek",
             whale: "Whale",
             codex: "Codex"
@@ -1857,33 +2232,13 @@
             vscode: '<span class="connection-option-icon tool-vscode">&lt;/&gt;</span>',
             github: '<span class="connection-option-icon tool-github">GH</span>',
             "github-desktop": '<span class="connection-option-icon tool-github-desktop">GD</span>',
-            "file-explorer": '<span class="connection-option-icon tool-file-explorer">▰</span>',
+            "file-explorer": '<span class="connection-option-icon tool-file-explorer">□</span>',
             terminal: '<span class="connection-option-icon tool-terminal">&gt;_</span>',
             "git-bash": '<span class="connection-option-icon tool-git-bash">GB</span>',
             wsl: '<span class="connection-option-icon tool-wsl">WS</span>'
         };
 
         let selectedWorkspaceTool = localStorage.getItem("luxcode_selected_workspace_tool") || "vscode";
-        const workspaceContext = {
-            selectedFiles: [],
-            selectedFolders: [],
-            repositoryRoot: "",
-            requestedFiles: [],
-        };
-        let luxCodeMode = localStorage.getItem("luxcode_mode_v1") || "agent";
-        let luxCodeAgentSessionId = localStorage.getItem("luxcode_agent_session_id");
-        if (!luxCodeAgentSessionId) {
-            luxCodeAgentSessionId = "lux-agent-" + Date.now().toString(36) + "-" + Math.random().toString(16).slice(2);
-            localStorage.setItem("luxcode_agent_session_id", luxCodeAgentSessionId);
-        }
-
-        function setLuxCodeMode(mode, silent = false) {
-            luxCodeMode = mode === "chat" ? "chat" : "agent";
-            localStorage.setItem("luxcode_mode_v1", luxCodeMode);
-            document.getElementById("btnChatMode")?.classList.toggle("active", luxCodeMode === "chat");
-            document.getElementById("btnAgentMode")?.classList.toggle("active", luxCodeMode === "agent");
-            if (!silent) showToast(luxCodeMode === "agent" ? "Coder modu aktif" : "Chat modu aktif");
-        }
 
         function renderSelectedWorkspaceTool(toolId) {
             const iconHost = document.getElementById("connectionLauncherSelectedIcon");
@@ -1932,7 +2287,7 @@
             rows.forEach(row => row.classList.toggle("highlight", row.dataset.connectionId === connectionId));
             const target = document.querySelector(`[data-connection-id="${CSS.escape(connectionId)}"]`);
             target?.scrollIntoView({ block: "center", behavior: "smooth" });
-            const label = builtInConnections[connectionId] || target?.querySelector(".integration-name")?.textContent?.trim() || "Bağlantı";
+            const label = builtInConnections[connectionId] || target?.querySelector(".integration-name")?.textContent?.trim() || "Bağlant?";
             showToast(`${label} bağlantı ayrıntıları açıldı`);
         }
 
@@ -1948,155 +2303,6 @@
             document.getElementById("modelAddForm")?.classList.remove("open");
             const input = document.getElementById("modelNameInput");
             if (input) input.value = "";
-        }
-
-        function uniqueEntries(values) {
-            const seen = new Set();
-            const result = [];
-            for (const value of values || []) {
-                const normalized = String(value || "").replace(/^\\s+|\\s+$/g, "");
-                if (!normalized || seen.has(normalized)) continue;
-                seen.add(normalized);
-                result.push(normalized);
-            }
-            return result;
-        }
-
-        function normalizeWorkspacePath(value) {
-            const text = String(value || "")
-                .replace(/^\\s+|\\s+$/g, "")
-                .replace(/\\\\/g, "/");
-            if (!text) return "";
-            return text
-                .replace(/^[a-zA-Z]:[\\/]*fakepath[\\/]+/i, "")
-                .replace(/^fakepath[\\/]+/i, "")
-                .replace(/\/+$/g, "");
-        }
-
-        function inferRepositoryRootFromEntries(entries) {
-            const candidates = [];
-            for (const entry of entries) {
-                const clean = normalizeWorkspacePath(entry);
-                if (!clean) continue;
-                const withColon = /^[A-Za-z]:/.test(clean);
-                if (withColon) {
-                    const parts = clean.split("/");
-                    if (parts.length <= 1 || /^[a-zA-Z]:$/.test(parts[0])) continue;
-                    candidates.push(parts.slice(0, -1).join("/"));
-                    continue;
-                }
-                if (clean.includes("/")) {
-                    const root = clean.split("/")[0];
-                    if (root && root !== ".") candidates.push(root);
-                }
-            }
-            return candidates.length ? candidates[0] : "";
-        }
-
-        function buildScopeItems(state) {
-            const items = [];
-            (state.selectedFiles || []).forEach(file => {
-                items.push({ path: file, type: "file", rights: ["read", "write"], duration: "current_task" });
-            });
-            (state.selectedFolders || []).forEach(folder => {
-                items.push({ path: folder, type: "folder", recursive: true, rights: ["read", "write"], duration: "current_task" });
-            });
-            return items;
-        }
-
-        function workspaceSummaryElement() {
-            const scopeBar = document.getElementById("scopeBar");
-            if (!scopeBar) return null;
-            return scopeBar.querySelector("span:last-child");
-        }
-
-        function renderWorkspaceContext() {
-            const summary = workspaceSummaryElement();
-            const repositoryRoot = workspaceContext.repositoryRoot || (workspaceContext.selectedFolders[0] || workspaceContext.selectedFiles[0] || "main");
-            if (summary) summary.textContent = `☁ ${repositoryRoot}`;
-        }
-
-        function resolveWorkspacePayload() {
-            const selectedFiles = uniqueEntries(workspaceContext.selectedFiles);
-            const selectedFolders = uniqueEntries(workspaceContext.selectedFolders);
-            const requestedFiles = uniqueEntries([
-                ...selectedFiles,
-                ...workspaceContext.requestedFiles
-            ]);
-            const repositoryRoot = workspaceContext.repositoryRoot
-                || inferRepositoryRootFromEntries([...selectedFiles, ...selectedFolders])
-                || null;
-            return {
-                selected_files: selectedFiles,
-                requested_files: requestedFiles,
-                selected_folders: selectedFolders,
-                repository_root: repositoryRoot,
-                scope_items: buildScopeItems({ selectedFiles, selectedFolders })
-            };
-        }
-
-        function setWorkspaceContext(payload = {}) {
-            workspaceContext.selectedFiles = uniqueEntries(payload.selectedFiles || []);
-            workspaceContext.selectedFolders = uniqueEntries(payload.selectedFolders || []);
-            workspaceContext.requestedFiles = uniqueEntries(payload.requestedFiles || []);
-            workspaceContext.repositoryRoot = normalizeWorkspacePath(payload.repositoryRoot || payload.repository_root || workspaceContext.repositoryRoot || "");
-            renderWorkspaceContext();
-        }
-
-        function clearWorkspaceContext() {
-            setWorkspaceContext({ selectedFiles: [], selectedFolders: [], requestedFiles: [], repositoryRoot: "" });
-        }
-
-        function readPickerPath(file) {
-            if (!file) return "";
-            const pathValue = file.path || file.webkitRelativePath || file.name || "";
-            return normalizeWorkspacePath(pathValue);
-        }
-
-        function appendWorkspaceSelection(items = []) {
-            const selectedFiles = [];
-            const selectedFolders = [];
-
-            (items || []).forEach(file => {
-                const normalized = readPickerPath(file);
-                if (!normalized) return;
-
-                if (normalized.includes("/") || normalized.includes("\\")) {
-                    if (normalized.match(/^[a-zA-Z]:/) || normalized.startsWith("/")) {
-                        selectedFiles.push(normalized);
-                        const folderParts = normalized.split("/");
-                        if (folderParts.length > 1) selectedFolders.push(folderParts.slice(0, -1).join("/"));
-                        return;
-                    }
-                    const segs = normalized.split("/");
-                    if (segs.length > 1) selectedFolders.push(segs[0]);
-                    selectedFiles.push(normalized);
-                } else {
-                    selectedFiles.push(normalized);
-                }
-            });
-
-            workspaceContext.selectedFiles = uniqueEntries([...workspaceContext.selectedFiles, ...selectedFiles]);
-            workspaceContext.selectedFolders = uniqueEntries([...workspaceContext.selectedFolders, ...selectedFolders]);
-            if (!workspaceContext.repositoryRoot) {
-                const inferred = inferRepositoryRootFromEntries([...selectedFiles, ...selectedFolders]);
-                if (inferred) workspaceContext.repositoryRoot = inferred;
-            }
-            renderWorkspaceContext();
-        }
-
-        function openLandingPicker(useFolder = false) {
-            const filePicker = document.getElementById("landingFileInput");
-            const folderPicker = document.getElementById("landingFolderInput");
-            if (useFolder && folderPicker) {
-                folderPicker.value = "";
-                folderPicker.click();
-                return;
-            }
-            if (filePicker) {
-                filePicker.value = "";
-                filePicker.click();
-            }
         }
 
         function connectionIdFromName(name) {
@@ -2118,7 +2324,7 @@
             row.className = "integration-row connection-row";
             row.type = "button";
             row.dataset.connectionId = model.id;
-            row.innerHTML = `<span class="integration-name"><span class="integration-mini-icon">${initialsForConnection(model.name)}</span>${model.name}</span><strong class="status-pending">Yapılandırılmadı</strong>`;
+            row.innerHTML = `<span class="integration-name"><span class="integration-mini-icon">${initialsForConnection(model.name)}</span>${model.name}</span><strong class="status-pending">Yap?land?r?lmad?</strong>`;
             row.addEventListener("click", () => selectConnection(model.id));
             integrationList.appendChild(row);
         }
@@ -2128,11 +2334,11 @@
             const select = document.getElementById("modelTypeSelect");
             const name = input?.value.trim();
             if (!name) {
-                showToast("Model adını yazın");
+                showToast("Model ad?n? yaz?n");
                 input?.focus();
                 return;
             }
-            const model = { id: connectionIdFromName(name), name, type: select?.value || "API sağlayıcı" };
+            const model = { id: connectionIdFromName(name), name, type: select?.value || "API sağlay?c?" };
             const saved = JSON.parse(localStorage.getItem("luxcode_custom_models_v1") || "[]");
             saved.push(model);
             localStorage.setItem("luxcode_custom_models_v1", JSON.stringify(saved));
@@ -2150,31 +2356,31 @@
         }
 
         const taskStatusLabels = {
-            created: "Gorev olusturuldu",
-            routed: "Uygun calisma motoru seciliyor",
+            created: "Görev oluşturuldu",
+            routed: "Uygun çalışma motoru seçiliyor",
             diagnosing: "Proje inceleniyor",
-            diagnosis_ready: "Inceleme hazir",
-            patch_drafting: "Cozum taslagi hazirlaniyor",
-            patch_ready: "Cozum taslagi hazir",
+            diagnosis_ready: "İnceleme hazır",
+            patch_drafting: "Çözüm taslağı hazırlanıyor",
+            patch_ready: "Çözüm taslağı hazır",
             awaiting_approval: "Onay bekleniyor",
-            approval_verified: "Onay dogrulandi",
-            apply_prepared: "Uygulama hazirlandi",
-            applying: "Uygulaniyor",
-            applied: "Uygulandi",
-            verification_prepared: "Dogrulama hazirlandi",
-            verifying: "Dogrulaniyor",
-            verified: "Dogrulandi",
+            approval_verified: "Onay doğrulandı",
+            apply_prepared: "Uygulama hazırlandı",
+            applying: "Uygulanıyor",
+            applied: "Uygulandı",
+            verification_prepared: "Doğrulama hazirlandi",
+            verifying: "Doğrulanıyor",
+            verified: "Doğrulandı",
             recovery_review: "Kurtarma incelemesi",
-            rollback_recommended: "Geri alma oneriliyor",
-            completed: "Tamamlandi",
-            blocked: "Islem engellendi",
-            failed: "Islem basarisiz",
-            cancelled: "Iptal edildi",
-            paused: "Duraklatildi",
+            rollback_recommended: "Geri alma öneriliyor",
+            completed: "Tamamlandı",
+            blocked: "İşlem engellendi",
+            failed: "İşlem başarısız",
+            cancelled: "İptal edildi",
+            paused: "Duraklatıldı",
             awaiting_scope_permission: "Kapsam izni bekleniyor",
             awaiting_irreversible_confirmation: "Kritik onay bekleniyor",
-            autonomy_paused: "Otonomi duraklatildi",
-            budget_exhausted: "Butce limiti doldu"
+            autonomy_paused: "Otonomi duraklatıldı",
+            budget_exhausted: "Bütçe limiti doldu"
         };
 
         function taskStatus(task) {
@@ -2182,7 +2388,7 @@
         }
 
         function friendlyTaskStatus(status) {
-            return taskStatusLabels[status] || "Gorev durumu guncelleniyor";
+            return taskStatusLabels[status] || "Görev durumu güncelleniyor";
         }
 
         function progressFromTask(task) {
@@ -2219,165 +2425,41 @@
 
             if (state === "working" || state === "approval") {
                 pipelineStep3.className = state === "approval" ? "pipeline-step completed" : "pipeline-step active";
-                lblPipelineStep3.textContent = state === "approval" ? "Onay bekleniyor" : "Gorev durumu aliniyor...";
+                lblPipelineStep3.textContent = state === "approval" ? "Onay bekleniyor" : "Görev durumu alınıyor...";
             } else if (state === "completed") {
                 pipelineStep3.className = "pipeline-step completed";
-                lblPipelineStep3.textContent = "Gorev tamamlandi";
+                lblPipelineStep3.textContent = "Görev tamamlandı";
             } else if (state === "error") {
                 pipelineStep3.className = "pipeline-step";
-                lblPipelineStep3.textContent = "Baglanti sorunu";
+                lblPipelineStep3.textContent = "Bağlantı sorunu";
             }
         }
 
         function buildCreatePayload(taskText) {
-            const resolvedWorkspace = resolveWorkspacePayload();
             return {
                 original_request: taskText,
-                mode: "plan",
+                mode: "read_only_analysis",
                 permission_mode: "approval_required",
                 suspected_files: [],
                 changed_files: [],
                 traceback_text: "",
-                repository_root: resolvedWorkspace.repository_root || ".",
-                selected_files: resolvedWorkspace.selected_files,
-                requested_files: resolvedWorkspace.requested_files,
+                selected_files: [],
+                requested_files: [],
                 forbidden_files: [],
-                scope_items: resolvedWorkspace.scope_items,
-                selected_folders: resolvedWorkspace.selected_folders,
+                scope_items: [],
+                selected_folders: [],
                 autonomy_budgets: {}
             };
         }
 
-        function buildAgentPayload(taskText) {
-            const resolvedWorkspace = resolveWorkspacePayload();
-            return {
-                prompt: taskText,
-                workspace_root: resolvedWorkspace.repository_root || ".",
-                session_id: luxCodeAgentSessionId,
-                max_steps: 12
-            };
-        }
-
-        function escapeAgentHtml(value) {
-            return String(value ?? "")
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#39;");
-        }
-
-        function formatAgentToolItem(item) {
-            const tool = item?.tool || item?.tool_call?.function?.name || "tool";
-            const params = item?.params || item?.tool_call?.function?.arguments || {};
-            const output = item?.result || {};
-            const success = Boolean(output.success || output.ok);
-            const result = output.result || {};
-            const shortResult = typeof result === "string"
-                ? result.slice(0, 800)
-                : JSON.stringify(result, null, 2).slice(0, 800);
-            const target = params.path || params.directory || params.command || params.code || "";
-            return {
-                tool: escapeAgentHtml(tool),
-                target: escapeAgentHtml(target),
-                success,
-                text: escapeAgentHtml(shortResult || output.error || "")
-            };
-        }
-
-        function renderAgentResult(agentResult, originalText) {
-            const calls = Array.isArray(agentResult?.tool_calls) ? agentResult.tool_calls : (Array.isArray(agentResult?.results) ? agentResult.results : []);
-            const completed = calls.filter(item => (item.result || {}).success || (item.result || {}).ok).length;
-            const failed = calls.length - completed;
-            document.getElementById("userTaskText").textContent = originalText;
-            document.getElementById("taskStatusTitle").textContent = agentResult?.ok ? "Coder tamamlandi" : "Coder hata verdi";
-            document.getElementById("lblPipelineStep3").textContent = agentResult?.ok ? "Coder tamamlandi" : "Coder hata verdi";
-            document.getElementById("pipelineStep3").className = agentResult?.ok ? "pipeline-step completed" : "pipeline-step";
-            document.getElementById("taskStatusDetails").textContent = `${agentResult?.response || agentResult?.message || "Agent yaniti alindi"} · Workspace: ${agentResult?.workspace_root || "."}`;
-            const toolHtml = calls.map(item => {
-                const view = formatAgentToolItem(item);
-                const klass = view.success ? "success" : "failed";
-                const state = view.success ? "OK" : "HATA";
-                return `<div class="agent-tool-item ${klass}"><strong>${state} ${view.tool}</strong>${view.target ? ` · ${view.target}` : ""}<br>${view.text}</div>`;
-            }).join("");
-            document.getElementById("taskStatusMeta").innerHTML = `<div>Tool adimi: ${calls.length} · Basarili: ${completed} · Hatali: ${failed}</div><div class="agent-tool-list">${toolHtml}</div>`;
-            document.getElementById("metricProgress").textContent = agentResult?.ok ? "%100" : "%0";
-            document.getElementById("metricDone").textContent = String(completed);
-            document.getElementById("metricRemaining").textContent = String(failed);
-            document.getElementById("metricCost").textContent = "0.0 local";
-            document.getElementById("metricTokens").textContent = "tool";
-            setTaskState(agentResult?.ok ? "completed" : "error");
-            if (agentResult?.ok) {
-                document.getElementById("finalReportTitle").textContent = "Coder görevi tamamlandı";
-                document.getElementById("finalReportBody").innerHTML = `<div class="agent-tool-list">${toolHtml}</div>`;
-                setReportItem("finalFilesItem", "finalFiles", String(completed));
-                setReportItem("finalTestsItem", "finalTests", "Agent tool doğrulaması");
-                setReportItem("finalGitItem", "finalGit", "Yerel çalışma");
-                setReportItem("finalRollbackItem", "finalRollback", "Backup/log aktif");
-            } else {
-                renderTaskError({ normalized: true, message: agentResult?.response || agentResult?.message || "Agent gorevi basarisiz", code: agentResult?.status || "agent_failed", detail: agentResult });
-            }
-        }
-
-        function renderAgentStreamEvent(events, originalText) {
-            const calls = Array.isArray(events) ? events : [];
-            const completed = calls.filter((item) => item?.status === "done" || (item.result || {}).success || (item.result || {}).ok).length;
-            const failed = calls.filter((item) => item?.status === "failed" || ((item.result || {}).success === false && !(item.result || {}).ok)).length;
-            document.getElementById("userTaskText").textContent = originalText;
-            document.getElementById("taskStatusTitle").textContent = calls.length ? "Coder çalışıyor..." : "Coder hazır";
-            document.getElementById("lblPipelineStep3").textContent = "Coder adımı";
-            document.getElementById("pipelineStep3").className = "pipeline-step active";
-            document.getElementById("taskStatusDetails").textContent = "Coder tool akışı izleniyor.";
-            const toolHtml = calls.map((item) => {
-                const view = formatAgentToolItem({
-                    tool: item?.tool || "tool",
-                    params: item?.params || {},
-                    result: item?.result || (item?.status === "done" || item?.status === "failed" ? { success: item.status === "done" } : {}),
-                });
-                const klass = item?.status === "running" ? "running" : (item?.status === "failed" ? "failed" : "success");
-                const state = item?.status === "running" ? "ÇALIŞIYOR" : (item?.status === "failed" ? "HATA" : "OK");
-                return `<div class="agent-tool-item ${klass}"><strong>${state} ${view.tool}</strong>${view.target ? ` · ${view.target}` : ""}<br>${view.text}</div>`;
-            }).join("");
-            document.getElementById("taskStatusMeta").innerHTML = `<div>Tool adimi: ${calls.length} · Basarili: ${completed} · Hatali: ${failed}</div><div class="agent-tool-list">${toolHtml}</div>`;
-            document.getElementById("metricProgress").textContent = `${calls.length ? Math.max(1, Math.round((completed / Math.max(calls.length, 1)) * 100)) : 0}%`;
-            document.getElementById("metricDone").textContent = String(completed);
-            document.getElementById("metricRemaining").textContent = String(failed);
-        }
-
-        async function runAgentFromInput(task) {
-            document.getElementById("taskStatusDetails").textContent = "Coder agent backend'e baglaniyor.";
-            document.getElementById("taskStatusMeta").textContent = "";
-            setTaskState("working");
-            const events = [];
-            const eventByTool = new Map();
-            const agentResult = await window.LuxCodeApi.runLuxCodeAgent(
-                buildAgentPayload(task),
-                {
-                    timeoutMs: 90000,
-                    stream: true,
-                    onEvent(event) {
-                        if (event?.type !== "tool") {
-                            return;
-                        }
-                        const step = event?.step != null ? Number(event.step) : (events.length + 1);
-                        const current = eventByTool.get(step) || {};
-                        eventByTool.set(step, { ...current, ...event });
-                        const ordered = [...eventByTool.values()].sort((a, b) => Number(a.step || 0) - Number(b.step || 0));
-                        events.length = 0;
-                        events.push(...ordered);
-                        renderAgentStreamEvent(events, task);
-                    },
-                },
-            );
-            renderAgentResult(agentResult, task);
-            showToast(agentResult?.ok ? "Coder görevi tamamlandı" : "Coder hata verdi");
-        }
-
         async function simulateSend() {
+            if (window.LuxCodeConversationController) {
+                return window.LuxCodeConversationController.submitLanding();
+            }
             const input = document.getElementById("txtLandingInput");
             const task = input.value.trim();
             if (!task) {
-                showToast("Once bir gorev yazin");
+                showToast("Önce bir görev yazın");
                 input.focus();
                 return;
             }
@@ -2386,23 +2468,19 @@
             window.LuxCodeTaskState.resetTaskState();
             window.LuxCodeTaskState.state.submittedText = task;
             document.getElementById("userTaskText").textContent = task;
-            document.getElementById("taskStatusDetails").textContent = "Gorev backend tarafinda olusturuluyor.";
+            document.getElementById("taskStatusDetails").textContent = "Görev backend tarafında oluşturuluyor.";
             document.getElementById("taskStatusMeta").textContent = "";
             setTaskState("working");
 
             try {
-                if (luxCodeMode === "agent") {
-                    await runAgentFromInput(task);
-                    return;
-                }
                 const createdTask = await window.LuxCodeApi.createLuxCodeTask(buildCreatePayload(task), { timeoutMs: 20000 });
                 const taskId = createdTask?.task_id || createdTask?.id;
-                if (!taskId) throw { normalized: true, message: "Backend gorev kimligi dondurmedi", code: "missing_task_id", detail: createdTask };
+                if (!taskId) throw { normalized: true, message: "Backend görev kimliği döndürmedi", code: "missing_task_id", detail: createdTask };
                 window.LuxCodeTaskState.setCurrentTask(createdTask);
                 renderTask(createdTask);
                 window.LuxCodeTaskState.startTaskPolling(taskId);
                 window.LuxCodeTaskState.startAutoAdvance(taskId);
-                showToast(`Gorev olusturuldu: ${taskId}`);
+                showToast(`Görev oluşturuldu: ${taskId}`);
             } catch (error) {
                 renderTaskError(window.LuxCodeApi.normalizeApiError(error));
             } finally {
@@ -2417,11 +2495,13 @@
             document.getElementById("txtLandingInput").value = "";
             document.getElementById("txtDockedInput").value = "";
             document.getElementById("taskErrorText").textContent = "";
-            clearWorkspaceContext();
             setTaskState("home");
         }
 
         function submitDockedText() {
+            if (window.LuxCodeConversationController) {
+                return window.LuxCodeConversationController.submitDocked();
+            }
             const input = document.getElementById("txtDockedInput");
             const value = input.value.trim();
             if (!value) {
@@ -2442,17 +2522,17 @@
             const engine = task.active_engine && task.active_engine !== "-" ? task.active_engine : "";
             const model = task.active_model && task.active_model !== "-" ? task.active_model : "";
 
-            document.getElementById("userTaskText").textContent = task.original_request || window.LuxCodeTaskState.state.submittedText || "Gorev";
+            document.getElementById("userTaskText").textContent = task.original_request || window.LuxCodeTaskState.state.submittedText || "Görev";
             document.getElementById("taskStatusTitle").textContent = friendlyTaskStatus(status);
             document.getElementById("lblPipelineStep3").textContent = friendlyTaskStatus(status);
             document.getElementById("pipelineStep3").className = window.LuxCodeTaskState.isTerminalTaskState(status) ? "pipeline-step completed" : "pipeline-step active";
 
             const detailParts = [
-                `Gorev kimligi: ${task.task_id || "bekleniyor"}`,
-                `Ilerleme: %${progress}`,
+                `Görev kimliği: ${task.task_id || "bekleniyor"}`,
+                `İlerleme: %${progress}`,
             ];
-            if (nextAction) detailParts.push(`Sonraki adim: ${nextAction}`);
-            document.getElementById("taskStatusDetails").textContent = detailParts.join(" · ");
+            if (nextAction) detailParts.push(`Sonraki adım: ${nextAction}`);
+            document.getElementById("taskStatusDetails").textContent = detailParts.join(" ? ");
 
             const meta = [];
             if (completed.length) meta.push(`Tamamlanan: ${completed.join(", ")}`);
@@ -2474,13 +2554,13 @@
                 if (nextAction) approvalDetails.push(nextAction);
                 if (approval.patch_id) approvalDetails.push(`Patch: ${approval.patch_id}`);
                 if (changed.length) approvalDetails.push(`Dosyalar: ${changed.join(", ")}`);
-                document.getElementById("approvalSummaryText").textContent = approvalDetails.join(" · ") || "Gorev onay bekliyor. Onay baglantisi sonraki asamada hazirlanacak.";
+                document.getElementById("approvalSummaryText").textContent = approvalDetails.join(" • ") || "Görev onay bekliyor. Onay bağlantısı sonraki aşamada hazırlanacak.";
                 setTaskState("approval");
             } else if (status === "completed") {
                 renderFinalReport(task);
             } else if (["blocked", "failed", "cancelled"].includes(status)) {
                 const reasons = Array.isArray(task.blocked_reasons) && task.blocked_reasons.length
-                    ? task.blocked_reasons.join(" · ")
+                    ? task.blocked_reasons.join(" ? ")
                     : task.error || nextAction || friendlyTaskStatus(status);
                 renderTaskError({ normalized: true, message: reasons, code: status, detail: task });
             } else {
@@ -2530,21 +2610,23 @@
             const status = document.getElementById("finalStatus");
             status.textContent = "TAMAMLANDI";
             status.className = "final-status success";
-            document.getElementById("finalReportTitle").textContent = "Gorev tamamlandi";
+            document.getElementById("finalReportTitle").textContent = "Görev tamamlandı";
             setReportItem("finalFilesItem", "finalFiles", Array.isArray(task.changed_files) && task.changed_files.length ? task.changed_files.length : "");
             setReportItem("finalTestsItem", "finalTests", task.verification_summary?.summary ? JSON.stringify(task.verification_summary.summary) : "");
             setReportItem("finalGitItem", "finalGit", friendlyTaskStatus(taskStatus(task)));
             setReportItem("finalRollbackItem", "finalRollback", task.next_safe_action || "");
-            document.getElementById("finalReportBody").textContent = task.next_safe_action || "Gorev terminal duruma ulasti. Ayrintilar backend yanitinda mevcut alanlarla sinirlidir.";
+            document.getElementById("finalReportBody").textContent = task.next_safe_action || "Görev terminal duruma ulaştı. Ayrıntılar backend yanıtında mevcut alanlarla sınırlıdır.";
             setTaskState("completed");
         }
 
         function approveTask() {
-            showToast("Onay baglantisi hazirlaniyor");
+            if (window.LuxCodeConversationController) return window.LuxCodeConversationController.approve();
+            showToast("Onay bağlantısı hazırlanıyor");
         }
 
         function rejectTask() {
-            showToast("Onay baglantisi hazirlaniyor");
+            if (window.LuxCodeConversationController) return window.LuxCodeConversationController.reject();
+            showToast("Onay bağlantısı hazırlanıyor");
         }
 
         function switchPanelTab(tabName) {
@@ -2561,6 +2643,9 @@
             rightPanel.style.display = "flex";
             document.getElementById("btnRightPanelToggle").classList.add("active");
             switchPanelTab(tabName);
+            if (["review", "files", "tests", "evidence", "environment", "integrations"].includes(tabName)) {
+                refreshActiveWorkspace(`panel_${tabName}`);
+            }
         }
 
         function closeRightPanel() {
@@ -2590,7 +2675,394 @@
         function toggleSidebar() {
             const sidebar = document.getElementById("leftSidebar");
             sidebar.classList.toggle("collapsed");
-            terminalTray.style.left = sidebar.classList.contains("collapsed") ? "56px" : "250px";
+            terminalTray.style.left = "auto";
+            window.LuxCodeConversationController?.updateScrollIndicator?.();
+        }
+
+        function loadSidebarProjects() {
+            const blockedDemoNames = new Set(["LUX.3", "LUXDEEP", "luxviai", "LUXCODE TEST"]);
+            try {
+                const saved = JSON.parse(localStorage.getItem("luxcode_sidebar_projects") || "[]");
+                if (!Array.isArray(saved)) return [];
+                return saved.filter(project => project?.name && project?.path && !blockedDemoNames.has(project.name));
+            } catch (_) {
+                return [];
+            }
+        }
+
+        const sidebarState = {
+            plugins: JSON.parse(localStorage.getItem("luxcode_sidebar_plugins") || '{"attachments":true,"codeCards":true,"evidence":false}'),
+            settings: JSON.parse(localStorage.getItem("luxcode_sidebar_settings") || '{"compact":false,"sound":false,"autoScroll":true}'),
+            automations: JSON.parse(localStorage.getItem("luxcode_sidebar_automations") || "[]"),
+            projects: loadSidebarProjects(),
+            activeProject: localStorage.getItem("luxcode_sidebar_active_project") || ""
+        };
+        const workspaceState = { snapshot: null, lastError: "" };
+        if (!sidebarState.projects.some(project => project.name === sidebarState.activeProject)) sidebarState.activeProject = "";
+        saveSidebarState();
+
+        function saveSidebarState() {
+            localStorage.setItem("luxcode_sidebar_plugins", JSON.stringify(sidebarState.plugins));
+            localStorage.setItem("luxcode_sidebar_settings", JSON.stringify(sidebarState.settings));
+            localStorage.setItem("luxcode_sidebar_automations", JSON.stringify(sidebarState.automations));
+            localStorage.setItem("luxcode_sidebar_projects", JSON.stringify(sidebarState.projects));
+            localStorage.setItem("luxcode_sidebar_active_project", sidebarState.activeProject);
+            window.LuxCodeSidebar = {
+                getSelectedProject: () => sidebarState.projects.find(project => project.name === sidebarState.activeProject) || null,
+            };
+        }
+
+        function selectedSidebarProject() {
+            return sidebarState.projects.find(project => project.name === sidebarState.activeProject) || null;
+        }
+
+        function renderModelProviderStatus(snapshot) {
+            const providers = snapshot?.providers || {};
+            document.querySelectorAll("[data-connection-id]").forEach(row => {
+                const id = row.dataset.connectionId;
+                const status = row.querySelector("strong");
+                const provider = providers[id];
+                if (!status || !provider) return;
+                status.textContent = provider.configured ? "Hazır" : "Eksik";
+                status.className = provider.configured ? "status-ready" : "status-pending";
+                row.title = provider.detail || "";
+            });
+        }
+
+        function renderWorkspaceSnapshot(snapshot) {
+            workspaceState.snapshot = snapshot || null;
+            const project = snapshot?.project || selectedSidebarProject();
+            const git = snapshot?.git || {};
+            const files = Array.isArray(snapshot?.files) ? snapshot.files : [];
+            const tests = Array.isArray(snapshot?.tests?.suggested) ? snapshot.tests.suggested : [];
+
+            document.getElementById("envProject") && (document.getElementById("envProject").textContent = project?.name || "—");
+            document.getElementById("envWorkspace") && (document.getElementById("envWorkspace").textContent = project?.path || "—");
+            document.getElementById("envBranch") && (document.getElementById("envBranch").textContent = git.branch || "—");
+            document.getElementById("envGitState") && (document.getElementById("envGitState").textContent = git.dirty ? `${git.changed_count || 0} değişiklik` : "Temiz");
+            document.getElementById("envMode") && (document.getElementById("envMode").textContent = "Yerel kişisel çalışma");
+            document.getElementById("envBackend") && (document.getElementById("envBackend").textContent = "Hazır");
+            document.getElementById("envRuntime") && (document.getElementById("envRuntime").textContent = snapshot?.runtime?.persistent_runtime?.status || "Hazır");
+            document.getElementById("envSandbox") && (document.getElementById("envSandbox").textContent = snapshot?.runtime?.sandbox || "Yerel");
+            document.getElementById("envTerminal") && (document.getElementById("envTerminal").textContent = snapshot?.runtime?.terminal || "Hazır");
+            document.getElementById("envBrowser") && (document.getElementById("envBrowser").textContent = "Hazır");
+
+            document.getElementById("reviewFileCount") && (document.getElementById("reviewFileCount").textContent = String(git.changed_count ?? "?"));
+            document.getElementById("reviewAdditions") && (document.getElementById("reviewAdditions").textContent = String(git.additions ?? "?"));
+            document.getElementById("reviewDeletions") && (document.getElementById("reviewDeletions").textContent = String(git.deletions ?? "?"));
+            const review = document.getElementById("reviewEmptyState");
+            if (review) {
+                const diff = git.diff_stat || git.status_short || "";
+                review.innerHTML = diff
+                    ? `<strong>Gerçek git farkı</strong><span><pre class="mini-diff">${escapePanelHtml(diff)}</pre></span>`
+                    : `<strong>Henüz değişiklik yok</strong><span>Seçili klasör temiz görünüyor. LuxCode kod değiştirdiğinde diff burada canlı görünecek.</span>`;
+            }
+
+            const fileHost = document.getElementById("fileTreeEmptyState");
+            if (fileHost) {
+                fileHost.innerHTML = files.length
+                    ? `<strong>${escapePanelHtml(project?.name || "Proje")} dosyaları</strong><span>${files.slice(0, 120).map(file => `Dosya: ${escapePanelHtml(file.path)} <small>${Math.round((file.size_bytes || 0) / 1024)} KB</small>`).join("<br>")}</span>`
+                    : `<strong>Dosya okunamadı</strong><span>Proje yolu doğrulanamadı veya görüntülenecek metin dosyası bulunamadı.</span>`;
+            }
+
+            const testHost = document.getElementById("testEmptyState");
+            if (testHost) {
+                testHost.innerHTML = tests.length
+                    ? `<strong>Çalıştırılabilir testler</strong><span>${tests.map((item, index) => `<button class="panel-secondary-action" type="button" data-workspace-test-index="${index}">${escapePanelHtml(item.label)}</button>`).join("")}</span>`
+                    : `<strong>Test komutu bulunamadı</strong><span>package.json, pyproject.toml, pytest.ini veya Python test dosyası bulunursa burada çalıştırılabilir hale gelir.</span>`;
+            }
+            document.getElementById("testPassCount") && (document.getElementById("testPassCount").textContent = "—");
+            document.getElementById("testFailCount") && (document.getElementById("testFailCount").textContent = "—");
+            document.getElementById("testSkipCount") && (document.getElementById("testSkipCount").textContent = "—");
+
+            const evidence = document.getElementById("evidenceTimeline");
+            if (evidence) {
+                evidence.innerHTML = `
+                    <div class="evidence-item"><strong>Workspace doğrulandı</strong><span>${escapePanelHtml(project?.path || "Proje yok")}</span></div>
+                    <div class="evidence-item"><strong>Git durumu</strong><span>${escapePanelHtml(git.dirty ? git.status_short || "Değişiklik var" : "Temiz")}</span></div>
+                    <div class="evidence-item"><strong>Test adayları</strong><span>${tests.length ? tests.map(item => escapePanelHtml(item.label)).join(", ") : "Henüz yok"}</span></div>`;
+            }
+
+            renderModelProviderStatus(snapshot);
+        }
+
+        async function refreshActiveWorkspace(reason = "manual") {
+            const project = selectedSidebarProject();
+            if (!project?.path) {
+                renderWorkspaceSnapshot(null);
+                return null;
+            }
+            try {
+                const snapshot = await window.LuxCodeApi.inspectWorkspace({
+                    project_name: project.name,
+                    repository_root: project.path,
+                    include_diff: true,
+                    include_files: true,
+                    max_files: 220,
+                });
+                project.branch = snapshot.git?.branch || "";
+                project.head = snapshot.git?.head || "";
+                project.dirty = Boolean(snapshot.git?.dirty);
+                saveSidebarState();
+                renderWorkspaceSnapshot(snapshot);
+                return snapshot;
+            } catch (error) {
+                const normalized = window.LuxCodeApi.normalizeApiError(error);
+                workspaceState.lastError = normalized.message;
+                showToast(normalized.message);
+                renderWorkspaceSnapshot(null);
+                return null;
+            }
+        }
+
+        function appendTerminalLine(content) {
+            const log = document.getElementById("dockedTerminalLog");
+            if (!log) return;
+            log.innerHTML += `<br>${escapePanelHtml(content).replace(/\n/g, "<br>")}`;
+            log.scrollTo({ top: log.scrollHeight });
+        }
+
+        async function runWorkspacePanelCommand(command, label = "command") {
+            const project = selectedSidebarProject();
+            if (!project?.path || !Array.isArray(command) || !command.length) {
+                showToast("Komut için proje gerekli");
+                return;
+            }
+            toggleTerminalDock?.();
+            appendTerminalLine(`$ ${command.join(" ")}`);
+            try {
+                const result = await window.LuxCodeApi.runWorkspaceCommand({
+                    repository_root: project.path,
+                    executable: command[0],
+                    arguments: command.slice(1),
+                    timeout_seconds: 120,
+                    approval_confirmed: true,
+                });
+                const run = result.result || result;
+                appendTerminalLine((run.stdout || "") + (run.stderr ? `\n${run.stderr}` : ""));
+                const host = document.getElementById("testEmptyState");
+                if (host) {
+                    host.innerHTML = `<strong>${escapePanelHtml(label)} sonucu: ${run.ok ? "PASS" : "FAIL"}</strong><span><pre class="mini-diff">${escapePanelHtml((run.stdout || run.stderr || "").slice(-3000))}</pre></span>`;
+                }
+                document.getElementById("testPassCount") && (document.getElementById("testPassCount").textContent = run.ok ? "1" : "0");
+                document.getElementById("testFailCount") && (document.getElementById("testFailCount").textContent = run.ok ? "0" : "1");
+                document.getElementById("testSkipCount") && (document.getElementById("testSkipCount").textContent = "0");
+                refreshActiveWorkspace("after_command");
+            } catch (error) {
+                const normalized = window.LuxCodeApi.normalizeApiError(error);
+                appendTerminalLine(normalized.message);
+                showToast(normalized.message);
+            }
+        }
+
+        async function commitActiveWorkspace() {
+            const project = selectedSidebarProject();
+            if (!project?.path) {
+                showToast("Commit i?in proje se?");
+                return;
+            }
+            const message = window.prompt("Commit mesaj?", "LuxCode workspace update");
+            if (!message) return;
+            try {
+                const result = await window.LuxCodeApi.commitWorkspace({
+                    repository_root: project.path,
+                    message,
+                    approval_confirmed: true,
+                });
+                appendTerminalLine(result.result?.stdout || result.result?.stderr || JSON.stringify(result));
+                showToast(result.ok ? "Commit oluşturuldu" : "Commit tamamlanmad?");
+                refreshActiveWorkspace("after_commit");
+            } catch (error) {
+                showToast(window.LuxCodeApi.normalizeApiError(error).message);
+            }
+        }
+        window.LuxCodeWorkspace = {
+            refresh: refreshActiveWorkspace,
+            getSnapshot: () => workspaceState.snapshot,
+            getSelectedProject: selectedSidebarProject,
+            renderSnapshot: renderWorkspaceSnapshot,
+        };
+
+        function sidebarSwitchLabel(value) {
+            return value ? "Açık" : "Kapalı";
+        }
+
+        function renderSidebarTool(tool) {
+            const topHost = document.getElementById("sidebarDynamicContent");
+            const bottomHost = document.getElementById("sidebarBottomDynamicContent");
+            const host = tool === "settings" ? bottomHost : topHost;
+            if (!host) return;
+            if (tool === "settings") topHost && (topHost.innerHTML = "");
+            else bottomHost && (bottomHost.innerHTML = "");
+            document.querySelectorAll("[data-sidebar-tool]").forEach(item => item.classList.toggle("active", item.dataset.sidebarTool === tool));
+            if (tool === "search") {
+                host.innerHTML = `
+                    <div class="sidebar-panel" data-sidebar-panel="search">
+                        <div class="sidebar-panel-title">Arama</div>
+                        <input class="sidebar-field" id="sidebarSearchInput" type="search" placeholder="Mesajlarda ara">
+                        <button class="sidebar-action" type="button" data-sidebar-search-run><span>Ara</span><span>Enter</span></button>
+                        <div class="sidebar-muted" id="sidebarSearchResult">Sohbet mesajları içinde arama yapar.</div>
+                    </div>`;
+                document.getElementById("sidebarSearchInput")?.focus({ preventScroll: true });
+                return;
+            }
+            if (tool === "plugins") {
+                host.innerHTML = `
+                    <div class="sidebar-panel" data-sidebar-panel="plugins">
+                        <div class="sidebar-panel-title">Eklentiler</div>
+                        ${Object.entries({attachments:"Dosya ekleme",codeCards:"Kod kartları",evidence:"Kanıt paneli"}).map(([key,label]) => `
+                            <button class="sidebar-row" type="button" data-sidebar-toggle="plugins.${key}">
+                                <span>${label}</span><span class="sidebar-switch">${sidebarSwitchLabel(sidebarState.plugins[key])}</span>
+                            </button>`).join("")}
+                    </div>`;
+                return;
+            }
+            if (tool === "automations") {
+                host.innerHTML = `
+                    <div class="sidebar-panel" data-sidebar-panel="automations">
+                        <div class="sidebar-panel-title">Otomasyonlar</div>
+                        <input class="sidebar-field" id="sidebarAutomationInput" type="text" placeholder="Yeni otomasyon adı">
+                        <button class="sidebar-action" type="button" data-sidebar-automation-add><span>Ekle</span><span>+</span></button>
+                        <div id="sidebarAutomationList">
+                            ${sidebarState.automations.length ? sidebarState.automations.map((item, index) => `
+                                <button class="sidebar-row" type="button" data-sidebar-automation-remove="${index}">
+                                    <span>${item}</span><span>Sil</span>
+                                </button>`).join("") : `<div class="sidebar-muted">Henüz otomasyon yok.</div>`}
+                        </div>
+                    </div>`;
+                return;
+            }
+            if (tool === "settings") {
+                host.innerHTML = `
+                    <div class="sidebar-panel" data-sidebar-panel="settings">
+                        <div class="sidebar-panel-title">Ayarlar</div>
+                        <div class="sidebar-profile-tabs">
+                            <button class="sidebar-action active" type="button" data-profile-tab="profile">Profil</button>
+                            <button class="sidebar-action" type="button" data-profile-tab="account">Hesap</button>
+                            <button class="sidebar-action" type="button" data-profile-tab="privacy">Gizlilik</button>
+                            <button class="sidebar-action" type="button" data-profile-tab="appearance">Görünüm</button>
+                        </div>
+                        <div class="sidebar-profile-pane active" data-profile-pane="profile">
+                            <div class="sidebar-muted">Profil</div>
+                            <input class="sidebar-field" type="text" value="Teoman" aria-label="Profil adı">
+                            <input class="sidebar-field" type="text" value="LuxCode yerel kullanıcı" aria-label="Profil açıklaması">
+                        </div>
+                        <div class="sidebar-profile-pane" data-profile-pane="account">
+                            <div class="sidebar-muted">Hesap</div>
+                            <button class="sidebar-row" type="button"><span>Yerel oturum</span><span class="sidebar-switch">Aktif</span></button>
+                        </div>
+                        <div class="sidebar-profile-pane" data-profile-pane="privacy">
+                            <div class="sidebar-muted">Gizlilik</div>
+                            <button class="sidebar-row" type="button"><span>Yerel veri</span><span class="sidebar-switch">Korunuyor</span></button>
+                        </div>
+                        <div class="sidebar-profile-pane" data-profile-pane="appearance">
+                            <div class="sidebar-muted">Görünüm</div>
+                            <button class="sidebar-row" type="button"><span>Siyah premium tema</span><span class="sidebar-switch">Aktif</span></button>
+                        </div>
+                        ${Object.entries({compact:"Kompakt görünüm",sound:"Ses bildirimleri",autoScroll:"Otomatik kaydırma"}).map(([key,label]) => `
+                            <button class="sidebar-row" type="button" data-sidebar-toggle="settings.${key}">
+                                <span>${label}</span><span class="sidebar-switch">${sidebarSwitchLabel(sidebarState.settings[key])}</span>
+                            </button>`).join("")}
+                        <button class="sidebar-action" type="button" data-sidebar-sign-out><span>Oturumu kapat</span><span>Çıkış</span></button>
+                    </div>`;
+            }
+        }
+
+        function runSidebarSearch() {
+            const input = document.getElementById("sidebarSearchInput");
+            const result = document.getElementById("sidebarSearchResult");
+            const query = (input?.value || "").trim().toLowerCase();
+            document.querySelectorAll(".live-message").forEach(item => item.style.outline = "");
+            if (!query) {
+                if (result) result.textContent = "Aranacak metni yazın.";
+                return;
+            }
+            const matches = Array.from(document.querySelectorAll(".live-message")).filter(item => item.textContent.toLowerCase().includes(query));
+            matches.forEach(item => item.style.outline = "1px solid var(--lux-yellow)");
+            matches[0]?.scrollIntoView({ block: "center" });
+            if (result) result.textContent = `${matches.length} sonuç bulundu.`;
+        }
+
+        function renderSidebarProjects() {
+            const list = document.getElementById("sidebarProjectList");
+            if (!list) return;
+            if (!sidebarState.projects.length) {
+                list.innerHTML = `<div class="sidebar-muted" style="padding:0 10px 4px;">Henüz proje yok.</div>`;
+                updateScopeBar();
+                return;
+            }
+            list.innerHTML = sidebarState.projects.map(project => `
+                <button class="sidebar-project-row ${project.name === sidebarState.activeProject ? "active" : ""}" type="button" data-sidebar-project="${project.name}">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M3 7V5a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v2"/></svg>
+                    <span>
+                        <span class="sidebar-project-name">${project.name}</span>
+                        <span class="sidebar-project-path">${project.path}</span>
+                    </span>
+                </button>
+            `).join("");
+            updateScopeBar();
+        }
+
+        async function chooseSidebarProjectFolder({ saveAfterSelect = false } = {}) {
+            const nameInput = document.getElementById("sidebarProjectName");
+            const pathInput = document.getElementById("sidebarProjectPath");
+            showToast("Klasör seçici açılıyor");
+            try {
+                const result = await window.LuxCodeApi.selectWorkspaceFolder({
+                    initial_dir: pathInput?.value || "",
+                    title: "LuxCode proje klasörü seç",
+                });
+                if (!result?.selected || !result.path) {
+                    showToast("Klasör seçilmedi");
+                    return false;
+                }
+                if (pathInput) pathInput.value = result.path;
+                if (nameInput && !nameInput.value.trim()) nameInput.value = result.name || result.path.split(/[\\/]/).filter(Boolean).pop() || "Proje";
+                showToast("Klasör seçildi");
+                if (saveAfterSelect) await addSidebarProject();
+                return true;
+            } catch (error) {
+                const normalized = window.LuxCodeApi.normalizeApiError(error);
+                showToast(normalized.message || "Klasör seçici açılamadı");
+                return false;
+            }
+        }
+        async function addSidebarProject() {
+            const nameInput = document.getElementById("sidebarProjectName");
+            const pathInput = document.getElementById("sidebarProjectPath");
+            const name = (nameInput?.value || "").trim();
+            const path = (pathInput?.value || "").trim();
+            if (!name || !path) { await chooseSidebarProjectFolder({ saveAfterSelect: true }); return; }
+            try {
+                const snapshot = await window.LuxCodeApi.inspectWorkspace({
+                    project_name: name,
+                    repository_root: path,
+                    include_diff: true,
+                    include_files: true,
+                    max_files: 220,
+                });
+                renderWorkspaceSnapshot(snapshot);
+            } catch (error) {
+                showToast(window.LuxCodeApi.normalizeApiError(error).message);
+                return;
+            }
+            const existing = sidebarState.projects.find(project => project.name === name);
+            if (existing) existing.path = path;
+            else sidebarState.projects.push({ name, path });
+            sidebarState.activeProject = name;
+            saveSidebarState();
+            renderSidebarProjects();
+            document.getElementById("sidebarProjectForm")?.classList.remove("open");
+            nameInput.value = "";
+            pathInput.value = "";
+            updateScopeBar();
+            refreshActiveWorkspace("project_saved");
+        }
+
+        function updateScopeBar() {
+            const active = sidebarState.projects.find(project => project.name === sidebarState.activeProject);
+            const name = document.getElementById("scopeProjectName");
+            if (name) name.textContent = active ? active.name : "";
         }
 
         terminalResizer.addEventListener("mousedown", (event) => {
@@ -2621,11 +3093,12 @@
         });
 
         document.addEventListener("mouseup", () => {
+            const hadResize = isResizingTerminal || isResizing;
             isResizingTerminal = false;
             isResizing = false;
             document.body.classList.remove("is-resizing");
             document.body.style.cursor = "default";
-            window.getSelection()?.removeAllRanges();
+            if (hadResize) window.getSelection()?.removeAllRanges();
         });
 
         window.addEventListener("blur", () => {
@@ -2635,8 +3108,143 @@
             document.body.style.cursor = "default";
         });
 
-        document.querySelectorAll(".panel-tab").forEach(button => {
-            button.addEventListener("click", () => switchPanelTab(button.dataset.panelTab));
+        document.addEventListener("click", event => {
+            const toolButton = event.target.closest("[data-sidebar-tool]");
+            if (toolButton) {
+                const tool = toolButton.dataset.sidebarTool;
+                const isActive = toolButton.classList.contains("active");
+                if (isActive) {
+                    const hostId = tool === "settings" ? "sidebarBottomDynamicContent" : "sidebarDynamicContent";
+                    document.getElementById(hostId).innerHTML = "";
+                    toolButton.classList.remove("active");
+                } else {
+                    renderSidebarTool(tool);
+                }
+                return;
+            }
+            if (event.target.closest("[data-sidebar-search-run]")) {
+                runSidebarSearch();
+                return;
+            }
+            const toggle = event.target.closest("[data-sidebar-toggle]");
+            if (toggle) {
+                const [bucket, key] = toggle.dataset.sidebarToggle.split(".");
+                sidebarState[bucket][key] = !sidebarState[bucket][key];
+                saveSidebarState();
+                renderSidebarTool(bucket === "plugins" ? "plugins" : "settings");
+                return;
+            }
+            if (event.target.closest("[data-sidebar-automation-add]")) {
+                const input = document.getElementById("sidebarAutomationInput");
+                const value = (input?.value || "").trim();
+                if (value) {
+                    sidebarState.automations.push(value);
+                    saveSidebarState();
+                    renderSidebarTool("automations");
+                }
+                return;
+            }
+            const remove = event.target.closest("[data-sidebar-automation-remove]");
+            if (remove) {
+                sidebarState.automations.splice(Number(remove.dataset.sidebarAutomationRemove), 1);
+                saveSidebarState();
+                renderSidebarTool("automations");
+                return;
+            }
+            const project = event.target.closest("[data-sidebar-project]");
+            if (project) {
+                sidebarState.activeProject = project.dataset.sidebarProject;
+                saveSidebarState();
+                renderSidebarProjects();
+                refreshActiveWorkspace("project_selected");
+                return;
+            }
+            const testButton = event.target.closest("[data-workspace-test-index]");
+            if (testButton) {
+                const snapshot = workspaceState.snapshot;
+                const project = selectedSidebarProject();
+                const command = snapshot?.tests?.suggested?.[Number(testButton.dataset.workspaceTestIndex)]?.command || [];
+                if (!project?.path || !command.length) {
+                showToast("Çalıştırılacak test bulunamadı");
+                    return;
+                }
+                runWorkspacePanelCommand(command, `test_${testButton.dataset.workspaceTestIndex}`);
+                return;
+            }
+            if (event.target.closest("[data-workspace-refresh]")) {
+                refreshActiveWorkspace("button");
+                return;
+            }
+            if (event.target.closest("[data-workspace-commit]")) {
+                commitActiveWorkspace();
+                return;
+            }
+            if (event.target.closest("#btnSidebarProjectAdd")) {
+                document.getElementById("sidebarProjectForm")?.classList.toggle("open");
+                document.getElementById("sidebarProjectName")?.focus({ preventScroll: true });
+                return;
+            }
+            if (event.target.closest("#btnSidebarProjectBrowse")) {
+                chooseSidebarProjectFolder();
+                return;
+            }
+            if (event.target.closest("#btnSidebarProjectSave")) {
+                addSidebarProject();
+                return;
+            }
+            const profileTab = event.target.closest("[data-profile-tab]");
+            if (profileTab) {
+                const tab = profileTab.dataset.profileTab;
+                document.querySelectorAll("[data-profile-tab]").forEach(item => item.classList.toggle("active", item === profileTab));
+                document.querySelectorAll("[data-profile-pane]").forEach(item => item.classList.toggle("active", item.dataset.profilePane === tab));
+                return;
+            }
+            if (event.target.closest("[data-sidebar-sign-out]")) {
+                localStorage.removeItem("luxcode_live_session_id");
+                sessionStorage.removeItem("luxcode_live_session_id");
+                window.LuxCodeConversationController?.newConversation?.();
+                showToast("Oturum kapatıldı");
+                return;
+            }
+            if (event.target.closest("#scopeProjectChip")) {
+                document.getElementById("sidebarProjectForm")?.classList.add("open");
+                document.getElementById("sidebarProjectName")?.focus({ preventScroll: true });
+                return;
+            }
+            if (event.target.closest("#scopeRuntimeChip")) {
+                document.getElementById("scopeRuntimeChip")?.classList.toggle("active");
+                return;
+            }
+            if (event.target.closest("#scopeBranchChip")) {
+                document.getElementById("scopeBranchMenu")?.classList.toggle("open");
+                return;
+            }
+            const branch = event.target.closest("[data-scope-branch]");
+            if (branch) {
+                document.getElementById("scopeBranchName").textContent = branch.dataset.scopeBranch;
+                document.getElementById("scopeBranchMenu")?.classList.remove("open");
+            }
+        });
+
+        document.addEventListener("keydown", event => {
+            if (event.key === "Enter" && event.target?.id === "sidebarSearchInput") runSidebarSearch();
+            if (event.key === "Enter" && event.target?.id === "sidebarAutomationInput") {
+                document.querySelector("[data-sidebar-automation-add]")?.click();
+            }
+            if (event.key === "Enter" && (event.target?.id === "sidebarProjectName" || event.target?.id === "sidebarProjectPath")) {
+                addSidebarProject();
+            }
+        });
+
+        document.getElementById("sidebarProjectFolderInput")?.addEventListener("change", event => {
+            const file = event.target.files?.[0];
+            const relative = file?.webkitRelativePath || file?.name || "";
+            const folderName = relative.split("/")[0] || "";
+            if (folderName) {
+                document.getElementById("sidebarProjectName").value = folderName;
+                showToast("Klasör adı alındı. Tam yol için Klasör seç butonunu kullan.");
+            }
+            event.target.value = "";
         });
 
         document.querySelectorAll("[data-review-filter], [data-file-filter], [data-test-filter], [data-device-size]").forEach(button => {
@@ -2656,28 +3264,6 @@
                     }
                 }
             });
-        });
-
-        document.getElementById("txtLandingInput").addEventListener("keydown", event => {
-            if ((event.ctrlKey || event.metaKey) && event.key === "Enter") simulateSend();
-        });
-
-        document.getElementById("btnLandingAttach")?.addEventListener("click", event => {
-            openLandingPicker(event?.shiftKey || false);
-        });
-
-        document.getElementById("btnDockedAttach")?.addEventListener("click", event => {
-            openLandingPicker(event?.shiftKey || false);
-        });
-
-        document.getElementById("landingFileInput")?.addEventListener("change", event => {
-            appendWorkspaceSelection(Array.from(event.target.files || []));
-            event.target.value = "";
-        });
-
-        document.getElementById("landingFolderInput")?.addEventListener("change", event => {
-            appendWorkspaceSelection(Array.from(event.target.files || []));
-            event.target.value = "";
         });
 
         document.addEventListener("click", event => {
@@ -2712,12 +3298,13 @@
             window.LuxCodeTaskState.stopAutoAdvance();
         });
 
-        ensureFreshLandingSession();
         renderSelectedWorkspaceTool(selectedWorkspaceTool);
-        setLuxCodeMode(luxCodeMode, true);
-        renderWorkspaceContext();
         loadCustomModels();
+        renderSidebarProjects();
+        refreshActiveWorkspace("startup");
         setTaskState("home");
     </script>
+    <script src="/static/luxcode_v1/luxcode_conversation_controller.js?v=restored-ui-20260622-2000"></script>
+    <script src="/static/luxcode_v1/luxcode_bridge.js"></script>
 </body>
 </html>

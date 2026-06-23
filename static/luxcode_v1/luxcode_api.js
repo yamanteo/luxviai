@@ -117,17 +117,49 @@
         });
     }
 
-    function runLuxCodeAgent(payload, options = {}) {
+    async function runLuxCodeAgent(payload, options = {}) {
+        // BRIDGE: Aktif dosya varsa içeriğini payload'a ekle
+        try {
+            if (window.LuxBridge && await window.LuxBridge.isConnected()) {
+                // Aktif dosya yolunu payload'dan veya editörden al
+                const activePath = payload.file_path || payload.context?.file_path;
+                if (activePath) {
+                    const file = await window.LuxBridge.readFile(activePath);
+                    payload = {
+                        ...payload,
+                        file_content: file.content,
+                        file_lines: file.lines
+                    };
+                }
+            }
+        } catch(e) {
+            console.warn("Bridge dosya okuma atlandı:", e);
+        }
+
         if (options.stream) {
             return requestLuxCodeAgentStream(payload, options);
         }
-        return requestJson("/luxcode-agent/run", {
+
+        const result = await requestJson("/luxcode-agent/run", {
             method: "POST",
             body: JSON.stringify(payload),
             headers: { "Content-Type": "application/json" },
             timeoutMs: options.timeoutMs || 60000,
             controller: options.controller,
         });
+
+        // BRIDGE: Cevap dosya değişikliği içeriyorsa yaz
+        try {
+            if (window.LuxBridge && result?.file_write) {
+                const { path, content } = result.file_write;
+                await window.LuxBridge.writeFile(path, content);
+                console.log("Bridge dosya yazıldı:", path);
+            }
+        } catch(e) {
+            console.warn("Bridge dosya yazma atlandı:", e);
+        }
+
+        return result;
     }
 
     function looksLikeCoderPrompt(prompt) {
